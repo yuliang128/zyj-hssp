@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: wanghaitao2658 $
+    $Date: 2011/03/31 $
+    $Revision: 1.1 $
+    $Purpose: 预付款核销反冲
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="csh_prepayment_write_off_reverse_detail_link" url="$[/request/@context_path]/csh/CSH5250/csh_prepayment_write_off_reverse_detail.screen"/>
+        <a:link id="payment_rquisition_detail_link" url="$[/request/@context_path]/csh/public/csh_pay_req_query_detail.screen"/>
+        <script><![CDATA[
+            function onUpdate(dataSet, record, name, value, oldvalue) {
+                if (name == 'payeeCategory') {
+                    record.set('payeeId', '');
+                    record.set('payeeCode', '');
+                    record.set('payeeName', '');
+                    if(value){
+                        record.getField('payeeName').setReadOnly(false);
+                    }else{
+                      record.getField('payeeName').setReadOnly(true);
+                    }
+                }
+            }
+            
+            function dateValidator(record, name, value) {
+                if (name == 'transactionDateFrom' || name == 'transactionDateTo') {
+                    var date_from = record.get('transactionDateFrom');
+                    var date_to = record.get('transactionDateTo');
+                    if (typeof(date_to) != 'undefined' && !Ext.isEmpty(date_to)) {
+                        if (!compareDate(date_from, date_to)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function numDetail(value, record, name) {
+                var transaction_num = record.get('transactionNum');
+                var id = record.get('transactionHeaderId');
+                if (id) {
+                    return '<a href="javascript:getNumDetail(' + id + ')">' + value + '</a>';
+                }
+            }
+            
+            function getNumDetail(id) {
+                new Aurora.Window({
+                    id: 'csh_prepayment_write_off_reverse_detail_window',
+                    url: $au('csh_prepayment_write_off_reverse_detail_link').getUrl() + '?transactionHeaderId=' + id,
+                    title: '$[l:prompt.reverse_write_off]',
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('csh_prepayment_write_off_reverse_result_ds').query();
+                });
+            }
+            
+            function docdetail(value, record, name) {
+                var id = record.get('docHeaderId');
+                if (id) {
+                    return '<a href="javascript:opendocWindow(\'' + id + '\')">' + value + '</a>';
+                }
+            }
+            
+            function opendocWindow(id) {
+                new Aurora.Window({
+                    id: 'csh_payment_doc_detail_window',
+                    url: $au('payment_rquisition_detail_link').getUrl() + '?paymentRequisitionHeaderId=' + id,
+                    fullScreen: true,
+                    title: '$[l:bgt_period_sets.detail]'
+                });
+            }
+            
+            function CSH5250_writeOffReversePayeeFunc() {
+                var record = $au('csh_prepayment_write_off_reverse_query_ds').getAt(0);
+                var payeeCategory = record.get('payeeCategory');
+                if (payeeCategory) {
+                    record.getField('payeeName').setLovPara('payeeCategory', payeeCategory);
+                    record.getField('payeeName').setLovCode('LOV_GLD_PAYEE');
+                } else {
+                    record.get('payeeName').setLovCode('');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="csh_prepayment_payment_object" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="csh_prepayment_write_off_currency_code" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="csh_prepayment_write_off_reverse_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="transactionNum" prompt="csh_prepayment_write_off.transaction_num"/>
+                    <a:field name="docNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="contactNumber" placeHolder="con_contract_header.cont_document_number"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="csh_prepayment_payment_object" prompt="csh_transaction_line.partner_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeName" autoComplete="true" autoCompleteField="payeeName" lovGridHeight="310" lovHeight="460" lovWidth="540" prompt="acp_requisition.partner_name" readOnly="true" title="csh_transaction_lines.partner_select">
+                        <a:mapping>
+                            <a:map from="payeeId" to="payeeId"/>
+                            <a:map from="payeeCode" to="payeeCode"/>
+                            <a:map from="payeeName" to="payeeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="transactionDateFrom" datatype="date" placeHolder="csh_prepayment_write_off.transaction_date_from" validator="dateValidator"/>
+                    <a:field name="transactionDateTo" datatype="date" placeHolder="csh_prepayment_write_off.transaction_date_to" validator="dateValidator"/>
+                    <a:field name="currencyName" displayField="currencyName" placeHolder="csh_payment_requisition_hd.currency_code" options="csh_prepayment_write_off_currency_code" returnField="currencyCode" valueField="currencyCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="csh_prepayment_write_off_reverse_result_ds" autoQuery="true" autoPageSize="true" queryUrl="$[/request/@context_path]/csh/write-off/queryPrePayForReverse" queryDataSet="csh_prepayment_write_off_reverse_query_ds" selectable="true"/>
+        </a:dataSets>
+        <a:queryForm bindTarget="csh_prepayment_write_off_reverse_query_ds" marginWidth="0" resultTarget="csh_prepayment_write_off_reverse_result_ds" style="width:100%; border:none;">
+            <a:formToolBar>
+                <a:textField name="transactionNum" bindTarget="csh_prepayment_write_off_reverse_query_ds"/>
+                <a:comboBox name="payeeCategoryName" bindTarget="csh_prepayment_write_off_reverse_query_ds"/>
+                <a:lov name="payeeName" bindTarget="csh_prepayment_write_off_reverse_query_ds">
+                    <a:events>
+                        <a:event name="focus" handler="CSH5250_writeOffReversePayeeFunc"/>
+                    </a:events>
+                </a:lov>
+            </a:formToolBar>
+            <a:formBody column="4">
+                <a:textField name="contactNumber" bindTarget="csh_prepayment_write_off_reverse_query_ds"/>
+                <a:datePicker name="transactionDateFrom" bindTarget="csh_prepayment_write_off_reverse_query_ds" renderer="Aurora.formatDate"/>
+                <a:datePicker name="transactionDateTo" bindTarget="csh_prepayment_write_off_reverse_query_ds" renderer="Aurora.formatDate"/>
+                <a:comboBox name="currencyName" bindTarget="csh_prepayment_write_off_reverse_query_ds"/>
+                <a:textField name="docNumber" bindTarget="csh_prepayment_write_off_reverse_query_ds" />
+            </a:formBody>
+        </a:queryForm>
+        <a:grid bindTarget="csh_prepayment_write_off_reverse_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="transactionNum" align="center" prompt="csh_prepayment_write_off.transaction_num" renderer="numDetail" width="120"/>
+                <a:column name="transactionDate" align="center" prompt="csh_transaction_header.transaction_date" width="120"/>
+                <a:column name="docNumber" align="center" prompt="csh_payment_requisition_hd.requisition_number" renderer="docdetail" width="120"/>
+                <a:column name="currencyName" align="center" prompt="csh_payment_requisition_hd.currency_code" width="100"/>
+                <a:column name="payeeCategoryName" align="center" prompt="csh_transaction_line.partner_category" width="120"/>
+                <a:column name="payeeName" align="center" prompt="acp_requisition.partner_name" width="120"/>
+                <a:column name="transactionAmount" align="right" prompt="csh_transaction_line.transaction_amount" renderer="Aurora.formatMoney" width="120"/>
+                <a:column name="writeOffAmount" align="right" prompt="csh_write_off.write_off_amount" renderer="Aurora.formatMoney" width="120"/>
+                <a:column name="contractNumber" align="left" prompt="con_contract_header.cont_document_number" width="120"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

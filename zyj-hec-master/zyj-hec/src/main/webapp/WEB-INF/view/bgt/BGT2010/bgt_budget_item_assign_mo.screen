@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_budget_item_assgin_mo_company_link" url="$[/request/@context_path]/bgt/BGT2010/bgt_budget_items_assign_com.screen"/>
+        <script><![CDATA[
+            function assign_company(value, record, name) {
+                if (record.get('assignMoId')) {
+                    return "<a href=\"javascript:doAssignCmp('" + record.get('assignMoId') + "');\">$[l:budget_item.assign_company]</a>";
+                }
+            }
+            
+            function doAssignCmp(id) {
+                new Aurora.Window({
+                    id: 'BGT2010_budget_assign_company_window',
+                    url: $au('bgt_budget_item_assgin_mo_company_link').getUrl() + '?assignMoId=' + id,
+                    title: '$[l:budget_item.assign_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function reload_mo(dataSet, record) {
+                $au('bgt_budget_item_assign_mo_ds').query();
+            }
+            
+            function BGT2010_assign_mo_back() {
+                $au('BGT2010_assign_mo_window').close();
+            }
+            
+            function moEditFunc(record, name) {
+                if (record.isNew) {
+                    if (name == 'magOrgName') {
+                        return 'asgn_mo_comboBox';
+                    }
+                }
+                return '';
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="bgt_budget_item_assign_mo_header" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/budget-item/query?budgetItemId=$[/parameter/@budgetItemId]">
+                <a:fields>
+                    <a:field name="budgetItemCode"  prompt="bgt_budget_item.budget_item_code" readOnly="true"/>
+                    <a:field name="description"  prompt="bgt_budget_item.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="bgt_budget_item_mag_org_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="bgt_budget_item_assign_mo_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/budget-item-asgn-mo" queryUrl="$[/request/@context_path]/bgt/budget-item-asgn-mo/query?budgetItemId=$[/parameter/@budgetItemId]">
+                <a:fields>
+                    <a:field name="assignMoId"/>
+                    <a:field name="budgetItemId" defaultValue="$[/parameter/@budgetItemId]" required="true"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgCode"/>
+                    <a:field name="magOrgName" displayField="description" options="bgt_budget_item_mag_org_ds" prompt="bgt_budget_item_mapping.mag_org_name" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_budget_item_type.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="reload_mo"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_period.bgt_period_assign_mo_org">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="bgt_budget_item_assign_mo_grid" type="add" width="80"/>
+                    <a:gridButton bind="bgt_budget_item_assign_mo_grid" type="save" width="80"/>
+                    <a:toolbarButton click="BGT2010_assign_mo_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="budgetItemCode" bindTarget="bgt_budget_item_assign_mo_header" readOnly="true"/>
+                <a:textField name="description" bindTarget="bgt_budget_item_assign_mo_header" readOnly="true"/>
+            </a:form>
+            <a:grid id="bgt_budget_item_assign_mo_grid" bindTarget="bgt_budget_item_assign_mo_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="magOrgName" editorFunction="moEditFunc" width="200"/>
+                    <a:column name="enabledFlag" editor="asgn_mo_checkBox" width="90"/>
+                    <a:column name="assignCompany" align="center" prompt="" renderer="assign_company" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="asgn_mo_comboBox"/>
+                    <a:checkBox id="asgn_mo_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

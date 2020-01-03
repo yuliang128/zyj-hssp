@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-27 15:45
+    $Revision: 1.0
+    $Purpose: 管理组织级费用政策地点类型定义-批量分配管理公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP1310_place_type_assign_company_batch_svc_link" url="$[/request/@context_path]/exp/policy-plc-tp-asgn-com/submit"/>
+        <script><![CDATA[
+            function EXP1310_closeAsgnBatchCreateWindow() {
+                $au('EXP1310_exp_policy_place_batch_asgn_com').close();
+            }
+            
+            function EXP1310_assignCom() {
+                var datas = $au('EXP1310_batch_asgn_company_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    datas[i]['placeTypeId'] = '$[/parameter/@placeTypeId]';
+                    datas[i]['enabledFlag'] = 'Y';
+                    datas[i]['__status'] = 'add';
+                    datas[i]['_token'] = null;
+                }
+            
+                Aurora.request({
+                    lockMessage:'$[l:hap_waiting]',
+                    url: $au('EXP1310_place_type_assign_company_batch_svc_link').getUrl(),
+                    para: datas,
+                    success: EXP1310_closeAssignPage,
+                    scope: this
+                });
+            }
+            
+            function EXP1310_closeAssignPage(res) {
+                $au('EXP1310_exp_policy_place_batch_asgn_com').close();
+                $au('EXP1310_ref_asgn_company_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1310_batch_asgn_company_ds" autoPageSize="true" autoQuery="true"  pageSize="50" queryUrl="$[/request/@context_path]/exp/policy-plc-tp-asgn-com/queryRemainExpPolicyPlcTpAsgnCom?magOrgId=$[/parameter/@magOrgId]&amp;placeTypeId=$[/parameter/@placeTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="exp_policy_place_type_batch_asgn_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP1310_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="EXP1310_closeAsgnBatchCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="placeTypeCode" bindTarget="EXP1310_exp_policy_place_types_result_ds" prompt="exp_policy_place_type.place_type_code" readOnly="true" width="120"/>
+                <a:textField name="description" bindTarget="EXP1310_exp_policy_place_types_result_ds" prompt="exp_policy_place_type.description_id" readOnly="true" width="200"/>
+            </a:form>
+            <a:grid bindTarget="EXP1310_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center"  width="160"/>
+                    <a:column name="companyShortName"  width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

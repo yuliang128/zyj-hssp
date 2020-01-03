@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtCenterHierarchyMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtCenterHierarchy">
+        <result column="HIERARCHY_ID" property="hierarchyId" jdbcType="DECIMAL" />
+        <result column="PARENT_CENTER_ID" property="parentCenterId" jdbcType="DECIMAL" />
+        <result column="CENTER_ID" property="centerId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="CENTER_CODE" property="centerCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryDetailsCanAsgn" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            bc.CENTER_ID,
+            bc.CENTER_CODE,
+            bctl.DESCRIPTION
+        FROM
+            bgt_center bc,
+            bgt_center_tl bctl
+        WHERE
+            bc.bgt_org_id = #{bgtOrgId}
+
+            AND bc.enabled_flag = 'Y'
+            AND bc.CENTER_TYPE = 'DETAILS'
+            AND bc.CENTER_ID = bctl.CENTER_ID
+            AND bctl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+
+            AND NOT EXISTS (
+                SELECT
+                1
+                FROM
+                bgt_center_hierarchy bch
+                WHERE
+                bch.CENTER_ID = bc.CENTER_ID
+                AND bch.PARENT_CENTER_ID = #{centerId} AND bch.enabled_flag = 'Y' )
+        ORDER BY
+        bc.CENTER_CODE
+
+    </select>
+</mapper>

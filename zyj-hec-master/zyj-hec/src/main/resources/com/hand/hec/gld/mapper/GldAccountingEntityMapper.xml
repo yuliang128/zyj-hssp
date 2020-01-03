@@ -1,0 +1,802 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldAccountingEntityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldAccountingEntity">
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_CODE_FROM" property="accEntityCodeFrom" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_CODE_TO" property="accEntityCodeTo" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="FUNCTIONAL_CURRENCY_CODE" property="functionalCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="PAY_CURRENCY_CODE" property="payCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_COUNTRY_CODE" property="defaultCountryCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_TIMEZONE_ID" property="defaultTimezoneId" jdbcType="DECIMAL"/>
+        <result column="companyTypeDisplay" property="companyTypeDisplay" jdbcType="VARCHAR"/>
+        <result column="COMPANY_TYPE" property="companyType" jdbcType="VARCHAR"/>
+        <result column="taxpayerTypeDisplay" property="taxpayerTypeDisplay" jdbcType="VARCHAR"/>
+        <result column="TAXPAYER_TYPE" property="taxpayerType" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_LANGUAGE" property="defaultLanguage" jdbcType="VARCHAR"/>
+        <result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="TAXPAYER_NUMBER" property="taxpayerNumber" jdbcType="VARCHAR"/>
+        <result column="PHONE" property="phone" jdbcType="VARCHAR"/>
+        <result column="ADDRESS" property="address" jdbcType="VARCHAR"/>
+        <result column="BANK_ACCOUNT" property="bankAccount" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_CODE_NAME" property="accEntityCodeName" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="defaultLanguageDisplay">
+        (SELECT
+                 scv.meaning
+         FROM
+                 sys_code_b sc,
+                 sys_code_value_b scv
+         WHERE
+                 sc.code = 'LANGUAGE'
+             AND sc.code_id = scv.code_id
+             AND scv.value = acc.default_language
+        )  defaultLanguageDisplay
+    </sql>
+
+    <sql id="companyTypeDisplay">
+        (SELECT
+                 scv.meaning
+         FROM
+                 sys_code_b sc,
+                 sys_code_value_b scv
+         WHERE
+                 sc.code = 'ACCOUNTING_ENTITY_COMPANY_TYPE'
+             AND sc.code_id = scv.code_id
+             AND scv.value = acc.company_type
+        )  companyTypeDisplay
+    </sql>
+
+    <sql id="taxpayerTypeDisplay">
+        (SELECT
+                 scv.meaning
+         FROM
+                 sys_code_b sc,
+                 sys_code_value_b scv
+         WHERE
+                 sc.code = 'GLD_TAXPAYER_TYPE'
+             AND sc.code_id = scv.code_id
+             AND scv.value = acc.taxpayer_type
+        )  taxpayerTypeDisplay
+    </sql>
+
+    <select id="selectMore" parameterType="com.hand.hec.gld.dto.GldAccountingEntity" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        acc.ACC_ENTITY_ID,
+        acc.ACC_ENTITY_CODE,
+        acctl.ACC_ENTITY_NAME,
+        gc1.CURRENCY_NAME functionalCurrencyName,
+        acc.FUNCTIONAL_CURRENCY_CODE,
+        gc2.CURRENCY_NAME payCurrencyName,
+        acc.PAY_CURRENCY_CODE,
+        <include refid="defaultLanguageDisplay"></include>,
+        acc.DEFAULT_LANGUAGE,
+        fcc.DESCRIPTION defaultCountryName,
+        acc.DEFAULT_COUNTRY_CODE,
+        sst.DESCRIPTION defaultTimezoneName,
+        acc.DEFAULT_TIMEZONE_ID,
+        <include refid="taxpayerTypeDisplay"></include>,
+        acc.TAXPAYER_TYPE,
+        <include refid="companyTypeDisplay"></include>,
+        acc.COMPANY_TYPE,
+        sob.SET_OF_BOOKS_NAME,
+        sob.SET_OF_BOOKS_ID,
+        accsob.ref_id sobRefId,
+        acc.START_DATE_ACTIVE,
+        acc.END_DATE_ACTIVE,
+        acc.TAXPAYER_NUMBER,
+        acc.PHONE,
+        acc.ADDRESS,
+        acc.BANK_ACCOUNT
+        FROM
+        gld_accounting_entity acc,
+        gld_accounting_entity_tl acctl,
+        gld_acc_entity_ref_sob accsob,
+        gld_set_of_book sob,
+        gld_currency gc1,
+        gld_currency gc2,
+        fnd_country_code fcc,
+        sys_standard_timezone sst
+        WHERE
+        acc.ACC_ENTITY_ID = accsob.ACC_ENTITY_ID
+        AND sob.SET_OF_BOOKS_ID = accsob.SET_OF_BOOKS_ID
+        AND acc.ACC_ENTITY_ID = acctl.ACC_ENTITY_ID
+        AND acctl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        AND acc.FUNCTIONAL_CURRENCY_CODE = gc1.CURRENCY_CODE
+        AND acc.PAY_CURRENCY_CODE = gc2.CURRENCY_CODE
+        AND acc.DEFAULT_COUNTRY_CODE = fcc.COUNTRY_CODE
+        AND acc.DEFAULT_TIMEZONE_ID = sst.STANDARD_TIMEZONE_ID
+        AND accsob.DEFAULT_FLAG = 'Y'
+        <if test="accEntityCode != null">
+            AND acc.ACC_ENTITY_CODE LIKE CONCAT('%',#{accEntityCode},'%')
+        </if>
+        <if test="accEntityName != null">
+            AND acc.ACC_ENTITY_NAME LIKE CONCAT('%',#{accEntityName},'%')
+        </if>
+        <if test="setOfBooksName != null">
+            AND sob.SET_OF_BOOKS_NAME LIKE CONCAT('%',#{setOfBooksName},'%')
+        </if>
+        <if test="accEntityId != null">
+            AND acc.ACC_ENTITY_ID = #{accEntityId}
+        </if>
+        ) ac
+        left outer join
+        (select be.ENTITY_ID bgtEntityId,be.DESCRIPTION bgtEntityName,accbe.ACC_ENTITY_ID,accbe.ref_id beRefId
+        from gld_acc_entity_ref_be accbe,bgt_entity be
+        where be.ENTITY_ID = accbe.BGT_ENTITY_ID
+        and accbe.DEFAULT_FLAG = 'Y'
+        ) be
+        on ac.ACC_ENTITY_ID = be.ACC_ENTITY_ID
+        order by ac.ACC_ENTITY_ID
+    </select>
+
+    <select id="queryDefaultAccEntity" resultType="com.hand.hec.gld.dto.GldAccountingEntity">
+        SELECT
+            gae.acc_entity_id accEntityId,
+            gae.acc_entity_code accEntityCode,
+            gae.acc_entity_name accEntityName,
+            concat( gae.acc_entity_code, '-', gaet.acc_entity_name ) accEntityCodeName
+        FROM gld_accounting_entity gae
+        LEFT OUTER JOIN gld_accounting_entity_tl gaet ON ( gaet.ACC_ENTITY_ID = gae.ACC_ENTITY_ID AND gaet.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE gae.start_date_active &lt;= CURRENT_TIMESTAMP AND ( gae.end_date_active &gt;= CURRENT_TIMESTAMP
+                                                            OR gae.end_date_active IS NULL
+                                                            )
+        AND EXISTS
+        (
+                SELECT
+                1
+                FROM
+                fnd_company_ref_acc_entity fcae
+                WHERE
+                fcae.company_id = #{companyId}
+                AND fcae.acc_entity_id = gae.acc_entity_id
+                AND fcae.enabled_flag = 'Y'
+                AND fcae.default_flag = 'Y'
+        )
+    </select>
+
+    <select id="getAccEntityByVenderTypeRefAe" resultMap="BaseResultMap">
+        SELECT
+        ae.acc_entity_id,
+        ae.acc_entity_code,
+        aet.acc_entity_name
+        FROM
+        gld_accounting_entity ae
+        LEFT OUTER JOIN gld_accounting_entity_tl aet ON
+        (ae.acc_entity_id = aet.acc_entity_id AND aet.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        ae.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND(ae.end_date_active &gt;= CURRENT_TIMESTAMP OR ae.end_date_active IS NULL)
+        AND
+        (#{venderTypeId} IS NULL OR
+        (
+        NOT EXISTS
+        (SELECT
+        1
+        FROM
+        pur_vender_type_ref_ae vtra
+        WHERE
+        vtra.vender_type_id = #{venderTypeId} AND
+        vtra.acc_entity_id = ae.acc_entity_id
+        )
+        )
+        )
+        AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        gld_acc_entity_ref_sob es
+        WHERE
+        es.enabled_flag = 'Y' AND
+        es.acc_entity_id = ae.acc_entity_id
+        AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_gld_sob ms
+        WHERE
+        ms.enabled_flag = 'Y' AND
+        es.set_of_books_id = ms.set_of_books_id AND
+        ms.mag_org_id = #{magOrgId}
+        )
+        )
+        <if test="accountingEntity.accEntityCodeFrom!=null">
+            AND ae.acc_entity_code &gt;= #{accountingEntity.accEntityCodeFrom}
+        </if>
+        <if test="accountingEntity.accEntityCodeTo!=null">
+            AND ae.acc_entity_code &lt;= #{accountingEntity.accEntityCodeTo}
+        </if>
+        ORDER BY
+        ae.acc_entity_code
+    </select>
+
+    <select id="getAccEntityByVenderTypeRefAeMore" resultMap="BaseResultMap">
+        SELECT
+        ae.acc_entity_id,
+        ae.acc_entity_code,
+        aet.acc_entity_name,
+        ae.pay_currency_code,
+        ae.company_type,
+        ae.start_date_active
+        FROM
+        gld_accounting_entity ae
+        LEFT OUTER JOIN gld_accounting_entity_tl aet ON
+        (ae.acc_entity_id = aet.acc_entity_id AND aet.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        ae.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND(ae.end_date_active &gt;= CURRENT_TIMESTAMP OR ae.end_date_active IS NULL)
+        AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        gld_acc_entity_ref_sob es
+        WHERE
+        es.enabled_flag = 'Y' AND
+        es.acc_entity_id = ae.acc_entity_id
+        AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_gld_sob ms
+        WHERE
+        ms.enabled_flag = 'Y' AND
+        es.set_of_books_id = ms.set_of_books_id AND
+        ms.mag_org_id = #{magOrgId}
+        )
+        )
+        <if test="accountingEntity.accEntityCodeFrom!=null">
+            AND ae.acc_entity_code &gt;= #{accountingEntity.accEntityCodeFrom}
+        </if>
+        <if test="accountingEntity.accEntityCodeTo!=null">
+            AND ae.acc_entity_code &lt;= #{accountingEntity.accEntityCodeTo}
+        </if>
+        ORDER BY
+        ae.acc_entity_code
+    </select>
+
+    <select id="selectValidEntity" resultMap="BaseResultMap">
+        SELECT
+        gae.acc_entity_id,
+        gae.acc_entity_code,
+        gaet.acc_entity_name,
+        concat(
+        gae.acc_entity_code,
+        "-",
+        gaet.acc_entity_name
+        ) acc_entity_code_name
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_accounting_entity_tl gaet ON gaet.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+        WHERE
+        gae.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND (
+        (
+        gae.end_date_active &gt;= CURRENT_TIMESTAMP
+        )
+        OR gae.end_date_active IS NULL
+        )
+        ORDER BY
+        gae.acc_entity_code
+    </select>
+
+    <select id="selectAccEntityName" resultMap="BaseResultMap">
+        SELECT
+        v.acc_entity_id,
+        v.acc_entity_code,
+        vl.acc_entity_name,
+        concat(
+        v.acc_entity_code,
+        "-",
+        vl.acc_entity_name
+        ) acc_entity_code_name
+        FROM
+        gld_accounting_entity v,
+        gld_accounting_entity_tl vl
+        WHERE
+        v.ACC_ENTITY_ID=vl.ACC_ENTITY_ID
+		and vl.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and v.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND (
+        (
+        v.end_date_active >= CURRENT_TIMESTAMP
+        )
+        OR v.end_date_active IS NULL
+        )
+        AND v.company_type &lt;> 2
+        ORDER BY
+        v.acc_entity_code
+    </select>
+
+
+    <select id="queryAccEntityByTypeId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        t1.ACC_ENTITY_ID,
+        t1.ACC_ENTITY_CODE,
+        t2.ACC_ENTITY_NAME
+        FROM
+        GLD_ACCOUNTING_ENTITY t1,
+        GLD_ACCOUNTING_ENTITY_TL t2
+        WHERE
+        t1.company_type != 2
+        AND t2.ACC_ENTITY_ID = t1.ACC_ENTITY_ID
+        AND t2.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        AND t1.start_date_active &lt;= CURRENT_TIMESTAMP AND ( t1.end_date_active &gt;= CURRENT_TIMESTAMP
+        OR t1.end_date_active IS NULL
+        )
+        AND NOT EXISTS ( SELECT 'x' FROM gld_exchangerate_tp_asgn_ae fca WHERE fca.acc_entity_id = t1.acc_entity_id AND fca.type_id = #{typeId} )
+        ORDER BY
+        acc_entity_code
+    </select>
+
+    <select id="queryAccEntityByCompany" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            ev.acc_entity_id,
+            ev.acc_entity_code,
+            ev.acc_entity_name,
+            concat( ev.acc_entity_code, '-', evt.acc_entity_name ) acc_entity_code_name,
+            rae.DEFAULT_FLAG
+        FROM
+            gld_accounting_entity ev
+            LEFT JOIN gld_accounting_entity_tl evt ON ( ev.ACC_ENTITY_ID = evt.ACC_ENTITY_ID AND evt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ),
+            fnd_company_ref_acc_entity rae
+        WHERE
+            ev.acc_entity_id = rae.acc_entity_id
+            AND rae.company_id = #{companyId}
+            AND rae.enabled_flag = 'Y'
+            AND ev.start_date_active &lt;= CURRENT_TIMESTAMP AND ( ev.end_date_active &gt;= CURRENT_TIMESTAMP
+            OR ev.end_date_active IS NULL
+            )
+        ORDER BY
+        acc_entity_code
+    </select>
+
+    <select id="ordSystemCustomerQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        gae.acc_entity_id,
+        gae.acc_entity_code,
+        gaetl.acc_entity_name,
+        concat( gae.acc_entity_code, '-', gaetl.acc_entity_name ) acc_entity_code_name
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_accounting_entity_tl gaetl ON (
+        gae.acc_entity_id = gaetl.acc_entity_id
+        AND gaetl.lang = #{request.locale,javaType=java.lang.String})
+        WHERE
+        gae.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND ( gae.end_date_active &gt;= CURRENT_TIMESTAMP OR gae.end_date_active IS NULL )
+        AND gae.company_type &lt;&gt;'2'
+        <if test="customerId!=null">
+            AND EXISTS (
+            SELECT
+            1
+            FROM
+            ord_system_customer_ref_ae oa
+            WHERE
+            oa.acc_entity_id = gae.acc_entity_id
+            AND oa.enabled_flag = 'Y'
+            AND oa.customer_id = #{customerId}
+            )
+        </if>
+        <if test="accountId!=null">
+            AND NOT EXISTS (
+            SELECT
+            1
+            FROM
+            ord_customer_account pv,
+            ord_customer_account_ref_ae oa
+            WHERE
+            pv.account_id = oa.account_id
+            AND oa.acc_entity_id = gae.acc_entity_id
+            AND pv.account_id = #{accountId}
+            )
+        </if>
+        <if test="taxId!=null">
+            AND NOT EXISTS (
+            SELECT
+            1
+            FROM
+            ord_customer_tax ot,
+            ord_customer_tax_ref_ae oa
+            WHERE
+            ot.tax_id = oa.tax_id
+            AND oa.acc_entity_id = gae.acc_entity_id
+            AND ot.tax_id = #{taxId}
+            )
+        </if>
+        <if test="pCustomerId!=null">
+            AND NOT EXISTS
+            (SELECT
+            1
+            FROM
+            ord_system_customer oc,
+            ord_system_customer_ref_ae oa
+            WHERE
+            oc.customer_id = oa.customer_id AND
+            oa.acc_entity_id = gae.acc_entity_id AND
+            oc.customer_id = #{pCustomerId}
+            )
+        </if>
+    </select>
+
+    <select id="queryByBgtOrg" resultMap="BaseResultMap">
+        SELECT
+            gae.acc_entity_id,
+            gae.acc_entity_code,
+            gae.acc_entity_name,
+            bord.enabled_flag,
+            gae.start_date_active,
+            gae.end_date_active,
+            ( CASE gae.company_type WHEN '2' THEN 'SUMMARY' ELSE 'DETAILS' END ) company_type
+        FROM
+            bgt_org_ref_detail bord,
+            gld_accounting_entity gae
+            LEFT OUTER JOIN gld_accounting_entity_tl gaet ON ( gae.ACC_ENTITY_ID = gaet.ACC_ENTITY_ID AND gaet.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            bord.bgt_org_id = #{bgtOrgId}
+            AND bord.source_id = gae.default_set_of_books_id
+    </select>
+
+    <select id="queryAccEntityBySob" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            acc.ACC_ENTITY_ID,
+            acc.START_DATE_ACTIVE,
+            acc.END_DATE_ACTIVE
+        FROM
+            gld_accounting_entity acc,
+            gld_acc_entity_ref_sob accSob
+        WHERE
+            accSob.ACC_ENTITY_ID = acc.ACC_ENTITY_ID
+            AND accSob.DEFAULT_FLAG = "Y"
+            AND accSob.SET_OF_BOOKS_ID = #{setOfBooksId}
+    </select>
+
+    <select id="taxTypeQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+	    *
+      FROM
+	    (
+		SELECT
+			gaev.acc_entity_id,
+			gaev.acc_entity_code,
+			gaev.acc_entity_name,
+			gaev.DEFAULT_SET_OF_BOOKS_ID
+		FROM
+			gld_accounting_entity gaev
+			LEFT OUTER JOIN gld_accounting_entity_tl gaet ON ( gaet.ACC_ENTITY_ID = gaev.ACC_ENTITY_ID AND gaet.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+		WHERE
+		    gaev.company_type = 1
+            AND now() &gt;= IFNULL(gaev.start_date_active,now())
+            AND now() &lt;= IFNULL(gaev.end_date_active,now())
+			AND NOT EXISTS
+			(
+				SELECT
+					1
+				FROM
+					fnd_tax_type_code_ref_ae ftc
+				WHERE
+					ftc.acc_entity_id = gaev.acc_entity_id
+				AND ftc.tax_type_id = #{taxTypeId}
+			)
+	  ) t
+        ORDER BY
+	    t.acc_entity_code
+    </select>
+
+    <select id="queryForDftAccEntity" resultType="java.util.Map">
+        SELECT
+            gae.acc_entity_id accEntityId,
+            gae.acc_entity_code accEntityCode,
+            gae.acc_entity_name accEntityName,
+            concat( gae.acc_entity_code, '-', gaet.acc_entity_name ) accEntityCodeName,
+            gae.taxpayer_number taxpayerNumber,
+            concat( gae.ADDRESS, ' ', gae.PHONE ) AS addressPhone,
+            concat((
+                    SELECT
+                    cc.BANK_LOCATION_NAME
+                    FROM
+                    csh_bank_account ba,
+                    csh_bank_branch bb,
+                    csh_cnaps cc
+                    WHERE
+                    ba.bank_account_num = gae.bank_account
+                    AND ba.bank_branch_id = bb.bank_branch_id
+                    AND bb.acc_entity_id = gae.acc_entity_id
+                    AND cc.cnaps_id = bb.cnaps_ID
+                    LIMIT 1
+                    ),
+                    ' ',
+                    gae.BANK_ACCOUNT
+                    ) AS bankAccount,
+            (
+                SELECT
+                ( CASE WHEN ae.functional_currency_code IS NOT NULL THEN ae.functional_currency_code ELSE sob.functional_currency_code END )
+                FROM
+                gld_accounting_entity ae,
+                gld_set_of_book sob
+                WHERE
+                ae.default_set_of_books_id = sob.set_of_books_id
+                AND ae.acc_entity_id = gae.acc_entity_id
+            ) AS dftFunCurrCode,
+            (SELECT
+                t1.parameter_value
+                FROM
+                sys_parameter_value t1,
+                sys_parameter t2
+                WHERE
+                t2.parameter_code = 'DEFAULT_EXCHANGE_RATE_TYPE'
+                AND t2.start_date_active &lt;= CURRENT_TIMESTAMP AND ( CASE WHEN t2.end_date_active IS NOT NULL THEN t2.end_date_active ELSE CURRENT_TIMESTAMP END ) &gt;= CURRENT_TIMESTAMP
+                AND ( t1.level_id = 105 AND t1.level_value = gae.acc_entity_id )
+                AND t1.parameter_id = t2.parameter_id
+                AND t1.parameter_value IS NOT NULL
+                AND ( CASE WHEN t2.acc_entity_enabled_flag IS NOT NULL THEN t2.acc_entity_enabled_flag ELSE 'N' END ) = 'Y') dftExchangeRateType
+        FROM gld_accounting_entity gae
+        LEFT OUTER JOIN gld_accounting_entity_tl gaet ON ( gaet.ACC_ENTITY_ID = gae.ACC_ENTITY_ID AND gaet.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE gae.start_date_active &lt;= CURRENT_TIMESTAMP AND ( gae.end_date_active &gt;= CURRENT_TIMESTAMP
+                                                            OR gae.end_date_active IS NULL
+                                                            )
+        AND EXISTS (
+                SELECT
+                1
+                FROM
+                fnd_company_ref_acc_entity fcae
+                WHERE
+                fcae.company_id = #{request.companyId}
+                AND fcae.acc_entity_id = gae.acc_entity_id
+                AND fcae.enabled_flag = 'Y'
+                AND fcae.default_flag = 'Y'
+        )
+    </select>
+
+    <select id="queryByMagOrg" resultType="java.util.Map">
+        SELECT
+            gae.acc_entity_id sourceId,
+            gae.acc_entity_code sourceCode,
+            concat( gae.acc_entity_code, '-', gaet.ACC_ENTITY_NAME ) sourceName,
+            gaet.acc_entity_name NAME
+        FROM
+            gld_set_of_book sob,
+            gld_accounting_entity gae,
+            gld_accounting_entity_tl gaet,
+            gld_acc_entity_ref_sob accsob
+        WHERE
+            accsob.DEFAULT_FLAG = 'Y'
+            AND accsob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+            AND accsob.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+            AND gae.start_date_active &lt;= CURRENT_TIMESTAMP AND ( gae.end_date_active IS NULL OR gae.end_date_active &gt;= CURRENT_TIMESTAMP
+            )
+            AND gaet.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+            AND gaet.lang = #{request.locale,jdbcType=VARCHAR}
+            and gae.COMPANY_TYPE &lt;&gt;2
+            AND EXISTS (
+                SELECT  *
+                FROM
+                    fnd_managing_organization fmo,
+                    fnd_mag_org_ref_gld_sob fmor,
+                    fnd_company f
+                WHERE
+                    fmo.mag_org_id = fmor.mag_org_id
+                    AND fmo.mag_org_id = F.MAG_ORG_ID
+                    AND f.company_id = #{companyId}
+                    AND fmo.mag_org_id = #{magOrgId}
+                    AND fmor.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+                    AND fmo.enabled_flag = 'Y'
+            )
+    </select>
+
+    <select id="getDefaultAccEntity" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+          ae.acc_entity_id,
+          gae.acc_entity_code accEntityCode,
+          gaetl.acc_entity_name accEntityName,
+          ae.DEFAULT_FLAG
+        FROM
+          fnd_company_ref_acc_entity ae left join gld_accounting_entity gae on ae.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+          left join gld_accounting_entity_tl gaetl on (gae.ACC_ENTITY_ID = gaetl.ACC_ENTITY_ID and gaetl.lang = #{request.locale, javaType=java.lang.String})
+        WHERE
+          ae.default_flag = 'Y'
+          and gae.start_date_active &lt;= CURRENT_TIMESTAMP
+          AND ( gae.end_date_active &gt;= CURRENT_TIMESTAMP OR gae.end_date_active IS NULL )
+          AND ae.enabled_flag = 'Y'
+          AND ae.company_id = #{companyId}
+    </select>
+
+
+    <!--gld_acc_entity_lov.bm-->
+    <select id="queryByCompanyId" resultType="java.util.Map">
+        SELECT
+        gae.acc_entity_id accEntityId,
+        gae.acc_entity_code accEntityCode,
+        gaetl.acc_entity_name accEntityName,
+        concat( gae.acc_entity_code, '-', gaetl.acc_entity_name ) accEntityCodeName,
+        (
+        SELECT
+        ba.bank_account_num
+        FROM
+        csh_bank_account ba,
+        csh_bank_branch bb
+        WHERE
+        ba.bank_account_num = gae.bank_account
+        AND ba.bank_branch_id = bb.bank_branch_id
+        AND bb.acc_entity_id = gae.acc_entity_id
+        LIMIT 1
+        ) AS bankAccountNum,
+        (
+        SELECT
+        ba.bank_account_id
+        FROM
+        csh_bank_account ba,
+        csh_bank_branch bb
+        WHERE
+        ba.bank_account_num = gae.bank_account
+        AND ba.bank_branch_id = bb.bank_branch_id
+        AND bb.acc_entity_id = gae.acc_entity_id
+        LIMIT 1
+        ) AS bankAccountId,
+        gae.taxpayer_number taxpayerNumber,
+        concat( gae.address, ' ', gae.phone ) AS addressPhone,
+        concat(
+        (
+        SELECT
+        cc.BANK_LOCATION_NAME
+        FROM
+        csh_bank_account ba,
+        csh_bank_branch bb,
+        csh_cnaps cc
+        WHERE
+        ba.bank_account_num = gae.bank_account
+        AND cc.BANK_ID = bb.BANK_ID
+        AND ba.bank_branch_id = bb.bank_branch_id
+        AND bb.acc_entity_id = gae.acc_entity_id
+        LIMIT 1
+        ),
+        ' ',
+        gae.bank_account
+        ) AS bankCount,
+        gsb.set_of_books_id setOfBooksId,
+        gsb.set_of_books_code setOfBooksCode,
+        gsbtl.set_of_books_name setOfBooksName,
+        gae.pay_currency_code payCurrencyCode,
+        gctl.currency_name payCurrencyName,
+        (
+        SELECT
+        ( CASE WHEN ae.functional_currency_code IS NOT NULL THEN ae.functional_currency_code ELSE
+        sob.functional_currency_code END )
+        FROM
+        gld_accounting_entity ae,
+        gld_set_of_book sob
+        WHERE
+        ae.default_set_of_books_id = sob.set_of_books_id
+        AND ae.acc_entity_id = gae.acc_entity_id
+        ) AS dftFunCurrCode,
+        #{parameterValue} dftExchangeRateType
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_accounting_entity_tl gaetl ON ( gae.acc_entity_id = gaetl.acc_entity_id AND gaetl.lang =
+        #{request.locale,javaType=java.lang.String} )
+        LEFT JOIN fnd_company_ref_acc_entity rae ON ( gae.acc_entity_id = rae.acc_entity_id )
+        LEFT JOIN gld_set_of_book gsb ON ( gae.DEFAULT_SET_OF_BOOKS_ID = gsb.SET_OF_BOOKS_ID )
+        LEFT JOIN gld_set_of_book_tl gsbtl ON ( gsb.SET_OF_BOOKS_ID = gsbtl.SET_OF_BOOKS_ID AND gsbtl.lang =
+        #{request.locale,javaType=java.lang.String} )
+        LEFT JOIN gld_currency gc ON ( gc.CURRENCY_CODE = gae.PAY_CURRENCY_CODE )
+        LEFT JOIN gld_currency_tl gctl ON ( gc.CURRENCY_ID = gctl.CURRENCY_ID AND gctl.lang =
+        #{request.locale,javaType=java.lang.String} )
+        WHERE
+        <choose>
+            <when test="companyId != null">
+                rae.company_id = #{companyId}
+            </when>
+            <otherwise>
+                rae.company_id = #{request.companyId}
+            </otherwise>
+        </choose>
+        AND rae.enabled_flag = 'Y'
+        ORDER BY
+        acc_entity_code
+    </select>
+    <!--gyt 2019-05-08 修改获取默认核算主体部分-->
+    <select id="queryFuncCurrencyByEntity" resultType="String">
+        SELECT
+	        CASE
+            WHEN ae.functional_currency_code IS NOT NULL THEN
+	            ae.functional_currency_code
+            WHEN ae.functional_currency_code IS NULL or ae.functional_currency_code = '' THEN
+	            sob.functional_currency_code
+            END functional_currency_code
+        FROM
+            gld_accounting_entity ae,
+            gld_set_of_book sob,
+            gld_acc_entity_ref_sob accsob
+        WHERE
+            ae.ACC_ENTITY_ID = accsob.ACC_ENTITY_ID
+            AND accsob.SET_OF_BOOKS_ID = sob.set_of_books_id
+	        AND accsob.DEFAULT_FLAG = 'Y'
+            AND ae.acc_entity_id = #{accEntityId}
+            AND accsob.ENABLED_FLAG = 'Y'
+    </select>
+    <select id="getPayAccEntityId" resultType="long">
+          select t.acc_entity_id
+            from csh_payment_entity_rule t
+           where t.document_category = #{documentCategory}
+             and t.mag_org_id = #{magOrgId}
+             and (t.company_id is null or t.company_id = #{companyId})
+             and (t.document_type_id is null or
+                  t.document_type_id = #{documentTypeId})
+             and (t.payee_category is null or
+                  t.payee_category = #{payeeCategory})
+             and (t.payment_method_id is null or
+                  t.payment_method_id = #{paymentMethodId})
+             order by t.priority asc
+             limit 1
+    </select>
+
+    <select id="queryAccEntityBySessionCompanyId" resultMap="BaseResultMap"
+            parameterType="com.hand.hec.gld.dto.GldAccountingEntity">
+        SELECT
+        gaev.acc_entity_id,
+        gaev.acc_entity_code,
+        gaevt.acc_entity_name,
+        concat( gaev.acc_entity_code, '-', gaev.acc_entity_name ) acc_entity_code_name
+        FROM
+        gld_accounting_entity gaev left join gld_accounting_entity_tl gaevt on (gaev.ACC_ENTITY_ID = gaevt.ACC_ENTITY_ID
+        and gaevt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        gaev.start_date_active &lt;= sysdate( ) AND ( gaev.end_date_active IS NULL OR gaev.end_date_active &gt;=
+        sysdate( )
+        )
+        AND EXISTS ( SELECT 1 FROM fnd_company_ref_acc_entity fcae WHERE
+
+        fcae.acc_entity_id = gaev.acc_entity_id
+        <if test="companyId == null">
+            and fcae.company_id = #{request.companyId}
+        </if>
+        <if test="companyId != null">
+            and fcae.company_id = #{companyId}z
+        </if>
+        AND fcae.enabled_flag = 'Y' )
+        <if test="accEntityId != null">
+            and gaev.acc_entity_id = #{accEntityId}
+        </if>
+        <if test="accEntityCode != null">
+            and gaev.acc_entity_code like '%${accEntityCode}%'
+        </if>
+        <if test="accEntityName != null">
+            and gaevt.acc_entity_name like '%${accEntityName}%'
+        </if>
+
+        ORDER BY
+        gaev.acc_entity_code
+    </select>
+    <select id="queryGldAccountingEntityBySobId" resultType="com.hand.hec.gld.dto.GldAccountingEntity">
+
+        SELECT
+            aers.acc_entity_id
+        FROM
+            gld_acc_entity_ref_sob aers,
+            gld_accounting_entity gae
+        WHERE
+            aers.acc_entity_id = gae.acc_entity_id
+          AND aers.set_of_books_id = #{setOfBooksId}
+          AND aers.default_flag = 'Y'
+          AND aers.enabled_flag = 'Y'
+          AND ( ( CURRENT_TIMESTAMP BETWEEN gae.start_date_active AND gae.end_date_active ) OR ( gae.end_date_active IS NULL AND CURRENT_TIMESTAMP >= gae.start_date_active ) )
+
+
+
+    </select>
+</mapper>

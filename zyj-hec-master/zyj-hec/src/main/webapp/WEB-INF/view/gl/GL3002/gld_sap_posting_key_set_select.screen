@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: duanjian$
+    $Date: 2018/01/15 $
+    $Revision: 1.1 $
+    $Purpose: sap 统驭科目定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <a:model-query fetchAll="true" model="hec_util.get_mag_org_default_sob" rootPath="default_sob"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="GL3002_sc_gld_sap_recon_detail_link" url="${/request/@context_path}/modules/gl/GL3002/gld_sap_posting_key_set_select_detail.screen"/>
+        <script><![CDATA[
+            function GL3002_PeriodControl() {
+                if ($au('GL3002_sap_recon_ds').validate()) {
+                    var record = $au('GL3002_sap_recon_ds').getAt(0);
+                   var acc_entity_id =  record.get('acc_entity_id');
+                    if(acc_entity_id==null||acc_entity_id==''||acc_entity_id==undefined) {
+                        record.set('acc_entity_id','-1');//为空默认为-1
+                    }
+                    Aurora.post($au('GL3002_sc_gld_sap_recon_detail_link').getUrl(), record.data);
+                }
+            }
+            
+            function GL3002_ap_reconUpdate(dataSet, record, name, value, oldValue) {
+                if (name == 'set_of_books_id') {
+                    record.set('acc_entity_code', '');
+                    record.set('acc_entity_id', '');
+                    debugger;
+                    record.getField('acc_entity_code').setLovPara('default_set_of_books_id', record.get('set_of_books_id'));
+                }
+            }
+            
+            function gld_sob_Focus(){
+               
+            }  
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2440_sobsDs" fetchAll="true" loadData="true" model="hec_util.gld_util.gld_sob_form_query"/>
+            <a:dataSet id="GL3002_sap_recon_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="set_of_books_name" defaultValue="${/model/default_sob/record/@set_of_books_name}" displayField="set_of_books_name" options="FND2440_sobsDs" prompt="FND_SET_BOOK_CONTROL.BOOKCODE" required="true" returnField="set_of_books_id" valueField="set_of_books_id"/>
+                    <a:field name="set_of_books_id" defaultValue="${/model/default_sob/record/@set_of_books_id}"/>
+                    <a:field name="acc_entity_code" autoComplete="true" lovAutoQuery="true" lovGridHeight="320" lovHeight="450" lovService="fnd.fnd_tax_accounting_entities_vl?default_set_of_books_id=${/model/default_sob/record/@set_of_books_id}" lovWidth="500" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_CODE" title="GLD2030_RESPONSIBILITY_CENTERS.ACC_ENTITYCHOICE">
+                        <a:mapping>
+                            <a:map from="acc_entity_code" to="acc_entity_code"/>
+                            <a:map from="acc_entity_name_display" to="acc_entity_name_display"/>
+                            <a:map from="acc_entity_id" to="acc_entity_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="acc_entity_name_display" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME_DISPLAY" readOnly="true"/>
+                    <a:field name="acc_entity_id"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GL3002_ap_reconUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="120" marginWidth="10" title="GL3001_PLEASE_SELECT_ENTITIES_ORG_ID">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="GL3002_PeriodControl" text="HAP_CONFIRM" width="80"/>
+                </a:formToolbar>
+                <a:comboBox name="set_of_books_name" bindTarget="GL3002_sap_recon_ds" width="200">
+                    <a:events>
+                        <a:event name="focus" handler="gld_sob_Focus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:lov name="acc_entity_code" bindTarget="GL3002_sap_recon_ds" width="200"/>
+                <a:textField name="acc_entity_name_display" bindTarget="GL3002_sap_recon_ds" width="200"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

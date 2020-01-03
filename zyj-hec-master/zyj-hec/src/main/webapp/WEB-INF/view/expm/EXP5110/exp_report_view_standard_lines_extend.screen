@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <a:model-query defaultWhereClause="v.reportPageElementCode = &apos;STANDARD&apos;" model="expm.EXP5110.exp_report_line_dimension_fields_query" rootPath="standardLineDimensions"/>
+        <a:model-query defaultWhereClause="v.reportPageElementCode = &apos;STANDARD&apos;" model="expm.EXP5110.exp_report_line_object_fields_query" rootPath="standardLineObjects"/>
+        <a:model-query defaultWhereClause="v.reportPageElementCode = &apos;STANDARD&apos; " model="hec_util.exp_util.exp_rep_ele_invoice_flag" rootPath="standardLineElement"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP5110_exp_report_maintain_vat_invoice_list_standard_link02" url="$[/request/@context_path]/expm/EXP5110/exp_report_maintain_vat_invoice_list.screen"/>
+        <script><![CDATA[
+            function EXP5110_onstandardEditorFocus(cmp) {
+                var name = cmp.binder.name;
+                var record = cmp.binder.ds.getCurrentRecord();
+                if (name == 'unitName') {
+                    record.getField('unitName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'positionName') {
+                    record.getField('positionName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'employeeName') {
+                    record.getField('employeeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'accEntityName') {
+                    record.getField('accEntityName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCenterName') {
+                    record.getField('respCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else if (name == 'placeName') {
+                    record.getField('placeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_standard_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP5110_standard_expense_type_ds').query();
+                } else if (name == 'moExpenseItemName') {
+                    record.getField('moExpenseItemName').setLovPara('moExpenseTypeId', record.get('moExpenseTypeId'));
+                    record.getField('moExpenseItemName').setLovPara('companyId', record.get('companyId'));
+                    record.getField('moExpenseItemName').setLovPara('moExpReportTypeId', '$[/parameter/@moExpReportTypeId]');
+                    record.getField('moExpenseItemName').setLovPara('pageElementCode', 'STANDARD');
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_standard_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                } else if (name == 'invoiceItemName' || name == 'invoiceUsedeName') {
+                    record.getField(name).setLovPara('accEntityId', $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId'));
+                }
+            }
+            
+            function EXP5110_standardDistInvoiceInfoRenderer(value, record, name) {
+                var recordIndex = $au('EXP5110_exp_report_standard_dist_ds').indexOf(record);
+                return '<a href="javascript:EXP5110_openDistInvoiceDetailWindow(\'' + (record.get('invoiceId') ? record.get('invoiceId') : '') + '\',\'' + (record.get('invoiceLineId') ? record.get('invoiceLineId') : '') + '\',\'' + (record.get('invoiceCode') ? record.get('invoiceCode') : '') + '\',\'' + (record.get('invoiceNumber') ? record.get('invoiceNumber') : '') + '\',\'' + Aurora.formatDate((record.get('invoiceDate') ? record.get('invoiceDate') : '')) + '\',\'' + (record.get('invoiceAmount') ? record.get('invoiceAmount') : '') + '\')">$[l:invoice_news]</a> / <a href="javascript:EXP5110_cancelDistRefInvoice(\'' + recordIndex + '\');">$[l:cancel_invoice]</a>';
+            }
+            
+            function EXP5110_openDistInvoiceDetailWindow(invoiceId, invoiceLineId, invoiceCode, invoiceNumber, invoiceDate, invoiceAmount) {
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_vat_invoice_list_standard_link02').getUrl() + '?dist_ds_id=EXP5110_exp_report_standard_dist_ds&accEntityId=' + $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId') + '&invoiceId=' + invoiceId + '&invoiceLineId=' + invoiceLineId + '&invoiceCode=' + invoiceCode + '&invoiceNumber=' + invoiceNumber + '&invoiceDate=' + invoiceDate + '&amount=' + invoiceAmount,
+                    id: 'EXP5110_exp_report_maintain_vat_invoice_list_standard_window',
+                    title: '$[l:invoice_news]',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP5110_cancelDistRefInvoice(recordIndex) {
+                var record = $au('EXP5110_exp_report_standard_dist_ds').getAt(recordIndex);
+                record.set('invoiceId', '');
+                record.set('invoiceLineId', '');
+                record.set('invoiceCode', '');
+                record.set('invoiceNumber', '');
+                record.set('invoiceDate', '');
+                record.set('invoiceAmount', '');
+                record.set('taxAmount', '');
+                record.set('invoiceItemName', '');
+                record.set('invoiceItemId', '');
+                record.set('invoiceUsedeName', '');
+                record.set('invoiceUsedeId', '');
+                record.set('splittedTaxAmount', '');
+                record.set('taxTypeName', '');
+                record.set('taxTypeId', '');
+                record.set('taxTypeRate', '');
+            }
+            
+            
+            function EXP5110_standardPreRecord() {
+                $au('EXP5110_exp_report_standard_line_ds').pre();
+                EXP5110_standardQueryDist();
+            }
+            
+            function EXP5110_standardNextRecord() {
+                $au('EXP5110_exp_report_standard_line_ds').next();
+                EXP5110_standardQueryDist();
+            }
+            
+            function EXP5110_standardQueryDist() {
+                var lineId = $au('EXP5110_exp_report_standard_line_ds').getCurrentRecord().get('expReportLineId');
+                if (lineId) {
+                    var distDs = $au('EXP5110_exp_report_standard_dist_ds');
+                    distDs.setQueryParameter('expReportLineId', lineId);
+                    distDs.query();
+                }
+            }
+            
+            function EXP5110_standardNewRecord() {
+                EXP5110_standardLineAdd();
+            }
+            
+            function EXP5110_standardExtendClose() {
+                $au('EXP5110_exp_report_maintain_standard_lines_extend_window').close();
+            }
+            
+            function EXP5110_standardSaveReport() {
+                EXP5110_saveReport();
+            }
+            
+            Aurora.onReady(function() {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                var dimFlag = false;
+                var objFlag = false;
+                for (cmpName in $A.CmpManager.cache) {
+                    if (cmpName.indexOf('EXP5110_editor_') != -1) {
+                        $au(cmpName)['on']('focus', EXP5110_onstandardEditorFocus);
+                    }
+                    if (cmpName.indexOf('EXP5110_editor_dim') != -1) {
+                        dimFlag = true;
+                    }
+                    if (cmpName.indexOf('EXP5110_editor_obj') != -1) {
+                        objFlag = true;
+                    }
+                }
+                /* if (!dimFlag) {
+                 Ext.get('EXP5110_standardDimForm').setStyle('display', 'none');
+                 }
+                 if (!objFlag) {
+                 Ext.get('EXP5110_standardObjForm').setStyle('display', 'none');
+                 } */
+            
+                EXP5110_standardQueryDist();
+            });
+            
+            function EXP5110_onItemNameFocus() {
+                var record = $au('EXP5110_exp_report_standard_line_ds').getCurrentRecord();
+                $au('EXP5110_standard_items_ds').setQueryParameter('moExpenseTypeId', record.get('moExpenseTypeId'));
+                $au('EXP5110_standard_items_ds').setQueryParameter('companyId', record.get('companyId'));
+                $au('EXP5110_standard_items_ds').setQueryParameter('moExpReportTypeId', $au('EXP5110_exp_report_header_ds').getAt(0).get('moExpReportTypeId'));
+                $au('EXP5110_standard_items_ds').setQueryParameter('pageElementCode', 'STANDARD');
+                $au('EXP5110_standard_items_ds').query();
+            }
+            
+            function EXP5110_onStandardDistCellClickFun(grid, row, name, record) {
+                if (name == 'invoiceItemName' || name == 'invoiceUsedeName') {
+                    record.getField(name).setLovPara('accEntityId', $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId'));
+                }
+            }
+            
+            function EXP5110_standardDistInitFun() {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                if (headerRecord.get('vatInvoiceFlag') != 'Y') {
+                    //专票只影响发票项目和发票金额
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceInfo');
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceCode');
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceNumber');
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceDate');
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceAmount');
+                    $au('EXP5110_standard_dists_grid').hideColumn('taxAmount');
+                    $au('EXP5110_standard_dists_grid').hideColumn('splittedTaxAmount');
+                    $au('EXP5110_standard_dists_grid').hideColumn('taxTypeName');
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceItemName');
+                    $au('EXP5110_standard_dists_grid').hideColumn('invoiceUsedeName');
+                } else {
+                    // Modify Tagin/2018.01.22 增加判断 若页面元素中更多标识为Y则启用更多关联链接
+                    if ('$[/model/standardLineElement/record/@invoiceFlag]' == 'N') {
+                        $au('EXP5110_standard_dists_grid').hideColumn('invoiceInfo');
+                    }
+                }
+                if ('$[/parameter/@forInvoiceFlag]' == 'Y') {
+                    $au('EXP5110_standard_line_extend_form').onShrinkToggle();
+                }
+            }
+            
+            Aurora.onReady(EXP5110_standardDistInitFun);
+        ]]></script>
+        <a:dataSets><![CDATA[
+            
+        ]]></a:dataSets>
+        <a:screenBody>
+            <a:hBox>
+                <a:button click="EXP5110_standardPreRecord" text="hap_previous" width="80"/>
+                <a:button click="EXP5110_standardNextRecord" text="hap_next" width="80"/>
+                <a:button click="EXP5110_standardSaveReport" text="hap_save" width="80"/>
+                <a:button click="EXP5110_standardExtendClose" skin="red" text="hap_close" width="80"/>
+            </a:hBox>
+            <a:form id="EXP5110_standard_line_extend_form" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expense_news" width="1000">
+                <a:textField name="lineNumber" id="EXP5110_editor_001" allowDecimals="false" allowNegative="false" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_line.line_number" readOnly="true"/>
+                <a:textField name="companyName" id="EXP5110_editor_003" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_position_group.company_id" readOnly="true"/>
+                <a:textField name="unitName" id="EXP5110_editor_004" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.unit_id" readOnly="true"/>
+                <a:textField name="positionName" id="EXP5110_editor_005" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.position_id" readOnly="true"/>
+                <a:textField name="employeeName" id="EXP5110_editor_006" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_header.exp_employee" readOnly="true"/>
+                <a:textField name="accEntityName" id="EXP5110_editor_007" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_header.acc_entity_name" readOnly="true"/>
+                <a:textField name="respCenterName" id="EXP5110_editor_008" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="fnd_responsibility_centers.responsibility_center_name" readOnly="true"/>
+                <a:textField name="moExpenseTypeName" id="EXP5110_editor_009" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.expense_type_id" readOnly="true"/>
+                <a:textField name="moExpenseItemName" id="EXP5110_editor_010" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.expense_item_id" readOnly="true"/>
+                <a:textField name="placeName" id="EXP5110_editor_012" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.place_id" readOnly="true"/>
+                <a:textField name="placeTypeName" id="EXP5110_editor_011" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.place_type_id" readOnly="true"/>
+                <a:textField name="dateFrom" id="EXP5110_editor_013" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.date_from" readOnly="true" renderer="Aurora.formatDate"/>
+                <a:textField name="dateTo" id="EXP5110_editor_014" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.date_to" readOnly="true" renderer="Aurora.formatDate"/>
+                <a:textField name="businessCurrencyName" id="EXP5110_editor_015" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="business_currency_name" readOnly="true"/>
+                <a:textField name="businessPrice" id="EXP5110_editor_016" bindTarget="EXP5110_exp_report_standard_line_ds" editorFunction="EXP5110_standardBizPriceEditorFun" prompt="business_price" readOnly="true" renderer="Aurora.formatMoney"/>
+                <a:textField name="primaryQuantity" id="EXP5110_editor_017" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="acp_invoice_line.quantity" readOnly="true"/>
+                <!-- <a:comboBox name="biz2pay_exchange_type_name" id="EXP5110_editor_018" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="业务币种汇率类型"/>
+                <a:numberField name="biz2pay_exchange_rate" id="EXP5110_editor_019" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="业务币种汇率"/>
+                <a:textField name="payment_currency_name" id="EXP5110_editor_020" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="付款币种"/>
+                <a:comboBox name="pay2fun_exchange_type_name" id="EXP5110_editor_021" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="付款币种汇率类型"/>
+                <a:numberField name="pay2fun_exchange_rate" id="EXP5110_editor_022" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="付款币种汇率"/>
+                <a:numberField name="payment_price" id="EXP5110_editor_023" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="付款单价" renderer="Aurora.formatMoney"/>
+                <a:textField name="management_currency_name" id="EXP5110_editor_024" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="管理币种"/>
+                <a:comboBox name="pay2mag_exchange_type_name" id="EXP5110_editor_025" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="管理币种汇率类型"/>
+                <a:numberField name="pay2mag_exchange_rate" id="EXP5110_editor_026" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="管理币种汇率"/>
+                <a:numberField name="management_price" id="EXP5110_editor_027" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="管理币种单价" renderer="Aurora.formatMoney"/> -->
+                <a:textField name="businessAmount" id="EXP5110_editor_028" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="business_amount" readOnly="true" renderer="Aurora.formatMoney"/>
+                <!-- <a:numberField name="payment_amount" id="EXP5110_editor_029" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="支付金额" renderer="Aurora.formatMoney"/>
+                <a:numberField name="management_amount" id="EXP5110_editor_030" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="管理金额" renderer="Aurora.formatMoney"/>
+                <a:numberField name="report_functional_amount" id="EXP5110_editor_031" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="本币金额" renderer="Aurora.formatMoney"/> -->
+                <a:textField name="periodName" id="EXP5110_editor_032" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="exp_report_lines.period_name" readOnly="true"/>
+                <a:textArea name="description" id="EXP5110_editor_002" bindTarget="EXP5110_exp_report_standard_line_ds" colspan="3" prompt="exp_report_headers.description" readOnly="true" width="797"/>
+            </a:form>
+            <a:form id="EXP5110_standard_dists_form" column="1" padding="10" showmargin="0" style="margin-top:10px;" title="more_invoice_news" width="1000">
+                <a:grid id="EXP5110_standard_dists_grid" autoAdjustHeight="true" bindTarget="EXP5110_exp_report_standard_dist_ds" marginHeight="151" navBar="true" selectable="true" width="985">
+                    <a:columns>
+                        <a:column name="businessPrice" align="right" prompt="business_price" renderer="Aurora.formatMoney" width="80"/>
+                        <!-- <a:column name="primaryQuantity" align="right"  prompt="数量" width="80"/> -->
+                        <a:column name="invoiceInfo" align="center" prompt="invoice_news" renderer="EXP5110_standardDistInvoiceInfoRenderer" width="125"/>
+                        <a:column name="invoiceCode" align="center" prompt="vat_invoices.invoice_code" width="100"/>
+                        <a:column name="invoiceNumber" align="center" prompt="vat_invoices.invoice_number" width="80"/>
+                        <a:column name="invoiceDate" align="center" prompt="vat_invoices.invoice_date" renderer="Aurora.formatDate" width="80"/>
+                        <a:column name="invoiceAmount" align="right" prompt="total_ad_valorem_tax_invoice" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="taxTypeName" align="center" prompt="exp_report_lines.tax_rate_type" width="80"/>
+                        <a:column name="taxAmount" align="right" prompt="vat_invoice_lines.tax_amount" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="splittedTaxAmount" align="right" prompt="split_tax" renderer="Aurora.formatMoney" width="80"/>
+                        <!-- <a:column name="invoiceItemName" align="center"  prompt="发票项目" width="100"/>
+                        <a:column name="invoiceUsedeName" align="center"  prompt="发票用途" width="100"/> -->
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_standardLineDimensionEditors">
+            <p:loop source="/model/standardLineDimensions">
+                <c:process-config>
+                    <a:textField name="$[@displayField]" id="EXP5110_editor_dim_$[@dimensionId]" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="$[@dimensionName]" readOnly="true"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_standardLineObjectEditors">
+            <p:loop source="/model/standardLineObjects">
+                <p:switch test="@expenseObjectMethod">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:textField name="$[@displayField]" id="EXP5110_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="$[@moExpObjTypeName]" readOnly="true"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:textField name="$[@displayField]" id="EXP5110_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP5110_exp_report_standard_line_ds" prompt="$[@moExpObjTypeName]" readOnly="true"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

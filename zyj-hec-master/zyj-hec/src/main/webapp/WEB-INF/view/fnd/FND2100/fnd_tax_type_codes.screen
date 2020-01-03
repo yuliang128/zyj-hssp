@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: weikunWang21888 $
+    $Date: 2019/02/25  $
+    $Revision: 1.5 $
+    $Purpose: 税率定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[     
+    ]]></a:init-procedure>
+    <a:view>
+        <a:link id="FND2100_tax_type_code_ref_ae_link" url="$[/request/@context_path]/fnd/FND2100/fnd_tax_type_code_ref_ae.screen"/>
+       <script><![CDATA[
+            function queryTaxTypeCodes() {
+                $au('fnd_tax_type_codes_result_ds').query();
+            }
+            function taxTypeCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'tax_type_code_grid_tf';
+                } else {
+                    return '';
+                }
+            }
+            
+            function FND2100_taxEntityAssignRendererFun(value, record, name) {
+                var tax_type_id = record.get('taxTypeId');
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:FND2100_taxEntityAssignFun(' + tax_type_id + ');">$[l:GLD.ACC_ENTITY_ASSIGN]</a>';
+            }
+            
+            function FND2100_taxEntityAssignFun(taxTypeId) {
+                new Aurora.Window({
+                    url: $au('FND2100_tax_type_code_ref_ae_link').getUrl() + '?tax_type_id=' + taxTypeId,
+                    id: 'FND2100_tax_type_code_ref_ae_window',
+                    title: '$[l:GLD.ACC_ENTITY_ASSIGN]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('fnd_tax_type_codes_result_ds').query();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="fnd_tax_type_codes_query_ds">
+                <a:fields>
+                    <a:field name="taxTypeCode" placeHolder="fnd_tax_type_code.tax_type_code"/>
+                    <a:field name="description" placeHolder="fnd_tax_type_code.description" />
+                    <a:field name="taxTypeRate" placeHolder="fnd_tax_type_code.tax_type_rate"/>
+                </a:fields>
+            </a:dataSet>
+            <!--lookupCode="FND_TAX_CATEGORY"-->
+            <a:dataSet id="fnd_tax_type_codes_tax_category"  autoQuery="true" fetchAll="true"  queryUrl="$[/request/@context_path]/common/auroraCode/FND_TAX_CATEGORY/"/>
+            <!--queryDataSet="fnd_tax_type_codes_query_ds"-->
+         <a:dataSet id="fnd_tax_type_codes_result_ds" queryDataSet="fnd_tax_type_codes_query_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/fnd/tax-type-code"  selectable="true" queryUrl="$[/request/@context_path]/fnd/tax-type-code/query">
+                <a:fields>
+                    <a:field name="taxTypeId"/>
+                    <a:field name="countryCode"/>
+                    <a:field name="countryName" lovGridHeight="320" lovHeight="450" lovCode="LOV_COUNTRY_CODE" lovWidth="500" prompt="gld_accounting_entity.default_country_code_display" required="true" title="FND_COUNTRY_CODE_VL.CHOICE">
+                        <a:mapping>
+                            <a:map from="countryCode" to="countryCode"/>
+                            <a:map from="description" to="countryName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="taxTypeCode" prompt="fnd_tax_type_code.tax_type_code" required="true"/>
+                    <a:field name="description" prompt="fnd_tax_type_code.description" required="true" dto="com.hand.hec.fnd.dto.FndTaxTypeCode" dtoId="taxTypeId"/>
+                    <a:field name="taxTypeRate" prompt="fnd_tax_type_code.tax_type_rate" required="true"/>
+                    <a:field name="saleTaxFlag" prompt="fnd_tax_type_code.sale_tax_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="fnd_tax_type_code.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                 <!--options="fnd_tax_type_codes_tax_category"-->
+                    <a:field name="taxCategoryDisplay" options="fnd_tax_type_codes_tax_category"
+                             valueField="value" displayField="meaning"  prompt="fnd_tax_type_codes.tax_category" returnField="taxCategory" >
+                    </a:field>
+                    <a:field name="taxCategory"/>
+                    <a:field name="autoCalculationFlag" prompt="fnd_tax_type_code.auto_calculation_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="withholdingFlag" prompt="fnd_tax_type_code.withholding_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="fnd_tax_type_codes_grid" type="add" width="80"/>
+                <a:gridButton bind="fnd_tax_type_codes_grid" type="save" width="80"/>
+                <a:gridButton bind="fnd_tax_type_codes_grid" type="clear" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm id="fnd_tax_type_codes_query_ds_fo" bindTarget="fnd_tax_type_codes_query_ds"  resultTarget="fnd_tax_type_codes_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="taxTypeCode" bindTarget="fnd_tax_type_codes_query_ds" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryTaxTypeCodes"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="fnd_tax_type_codes_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryTaxTypeCodes"/>
+                        </a:events>
+                    </a:textField>
+                    <a:numberField name="taxTypeRate" bindTarget="fnd_tax_type_codes_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryTaxTypeCodes"/>
+                        </a:events>
+                    </a:numberField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="fnd_tax_type_codes_grid" bindTarget="fnd_tax_type_codes_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="countryName" align="center" editor="tax_country_name" width="120"/>
+                <a:column name="taxTypeCode" align="center" editorFunction="taxTypeCodeEdit" sortable="true" width="80"/>
+                <a:column name="description" align="left" editor="description_grid_tf" width="200"/>
+                <a:column name="taxCategoryDisplay" align="center" editor="tax_category_cb" width="80"/>
+                <a:column name="taxTypeRate" align="right" editor="tax_type_grid_numberField" width="80"/>
+                <a:column name="autoCalculationFlag" align="center" editor="tax_auto_cal_ckb" width="80"/>
+                <a:column name="withholdingFlag" align="center" editor="tax_withholding_ckb" width="80"/>
+                <a:column name="saleTaxFlag" align="center" editor="description_grid_ckb" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="description_grid_ckb" width="80"/>
+                <a:column name="accEntityAssign" align="center" renderer="FND2100_taxEntityAssignRendererFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="tax_type_code_grid_tf" typeCase="upper"/>
+                <a:tledit id="description_grid_tf"/>
+                <a:numberField id="tax_type_grid_numberField" allowNegative="false"/>
+                <a:checkBox id="description_grid_ckb"/>
+                <a:comboBox id="tax_category_cb"/>
+                <a:lov id="tax_country_name"/>
+                <a:checkBox id="tax_auto_cal_ckb"/>
+                <a:checkBox id="tax_withholding_ckb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+
+</a:screen>

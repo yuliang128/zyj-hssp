@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-04 14:08:18
+    $Revision: 1.0 $
+    $Purpose: 报盘文件导出格式定义-明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function updateFunction(ds, record, name, value) {
+                if (name == 'columnName') {
+                    if (value == 'amount' || value == 'drawee_id' || value == 'payee_id' || value == 'detail_id' || value == 'csh_transaction_line_id' || value == 'acc_entity_id' || value == 'company_id' || value == 'document_id' || value == 'document_line_id') {
+                        record.set('columnFormat', '');
+                        record.set('columnType', '');
+                    }
+                }
+                if (name == 'columnType') {
+                    var code_value;
+                    var code_value_name;
+                    record.set('columnFormat', '');
+                    if (record.get('columnName') == 'amount' || record.get('columnName') == 'encryption_amount' || record.get('columnType') == 'DATETIME' || record.get('columnType') == 'TIMESTAMP(6) WITH LOCAL TIME ZONE' || record.get('columnType') == 'TIMESTAMP(6) WITH LOCAL TIME ZONE') {
+                        var array_date = $au('csh_offer_type_detail_formate_date_ds').getAll();
+                        var array_number = $au('csh_offer_type_detail_formate_number_ds').getAll();
+                        if (record.get('columnName') == 'amount' || record.get('columnName') == 'encryption_amount') {
+                            code_value = array_number[1].get('value');
+                            record.set('columnFormat', code_value);
+                        } else if (record.get('columnType') == 'DATETIME' || record.get('columnType') == 'TIMESTAMP(6) WITH LOCAL TIME ZONE' || record.get('columnType') == 'TIMESTAMP(6) WITH LOCAL TIME ZONE') {
+                            code_value = array_date[2].get('value');
+                            record.set('columnFormat', code_value);
+                        }
+                    }
+                }
+                if (name == 'offerValueType') {
+                    record.set('columnDesc', '');
+                    record.set('columnNameDesc', '');
+                    record.set('columnFormat', '');
+                    if (value == null || value == '' || value == 'undifined') {
+                        record.getField('columnDesc').setReadOnly(true);
+                        record.getField('columnName').setReadOnly(true);
+                    } else if (value == 'FIXED') {
+                        record.getField('columnDesc').setReadOnly(false);
+                    } else {
+                        record.getField('columnDesc').setReadOnly(false);
+                        record.getField('columnName').setReadOnly(false);
+                    }
+                }
+                if (name == 'columnDesc') {
+                    record.set('columnNameDesc', '');
+                    record.set('columnFormat', '');
+                }
+                if (name == 'spliceType') {
+                    record.set('spliceValue', '');
+                    if (value == null || value == '' || value == 'undifined') {
+                        record.getField('spliceValue').setRequired(false);
+                        record.getField('spliceValue').setReadOnly(true);
+                    } else {
+                        record.getField('spliceValue').setRequired(true);
+                        record.getField('spliceValue').setReadOnly(false);
+                    }
+                }
+            }
+
+            function girdCellClick(grid, row, name, record) {
+                // modify lcy 2018/1/17 13:39:23  把sys_code CSH_OFFER_COLUMN_FORMAT 拆分成CSH_OFFER_DATE_FORMAT和CSH_OFFER_NUMBER_FORMAT 修改相关的取值逻辑
+                var metadate = record.getMeta();
+                if (name == 'columnFormat') {
+                    var column_name = record.get('columnName');
+                    if (record.get('columnName') == 'amount' || record.get('columnName') == 'encryption_amount') {
+                        metadate.getField('columnFormat').setOptions('csh_offer_type_detail_formate_number_ds');
+                        $au('csh_offer_type_detail_formate_number_ds').query();
+                        metadate.getField('columnFormat').setReadOnly(false);
+                    } else if (!(column_name != 'pay_date' && column_name != 'request_time' && column_name != 'actual_pay_date' && column_name != 'itf_pay_date' && column_name != 'refund_time')) {
+                        metadate.getField('columnFormat').setOptions('csh_offer_type_detail_formate_date_ds');
+                        $au('csh_offer_type_detail_formate_date_ds').query();
+                        metadate.getField('columnFormat').setReadOnly(false);
+                    } else {
+                        metadate.getField('columnFormat').setReadOnly(true);
+                    }
+                }
+            }
+
+            function csh_offer_type_detailBack() {
+                $au('typeDetailWindow').close();
+            }
+
+            function Column_formatValidate(record, name, value) {
+                if (name == 'columnFormat') {
+                    var column_type = record.get('columnType');
+                    var column_name = record.get('columnName');
+                    if ((value == 'YYYY-MM-DD' || value == 'YYYYMMDD' || value == 'YYYY/MM/DD') && (column_name != 'pay_date' && column_name != 'request_time' && column_name != 'actual_pay_date' && column_name != 'itf_pay_date' && column_name != 'refund_time')) {
+                        return '$[l:csh_offer_format.type_warning]';
+                    }
+                    if ((value == 'FM9999999999' || value == 'FM99999999.00') && (column_name != 'amount' && column_name != 'encryption_amount')) {
+                        return '$[l:csh_offer_format.type_warning]';
+                    }
+                    return true;
+                }
+            }
+
+            function column_desc_EditorFun(record, name) {
+                if (record.get('offerValueType') == 'VALUE') {
+                    record.getField('columnDesc').setRequired(true);
+                    return 'csh_offer_type_detail_column_desc_com';
+                } else {
+                    record.getField('columnFormat').setReadOnly(true);
+                    record.getField('columnDesc').setRequired(false);
+                    record.set('columnNameDesc', '');
+                    return 'csh_offer_type_detail_column_desc_tf';
+                }
+            }
+
+            function CSH1090_SubmitSuccess(ds) {
+                ds.query();
+            }
+
+            function column_format_desc_EditorFun(record, name) {
+                if (record.get('offerValueType') == 'FIXED') {
+                    return '';
+                } else {
+                    return 'column_format_desc_com';
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="splice_type_ds" autoQuery="true" fetchAll="true"
+                                    queryUrl="$[/request/@context_path]/common/auroraCode/csh_offer_splice_type/"/>
+            <a:dataSet id="offer_value_type_ds" autoQuery="true" fetchAll="true"
+                                                queryUrl="$[/request/@context_path]/common/auroraCode/csh_offer_value_type/"/>
+            <!--<a:dataSet id="csh_offer_type_detail_column_ds" fetchAll="true" loadData="true" model="csh.CSH1090.csh_offer_type_column_combox"/>-->
+            <a:dataSet id="csh_offer_type_detail_column_ds">
+                 <a:datas dataSource="cshTransactionDetailList/records"/>
+            </a:dataSet>
+            <!--  <a:dataSet id="csh_offer_type_detail_formate_ds" lookupCode="csh_offer_column_format"/> -->
+            <!-- modify lcy 2018/1/17 14:39:23  把sys_code CSH_OFFER_COLUMN_FORMAT 拆分成CSH_OFFER_DATE_FORMAT和CSH_OFFER_NUMBER_FORMAT 修改对应的取值逻辑 -->
+
+            <a:dataSet id="csh_offer_type_detail_formate_date_ds" autoQuery="true" fetchAll="true"
+                                                            queryUrl="$[/request/@context_path]/common/auroraCode/csh_offer_date_format/"/>
+            <a:dataSet id="csh_offer_type_detail_formate_number_ds" autoQuery="true" fetchAll="true"
+                                                            queryUrl="$[/request/@context_path]/common/auroraCode/csh_offer_number_format/"/>
+            <a:dataSet id="csh_offer_type_detail_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/offer-format-lns" queryUrl="$[/request/@context_path]/csh/offer-format-lns/query?formatHdsId=$[/parameter/@formatHdsId]" selectable="true" submitUrl="$[/request/@context_path]/csh/offer-format-lns/submit">
+                <a:fields>
+                    <a:field name="lineNumber" prompt="csh_offer_format.line_number" required="true"/>
+                    <a:field name="offerColumnName" prompt="csh_offer_format.offer_column_name" required="true"/>
+                    <a:field name="offerValueTypeName" displayField="meaning" options="offer_value_type_ds" prompt="csh_offer_format.offer_value_type" required="true" returnField="offerValueType" valueField="value"/>
+                    <a:field name="offerValueType"/>
+                    <a:field name="formatLnsId"/>
+                    <a:field name="columnType"/>
+                    <a:field name="formatHdsId" defaultValue="$[/parameter/@formatHdsId]"/>
+                    <a:field name="columnDesc" displayField="columnComment" options="csh_offer_type_detail_column_ds" prompt="csh_offer_format.field_name" required="true" returnField="columnName" valueField="columnName">
+                        <a:mapping>
+                            <a:map from="columnName" to="columnName"/>
+                            <a:map from="columnName" to="columnNameDesc"/>
+                            <a:map from="columnComment" to="columnDesc"/>
+                            <a:map from="columnType" to="columnType"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="columnNameDesc" prompt="csh_offer_format.field_code"/>
+                    <a:field name="columnName" defaultValue=" "/>
+                    <a:field name="columnFormat" displayField="meaning" prompt="csh_offer_format.format" readOnly="true" returnField="columnFormat" validator="Column_formatValidate" valueField="value"/>
+                    <a:field name="spliceTypeName" displayField="meaning" options="splice_type_ds" prompt="csh_offer_format.splice_type" returnField="spliceType" valueField="value"/>
+                    <a:field name="spliceType"/>
+                    <a:field name="spliceValue" prompt="csh_offer_format.splice_value" readOnly="true"/>
+                    <a:field name="groupFlag" checkedValue="Y" defaultValue="Y" prompt="csh_offer_format.group_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="updateFunction"/>
+                    <a:event name="submitsuccess" handler="CSH1090_SubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="csh_offer_type_dt_form" column="2" labelWidth="100" title="export file format definition - detail" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="csh_offer_type_detail_grid" type="add" width="80"/>
+                    <a:gridButton bind="csh_offer_type_detail_grid" type="save" width="80"/>
+                    <a:gridButton bind="csh_offer_type_detail_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="csh_offer_type_detailBack" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="formatCode" bindTarget="csh_offer_type_ds" prompt="csh_offer_format.format_code" readOnly="true" typeCase="upper"/>
+                <a:textField name="description" bindTarget="csh_offer_type_ds" prompt="csh_offer_format.format_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="csh_offer_type_detail_grid" bindTarget="csh_offer_type_detail_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="lineNumber" align="center" editor="csh_offer_type_detail_result_grid_nf" sortable="true" width="80"/>
+                    <a:column name="offerColumnName" align="center" editor="offer_column_name_tf"/>
+                    <a:column name="offerValueTypeName" align="center" editor="csh_offer_value_type_com"/>
+                    <a:column name="columnDesc" align="center" editorFunction="column_desc_EditorFun" width="150"/>
+                    <a:column name="columnNameDesc" width="150" align="center"/>
+                    <a:column name="columnFormat" align="center" editorFunction="column_format_desc_EditorFun" width="120"/>
+                    <a:column name="spliceTypeName" align="center" editor="splice_type_com" width="100"/>
+                    <a:column name="spliceValue" align="center" editor="splice_value_tf" width="150"/>
+                    <a:column name="groupFlag" editor="csh_offer_type_detail_result_grid_cb" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="csh_offer_type_detail_result_grid_nf"/>
+                    <a:textField id="offer_column_name_tf"/>
+                    <a:textField id="csh_offer_type_detail_column_desc_tf"/>
+                    <a:comboBox id="csh_offer_type_detail_column_desc_com"/>
+                    <a:comboBox id="csh_offer_value_type_com"/>
+                    <a:comboBox id="column_format_desc_com"/>
+                    <a:comboBox id="splice_type_com"/>
+                    <a:textField id="splice_value_tf"/>
+                    <a:checkBox id="csh_offer_type_detail_result_grid_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="girdCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>
+

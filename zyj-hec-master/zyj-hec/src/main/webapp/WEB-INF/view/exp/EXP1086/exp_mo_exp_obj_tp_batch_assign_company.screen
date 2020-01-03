@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP1086_mo_exp_obj_tp_company_batch_assign_link"
+                url="$[/request/@context_path]/exp/mo-exp-obj-tp-asgn-com/batchAssignCompany"/>
+        <script><![CDATA[
+        function EXP1086_assignCom() {
+            var companyRecords = $au('EXP1086_batchMoReqObjAssignComDs').getJsonData(true);
+            var param = {};
+            var objRecords = [];
+            var objRecord;
+            if ('$[/parameter/@flag]' == 'Y') {
+                objRecords = $au('EXP1086_moExpenseObjectTypeResultDs').getJsonData(true);
+            } else {
+                objRecord = $au('EXP1086_moExpenseObjectTypeResultDs').getCurrentRecord();
+                objRecords.push(objRecord.data);
+            }
+            if (companyRecords.length == 0) {
+                Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT]', null, 250, 100);
+                return;
+            }
+            param['objRecords'] = objRecords;
+            param['assignComRecords'] = companyRecords;
+            Aurora.request({
+                lockMessage: '$[l:HAP_WAITING]',
+                url: $au('EXP1086_mo_exp_obj_tp_company_batch_assign_link').getUrl(),
+                para: param,
+                success: EXP1086_closeAsgnBatchCreateWindow,
+                scope: this
+            });
+        }
+
+        function EXP1086_closeAsgnBatchCreateWindow() {
+            $au('EXP1086_mo_req_type_batch_asgn_com_window').close();
+            //$au('EXP4020_MoReqTypeAssignComDs').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1086_batchAsgnComMoExpObjectTypeDs" autoCreate="true" autoQuery="true"
+                       baseUrl="/exp/mo-expense-object-type"
+                       queryUrl="$[/request/@context_path]/exp/mo-expense-object-type/query?moExpObjTypeId=$[/parameter/@moExpObjTypeId]">
+                <a:fields>
+                    <a:field name="moExpObjTypeCode" prompt="exp_mo_expense_object_type.mo_exp_obj_type_code"/>
+                    <a:field name="description" prompt="exp_mo_expense_object_type.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1086_batchMoReqObjAssignComDs"
+                       queryUrl="$[/request/@context_path]/exp/mo-exp-obj-tp-asgn-com/queryFndCompanyTypeId?moExpObjTypeId=$[/parameter/@moExpObjTypeId]&amp;magOrgId=$[/parameter/@magOrgId]"
+                       autoQuery="true" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1086_moReqObjBatchAsgnComForm" column="2"
+                    title="exp_mo_exp_obj_tp_asgn_com.form" marginWidth="200">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP1086_assignCom" text="HEC_ASSIGN" width="80"/>
+                    <a:toolbarButton click="EXP1086_closeAsgnBatchCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpObjTypeCode" bindTarget="EXP1086_batchAsgnComMoExpObjectTypeDs"
+                             readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP1086_batchAsgnComMoExpObjectTypeDs" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP1086_batchMoReqObjAssignComDs" marginHeight="195" navBar="true" Width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="120"/>
+                    <a:column name="companyShortName" align="center" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

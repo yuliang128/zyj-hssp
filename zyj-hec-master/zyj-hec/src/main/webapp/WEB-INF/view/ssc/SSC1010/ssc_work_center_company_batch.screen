@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan 
+    $Date: 2017-12-18 16:58:28
+    $Revision: 1.0  
+    $Purpose: 工作中心定义分配业务范围-组织范围-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="SSC1010_batch_save_link" url="$[/request/@context_path]/ssc/work-center-company/submit"/>
+        <script><![CDATA[
+            function SSC1010_back() {
+                $au('SSC1010_work_center_batch_asgn_com').close();
+            }
+            function SSC1010_submit(){
+                var records = $au('SSC1010_work_center_batch_companies_ds').getSelected();         
+                if (records.length < 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return false;
+                }
+                var param = [];
+                for (var i = 0;i < records.length;i++) {
+                    var obj = {
+                        companyId: records[i].get('companyId'),
+                        scopeId: '$[/parameter/@scopeId]',
+                        enabledFlag: 'Y',
+                        __status: 'add'
+                    };
+                    param.push(obj);
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('SSC1010_batch_save_link').getUrl(),
+                    para: param,
+                    success: function() {
+                        $au('SSC1010_work_center_batch_asgn_com').close();
+                        $au('SSC1010_work_center_companies_ds').query();
+                    },
+                    scope: this
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1010_work_center_batch_companies_ds" autoPageSize="true" autoQuery="true" model="/ssc/work-center-company" pageSize="50" queryUrl="$[/request/@context_path]/ssc/work-center-company/batchQuery?scopeId=$[/parameter/@scopeId]&amp;magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyShortName" prompt="fnd_companies_vl.company_short_name"/>
+                    <a:field name="companyCode" prompt="fnd_companies.company_code"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="SSC1010_batch_companies_form" column="2" title="ssc_work_center.batch_company" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="SSC1010_submit" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="SSC1010_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="busiScopeCodeName" bindTarget="SSC1010_work_ceneter_busi_scope_ds" prompt="ssc_work_center.busi_scope" readOnly="true" width="120"/>
+                <a:textField name="magOrgCodeName" bindTarget="SSC1010_work_ceneter_busi_scope_ds" prompt="ssc_work_center.mag_org_name" readOnly="true" width="200"/>
+            </a:form>
+            <a:grid id="SSC1010_batch_companies_grid" bindTarget="SSC1010_work_center_batch_companies_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="200"/>
+                    <a:column name="companyShortName" align="center" width="300"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

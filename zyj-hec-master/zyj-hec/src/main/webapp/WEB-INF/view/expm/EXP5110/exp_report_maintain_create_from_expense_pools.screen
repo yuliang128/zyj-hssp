@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP5110_exp_report_maintain_expense_pools_ref_vat_invoice_query_link" model="expm.EXP5110.exp_expense_pools_ref_vat_invoice_query" modelaction="query"/>
+        <a:link id="EXP5110_exp_report_maintain_expense_pools_page_element_query_link" model="expm.EXP5110.exp_report_expense_pools_page_element_query" modelaction="query"/>
+        <script><![CDATA[
+            function EXP5110_onReady() {}
+            
+            function EXP5110_onRromExpensePoolsReqItemFocusFun() {
+                var expenseTypeId = $au('EXP5110_createFromExpensePoolsQueryDs').getAt(0).get('mo_expense_type_id');
+                //modify lcy 2018/1/18 14:10:23 增加申请项目和报销逻辑校验
+                if (expenseTypeId) {
+                    $au('EXP5110_reqItemDs').setQueryParameter('mo_expense_type_id', expenseTypeId);
+                    $au('EXP5110_reqItemDs').query();
+                } else {
+                    Aurora.showMessage('${l:PROMPT}', '${l:PLEASE_SELECT_EXPENSE_TYPE}', null, 300, 100);
+                }
+            }
+            
+            function EXP5110_createFromExpensePools() {
+                var datas = $au('EXP5110_createFromExpensePoolsResultDs').getJsonData(true);
+                var allRecord = $au('EXP5110_createFromExpensePoolsResultDs').getAll();
+                var exp_requisition_header_id;
+                var check_flag = 'Y';
+                var exp_requisition_number;
+                var relation_mode_code;
+                if (datas.length == 0) {
+                    new Aurora.showInfoMessage('${l:PROMPT}', '${l:CHOOSE_ONE_RECORD}', null, 300, 100);
+                } else {
+                    datas['fields'] = $au('EXP5110_createFromExpensePoolsResultDs').fields;
+                    //01校验,必须选择相同的申请单
+                    var i = 1;
+                    Ext.each(datas, function(data) {
+                        if (data['exp_requisition_header_id']) {
+                            if (i == 1) {
+                                exp_requisition_header_id = data['exp_requisition_header_id'];
+                                exp_requisition_number = data['exp_requisition_number'];
+                                relation_mode_code = data['relation_mode_code'];
+                            } else {
+                                if (exp_requisition_header_id != data['exp_requisition_header_id']) {
+                                    //报错
+                                    new Aurora.showInfoMessage('${l:PROMPT}', '${l:EXP5110_RELATION_SAME_REQ}', null, 300, 100);
+                                    check_flag = 'N';
+                                    return;
+                                }
+                            }
+                            i++;
+                        }
+                    });
+                    //02自动补全，一个申请单存在多行，只选择一行，需要自动带出其他行
+                    for (var k = 0;k < allRecord.length;k++) {
+                        if (allRecord[k].get('exp_requisition_header_id') && EXP5110_expense_pools_line_exists_flag(datas, allRecord[k].get('pool_id'), allRecord[k].get('exp_requisition_header_id'), allRecord[k].get('exp_requisition_line_id')) == 'N') {
+                            datas.push(allRecord[k].data);
+                        }
+                    }
+                    //03 创建费用行数据
+                    if (check_flag == 'Y') {
+                        Ext.each(datas, function(data) {
+                            var hecUtil = new HecUtil();
+                            var rate = data['unreleased_amount'] / data['payment_amount'];
+                            data['business_price'] = hecUtil.calAmount(data['business_price'] * rate, 1, data['business_precision']);
+                            data['business_amount'] = hecUtil.calAmount(data['business_amount'] * rate, 1, data['business_precision']);
+                            data['payment_price'] = hecUtil.calAmount(data['payment_price'] * rate, 1, data['payment_precision']);
+                            data['payment_amount'] = hecUtil.calAmount(data['payment_amount'] * rate, 1, data['payment_precision']);
+                            data['management_price'] = hecUtil.calAmount(data['business_price'] * rate, 1, data['management_precision']);
+                            data['management_amount'] = hecUtil.calAmount(data['business_price'] * rate, 1, data['management_precision']);
+                            data['requisition_functional_amount'] = hecUtil.calAmount(data['requisition_functional_amount'] * rate, 1, data['functional_currency_precision']);
+                            data['report_functional_amount'] = hecUtil.calAmount(data['requisition_functional_amount'] * rate, 1, data['functional_currency_precision']);
+                            var pool_id = data['pool_id'];
+                            var poolDatas = [];
+                            poolDatas.push(data);
+                            poolDatas['fields'] = $au('EXP5110_createFromExpensePoolsResultDs').fields;
+                            //创建费用行数据
+                            EXP5110_createLineFromExpensePools(pool_id, poolDatas);
+                        });
+                        //报销单头关联
+                        if (exp_requisition_header_id && relation_mode_code == 'HEAD') {
+                            $au('EXP5110_exp_report_header_ds').getAt(0).set('exp_requisition_header_id', exp_requisition_header_id);
+                            $au('EXP5110_exp_report_header_ds').getAt(0).set('exp_requisition_number', exp_requisition_number);
+                        } else {
+                            $au('EXP5110_exp_report_header_ds').getAt(0).set('exp_requisition_header_id', '');
+                            $au('EXP5110_exp_report_header_ds').getAt(0).set('exp_requisition_number', '');
+                        }
+                        //04 关闭
+                        EXP5110_closeRromExpensePools();
+                    }
+            
+                }
+            }
+            //当申请单存在多行时，选择其中一行，需要自动选择该申请单的其他行
+            
+            function EXP5110_expense_pools_line_exists_flag(datas, pool_id, exp_requisition_header_id, exp_requisition_line_id) {
+                var flag = 'N';
+                Ext.each(datas, function(data) {
+                    //1 头关联
+                    if (exp_requisition_header_id && !exp_requisition_line_id) {
+                        //不需要自动补全
+                        flag = 'Y';
+                    }
+                    //2.费用池未关联申请单
+                    if (!data['exp_requisition_header_id']) {
+                        //不需要自动补全
+                        flag = 'Y';
+                    }
+                    //3.费用池关联申请单，申请单头不一致
+                    if (data['exp_requisition_line_id'] && exp_requisition_header_id != data['exp_requisition_header_id']) {
+                        //不需要自动补全
+                        flag = 'Y';
+                        //4.费用池关联申请单，申请单头一致，行不一致
+                    }
+                    if (data['exp_requisition_line_id'] && exp_requisition_header_id == data['exp_requisition_header_id'] && exp_requisition_line_id == data['exp_requisition_line_id']) {
+                        //不需要自动补全
+                        flag = 'Y';
+                    }
+                });
+                return flag;
+            }
+            //通过页面元素设置费用行数据
+            
+            function EXP5110_createLineByPageElement(report_page_element_code, poolDatas) {
+                if (report_page_element_code == 'TRAVEL_LINES') {
+                    var dsFromTravel = $au('EXP5110_exp_report_travel_line_ds');
+                    if (!Ext.isEmpty(dsFromTravel)) {
+                        EXP5110_travelLineAdd(poolDatas);
+                    } else {
+                        new Aurora.showMessage('${l:PROMPT}', '${l:EXP5110_CREATE_LINE_BY_PAGEELEMENT_ERROR}', null, 300, 100);
+                    }
+                } else if (report_page_element_code == 'TRAVEL_STAY_LINES') {
+                    var dsFromTravelStay = $au('EXP5110_exp_report_travel_stay_line_ds');
+                    if (!Ext.isEmpty(dsFromTravelStay)) {
+                        EXP5110_travelStayLineAdd(poolDatas);
+                    } else {
+                        new Aurora.showMessage('${l:PROMPT}', '${l:EXP5110_CREATE_LINE_BY_PAGEELEMENT_ERROR}', null, 300, 100);
+                    }
+                } else if (report_page_element_code == 'TRAVEL_SUBSIDY_LINES') {
+                    var dsFromTravelSubsidy = $au('EXP5110_exp_report_travel_subsidy_line_ds');
+                    if (!Ext.isEmpty(dsFromTravelSubsidy)) {
+                        EXP5110_travelSubsidyLineAdd(poolDatas);
+                    } else {
+                        new Aurora.showMessage('${l:PROMPT}', '${l:EXP5110_CREATE_LINE_BY_PAGEELEMENT_ERROR}', null, 300, 100);
+                    }
+                } else {
+                    var dsFromstandard = $au('EXP5110_exp_report_standard_line_ds');
+                    if (!Ext.isEmpty(dsFromstandard)) {
+                        EXP5110_standardLineAdd(poolDatas);
+                    } else {
+                        new Aurora.showMessage('${l:PROMPT}', '${l:EXP5110_CREATE_LINE_BY_PAGEELEMENT_ERROR}', null, 300, 100);
+                    }
+                }
+            }
+            
+            function EXP5110_createLineFromExpensePools(pool_id, poolDatas) {
+                if (pool_id) {
+                    var mo_exp_report_type_id = '${/parameter/@mo_exp_report_type_id}';
+                    Aurora.request({
+                        url: $au('EXP5110_exp_report_maintain_expense_pools_page_element_query_link').getUrl(),
+                        para: {
+                            'pool_id': pool_id,
+                            'mo_exp_report_type_id': mo_exp_report_type_id
+                        },
+                        success: function(data) {
+                            var selectedData = data.result.record;
+                            if (selectedData) {
+                                if (!selectedData.length) {
+                                    //设置报销类型和费用项目  ,报销类型和费用项目 在费用池类型定义中配置
+                                    Ext.each(poolDatas, function(data) {
+            
+                                        data['mo_expense_type_id'] = selectedData.mo_expense_type_id;
+                                        data['mo_expense_type_name'] = selectedData.mo_expense_type_name;
+                                        data['mo_expense_item_id'] = selectedData.mo_expense_item_id;
+                                        data['mo_expense_item_name'] = selectedData.mo_expense_item_name;
+            
+                                    });         
+                                    //通过页面元素设置费用行数据
+                                    EXP5110_createLineByPageElement(selectedData['report_page_element_code'], poolDatas);
+                                } else {
+                                    for (var i = 0;i < selectedData.length;i++) {
+                                        //设置报销类型和费用项目
+                                        Ext.each(poolDatas, function(data) {
+                                            data['mo_expense_type_id'] = selectedData[i].mo_expense_type_id;
+                                            data['mo_expense_type_name'] = selectedData[i].mo_expense_type_name;
+                                            data['mo_expense_item_id'] = selectedData[i].mo_expense_item_id;
+                                            data['mo_expense_item_name'] = selectedData[i].mo_expense_item_name;
+            
+                                        });
+                                        EXP5110_createLineByPageElement(selectedData[i]['report_page_element_code'], poolDatas);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }        
+            }
+            
+            function EXP5110_closeRromExpensePools() {
+                //modify lcy 2018/1/18 14:10:23  修改close方式
+                $au('EXP5110_exp_report_create_from_expense_pools_window').close();
+            }
+            //modify lcy 2018/1/18 14:10:23 增加超链接逻辑
+            
+            function EXP5110_RromExpensePoolsReqNumRenderer(value, record, name) {
+                var readonly_service_name = record.get('readonly_service_name');
+                var exp_requisition_header_id = record.get('exp_requisition_header_id');
+                if (readonly_service_name != '' && readonly_service_name != 'undefined' && readonly_service_name != null) {
+                    return '<a href="javascript:EXP5110_RromExpensePoolsReqNumRendererInfo(\'' + readonly_service_name + '\',\'' + exp_requisition_header_id + '\')">' + value + '</a>';
+                }
+            }
+            
+            function EXP5110_RromExpensePoolsReqNumRendererInfo(readonly_service_name, exp_requisition_header_id) {
+                new Aurora.Window({
+                    title: '',
+                    id: 'EXP5110_exp_report_create_from_req_renderer_window',
+                    url: '${/request/@context_path}/' + readonly_service_name + '?exp_requisition_header_id=' + exp_requisition_header_id,
+                    fullScreen: true
+                });
+            }
+            
+            function EXP5110_poolsQueryUpdate(ds, record, name, value) {
+                if (name == 'mo_exp_pool_type_desc') {
+                    record.set('business_type_name', '');
+                    record.set('business_type_code', '');
+                    record.set('bus_ref_id', '');
+                    record.getField('business_type_name').setLovPara('mo_exp_pool_type_id', record.get('mo_exp_pool_type_id'));
+                    $au('EXP5110_createFromExpensePoolsResultDs').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_createFromExpensePools_mag_org_ds" autoQuery="true" fetchAll="true" loadData="true" model="exp.EXP4020.fnd_managing_organizations_vl"/>
+            <a:dataSet id="EXP5110_createFromExpensePools_sourceTypesDs" lookupCode="EXPENSE_POOL_SOURCE_TYPE"/>
+            <a:dataSet id="EXP5110_createFromExpensePools_referenceStatusDs" lookupCode="EXPENSE_POOL_REFERENCE_STATUS"/>
+            <a:dataSet id="EXP5110_createFromExpensePools_openInvoiceStatusDs" lookupCode="EXPENSE_POOL_OPEN_INVOICE_STATUS"/>
+            <a:dataSet id="EXP5110_createFromExpensePools_sourcePlatformDs" lookupCode="EXPENSE_POOL_SOURCE_PLATFORM"/>
+            <a:dataSet id="EXP5110_createFromExpensePools_confirmFlagDs">
+                <a:datas>
+                    <a:record name="是" value="Y"/>
+                    <a:record name="否" value="N"/>
+                </a:datas>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_createFromExpensePoolsQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="mo_exp_pool_type_id"/>
+                    <a:field name="mo_exp_pool_type_desc" autoComplete="true" autoCompleteField="mo_exp_pool_type_desc" lovService="exp.EXP4070.exp_mo_expense_pool_type_vl" prompt="EXP_EXPENSES_POOL_HEADS.MO_EXP_POOL_TYPE_DESC" title="EXP_EXPENSES_POOL_HEADS.MO_EXP_POOL_TYPE_DESC">
+                        <a:mapping>
+                            <a:map from="mo_exp_pool_type_id" to="mo_exp_pool_type_id"/>
+                            <a:map from="description" to="mo_exp_pool_type_desc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="business_type_name" autoComplete="true" autoCompleteField="business_type_name" lovService="exp.EXP4070.exp_expense_pools_type_ref_business_type_lov" prompt="VAT_INVOICE_USEDES.VAT_BUSINESS_TYPE" title="SET_WFL_WORKFLOW.CHOSE_DOC_CATEGORY">
+                        <a:mapping>
+                            <a:map from="business_type_name" to="business_type_name"/>
+                            <a:map from="business_type_code" to="business_type_code"/>
+                            <a:map from="ref_id" to="bus_ref_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employee_id"/>
+                    <a:field name="employee_name" autoComplete="true" autoCompleteField="name_code" lovAutoQuery="true" lovGridHeight="320" lovHeight="450" lovService="exp.exp_company_employees_v_namecode" lovWidth="500" prompt="SYS_USER.EMPLOYEE_ID" title="EXP_COMPANY_EMPLOYEES_V.EMPLOYEE_ID">
+                        <a:mapping>
+                            <a:map from="name_code" to="employee_name"/>
+                            <a:map from="employee_id" to="employee_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="description" prompt="EXP_EXPENSES_POOL_HEADS.DESCRIPTION"/>
+                    <a:field name="source_type_name" displayField="code_value_name" options="EXP5110_createFromExpensePools_sourceTypesDs" placeHolder="EXP_MO_EXPENSE_POOL_TYPE.SOURCE_TYPE" returnField="source_type" valueField="code_value"/>
+                    <a:field name="source_type"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5110_poolsQueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_createFromExpensePoolsResultDs" autoQuery="true" model="expm.EXP5110.exp_report_from_expense_pools_query" queryDataSet="EXP5110_createFromExpensePoolsQueryDs" queryUrl="${/request/@context_path}/autocrud/expm.EXP5110.exp_report_from_expense_pools_query/query?exp_requisition_header_id=${/parameter/@exp_requisition_header_id}&amp;payment_currency_code=${/parameter/@payment_currency_code}&amp;mo_exp_report_type_id=${/parameter/@mo_exp_report_type_id}" selectable="true">
+                <a:fields>
+                    <!--费用池数据开始-->
+                    <a:field name="pool_id"/>
+                    <a:field name="mo_exp_pool_type_id"/>
+                    <a:field name="mo_exp_pool_type_code"/>
+                    <a:field name="mo_exp_pool_type_desc" prompt="EXP_EXPENSES_POOL_HEADS.MO_EXP_POOL_TYPE_DESC"/>
+                    <a:field name="source_type" prompt="EXP_EXPENSES_POOL_HEADS.SOURCE_TYPE"/>
+                    <a:field name="source_type_name" prompt="EXP_EXPENSES_POOL_HEADS.SOURCE_TYPE"/>
+                    <a:field name="business_type_name" prompt="VAT_INVOICE_USEDES.VAT_BUSINESS_TYPE"/>
+                    <a:field name="employee_id"/>
+                    <a:field name="employee_name" prompt="SYS_USER.EMPLOYEE_ID"/>
+                    <a:field name="company_id"/>
+                    <a:field name="company_name" prompt="EXP_TICKET_REQUEST_LINES.COMPANY_ID"/>
+                    <a:field name="unit_id"/>
+                    <a:field name="unit_name" prompt="EXP_TICKET_REQUEST_LINES.UNIT_ID"/>
+                    <a:field name="acc_entity_id"/>
+                    <a:field name="acc_entity_name" prompt="EXP_TICKET_REQUEST_LINES.ACC_ENTITY_ID"/>
+                    <a:field name="resp_center_id"/>
+                    <a:field name="resp_center_name" prompt="EXP_TICKET_REQUEST_LINES.RESP_CENTER_ID"/>
+                    <a:field name="expense_date" prompt="EXP_EXPENSES_POOLS.EXPENSE_DATE"/>
+                    <a:field name="currency_code"/>
+                    <a:field name="currency_name" prompt="EXP_EXPENSES_POOL_HEADS.CURRENCY_NAME"/>
+                    <a:field name="amount" prompt="EXP_EXPENSES_POOL_HEADS.EXPENSES_AMOUNT"/>
+                    <a:field name="company_amount" prompt="EXP_EXPENSES_POOL.COMPANY_AMOUNT"/>
+                    <a:field name="personal_amount" prompt="EXP_EXPENSES_POOL.PERSONAL_AMOUNT"/>
+                    <a:field name="description" prompt="EXP_EXPENSES_POOL_HEADS.DESCRIPTION"/>
+                    <a:field name="confirm_flag" prompt="CONFIRM"/>
+                    <a:field name="reference_status_desc" prompt="VAT_INVOICES.REFERENCE_STATUS"/>
+                    <a:field name="open_invoice_status_desc" prompt="EXP_EXPENSES_POOL_HEADS.OPEN_INVOICE_STATUS"/>
+                    <a:field name="source_platform_desc" prompt="EXP_EXPENSE_POOLS.SOURCE_PLATFORM"/>
+                    <a:field name="source_platform"/>
+                    <!--费用池数据结束-->
+                    <!-- 页面元素代码 -->
+                    <a:field name="report_page_element_code"/>
+                    <!-- 标准费用行开始 -->
+                    <a:field name="exp_requisition_header_id"/>
+                    <a:field name="exp_requisition_number"/>
+                    <a:field name="exp_requisition_line_id"/>
+                    <a:field name="exp_requisition_dist_id"/>
+                    <a:field name="line_number"/>
+                    <a:field name="position_name"/>
+                    <a:field name="position_id"/>
+                    <a:field name="place_type_name"/>
+                    <a:field name="place_type_id"/>
+                    <a:field name="place_name"/>
+                    <a:field name="place_id"/>
+                    <a:field name="budget_item_name"/>
+                    <a:field name="budget_item_id"/>
+                    <a:field name="date_from"/>
+                    <a:field name="date_to"/>
+                    <a:field name="period_name"/>
+                    <a:field name="mo_expense_type_name"/>
+                    <a:field name="mo_expense_type_id"/>
+                    <a:field name="mo_expense_item_name"/>
+                    <a:field name="mo_expense_item_id"/>
+                    <a:field name="primary_quantity"/>
+                    <a:field name="business_currency_name"/>
+                    <a:field name="business_currency_code"/>
+                    <a:field name="biz2pay_exchange_type_name"/>
+                    <a:field name="biz2pay_exchange_type"/>
+                    <a:field name="biz2pay_exchange_rate"/>
+                    <a:field name="business_price"/>
+                    <a:field name="business_amount"/>
+                    <a:field name="payment_currency_name"/>
+                    <a:field name="payment_currency_code"/>
+                    <a:field name="pay2fun_exchange_type_name"/>
+                    <a:field name="pay2fun_exchange_type"/>
+                    <a:field name="pay2fun_exchange_rate"/>
+                    <a:field name="payment_price"/>
+                    <a:field name="payment_amount"/>
+                    <a:field name="management_currency_name"/>
+                    <a:field name="management_currency_code"/>
+                    <a:field name="pay2mag_exchange_type_name"/>
+                    <a:field name="pay2mag_exchange_type"/>
+                    <a:field name="pay2mag_exchange_rate"/>
+                    <a:field name="management_price"/>
+                    <a:field name="management_amount"/>
+                    <a:field name="report_functional_amount"/>
+                    <a:field name="released_amount"/>
+                    <a:field name="released_quantity"/>
+                    <a:field name="released_status"/>
+                    <a:field name="unreleased_amount"/>
+                    <a:field name="dimension1_id"/>
+                    <a:field name="dimension2_id"/>
+                    <a:field name="dimension3_id"/>
+                    <a:field name="dimension4_id"/>
+                    <a:field name="dimension5_id"/>
+                    <a:field name="dimension6_id"/>
+                    <a:field name="dimension7_id"/>
+                    <a:field name="dimension8_id"/>
+                    <a:field name="dimension9_id"/>
+                    <a:field name="dimension10_id"/>
+                    <a:field name="dimension11_id"/>
+                    <a:field name="dimension12_id"/>
+                    <a:field name="dimension13_id"/>
+                    <a:field name="dimension14_id"/>
+                    <a:field name="dimension15_id"/>
+                    <a:field name="dimension16_id"/>
+                    <a:field name="dimension17_id"/>
+                    <a:field name="dimension18_id"/>
+                    <a:field name="dimension19_id"/>
+                    <a:field name="dimension20_id"/>
+                    <a:field name="dimension1_name"/>
+                    <a:field name="dimension2_name"/>
+                    <a:field name="dimension3_name"/>
+                    <a:field name="dimension4_name"/>
+                    <a:field name="dimension5_name"/>
+                    <a:field name="dimension6_name"/>
+                    <a:field name="dimension7_name"/>
+                    <a:field name="dimension8_name"/>
+                    <a:field name="dimension9_name"/>
+                    <a:field name="dimension10_name"/>
+                    <a:field name="dimension11_name"/>
+                    <a:field name="dimension12_name"/>
+                    <a:field name="dimension13_name"/>
+                    <a:field name="dimension14_name"/>
+                    <a:field name="dimension15_name"/>
+                    <a:field name="dimension16_name"/>
+                    <a:field name="dimension17_name"/>
+                    <a:field name="dimension18_name"/>
+                    <a:field name="dimension19_name"/>
+                    <a:field name="dimension20_name"/>
+                    <a:field name="bgt_entity_id"/>
+                    <a:field name="bgt_entity_name"/>
+                    <a:field name="bgt_center_id"/>
+                    <a:field name="bgt_center_name"/>
+                    <!-- 标准费用行结束 -->
+                    <!-- 申请单特有行 -->
+                    <a:field name="req_mo_expense_type_name"/>
+                    <a:field name="req_mo_expense_type_id"/>
+                    <a:field name="mo_req_item_name"/>
+                    <a:field name="mo_req_item_id"/>
+                    <a:field name="requisition_functional_amount"/>
+                    <!-- 差旅行程行开始 -->
+                    <a:field name="transportation_name"/>
+                    <a:field name="transportation"/>
+                    <a:field name="seat_class_name"/>
+                    <a:field name="seat_class"/>
+                    <a:field name="departure_place_name"/>
+                    <a:field name="departure_place_id"/>
+                    <a:field name="arrival_place_name"/>
+                    <a:field name="arrival_place_id"/>
+                    <a:field name="departure_date"/>
+                    <a:field name="arrival_date"/>
+                    <!-- 差旅行程行结束 -->
+                    <!-- 差旅住宿行结开始-->
+                    <a:field name="accommodation_date_from"/>
+                    <a:field name="accommodation_date_to"/>
+                    <!-- 差旅住宿行结束 -->
+                    <!--费用池发票开始-->
+                    <a:field name="expense_pools_invocie_num"/>
+                    <a:field name="invoice_id"/>
+                    <a:field name="invoice_code"/>
+                    <a:field name="invoice_number"/>
+                    <a:field name="invoice_date"/>
+                    <a:field name="invoice_amount"/>
+                    <a:field name="without_tax_amount"/>
+                    <a:field name="invoice_type"/>
+                    <a:field name="invoice_type_name"/>
+                    <a:field name="invoice_category_id"/>
+                    <a:field name="invoice_category_code"/>
+                    <a:field name="invoice_category_name"/>
+                    <a:field name="invoice_source"/>
+                    <a:field name="invoice_source_name"/>
+                    <a:field name="invoice_item_id"/>
+                    <a:field name="invoice_usede_id"/>
+                    <a:field name="invoice_line_id"/>
+                    <a:field name="invoice_line_number"/>
+                    <a:field name="invoice_line_amount"/>
+                    <a:field name="tax_type_id"/>
+                    <a:field name="tax_type_name"/>
+                    <a:field name="tax_amount"/>
+                    <a:field name="splitted_tax_amount"/>
+                    <!--费用池发票结束-->
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:toolbarButton id="createRromExpensePoolsID" click="EXP5110_createFromExpensePools" text="HAP_OK"/>
+                    <a:toolbarButton click="EXP5110_closeRromExpensePools" text="HAP_BACK"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="EXP5110_createFromExpensePoolsQueryDs" resultTarget="EXP5110_createFromExpensePoolsResultDs" style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:lov name="mo_exp_pool_type_desc" bindTarget="EXP5110_createFromExpensePoolsQueryDs"/>
+                        <a:lov name="business_type_name" bindTarget="EXP5110_createFromExpensePoolsQueryDs"/>
+                        <a:lov name="employee_name" bindTarget="EXP5110_createFromExpensePoolsQueryDs"/>
+                    </a:formToolBar>
+                    <a:formBody column="4" labelWidth="100">
+                        <a:comboBox name="source_type_name" bindTarget="EXP5110_createFromExpensePoolsQueryDs"/>
+                        <a:textField name="description" bindTarget="EXP5110_createFromExpensePoolsQueryDs"/>
+                    </a:formBody>
+                </a:queryForm>
+            </span>
+            <a:grid bindTarget="EXP5110_createFromExpensePoolsResultDs" marginHeight="150" marginWidth="0" navBar="true">
+                <a:columns>
+                    <!--                     <a:column name="pool_id" align="center" prompt="pool_id" width="100"/>
+                    <a:column name="source" align="center" width="100"/>
+                    <a:column name="query_index" align="center" prompt="query_index" width="100"/>
+                    <a:column name="exp_requisition_header_id" align="center" prompt="header_id" width="100"/>
+                    <a:column name="exp_requisition_number" align="center" prompt="header_number" width="100"/>
+                    <a:column name="exp_requisition_line_id" align="center" prompt="line_id" width="100"/>
+                    <a:column name="exp_requisition_dist_id" align="center" prompt="dist_id" width="100"/> -->
+                    <!-- 费用池类型 -->
+                    <a:column name="mo_exp_pool_type_desc" align="center" width="100"/>
+                    <!-- 来源类型 -->
+                    <a:column name="source_type_name" align="center" width="100"/>
+                    <!-- 业务类型 -->
+                    <a:column name="business_type_name" align="center" width="100"/>
+                    <!-- 员工 -->
+                    <a:column name="employee_name" align="left" width="100"/>
+                    <!-- 公司 -->
+                    <a:column name="company_name" align="left" width="150"/>
+                    <!-- 部门 -->
+                    <a:column name="unit_name" align="left" width="150"/>
+                    <!-- 核算主体 -->
+                    <a:column name="acc_entity_name" align="left" width="150"/>
+                    <!-- 成本中心 -->
+                    <a:column name="resp_center_name" align="left" width="150"/>
+                    <!-- 费用发生日期 -->
+                    <a:column name="expense_date" align="center" renderer="Aurora.formatDate" width="100"/>
+                    <!-- 业务币种 -->
+                    <a:column name="currency_name" align="center" width="60"/>
+                    <!-- 费用金额 -->
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    <!-- 公司承担金额 -->
+                    <a:column name="company_amount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    <!-- 个人承担金额 -->
+                    <a:column name="personal_amount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    <!-- 说明 -->
+                    <a:column name="description" align="left" width="200"/>
+                    <!-- 确认 -->
+                    <a:column name="confirm_flag" align="center" width="60"/>
+                    <!-- 引用状态 -->
+                    <a:column name="reference_status_desc" align="center" width="100"/>
+                    <!-- 开票状态 -->
+                    <a:column name="open_invoice_status_desc" align="center" width="100"/>
+                    <!-- 来源平台 -->
+                    <a:column name="source_platform_desc" align="center" width="100"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin
+    $Date: 2018-02-26 16:15:19  
+    $Revision: 1.0  
+    $Purpose: 银行定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function CSH1015_editFunction(record, name) {
+                if (record.isNew) {
+                    if (name == 'bankTypeDesc') {
+                        return 'CSH1015_comboBox';
+                    }
+                    if (name == 'bankCode') {
+                        return 'CSH1015_tld_upper';
+                    }
+                }
+                return '';
+            }
+            
+            function CSH1015_cndiEditorFunc(record, name) {
+                if (record.isNew) {
+                    return 'CSH1015_cnapTextField';
+                }
+                return '';
+            }
+            
+            function CSH1015_cnapAddFunc(ds, record, index) {
+                var bankRecord = $au('CSH1015_bankResult_ds').getCurrentRecord();
+                record.set('bankId', bankRecord.get('bankId'));
+            }
+            
+            function CSH1015_bankSaveFunc() {
+                $au('CSH1015_bankResult_ds').submit();
+            }
+            
+            function CSH1015_bankSuccessFunc(dataSet) {
+                dataSet.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1015_bankType_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH.BANK_TYPE/"/>
+            <a:dataSet id="CSH1015_bankQuery_ds" baseUrl="/csh/bank">
+                <a:fields>
+                    <a:field name="bankCode" prompt="csh_bank.bank_code"/>
+                    <a:field name="bankName" prompt="csh_bank.bank_name"/>
+                    <a:field name="bankNameAlt" prompt="csh_bank.bank_alt_name"/>
+                    <a:field name="bankTypeDesc" displayField="meaning" options="CSH1015_bankType_ds" placeHolder="csh_bank.bank_type" returnField="bankType" valueField="value"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH1015_bankResult_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/bank" queryDataSet="CSH1015_bankQuery_ds" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="bankId"/>
+                    <a:field name="bankCode" prompt="csh_bank.bank_code" required="true"/>
+                    <a:field name="bankName" prompt="csh_bank.bank_name" required="true" dto="com.hand.hec.csh.dto.CshBank" dtoId="bankId"/>
+                    <a:field name="bankNameAlt" prompt="csh_bank.bank_alt_name" required="true" dto="com.hand.hec.csh.dto.CshBank" dtoId="bankId"/>
+                    <a:field name="countryName" autoComplete="true" autoCompleteField="description" lovCode="LOV_COUNTRY_CODE" prompt="gld_currency.country_name" title="gld_currency.country_name">
+                        <a:mapping>
+                            <a:map from="countryCode" to="countryCode"/>
+                            <a:map from="description" to="countryName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="countryCode"/>
+                    <a:field name="bankTypeDesc" displayField="meaning" options="CSH1015_bankType_ds" prompt="csh_bank.bank_type" required="true" returnField="bankType" valueField="value"/>
+                    <a:field name="bankType"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" uncheckedValue="N"/>
+                    <a:field name="zeroAmountsAllowed" checkedValue="Y" defaultValue="Y" prompt="csh_bank.zero_amounts_allowed" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1015_bankSuccessFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1015_cnapsResult_ds" autoPageSize="true" bindName="cnaps" bindTarget="CSH1015_bankResult_ds" baseUrl="/csh/cnaps" queryDataSet="CSH1015_bankResult_ds">
+                <a:fields>
+                    <a:field name="cnapsId"/>
+                    <a:field name="bankId"/>
+                    <a:field name="bankLocationCode" prompt="csh_bank_branch.cnap" required="true"/>
+                    <a:field name="bankLocationName" prompt="csh_bank_branch.branch_name"/>
+                    <a:field name="provinceCode" prompt="fnd_region_province.prov_code"/>
+                    <a:field name="provinceName" prompt="fnd_region_province.prov_name"/>
+                    <a:field name="cityCode" prompt="fnd_region_province.city_code"/>
+                    <a:field name="cityName" prompt="fnd_region_province.city_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH1015_cnapAddFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1015_bankResult_grid" type="add"/>
+                <a:toolbarButton click="CSH1015_bankSaveFunc" text="HAP_SAVE" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1015_bankQuery_ds" resultTarget="CSH1015_bankResult_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="bankCode" bindTarget="CSH1015_bankQuery_ds"/>
+                    <a:textField name="bankName" bindTarget="CSH1015_bankQuery_ds"/>
+                    <a:textField name="bankNameAlt" bindTarget="CSH1015_bankQuery_ds"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:comboBox name="bankTypeDesc" bindTarget="CSH1015_bankQuery_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form hideLabel="true" padding="0" showmargin="false" title="csh_bank_detail">
+            <a:grid id="CSH1015_bankResult_grid" bindTarget="CSH1015_bankResult_ds" marginWidth="3" navBar="true">
+                <a:columns>
+                    <a:column name="bankCode" align="center" editorFunction="CSH1015_editFunction" width="80"/>
+                    <a:column name="bankName" align="left" editor="CSH1015_tld" width="120"/>
+                    <a:column name="bankNameAlt" align="left" editor="CSH1015_tld" width="120"/>
+                    <a:column name="countryName" align="left" editor="CSH1015_lov" width="120"/>
+                    <a:column name="bankTypeDesc" align="center" editorFunction="CSH1015_editFunction" width="80"/>
+                    <a:column name="zeroAmountsAllowed" align="center" editor="CSH1015_checkBox" width="50"/>
+                    <a:column name="enabledFlag" align="center" editor="CSH1015_checkBox" width="50"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="CSH1015_tld_upper" typeCase="upper"/>
+                    <a:tledit id="CSH1015_tld"/>
+                    <a:comboBox id="CSH1015_comboBox"/>
+                    <a:checkBox id="CSH1015_checkBox"/>
+                    <a:lov id="CSH1015_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+        <a:form hideLabel="true" padding="0" showmargin="false" style="margin-top:5px;" title="csh_bank.cnap_info">
+            <a:grid id="CSH1015_cnapResult_grid" autoAdjustHeight="true" bindTarget="CSH1015_cnapsResult_ds" marginHeight="500" marginWidth="3" navBar="true">
+                <a:toolBar>
+                    <a:button id="btnAdd" type="add"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="bankLocationCode" align="center" editorFunction="CSH1015_cndiEditorFunc" width="80"/>
+                    <a:column name="bankLocationName" editor="CSH1015_cnapTextField" width="150"/>
+                    <a:column name="provinceCode" align="center" editor="CSH1015_cnapTextField" width="80"/>
+                    <a:column name="provinceName" align="center" editor="CSH1015_cnapTextField" width="80"/>
+                    <a:column name="cityCode" align="center" editor="CSH1015_cnapTextField" width="80"/>
+                    <a:column name="cityName" align="center" editor="CSH1015_cnapTextField" width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="CSH1015_cnapCheckBox" width="50"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="CSH1015_cnapTextField"/>
+                    <a:checkBox id="CSH1015_cnapCheckBox"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+        <script purpose="auto_resize"><![CDATA[
+             function CSH1015_initSize() {
+                 var vh = this.outerHeight;
+                 //设置组件的自适应宽度
+                 var rightHeight = (vh - 350);
+                 var autoHeight = (rightHeight - 63) / 2;
+                 if (Aurora.CmpManager.get('CSH1015_bankResult_grid')) {
+                     $au('CSH1015_bankResult_grid').setHeight(autoHeight);
+                 }
+             }
+             
+             CSH1015_initSize();
+         ]]></script>
+    </a:view>
+</a:screen>

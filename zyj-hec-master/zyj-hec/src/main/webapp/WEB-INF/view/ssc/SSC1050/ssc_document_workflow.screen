@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-20 14:29:21
+    $Revision: 1.0  
+    $Purpose: 共享业务类型分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="SSC1050_nodeRuleAssignLink" url="$[/request/@context_path]/ssc/SSC1050/ssc_doc_wfl_rule_assign.screen"/>
+        <script><![CDATA[
+            function SSC1050_add(ds) {
+                var magOrgId = $au('ssc_document_workflow_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function SSC1050_beforeCreate() {
+                if (Ext.isEmpty($au('ssc_document_workflow_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function SSC1050_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('ssc_document_workflow_result_ds').query();
+                }
+            }
+            
+            function SSC1050_gridCellClick(grid, row, name, record) {
+                var magOrgId = $au('ssc_document_workflow_query_ds').getAt(0).get('magOrgId');
+                if (name == 'docTypeCodeName') {
+                    record.getField(name).setLovPara('magOrgId', magOrgId);
+                    record.getField('docTypeCodeName').setLovPara('docCategory', record.get('docCategory'));
+                }
+                if (name == 'companyCodeName') {
+                    record.getField('companyCodeName').setLovPara('magOrgId', magOrgId);
+                }
+                if (name == 'accEntityCodeName') {
+                    record.getField('accEntityCodeName').setLovPara('magOrgId', magOrgId);
+                }
+                if (name == 'workflowCodeName') {
+                    record.getField('workflowCodeName').setLovPara('docCategory', record.get('docCategory'));
+                }
+            }
+            
+            function SSC1050_gridRenderer(value, record, name) {
+                if (record.isNew || record.dirty) {
+                    return '';
+                }
+                return '<a href="javascript:SSC1050_openNodeRuleAssignWin(' + record.get('workflowId') + ',' + record.get('docWflAssignId') + ')">$[l:ssc_document_workflow.workflow_node]</a>';
+            }
+            
+            function SSC1050_openNodeRuleAssignWin(workflowId, docWflAssignId) {
+                var url = $au('SSC1050_nodeRuleAssignLink').getUrl() + '?workflowId=' + workflowId + '&docWflAssignId=' + docWflAssignId;
+                new Aurora.Window({
+                    id: 'SSC1050_nodeRuleAssignWin',
+                    title: '$[l:ssc_doc_wfl.rule_assign_win]',
+                    url: url,
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1050_mange_organizationlist_ds" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="SSC1050_docCategoryDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/WBC_DOC_CATEGORY/"/>
+            <a:dataSet id="ssc_document_workflow_query_ds">
+                <a:fields>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMag/records/record/@magOrgId]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/defaultMag/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="SSC1050_mange_organizationlist_ds" prompt="bgt_budget_item_mapping.mag_org_name" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="SSC1050_docCategoryDs" prompt="ssc_document_workflow.doc_category" returnField="docCategory" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="SSC1050_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ssc_document_workflow_result_ds" autoQuery="true" baseUrl="/ssc/document-workflow" queryUrl="$[/request/@context_path]/ssc/document-workflow/queryDocument" queryDataSet="ssc_document_workflow_query_ds">
+                <a:fields>
+                    <a:field name="docWflAssignId"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="SSC1050_docCategoryDs" prompt="ssc_document_workflow.doc_category" required="true" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docTypeCodeName" lovCode="LOV_DOC_TYPE_BY_MAG" prompt="ssc_document_workflow.doc_type_id">
+                        <a:mapping>
+                            <a:map from="docTypeId" to="docTypeId"/>
+                            <a:map from="code" to="docTypeCode"/>
+                            <a:map from="name" to="docTypeName"/>
+                            <a:map from="docTypeCodeName" to="docTypeCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="docTypeId"/>
+                    <a:field name="docTypeCode"/>
+                    <a:field name="docTypeName"/>
+
+                    <a:field name="companyCodeName" lovCode="LOV_BGT6200_COMPANY" prompt="ssc_document_workflow.company_id">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                            <a:map from="companyCodeName" to="companyCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode"/>
+                    <a:field name="companyName"/>
+
+                    <a:field name="accEntityCodeName" lovCode="LOV_ASGN_ACC_ENTTITY_MAG_ORG_MORE" prompt="ssc_document_workflow.acc_entity_id">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityCodeName" to="accEntityCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode"/>
+                    <a:field name="accEntityName"/>
+
+                    <a:field name="workflowCodeName" lovCode="LOV_SSC_WORKFLOW_VL" prompt="ssc_document_workflow.workflow_id" required="true">
+                        <a:mapping>
+                            <a:map from="workflowId" to="workflowId"/>
+                            <a:map from="workflowCode" to="workflowCode"/>
+                            <a:map from="workflowName" to="workflowName"/>
+                            <a:map from="workflowCodeName" to="workflowCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="workflowId"/>
+                    <a:field name="workflowCode"/>
+                    <a:field name="workflowName"/>
+
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_document_workflow.enabled_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="SSC1050_add"/>
+                    <a:event name="beforecreate" handler="SSC1050_beforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="SSC1050_grid" type="add" width="80"/>
+                <a:gridButton bind="SSC1050_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="ssc_document_workflow_query_ds" resultTarget="ssc_document_workflow_result_ds" style="border:none; width:100%;">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="ssc_document_workflow_query_ds" width="170"/>
+                    <a:comboBox name="docCategoryName" bindTarget="ssc_document_workflow_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="SSC1050_grid" bindTarget="ssc_document_workflow_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="docCategoryName" align="center" editor="SSC1050_gridCbb" width="120"/>
+                <a:column name="docTypeCodeName" align="center" editor="SSC1050_gridLov" width="120"/>
+                <a:column name="companyCodeName" align="center" editor="SSC1050_gridLov" width="120"/>
+                <a:column name="accEntityCodeName" align="center" editor="SSC1050_gridLov" width="120"/>
+                <a:column name="workflowCodeName" align="center" editor="SSC1050_gridLov" width="120"/>
+                <a:column name="enabledFlag" align="center" editor="SSC1050_gridCb" width="80"/>
+                <a:column name="workflowNode" align="center" renderer="SSC1050_gridRenderer" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:checkBox id="SSC1050_gridCb"/>
+                <a:lov id="SSC1050_gridLov"/>
+                <a:comboBox id="SSC1050_gridCbb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="SSC1050_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

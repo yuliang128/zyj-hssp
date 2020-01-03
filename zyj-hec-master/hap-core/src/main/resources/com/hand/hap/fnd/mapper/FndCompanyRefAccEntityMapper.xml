@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.fnd.mapper.FndCompanyRefAccEntityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.fnd.dto.FndCompanyRefAccEntity">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <resultMap id="AccEntity" type="com.hand.hap.fnd.dto.FndCompanyRefAccEntity">
+        <result column="acc_entity_code" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="acc_entity_name" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="acc_entity_id" property="accEntityId" jdbcType="DECIMAL" />
+    </resultMap>
+
+
+
+<select id="queryFndCompanyRefAccEntity" resultMap="BaseResultMap" parameterType="com.hand.hap.fnd.dto.FndCompanyRefAccEntity">
+    select REF_ID from fnd_company_ref_acc_entity where COMPANY_ID = #{companyId} and ACC_ENTITY_ID=#{accEntityId}
+</select>
+    <update id="setDefaultFlagN" parameterType="java.lang.Long">
+        update fnd_company_ref_acc_entity set DEFAULT_FLAG = 'N',ENABLED_FLAG = 'N' where COMPANY_ID = #{companyId} and DEFAULT_FLAG = 'Y'
+    </update>
+    <select id="queryAccEntity" resultMap="AccEntity" parameterType="com.hand.hap.fnd.dto.FndCompanyRefBgtEntity">
+    SELECT
+	gae.acc_entity_code,
+	gt.acc_entity_name,
+	gae.acc_entity_id
+    FROM
+	gld_accounting_entity gae
+	LEFT OUTER JOIN gld_accounting_entity_tl gt ON (
+	gae.acc_entity_id = gt.acc_entity_id
+	AND gt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),gld_acc_entity_ref_sob gsb
+    WHERE
+	gsb.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+	AND gsb.DEFAULT_FLAG = 'Y'
+	AND gsb.ENABLED_FLAG = 'Y'
+	AND gae.start_date_active &lt;= CURRENT_TIMESTAMP
+    AND ( gae.end_date_active &gt;= CURRENT_TIMESTAMP OR gae.end_date_active IS NULL )
+    AND gsb.SET_OF_BOOKS_ID IN ( SELECT fms.set_of_books_id FROM fnd_mag_org_ref_gld_sob fms WHERE fms.mag_org_id = #{magOrgId}
+    AND fms.enabled_flag = 'Y' )
+    AND gae.company_type != '2'
+    AND NOT EXISTS ( SELECT 1 FROM fnd_company_ref_acc_entity fcae WHERE fcae.acc_entity_id = gae.acc_entity_id AND fcae.company_id = #{companyId})
+    ORDER BY gae.acc_entity_code
+    </select>
+    <resultMap id="FndCompanyRefAccEntity" type="com.hand.hap.fnd.dto.FndCompanyRefAccEntity">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="ENTITY_ID" property="bgtEntityName" jdbcType="DECIMAL" />
+        <result column="ENTITY_CODE" property="bgtEntityCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="bgtEntityName" jdbcType="VARCHAR" />
+        </resultMap>
+    <select id="queryAllFndCompanyRefAccEntity" resultMap="FndCompanyRefAccEntity" parameterType="com.hand.hap.fnd.dto.FndCompanyRefAccEntity">
+    SELECT
+	fae.REF_ID,
+	fae.COMPANY_ID,
+	fae.ACC_ENTITY_ID,
+	fae.DEFAULT_FLAG,
+	fae.ENABLED_FLAG,
+	fab.ENTITY_ID,
+	fab.DESCRIPTION,
+	fab.ENTITY_CODE,
+	ge.ACC_ENTITY_CODE,
+	ge.ACC_ENTITY_NAME,
+	ge.ACC_ENTITY_ID
+    FROM
+	fnd_company_ref_acc_entity fae
+	LEFT JOIN gld_accounting_entity ge ON fae.ACC_ENTITY_ID = ge.ACC_ENTITY_ID
+	LEFT JOIN (
+    SELECT
+	be.ENTITY_CODE,
+	bt.DESCRIPTION,
+	be.ENTITY_ID,
+	frae.ACC_REF_ID
+    FROM
+	fnd_company_ref_acc_be frae,
+	bgt_entity be
+	LEFT OUTER JOIN bgt_entity_tl bt ON (
+	be.ENTITY_ID = bt.ENTITY_ID
+	AND bt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) where frae.BGT_ENTITY_ID = be.ENTITY_ID and frae.DEFAULT_FLAG = 'Y') fab on fae.REF_ID = fab.ACC_REF_ID
+    WHERE
+	fae.company_id = #{companyId} order by ge.ACC_ENTITY_CODE</select>
+
+    <select id="queryDftAccByComId" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT
+            ae.acc_entity_id accEntityId
+        FROM
+            fnd_company_ref_acc_entity ae
+        WHERE
+            ae.company_id = #{request.companyId}
+            AND ae.enabled_flag = 'Y'
+            AND ae.default_flag = 'Y'
+    </select>
+</mapper>

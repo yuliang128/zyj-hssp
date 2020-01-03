@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan
+    $Date: 2017-9-21 20:14:12
+    $Revision: 1.0  
+    $Purpose: 还款登记单类型定义-分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+        function CSH7010_closeAsgnComWin() {
+            $au('CSH7010_asgnComWin').close();
+        }
+
+        function CSH7010_setLovPara(grid, row, name, record) {
+            if (name === 'companyCode') {
+                record.getField('companyCode').setLovPara('magOrgId', '$[/parameter/@magOrgId]');
+                record.getField('companyCode').setLovPara('moRepaymentRegTypeId', '$[/parameter/@moRepaymentRegTypeId]');
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7010_asgnComShowDs" autoCreate="true">
+                <a:field name="moRepaymentRegTypeId"/>
+                <a:field name="moRepaymentRegTypeCode" readOnly="true"/>
+                <a:field name="description" readOnly="true"/>
+            </a:dataSet>
+            <a:dataSet id="csh_mo_repa_reg_tp_asgn_com_result_ds" autoQuery="true"
+                       baseUrl="/csh/mo-repay-reg-asgn-com" queryDataSet="CSH7010_asgnComShowDs"
+                       queryUrl="$[/request/@context_path]/csh/mo-repay-reg-asgn-com/query?moRepaymentRegTypeId=$[/parameter/@moRepaymentRegTypeId]"
+                       selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="moRepaymentRegTypeId" defaultValue="$[/parameter/@moRepaymentRegTypeId]"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" autoComplete="true" autoCompleteField="companyCode"
+                             lovCode="LOV_MO_REPAY_REG_TP_AS_COM"
+                             prompt="csh_mo_repa_reg_type.company_code" required="true"
+                             title="fnd_company.assign_company">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>7
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="budget_item.assign_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH7010_asgnCom_grid" type="add" width="70"/>
+                    <a:gridButton bind="CSH7010_asgnCom_grid" type="save" width="70"/>
+                    <a:gridButton bind="CSH7010_asgnCom_grid" type="delete" width="70"/>
+                    <a:button click="CSH7010_openBatchAsgnComWin" text="HEC_BATCH_ASSIGN" width="70"/>
+                    <a:button click="CSH7010_closeAsgnComWin" text="HAP_BACK" width="70"/>
+                </a:formToolbar>
+                <a:textField name="moRepaymentRegTypeCode" bindTarget="csh_mo_repa_reg_types_result_ds"
+                             prompt="csh_mo_repa_reg_type.type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="csh_mo_repa_reg_types_result_ds"
+                             prompt="csh_mo_repa_reg_type.type_description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH7010_asgnCom_grid" bindTarget="csh_mo_repa_reg_tp_asgn_com_result_ds" marginHeight="195"
+                    navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editor="CSH7010_asgnCom_grid_lov" width="100"
+                              prompt="fnd_company.company_code"/>
+                    <a:column name="companyName" align="left" prompt="fnd_company.company_name" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="CSH7010_asgnCom_grid_cb"
+                              prompt="hap.enableflag" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH7010_asgnCom_grid_lov"/>
+                    <a:checkBox id="CSH7010_asgnCom_grid_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH7010_setLovPara"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+        function initPage() {
+            let record = $au('CSH7010_asgnComShowDs').getAt(0);
+            record.set('moRepaymentRegTypeId', '$[/parameter/@moRepaymentRegTypeId]');
+        }
+
+        initPage();
+        ]]></script>
+    </a:view>
+</a:screen>

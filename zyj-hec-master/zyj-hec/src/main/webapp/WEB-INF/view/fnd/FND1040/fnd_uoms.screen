@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei $
+    $Date: 2018/05/07 16:07:11 $
+    $Revision: 1.2 $
+    $Purpose: 计量单位维护
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND1040_fnd_uom_asgn_mo_org_link" url="$[/request/@context_path]/fnd/FND1040/fnd_uoms_asgn_mo_org.screen"/>
+        <a:link id="FND1040_fnd_uom_batch_asgn_com_link" url="$[/request/@context_path]/fnd/FND1040/fnd_uoms_batch_asgn_company.screen"/>
+        <script><![CDATA[
+            //查询
+            
+            function FND1040_queryUoms() {
+                $au('FND1040_fnd_uoms_result_ds').query();
+            }
+            
+            //控制code不可输
+            
+            function FND1040_typeUomsEditer(record, name) {
+                if (record.isNew) {
+                    return 'uom_code_tf_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            function FND1040_update(ds, record, name, value){
+                if (name == 'uom_type_desc') {
+                    //计量单位类型变更清除原单位转换率
+                    record.set('metaConversionRate', '');
+                }
+            }
+            
+            function FND1040_onUomCreateSuccess() {
+                FND1040_queryUoms();
+            }
+            
+            //分配管理组织
+            
+            function FND1040_AssignMoOrgRendererFun(value, record, name) {
+                if (!record.isNew) {
+                    return '<a href="javascript:FND1040_moOrgAssignFun(' + record.get('uomId') + ')">$[l:bgt_period.bgt_period_assign_mo_org]</a>';
+                }
+            }
+            
+            function FND1040_moOrgAssignFun(uomId) {
+                new Aurora.Window({
+                    url: $au('FND1040_fnd_uom_asgn_mo_org_link').getUrl() + '?uomId=' + uomId,
+                    id: 'FND1040_fnd_uom_assgin_mo_org_window',
+                    title: '$[l:bgt_period.bgt_period_assign_mo_org]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    FND1040_queryUoms();
+                });
+            }
+            //批量分配公司  Y.duan 2018-9-1 10:29:31
+            function FND1040_BatchAssignComp(){
+                var uomsData = $au('FND1040_fnd_uoms_result_ds').getJsonData(true);
+                if (uomsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    url: $au('FND1040_fnd_uom_batch_asgn_com_link').getUrl(),
+                    id: 'FND1040_fnd_uom_batch_assgin_com_window',
+                    title: '$[l:fnd_company.assign_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1040_fnd_uoms_query_ds" autoCreate="true"/>
+            <a:dataSet id="FND1040_fnd_uoms_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/fnd/uom" queryUrl="$[/request/@context_path]/fnd/uom/query" queryDataSet="FND1040_fnd_uoms_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="uomId"/>
+                    <a:field name="uomCode" prompt="fnd_uom.uom_code" required="true"/>
+                    <a:field name="description" prompt="fnd_uom.uom_name" required="true"/>
+                    <a:field name="uomTypeDesc" autoComplete="true" autoCompleteField="codeName"  lovCode="LOV_FND_UOM_TYPE" prompt="fnd_uom_type.uom_type_name" required="true" title="fnd_uom_type.uom_type_name">
+                        <a:mapping>
+                            <a:map from="uomTypeId" to="uomTypeId"/>
+                            <a:map from="codeName" to="uomTypeDesc"/>
+                            <a:map from="metaUomName" to="metaUomName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="uomTypeId" />
+                    <a:field name="metaUomName" prompt="fnd_uom_type.meta_uom_id"/>
+                    <a:field name="precision" prompt="fnd_uom.precision" required="true"/>
+                    <a:field name="metaConversionRate" prompt="fnd_uom.meta_conversion_rate"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1040_update"/>
+                    <a:event name="submitsuccess" handler="FND1040_onUomCreateSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND1040_fnd_uoms_grid" type="add" width="80"/>
+                <a:gridButton bind="FND1040_fnd_uoms_grid" type="save" width="80"/>
+                <a:gridButton bind="FND1040_fnd_uoms_grid" type="clear" width="80"/>
+                <a:gridButton bind="FND1040_fnd_uoms_grid" click="FND1040_BatchAssignComp" text="HEC_BATCH_ASSIGN" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1040_fnd_uoms_query_ds" resultTarget="FND1040_fnd_uoms_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:textField name="uomCode" bindTarget="FND1040_fnd_uoms_query_ds" prompt="fnd_uom.uom_code" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1040_queryUoms"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND1040_fnd_uoms_query_ds" prompt="fnd_uom.uom_name">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1040_queryUoms"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1040_fnd_uoms_grid" bindTarget="FND1040_fnd_uoms_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="uomCode" align="center" editorFunction="FND1040_typeUomsEditer" width="80"/>
+                <a:column name="description" align="left" editor="uom_name_tf" width="200"/>
+                <a:column name="uomTypeDesc" align="center" editor="uom_type_lov" width="120"/>
+                <a:column name="metaUomName" align="center" width="120"/>
+                <a:column name="precision" align="right" editor="precision_nf" width="80"/>
+                <a:column name="metaConversionRate" align="right" editor="rate_nf" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="enabled_flag_cb" width="80"/>
+                <a:column name="assginMoOrg" align="center" renderer="FND1040_AssignMoOrgRendererFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="uom_code_tf_upper" typeCase="upper"/>
+                <a:tledit id="uom_name_tf"/>
+                <a:lov id="uom_type_lov"/>
+                <a:numberField id="precision_nf" allowDecimals="false" allowNegative="false"/>
+                <a:numberField id="rate_nf" allowDecimals="true" allowNegative="false" decimalPrecision="4"/>
+                <a:checkBox id="enabled_flag_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

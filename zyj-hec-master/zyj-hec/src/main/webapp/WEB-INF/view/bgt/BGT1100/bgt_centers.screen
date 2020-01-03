@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-30 上午10:50:36
+    $Revision: 1.0  
+    $Purpose:预算中心定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1100_bgt_center_hierarchy_link" url="$[/request/@context_path]/bgt/BGT1100/bgt_center_hierarchy.screen"/>
+        <a:link id="BGT1100_bgt_center_manual_update_link" url="$[/request/@context_path]/bgt/center/manual"/>
+        <a:link id="BGT1100_asgnEntityLink" url="$[/request/@context_path]/bgt/BGT1100/bgt_center_ref_bgt_entities.screen"/>
+        <a:link id="BGT1100_bgt_centers_batch_assign_entity_link" url="$[/request/@context_path]/bgt/BGT1100/bgt_center_batch_assign_entities.screen"/>
+        <script><![CDATA[
+            function BGT1100_bgtCenterEditFun(record, name) {
+                if (name == 'centerCode') {
+                    if (record.isNew) {
+                        return 'BGT1100_bgt_centers_code_tf';
+                    } else {
+                        return '';
+                    }
+                }
+                if (name == 'centerTypeName') {
+                    if (record.isNew || record.get('sourceTypeCode') == 'CUSTOMIZE') {
+                        return 'BGT1100_bgt_centers_cb';
+                    } else {
+                        return '';
+                    }
+                }
+                return '';
+            }
+            
+            function BGT1100_ceterDetailFun(value, record, name) {
+                var centerType = record.get('centerType');
+                var centerId = record.get('centerId');
+                var sourceTypeCode = record.get('sourceTypeCode');
+                var realyCenterType = record.get('realyCenterType');
+                if (centerType == 'SUMMARY' && !record.isNew && sourceTypeCode != 'MANAGEMENT') {
+                    return '<a href="javascript:BGT1100_ceterDetailFunInfo(' + centerId + ')">$[l:bgt_center.center_detail]</a>';
+                }
+                /*if (centerType == 'SUMMARY' && !record.isNew && sourceTypeCode == 'MANAGEMENT' && realyCenterType == 'SUMMARY') {
+                    return '<a href="javascript:BGT1100_ceterDetailFunInfo(' + centerId + ')">$[l:bgt_centers.center_detail]</a>';
+                }*/
+            }
+            
+            function BGT1100_ceterDetailFunInfo(centerId) {
+                var bgtOrgId = $au('BGT1100_bgt_centers_query_ds').getAt(0).get('bgtOrgId');
+                new Aurora.Window({
+                    id: 'BGT1100_bgt_center_hierarchy_window',
+                    url: $au('BGT1100_bgt_center_hierarchy_link').getUrl() + '?centerId=' + centerId + '&bgtOrgId=' + bgtOrgId,
+                    title: '$[l:bgt_center.center_detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function BGT1100_bgtCenterSubSuccessFun() {
+                $au('BGT1100_bgt_centers_result_ds').query();
+            }
+            
+            function BGT1100_bgtCenterSyncUpdateFun() {
+                var bgtOrgId = $au('BGT1100_bgt_centers_query_ds').getAt(0).get('bgtOrgId');
+                var sourceTypeCode = $au('BGT1100_bgt_centers_query_ds').getAt(0).get('sourceTypeCode');
+                debugger;
+                var param = {};
+                param.bgtOrgId = bgtOrgId;
+                param.sourceTypeCode = sourceTypeCode;
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('BGT1100_bgt_center_manual_update_link').getUrl(),
+                    para: param,
+                    success: function() {
+                        $au('BGT1100_bgt_centers_result_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            function BGT1100_beforeDsCreate() {
+                var bgtOrgCodeName = $au('BGT1100_bgt_centers_query_ds').getAt(0).get('bgtOrgCodeName');
+                if (Ext.isEmpty(bgtOrgCodeName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            //add lcy 保存前校验管理组织
+            
+            function BGT1100_beforeSubmit() {
+                var bgtOrgCodeName = $au('BGT1100_bgt_centers_query_ds').getAt(0).get('bgtOrgCodeName');
+                if (Ext.isEmpty(bgtOrgCodeName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function BGT1100_bgtOrgsDsQuery() {
+                $au('BGT1100_bgtOrgsDs').query();
+            }
+            
+            function BGT1100_onQueryDsUpdate(dataSet, record, name, value, old) {
+                if (name == 'bgtOrgCodeName') {
+                    $au('BGT1100_bgt_centers_result_ds').query();
+                }
+                if (name == 'sourceTypeCode') {
+                    // Modify Tagin/2017.12.01 需要设置按钮启用和不启用
+                    if (value == 'ACCOUNTING' || value == 'MANAGEMENT') {
+                        $au('BGT1100_bgt_centers_add').disable();
+                        $au('BGT1100_bgt_centers_manual').enable();
+                    } else {
+                        $au('BGT1100_bgt_centers_add').enable();
+                        $au('BGT1100_bgt_centers_manual').disable();
+                    }
+                }
+            }
+            
+            function BGT1100_asgnEntity(value, record, name) {
+                var centerId = record.get('centerId');
+                var bgtOrgId = record.get('bgtOrgId');
+                return '<a href="javascript:BGT1100_openAsgnEntityWin('+centerId+','+bgtOrgId+')">$[l:prompt.budget_distribution]</a>';
+            }
+            
+            function BGT1100_openAsgnEntityWin(centerId, bgtOrgId) {
+                var url = $au('BGT1100_asgnEntityLink').getUrl() + '?centerId=' + centerId + '&bgtOrgId=' + bgtOrgId;
+                new Aurora.Window({
+                    id: 'BGT1100_asgnEntityWin',
+                    url: url,
+                    title: '$[l:prompt.budget_distribution]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function BGT1100_bgtCenterBatchAssignEntityFun() {
+                var queryDataSet = $au('BGT1100_bgt_centers_query_ds');
+                var resultDataSet = $au('BGT1100_bgt_centers_result_ds');
+                var bgtOrgId = queryDataSet.getAt(0).get('bgtOrgId');
+                if (Ext.isEmpty(bgtOrgId)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                var records = resultDataSet.getJsonData(true);
+                if (records.length == 0) {
+                    Aurora.showMessage('$[l:sys_not_null]', '$[l:prompt.select_line_date]', null, 300, 100);
+                    return false;
+                }
+                if (resultDataSet.isModified()) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:save_first]', null, 300, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'BGT1100_bgt_centers_batch_assign_Entity',
+                    title: '$[l:prompt.budget_distribution]',
+                    url: $au('BGT1100_bgt_centers_batch_assign_entity_link').getUrl() + '?bgtOrgId=' + bgtOrgId,
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            // Modify Tagin/2018.01.28 增加数据时赋值预算中心字段
+            
+            function BGT1100_addFunc(dataSet, record, index) {
+                var bgtOrgId = $au('BGT1100_bgt_centers_query_ds').getAt(0).get('bgtOrgId');
+                record.set('bgtOrgId', bgtOrgId);
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1100_bgtOrgsDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryAll"/>
+            <a:dataSet id="BGT1100_currency_ds">
+                <a:datas dataSource="currencyList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1100_center_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_CENTER_TYPE/"/>
+            <a:dataSet id="BGT1100_sourceType_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_ORG_SOURCE_TYPE/"/>
+            <a:dataSet id="BGT1100_bgt_centers_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/bgtOrgList/records/record/@bgtOrgId]"/>
+                    <a:field name="sourceTypeCode" defaultValue="$[/model/bgtOrgList/records/record/@sourceTypeCode]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/bgtOrgList/records/record/@description]"/>
+                    <a:field name="bgtOrgCode" defaultValue="$[/model/bgtOrgList/records/record/@bgtOrgCode]"/>
+                    <a:field name="bgtOrgCodeName" defaultValue="$[/model/bgtOrgList/records/record/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT1100_bgtOrgsDs" prompt="bgt_budget_items.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId">
+                        <a:mapping>
+                            <a:map from="sourceTypeCode" to="sourceTypeCode"/>
+                            <a:map from="description" to="bgtOrgName"/>z
+                            <a:map from="bgtOrgCode" to="bgtOrgCode"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1100_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT1100_bgt_centers_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/center" queryDataSet="BGT1100_bgt_centers_query_ds" queryUrl="$[/request/@context_path]/bgt/center/queryMain" selectable="true">
+                <a:fields>
+                    <a:field name="centerId"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="centerCode" required="true" prompt="bgtcenter.centercode"/>
+                    <a:field name="description" dto="com.hand.hec.bgt.dto.BgtCenter" dtoId="centerId" required="true" prompt="bgt_center.description"/>
+                    <a:field name="currencyName" displayField="currencyName" options="BGT1100_currency_ds" returnField="currencyCode" valueField="currencyCode" prompt="bgt_center.currency_name"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="centerTypeName" displayField="meaning" options="BGT1100_center_type_ds" required="true" returnField="centerType" valueField="value" prompt="bgt_center.center_type_name"/>
+                    <a:field name="centerType"/>
+                    <a:field name="sourceTypeName" defaultValue="$[l:bgt_center.customize]" prompt="bgt_center.source_type_name"/>
+                    <a:field name="sourceTypeCode" defaultValue="CUSTOMIZE"/>
+                    <a:field name="sourceDetail" prompt="bgt_center.source_detail"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="bgt_center.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="BGT1100_addFunc"/>
+                    <a:event name="beforecreate" handler="BGT1100_beforeDsCreate"/>
+                    <a:event name="submitsuccess" handler="BGT1100_bgtCenterSubSuccessFun"/>
+                    <a:event name="beforesubmit" handler="BGT1100_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton id="BGT1100_bgt_centers_add" bind="BGT1100_bgt_centers_grid" type="add" width="80"/>
+                <a:gridButton bind="BGT1100_bgt_centers_grid" type="save" width="80"/>
+                <a:toolbarButton id="BGT1100_bgt_centers_manual" click="BGT1100_bgtCenterSyncUpdateFun" text="manual_update" width="80"/>
+                <a:toolbarButton click="BGT1100_bgtCenterBatchAssignEntityFun" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT1100_bgt_centers_query_ds" marginWidth="10" resultTarget="BGT1100_bgt_centers_result_ds" style="border:none; width:100%;">
+                <a:formToolBar>
+                    <a:comboBox name="bgtOrgCodeName" bindTarget="BGT1100_bgt_centers_query_ds"/>
+                    <a:textField name="centerCode" bindTarget="BGT1100_bgt_centers_query_ds" prompt="bgt_center.center_code" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="BGT1100_bgt_centers_query_ds" prompt="bgt_center.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT1100_bgt_centers_grid" bindTarget="BGT1100_bgt_centers_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="centerCode" align="center" editorFunction="BGT1100_bgtCenterEditFun" width="80"/>
+                <a:column name="description" align="left" editor="BGT1100_bgt_centers_tl" width="200"/>
+                <a:column name="currencyName" align="center" editor="BGT1100_bgt_centers_cb" width="80"/>
+                <a:column name="centerTypeName" align="center" editorFunction="BGT1100_bgtCenterEditFun" width="80"/>
+                <a:column name="sourceTypeName" align="center" width="80"/>
+                <a:column name="sourceDetail" align="left" width="150"/>
+                <a:column name="enabledFlag" align="center" editor="BGT1100_bgt_centers_chx" width="80"/>
+                <a:column name="asgnEntity" align="center" renderer="BGT1100_asgnEntity" width="80"/>
+                <a:column name="centerDetail" align="center" renderer="BGT1100_ceterDetailFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="BGT1100_bgt_centers_tl"/>
+                <a:textField id="BGT1100_bgt_centers_code_tf" typeCase="upper"/>
+                <a:textField id="BGT1100_bgt_centers_tf"/>
+                <a:comboBox id="BGT1100_bgt_centers_cb"/>
+                <a:checkBox id="BGT1100_bgt_centers_chx"/>
+            </a:editors>
+        </a:grid>
+        <script><![CDATA[
+             function BGT1100_INIT() {
+                 var source_type = '$[/model/bgtOrgList/records/record/@sourceTypeCode]';
+                 if (source_type == 'ACCOUNTING' || source_type == 'MANAGEMENT') {
+                     $au('BGT1100_bgt_centers_add').disable();
+                     $au('BGT1100_bgt_centers_manual').enable();
+                 } else {
+                     $au('BGT1100_bgt_centers_add').enable();
+                     $au('BGT1100_bgt_centers_manual').disable();
+                 }
+             }
+             BGT1100_INIT();
+         ]]></script>
+    </a:view>
+</a:screen>

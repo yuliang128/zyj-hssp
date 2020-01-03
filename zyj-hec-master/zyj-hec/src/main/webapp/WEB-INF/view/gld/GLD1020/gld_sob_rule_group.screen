@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong
+    $Date: 2017/04/06 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 账套级会计规则组定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query fetchAll="true" model="hec_util.get_mag_org_default_sob" rootPath="GLD1020_defaultSobOfMagOrg"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="GLD1020_gld_sob_rule_gp_ref_ae_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rule_gp_ref_ae.screen"/>
+        <a:link id="GLD1020_gld_sob_rule_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rule.screen"/>
+        <a:link id="GLD1020_gld_sob_rule_group_select_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rule_group_select.screen"/>
+        <script><![CDATA[
+            function GLD1020_interfaceRulesQueryFun() {
+                $au('GLD1020_gld_sob_rule_groups_result').query();
+            }
+            
+            function GLD1020_ruleDetailsRendererFun(value, record, name) {
+                var ruleGroupId = record.get('ruleGroupId');
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:GLD1020_ruleDetailsFun(' + ruleGroupId + ');">$[l:gld.rule_detail]</a>';
+            }
+            
+            function GLD1020_ruleDetailsFun(ruleGroupId) {
+                new Aurora.Window({
+                    url: $au('GLD1020_gld_sob_rule_link').getUrl() + '?ruleGroupId=' + ruleGroupId + '&setOfBooksId=' + $au('GLD1020_gld_sob_rule_groups_query_ds').getAt(0).get('setOfBooksId'),
+                    id: 'GLD1020_gld_sob_rules_window',
+                    title: '$[l:gld.rule_detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function GLD1020_accEntityAssignRendererFun(value, record, name) {
+                var ruleGroupId = record.get('ruleGroupId');
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:GLD1020_accEntityAssignFun(' + ruleGroupId + ');">$[l:gld.acc_entity_assign]</a>';
+            }
+            
+            function GLD1020_accEntityAssignFun(ruleGroupId) {
+                new Aurora.Window({
+                    url: $au('GLD1020_gld_sob_rule_gp_ref_ae_link').getUrl() + '?ruleGroupId=' + ruleGroupId + '&setOfBooksId=' + $au('GLD1020_gld_sob_rule_groups_query_ds').getAt(0).get('setOfBooksId'),
+                    id: 'GLD1020_gld_sob_rule_gp_ref_ae_window',
+                    title: '$[l:gld.acc_entity_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            
+            function GLD1020_ruleCodeEditFun(record, name) {
+                if (record.isNew) {
+                    return 'GLD1020_gld_sob_rule_groups_grid_tf';
+                }
+                return '';
+            }
+            
+            
+            function GLD1020_backGldSobRuleGroupsFun() {
+                window.location.href = $au('GLD1020_gld_sob_rule_group_select_link').getUrl();
+            }
+            
+            
+            function GLD1020_onSobRuleGroupsSuccessFun() {
+                $au('GLD1020_gld_sob_rule_groups_result').query();
+            }
+            
+            function GLD1020_beforeDsCreate() {
+                var setOfBooksName = $au('GLD1020_gld_sob_rule_groups_query_ds').getAt(0).get('setOfBooksName');
+                if (Ext.isEmpty(setOfBooksName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:gld.sob_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function GLD1020_onDsAdd(ds, rd, idx) {
+                var setOfBooksId = $au('GLD1020_gld_sob_rule_groups_query_ds').getAt(0).get('setOfBooksId');
+                rd.set('setOfBooksId', setOfBooksId);
+            }
+            
+            function GLD1020_sobsDsQuery() {
+                $au('GLD1020_sobsDs').query();
+            }
+            
+            function GLD1020_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('setOfBooksName' == name) {
+                    $au('GLD1020_gld_sob_rule_groups_result').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+
+            <a:dataSet id="GLD1020_sobsDs">
+                <a:datas dataSource="gldSetOfBookList/records"/>
+            </a:dataSet>
+
+            <a:dataSet id="GLD1020_defaultSobsDs">
+                <a:datas dataSource="defaultGldSetOfBookList/records"/>
+            </a:dataSet>
+
+
+            <a:dataSet id="GLD1020_gld_sob_rule_groups_query_ds" autoCreate="true"  >
+                <a:fields>
+                    <a:field name="setOfBooksId" defaultValue="$[/model/defaultGldSetOfBookList/records/record/@setOfBooksId]"/>
+                    <a:field name="setOfBooksName" defaultValue="$[/model/defaultGldSetOfBookList/records/record/@setOfBooksCodeName]" displayField="setOfBooksCodeName" options="GLD1020_sobsDs" prompt="exp_expense_item.set_of_book_id" required="true" returnField="setOfBooksId" valueField="setOfBooksId"/>
+                    <a:field name="ruleGroupCode"  prompt="gld_sob_rule_group.rule_group_code"/>
+                    <a:field name="ruleGroupName"  prompt="gld_sob_rule_group.rule_group_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD1020_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GLD1020_gld_sob_rule_groups_result" autoPageSize="true" autoQuery="true" baseUrl="/gld/sob-rule-group" queryDataSet="GLD1020_gld_sob_rule_groups_query_ds"  selectable="false">
+                <a:fields>
+                    <a:field name="ruleGroupId"/>
+                    <a:field name="setOfBooksId" required="true" />
+                    <a:field name="ruleGroupCode" required="true" prompt="gld_sob_rule_group.rule_group_code"/>
+                    <a:field name="ruleGroupName" required="true" prompt="gld_sob_rule_group.rule_group_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD1020_onSobRuleGroupsSuccessFun"/>
+                    <a:event name="beforecreate" handler="GLD1020_beforeDsCreate"/>
+                    <a:event name="add" handler="GLD1020_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="GLD1020_gld_sob_rule_groups_grid" type="add" width="80"/>
+                <a:gridButton bind="GLD1020_gld_sob_rule_groups_grid" type="save" width="80"/>
+                <!-- <a:toolbarButton click="GLD1020_backGldSobRuleGroupsFun" text="HAP_BACK" width="80"/> -->
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="GLD1020_gld_sob_rule_groups_query_ds" resultTarget="GLD1020_gld_sob_rule_groups_result" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="setOfBooksName" bindTarget="GLD1020_gld_sob_rule_groups_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="GLD1020_sobsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="ruleGroupCode" bindTarget="GLD1020_gld_sob_rule_groups_query_ds" width="120"/>
+                    <a:textField name="ruleGroupName" bindTarget="GLD1020_gld_sob_rule_groups_query_ds" width="200"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="GLD1020_gld_sob_rule_groups_grid" bindTarget="GLD1020_gld_sob_rule_groups_result" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="ruleGroupCode" align="center" editor="GLD1020_gld_sob_rule_groups_grid_tf" editorFunction="GLD1020_ruleCodeEditFun" width="120"/>
+                <a:column name="ruleGroupName" align="left" editor="GLD1020_gld_sob_rule_groups_grid_tf" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="GLD1020_gld_sob_rule_groups_grid_cb" width="80"/>
+                <a:column name="ruleDetail" align="center" renderer="GLD1020_ruleDetailsRendererFun" width="80"/>
+                <a:column name="accEntityAssign" align="center" renderer="GLD1020_accEntityAssignRendererFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="GLD1020_gld_sob_rule_groups_grid_tf"/>
+                <a:checkBox id="GLD1020_gld_sob_rule_groups_grid_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

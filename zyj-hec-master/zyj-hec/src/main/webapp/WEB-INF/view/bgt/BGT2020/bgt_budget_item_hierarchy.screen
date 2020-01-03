@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_budget_item_hierarchy_sub_link" url="$[/request/@context_path]/bgt/BGT2020/bgt_budget_item_hierarchy_sub.screen"/>
+        <script><![CDATA[
+            function BGT2020_queryFunc() {
+                $au('bgt_item_hierarchy_result_ds').query();
+            }
+            
+            function BGT2020_renderFunc(value, record, name) {
+                var id = record.get('budgetItemId');
+                if (id) {
+                    return "<a href = 'javascript:BGT2020_openWin(" + id + ")'>" + "$[l:bgt_hierarchy.sub_item]" + "</a>";
+                }
+            }
+            
+            function BGT2020_openWin(id) {
+                new Aurora.Window({
+                    id: 'bgt_budget_item_hierarchy_sub_window',
+                    url: $au('bgt_budget_item_hierarchy_sub_link').getUrl() + '?parentBudgetItemId=' + id,
+                    title: '$[l:bgt_hierarchy.sub_item]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function BGT2020_beforeDsCreate() {
+                var bgt_org_name = $au('bgt_item_hierarchy_query_ds').getAt(0).get('bgtOrgName');
+                if (Ext.isEmpty(bgt_org_name)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function BGT2020_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('bgt_item_hierarchy_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+            }
+            
+            function BGT2020_bgtOrgsDsQuery() {
+                $au('BGT2020_bgtOrgsDs').query();
+            }
+            
+            function BGT2020_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgName' == name) {
+                    $au('bgt_item_hierarchy_result_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2020_bgtOrgsDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrganizationOptions"/>
+            <a:dataSet id="bgt_item_hierarchy_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT2020_bgtOrgsDs" prompt="bgt_budget_item.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                    <a:field name="budgetItemCode" prompt="bgt_budget_item.budget_item_code"/>
+                    <a:field name="description" prompt="bgt_budget_item.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2020_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_item_hierarchy_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/budget-item" queryDataSet="bgt_item_hierarchy_query_ds" queryUrl="$[/request/@context_path]/bgt/budget-item/querySummary">
+                <a:fields>
+                    <a:field name="budgetItemCode" prompt="bgt_budget_item.budget_item_code"/>
+                    <a:field name="description" prompt="bgt_budget_item.description"/>
+                    <a:field name="budgetItemTypeName" prompt="bgt_budget_item_type.description" />
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="BGT2020_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT2020_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:queryForm bindTarget="bgt_item_hierarchy_query_ds" resultTarget="bgt_item_hierarchy_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="110">
+                    <a:comboBox name="bgtOrgName" bindTarget="bgt_item_hierarchy_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT2020_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="budgetItemCode" bindTarget="bgt_item_hierarchy_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="BGT2020_queryFunc"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="bgt_item_hierarchy_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="BGT2020_queryFunc"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="bgt_item_hierarchy_grid" bindTarget="bgt_item_hierarchy_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="budgetItemCode" align="center" sortable="true" width="80"/>
+                <a:column name="description" align="left" width="250"/>
+                <a:column name="budgetItemTypeName" align="center" width="80"/>
+                <a:column name="subitems" align="center" renderer="BGT2020_renderFunc" width="80"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

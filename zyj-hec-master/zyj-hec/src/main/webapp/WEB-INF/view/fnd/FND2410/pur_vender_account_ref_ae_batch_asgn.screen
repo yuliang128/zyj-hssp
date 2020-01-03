@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-1 上午9:52:52  
+    $Revision: 1.0  
+    $Purpose: 核算主体-批量分配(银行账号)
+
+    $Author: jialin.xing
+    $Date: 2019/2/20 11:47:05 $
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="FND2410_pur_vender_account_ref_ae_batch_url"
+                url="$[/request/@context_path]/pur/vender-account-ref-ae/batch-assign/submit"/>
+        <script><![CDATA[
+        function FND2410_closeAsgnBatchCreateWindow() {
+            $au('FND2410_pur_vender_account_ref_ae_batch_window').close();
+        }
+
+        function FND2410_assignAccEntity() {
+            var datas = $au('FND2410_batch_asgn_acc_entity_ds').getJsonData(true);
+            if (datas.length === 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                return;
+            }
+            for (var i = 0; i < datas.length; i++) {
+                datas[i]['venderId'] = '$[/parameter/@venderId]';
+                datas[i]['accountId'] = '$[/parameter/@accountId]';
+                datas[i]['primaryFlag'] = 'N';
+                datas[i]['enabledFlag'] = 'Y';
+            }
+
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('FND2410_pur_vender_account_ref_ae_batch_url').getUrl(),
+                para: datas,
+                success: FND2410_closeAssignPage,
+                scope: this
+            });
+        }
+
+        function FND2410_closeAssignPage(res) {
+            $au('FND2410_pur_vender_account_ref_ae_batch_window').close();
+            $au('FND2410_pur_vender_account_ref_ae_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2410_batch_asgn_acc_entity_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/pur/vender-account-ref-ae"
+                       queryUrl="$[/request/@context_path]/pur/vender-account-ref-ae/query/$[/parameter/@accountId]/$[/parameter/@venderId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name_display"/>
+                    <a:field name="accountId" defaultValue="$[/parameter/@accountId]"/>
+                    <a:field name="venderId" defaultValue="$[/parameter/@venderId]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2410_batch_asgn_acc_entity_form" column="2" title="csh_bank.information" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="FND2410_assignAccEntity" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="FND2410_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accountName" bindTarget="FND2410_pur_vender_accounts_ds"
+                             prompt="exp_employee_account.bank_account_name" readOnly="true"/>
+                <a:textField name="accountNumber" bindTarget="FND2410_pur_vender_accounts_ds"
+                             prompt="csh_bank_account.bank_account_num" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="FND2410_batch_asgn_acc_entity_ds" marginHeight="195" navBar="true" showRowNumber="false"
+                    width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

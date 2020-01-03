@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Zealot
+    $Date: 2018-4-20 上午11:23:24
+    $Revision: 1.0
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="oa_flow_sub_categories_link" url="${/request/@context_path}/modules/bpm/OAF1020/oa_flow_sub_categories.screen"/>
+        <script><![CDATA[
+            function doQuery() {
+                $au('oa_flow_categories_result_ds').query();
+            }
+
+            function doReset() {
+                $au('oa_flow_categories_query_ds').reset();
+            }
+
+            function codeFun(record) {
+                var oa_flow_category_id = record.get('oa_flow_category_id');
+                if (oa_flow_category_id) {
+                    return '';
+                } else {
+                    return 'upptextEditor';
+                }
+            }
+
+            function subCategoriesDefineFun(value, record, name) {
+                var oa_flow_category_id = record.get('oa_flow_category_id');
+                if (oa_flow_category_id) {
+                    return '<a href="javascript:subCategoriesDefineView(' + oa_flow_category_id + ')">' + '${l:OA_FLOW_CATEGORIES.SUB_CATEGORIES_DEFINE}' + '</a>';
+                }
+            }
+
+            function subCategoriesDefineView(oa_flow_category_id) {
+                new Aurora.Window({
+                    id: 'oa_flow_sub_categories_screen',
+                    url: $au('oa_flow_sub_categories_link').getUrl() + '?oa_flow_category_id=' + oa_flow_category_id,
+                    title: '${l:OA_FLOW_CATEGORIES.SUB_CATEGORIES_DEFINE}',
+                    fullScreen: true
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="oa_flow_categories_query_ds">
+                <a:fields>
+                    <a:field name="oa_flow_category_code" prompt="OA_FLOW_CATEGORIES.OA_FLOW_CATEGORY_CODE"/>
+                    <a:field name="description" prompt="OA_FLOW_CATEGORIES.OA_FLOW_CATEGORY_DESC"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="oa_flow_categories_result_ds" autoQuery="true" model="java@oaFlowCategoriesController" queryDataSet="oa_flow_categories_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="oa_flow_category_id"/>
+                    <a:field name="oa_flow_category_code" prompt="OA_FLOW_CATEGORIES.OA_FLOW_CATEGORY_CODE" required="true"/>
+                    <a:field name="description_id" />
+                    <a:field name="description" descIdField="description_id" prompt="OA_FLOW_CATEGORIES.OA_FLOW_CATEGORY_DESC" required="true"/>
+                    <a:field name="enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="OA_FLOW_CATEGORIES.ENABLED_FLAG" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="doQuery"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="oa_flow_categories_result_grid" text="PROMPT.NEW" type="add" width="80"/>
+                <a:gridButton bind="oa_flow_categories_result_grid" text="HAP_SAVE" type="save" width="80"/>
+                <a:gridButton bind="oa_flow_categories_result_grid" text="HAP_CLEAR" type="clear" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="oa_flow_categories_query_ds" resultTarget="oa_flow_categories_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:label name="separator"/>
+                    <a:textField name="oa_flow_category_code" bindTarget="oa_flow_categories_query_ds" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="oa_flow_categories_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="oa_flow_categories_result_grid" bindTarget="oa_flow_categories_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="oa_flow_category_code" align="center" editorFunction="codeFun" width="150"/>
+                <a:column name="description" align="left" editor="tledit_edit" width="200"/>
+                <a:column name="enabled_flag" align="center" editor="checkBoxEditor" width="80"/>
+                <a:column name="sub_categories_define" align="center" renderer="subCategoriesDefineFun" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="upptextEditor" typeCase="upper"/>
+                <a:textField id="textEditor"/>
+                <a:checkBox id="checkBoxEditor"/>
+                <a:tledit id="tledit_edit"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-24 下午14:45:19  
+    $Revision: 1.0  
+    $Purpose: 现金流量表定义-现金及等价科目
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+
+            function CSH1100_closeAccountCreateWindow() {
+                $au('CSH1100_cash_accounts_window').close();
+            }
+            
+            function CSH1100_accountCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1100_accountCode_lov';
+                }
+                return '';
+            }
+            
+            function cancelfun(){
+                var record=$au('CSH1100_csh_cash_flow_items_account_result_ds').getCurrentRecord();
+                record.set('accountId','');
+                record.set('accountCode','');
+                record.set('description','');
+                return;
+            }
+            function CSH1100_commit(lov, record) {
+                var accountId = record.get('accountId');
+                var records = $au('CSH1100_csh_cash_flow_items_accounts_query_ds').getAll();
+                for (i = 0;i < records.length;i++) {
+                    var account_record = $au('CSH1100_csh_cash_flow_items_accounts_query_ds').getAt(i);
+                    if (accountId == account_record.get('accountId')) {
+                            Aurora.showConfirm('$[l:prompt]', '$[l:prompt.please_check]',null,cancelfun);
+                            return;
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1100_csh_cash_flow_items_accounts_query_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/cash-account/queryByBooksId?setOfBookId=$[/parameter/@setOfBookId]"/>
+            <a:dataSet id="CSH1100_csh_cash_flow_items_account_result_ds" autoQuery="true" fetchAll="true" baseUrl="/csh/cash-account" queryUrl="$[/request/@context_path]/csh/cash-account/queryCashAccount?setOfBooksId=$[/parameter/@setOfBooksId]" selectable="true">
+                <a:fields>
+                    <a:field name="accountCode" autoComplete="true" autoCompleteField="description" lovCode="LOV_CASH_FLOW_ASSIGN_ACCOUNT?setOfBooksId=$[/parameter/@setOfBooksId]" prompt="gld_account.account_code" required="true" title="gld_account.account_code">
+                        <a:mapping>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="description" to="accountName"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountName" prompt="gld_account.account_description"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/parameter/@setOfBooksId]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1100_csh_cash_flow_item_default_account_form" column="2" title="csh_cash_flow_item.cash_account" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1100_csh_cash_flow_item_account_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1100_csh_cash_flow_item_account_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1100_csh_cash_flow_item_account_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH1100_closeAccountCreateWindow" text="PROMPT.RETURN" width="80"/>
+                </a:formToolbar>
+                <a:textField name="cashFlowLineNumber" bindTarget="CSH1100_csh_cash_flow_items_result_ds" prompt="csh_cash_flow_item.cash_flow_line_number" readOnly="true" width="120"/>
+                <a:textField name="description" bindTarget="CSH1100_csh_cash_flow_items_result_ds" prompt="csh_cash_flow_item.description" readOnly="true" width="120"/>
+            </a:form>
+            <a:grid id="CSH1100_csh_cash_flow_item_account_grid" bindTarget="CSH1100_csh_cash_flow_items_account_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" editorFunction="CSH1100_accountCodeEdit" width="120"/>
+                    <a:column name="accountName" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1100_accountCode_lov">
+                        <a:events>
+                            <a:event name="commit" handler="CSH1100_commit"/>
+                        </a:events>
+                    </a:lov>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

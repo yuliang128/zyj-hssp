@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: jiangxz
+    $Date: 2019-1-31 下午15:07:57
+    $Revision: 1.0  
+    $Purpose: 费用申请单类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP4020_mo_req_type_ref_emp_gp_link"
+                url="$[/request/@context_path]/exp/EXP4020/exp_mo_req_type_ref_emp_gp.screen"/>
+        <a:link id="EXP4020_mo_req_type_asgn_com_link"
+                url="$[/request/@context_path]/exp/EXP4020/exp_mo_req_type_asgn_com.screen"/>
+        <a:link id="EXP4020_mo_req_type_ref_ele_link"
+                url="$[/request/@context_path]/exp/EXP4020/exp_mo_req_type_ref_ele.screen"/>
+        <a:link id="EXP4020_mo_req_batch_assign_company_link"
+                url="$[/request/@context_path]/exp/EXP4020/exp_mo_req_batch_assign_company.screen"/>
+        <script><![CDATA[
+        function EXP4020_batchAssignCompany() {
+            var magOrgId = $au('EXP4020_moReqTypesQueryDs').getCurrentRecord().get('magOrgId');
+            var moExpReqTypeId = $au('EXP4020_moReqTypesResultDs').getCurrentRecord().get('moExpReqTypeId');
+            if (Ext.isEmpty(magOrgId)) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            var typeDs = $au('EXP4020_moReqTypesResultDs');
+            var typeRecordsData = typeDs.getJsonData(true);
+            if (typeRecordsData.length == 0) {
+                Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT]', null, 250, 100);
+                return;
+            }
+            var record = typeDs.getAll();
+            var currentRecord = typeDs.getAt(record.length - 1);
+            if (currentRecord.isNew) {
+                Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.DATA_CHECK_FAILURE]', null, 250, 100);
+                return;
+            }
+            new Aurora.Window({
+                id: 'EXP4020_mo_req_type_batch_asgn_com_window',
+                url: $au('EXP4020_mo_req_batch_assign_company_link').getUrl() + '?magOrgId=' + magOrgId + '&flag=Y'+'&moExpReqTypeId='+moExpReqTypeId,
+                title: '$[l:exp_mo_req_type.batch_assign_company]',
+                width: 1020,
+                side: 'right'
+            });
+        }
+
+        function EXP4020_gridEditorFunction(record, name) {
+            if (name == 'toleranceRangeName') {
+                if (record.get('toleranceFlag') != 'N') {
+                    return 'EXP4020_combBox';
+                }
+                return '';
+            } else if (name == 'toleranceRatio') {
+                if (record.get('toleranceFlag') != 'N') {
+                    return 'EXP4020_textField';
+                }
+                return '';
+            } else if (name == 'moExpReqTypeCode') {
+                if (record.isNew) {
+                    return 'EXP4020_textField';
+                }
+                return '';
+            } else if (name == 'reserveBudget') {
+                if (record.isNew) {
+                    return 'EXP4020_checkBox';
+                }
+                return '';
+            } else if (name == 'budgetControlEnabled') {
+                if (record.isNew) {
+                    return 'EXP4020_checkBox';
+                }
+                return '';
+            }
+        }
+
+        function EXP4020_imagePickerFunc(value, record, name) {
+            if (value) {
+                return '<img style="width:20px;height:20px;margin-top:8px;" src="$[/request/@context_path]/' + value + '" />';
+            }
+        }
+
+        function EXP4020_reqPageTypes(value, record, name) {
+            if (!record.isNew) {
+                var magOrgId = $au('EXP4020_moReqTypesQueryDs').getCurrentRecord().get('magOrgId');
+                var url = $au('EXP4020_mo_req_type_ref_ele_link').getUrl() + '?moExpReqTypeId=' + record.get('moExpReqTypeId') + '&magOrgId=' + magOrgId;
+                return '<a href="javascript:EXP4020_viewDocRefEle(\'' + url + '\')">' + '$[l:exp_mo_req_type.ref_ele]' + '</a>';
+            }
+        }
+
+        function EXP4020_viewDocRefEle(url) {
+            new Aurora.Window({
+                id: 'EXP4020_mo_req_type_ref_ele_window',
+                url: url,
+                title: '$[l:exp_mo_req_type.ref_ele]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP4020_moReqTypesResultDs').query();
+            });
+        }
+
+        function EXP4020_expReqRefEmpGps(value, record, name) {
+            if (!record.isNew) {
+                var magOrgId = $au('EXP4020_moReqTypesQueryDs').getCurrentRecord().get('magOrgId');
+                var url = $au('EXP4020_mo_req_type_ref_emp_gp_link').getUrl() + '?moExpReqTypeId=' + record.get('moExpReqTypeId') + '&magOrgId=' + magOrgId;
+                return '<a href="javascript:EXP4020_viewDocEmpGroups(\'' + url + '\')">' + '$[l:exp_mo_req_types.assign_employee_groups]' + '</a>';
+            }
+
+        }
+
+        function EXP4020_viewDocEmpGroups(url) {
+            new Aurora.Window({
+                id: 'EXP4020_exp_mo_req_ref_emp_gps_window',
+                url: url,
+                title: '$[l:exp_mo_req_types.assign_employee_groups]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP4020_moReqTypesResultDs').query();
+            });
+        }
+
+        function EXP4020_assignCompany(value, record, name) {
+            if (!record.isNew) {
+                var magOrgId = $au('EXP4020_moReqTypesQueryDs').getCurrentRecord().get('magOrgId');
+                var url = $au('EXP4020_mo_req_type_asgn_com_link').getUrl() + '?moExpReqTypeId=' + record.get('moExpReqTypeId') + '&magOrgId=' + magOrgId;
+                return '<a href="javascript:EXP4020_viewDocAssignCompany(\'' + url + '\')">' + '$[l:exp_mo_req_type.assign_company]' + '</a>';
+            }
+        }
+
+        function EXP4020_viewDocAssignCompany(url) {
+            new Aurora.Window({
+                id: 'EXP4020_exp_mo_req_type_asgn_window',
+                url: url,
+                title: '$[l:exp_mo_req_type.assign_company]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP4020_moReqTypesResultDs').query();
+            });
+        }
+
+        function EXP4020_focus() {
+            $au('FND4020_FndMagOrgListDs').query();
+        }
+
+        function EXP4020_BeforeCreate() {
+            if (Ext.isEmpty($au('EXP4020_moReqTypesQueryDs').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function EXP4020_Add(ds) {
+            var magOrgId = $au('EXP4020_moReqTypesQueryDs').getCurrentRecord().get('magOrgId');
+            if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function EXP4020_submit(ds) {
+            ds.query();
+        }
+
+        function EXP4020_updateHandler(ds, record, name, value) {
+            if (name == 'magOrgId') {
+                $au('EXP4020_moReqTypesResultDs').query();
+            }
+        }
+
+        function EXP4020_onResultUpdate(ds, record, name, value) {
+            if (name == 'toleranceFlag' && value == 'N') {
+                record.set('toleranceRatio', '');
+                record.getMeta().getField('toleranceRangeName').setReadOnly(true);
+                record.getMeta().getField('toleranceRatio').setReadOnly(true);
+                record.getMeta().getField('toleranceRangeName').setRequired(false);
+                record.getMeta().getField('toleranceRatio').setRequired(false);
+            } else if (name == 'toleranceFlag' && value == 'Y') {
+                record.getMeta().getField('toleranceRangeName').setReadOnly(false);
+                record.getMeta().getField('toleranceRatio').setReadOnly(false);
+                record.getMeta().getField('toleranceRangeName').setRequired(true);
+                record.getMeta().getField('toleranceRatio').setRequired(true);
+            }
+        }
+
+        function EXP4020_cellclick(grid, row, name, record) {
+            var magOrgId = $au('EXP4020_moReqTypesQueryDs').getAt(0).get('magOrgId');
+            if (name == 'captionDescription') {
+                $au('EXP4020_writeCaption_ds').setQueryParameter('magOrgId', magOrgId);
+                $au('EXP4020_writeCaption_ds').setQueryParameter('docCategoryCode', 'EXP_REQUISITION');
+                $au('EXP4020_writeCaption_ds').query();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="currencyListDs" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="EXP4020_PaymentObjectDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT/"/>
+            <a:dataSet id="EXP4020_ToleranceControlTypeDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/TOLERANCE_CONTROL_TYPE/"/>
+            <a:dataSet id="EXP4020_AppPageTypeDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/APP_PAGE_TYPE/"/>
+            <a:dataSet id="FND4020_FndMagOrgListDs" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption?ENABLED_FLAG=Y"/>
+            <a:dataSet id="EXP4020_writeCaption_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-write-caption-hd/query"/>
+            <a:dataSet id="EXP4020_moReqTypesQueryDs">
+                <a:fields>
+                    <a:field name="moExpReqTypeCode" prompt="exp_mo_req_types.mo_exp_req_type_code"/>
+                    <a:field name="description"
+                             prompt="exp_mo_req_types.description"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="magOrgCode"/>
+                    <a:field name="magOrgName" options="FND4020_FndMagOrgListDs"
+                             defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName"
+                             returnField="magOrgId"
+                             valueField="magOrgId" prompt="exp_mo_req_types.mag_org_name" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP4020_updateHandler"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP4020_moReqTypesResultDs" autoPageSize="true" autoQuery="true"
+                       baseUrl="/exp/mo-req-type" queryDataSet="EXP4020_moReqTypesQueryDs"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="moExpReqTypeId"/>
+                    <a:field name="moExpReqTypeCode" prompt="exp_mo_req_types.mo_exp_req_type_code" required="true"
+                             typeCase="upper"/>
+                    <a:field name="description" prompt="exp_mo_req_types.description" required="true"/>
+                    <a:field name="documentPageType" defaultValue="STANDARD"/>
+                    <a:field name="currencyName"
+                             prompt="exp_mo_req_types.currency_name" options="currencyListDs"
+                             displayField="currencyName" required="true"
+                             returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="moExpReportTypeCode"
+                             title="exp_mo_req_types.mo_exp_report_type_code"/>
+                    <a:field name="moExpReportTypeId"/>
+                    <a:field name="moExpReportTypeName" prompt="exp_mo_req_types.mo_exp_report_type_name"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" returnField="payeeCategory"
+                             valueField="value" options="EXP4020_PaymentObjectDs"
+                             prompt="exp_mo_req_types.payee_category_name"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="toleranceRangeName" returnField="toleranceRange"
+                             options="EXP4020_ToleranceControlTypeDs" displayField="meaning" valueField="value"
+                             prompt="exp_mo_req_types.tolerance_range_name"/>
+                    <a:field name="toleranceRange" prompt="exp_mo_req_types.tolerance_range"/>
+                    <a:field name="toleranceFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="exp_mo_req_types.tolerance_flag"/>
+                    <a:field name="toleranceRatio" prompt="exp_mo_req_types.tolerance_ratio"/>
+                    <a:field name="reportName" prompt="exp_mo_req_types.report_name"/>
+                    <a:field name="captionHdsId"/>
+                    <a:field name="captionDescription" displayField="description" options="EXP4020_writeCaption_ds"
+                             returnField="captionHdsId" valueField="captionHdsId"
+                             prompt="exp_mo_req_types.caption_description"/>
+                    <a:field name="oneOffFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="exp_mo_req_types.one_off_flag"/>
+                    <a:field name="autoApproveFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="exp_mo_req_types.auto_approve_flag"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="exp_mo_req_types.enabled_flag"/>
+                    <a:field name="reserveBudget" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="exp_mo_req_types.reserve_budget"/>
+                    <a:field name="budgetControlEnabled" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="exp_mo_req_types.budget_control_enabled"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="icon" lovHeight="518" lovWidth="500" title="exp_mo_req_types.icon"
+                             prompt="exp_mo_req_types.icon"/>
+                    <a:field name="appPageCode"/>
+                    <a:field name="appPageName" displayField="meaning" options="EXP4020_AppPageTypeDs"
+                             returnField="appPageCode" valueField="value" prompt="exp_mo_req_types.app_page_name"/>
+                    <a:field name="autoAuditFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="EXP4020_BeforeCreate"/>
+                    <a:event name="add" handler="EXP4020_Add"/>
+                    <a:event name="submitsuccess" handler="EXP4020_submit"/>
+                    <a:event name="update" handler="EXP4020_onResultUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP4020_moReqTypesGrid" type="add" width="80"/>
+                <a:gridButton bind="EXP4020_moReqTypesGrid" type="save" width="80"/>
+                <a:toolbarButton click="EXP4020_batchAssignCompany" text="HEC_BATCH_ASSIGN" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP4020_moReqTypesQueryDs"
+                         resultTarget="EXP4020_moReqTypesResultDs" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="EXP4020_exp_mo_req_types_query_ds" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP4020_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moExpReqTypeCode" bindTarget="EXP4020_moReqTypesQueryDs"
+                                 typeCase="upper"/>
+                    <a:textField name="description" bindTarget="EXP4020_moReqTypesQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP4020_moReqTypesGrid" bindTarget="EXP4020_moReqTypesResultDs" marginHeight="115"
+                marginWidth="30" navBar="true">
+            <a:columns>
+                <a:column name="moExpReqTypeCode" align="center" editorFunction="EXP4020_gridEditorFunction"
+                          lock="true" width="100"/>
+                <a:column name="description" editor="EXP4020_textField" lock="true" width="120"/>
+                <a:column name="currencyName" align="center" editor="EXP4020_combBox" width="80"/>
+                <a:column name="payeeCategoryName" align="center" editor="EXP4020_combBox" width="80"/>
+                <a:column name="toleranceFlag" editor="EXP4020_checkBox"
+                          width="80"/>
+                <a:column name="toleranceRangeName" align="center" editorFunction="EXP4020_gridEditorFunction"
+                          width="80"/>
+                <a:column name="toleranceRatio" align="center" editorFunction="EXP4020_gridEditorFunction" width="80"/>
+                <a:column name="reportName" align="center" editor="EXP4020_textField" width="200"/>
+                <a:column name="captionDescription" align="center" editor="EXP4020_combBox" width="100"/>
+                <a:column name="oneOffFlag" align="center" editor="EXP4020_checkBox" width="80"/>
+                <a:column name="autoApproveFlag" align="center" editor="EXP4020_checkBox" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="EXP4020_checkBox" width="80"/>
+                <a:column name="reserveBudget" align="center" editorFunction="EXP4020_gridEditorFunction" width="80"/>
+                <a:column name="budgetControlEnabled" align="center" editorFunction="EXP4020_gridEditorFunction"
+                          width="80"/>
+                <a:column name="icon" align="center" editor="EXP4020_imagePicker"
+                          renderer="EXP4020_imagePickerFunc" width="50"/>
+                <a:column name="appPageName" align="center" editor="EXP4020_combBox" width="100"/>
+                <a:column name="reqPageTypes" align="center" renderer="EXP4020_reqPageTypes" width="80"/>
+                <a:column name="empGroups" align="center" renderer="EXP4020_expReqRefEmpGps" width="80"/>
+                <a:column name="asignCm" align="center" renderer="EXP4020_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP4020_textField_upper" typeCase="upper"/>
+                <a:textField id="EXP4020_textField"/>
+                <a:numberField id="EXP4020_numberField" allowNegative="false"/>
+                <a:checkBox id="EXP4020_checkBox"/>
+                <a:comboBox id="EXP4020_combBox"/>
+                <a:lov id="EXP4020_lov"/>
+                <a:imagePicker id="EXP4020_imagePicker" path="resources/images/aurora/4.0/documents"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="EXP4020_cellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

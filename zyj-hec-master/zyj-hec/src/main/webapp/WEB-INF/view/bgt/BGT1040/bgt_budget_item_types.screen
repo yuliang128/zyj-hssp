@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/02/18 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 预算项目类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function queryBudgetItemTypes() {
+                $au('bgt_BudgetItemTypes_query_result_ds').query();
+            }
+            
+            function bgtBudgetItemTypesEdit(record, name) {
+                if (record.isNew) {
+                    if (name == 'budgetItemTypeCode') {
+                        return 'code_tf';
+                    }
+                    if (name == 'bgtOrgName') {
+                        return 'BGT1040_LOV';
+                    }
+                }
+                return '';
+            }
+            
+            function reset() {
+                $au('bgt_BudgetItemTypes_query_ds').reset();
+            }
+            
+            function BGT1040_beforeDsCreate() {
+                var bgtOrgName = $au('bgt_BudgetItemTypes_query_ds').getAt(0).get('bgtOrgName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function BGT1040_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('bgt_BudgetItemTypes_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+            }
+            
+            function BGT1040_bgtOrgsDsQuery() {
+                $au('BGT1040_bgtOrgsDs').query();
+            }
+            
+            function BGT1040_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgName' == name) {
+                    $au('bgt_BudgetItemTypes_query_result_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1040_bgtOrgsDs" queryUrl="$[/request/@context_path]/bgt/organization/queryAll" autoQuery="true"/>
+            <a:dataSet id="bgt_BudgetItemTypes_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT1040_bgtOrgsDs" prompt="bgt_budget_items.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                    <a:field name="budgetItemTypeCode" prompt="bgt_budget_item_type.budget_item_type_code"/>
+                    <a:field name="description" prompt="bgt_budget_item_type.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1040_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_BudgetItemTypes_query_result_ds" autoPageSize="true" autoQuery="true"   queryDataSet="bgt_BudgetItemTypes_query_ds" queryUrl="$[/request/@context_path]/bgt/budget-item-type/query" submitUrl="$[/request/@context_path]/bgt/budget-item-type/submit">
+                <a:fields>
+                    <a:field name="budgetItemTypeId"/>
+                    <a:field name="bgtOrgId" required="true"/>
+                    <a:field name="budgetItemTypeCode" prompt="bgt_budget_item_type.budget_item_type_code" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.bgt.dto.BgtBudgetItemType" dtoId="budgetItemTypeId" prompt="bgt_budget_item_type.description" required="true"/>
+                    <a:field name="notes" prompt="bgt_budget_item_type.notes"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_budget_item_type.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="BGT1040_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT1040_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="grid" type="add" width="80"/>
+                <a:gridButton bind="grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="bgt_BudgetItemTypes_query_ds" resultTarget="bgt_BudgetItemTypes_query_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="bgtOrgName" bindTarget="bgt_BudgetItemTypes_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT1040_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="budgetItemTypeCode" bindTarget="bgt_BudgetItemTypes_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryBudgetItemTypes"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="bgt_BudgetItemTypes_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryBudgetItemTypes"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="grid" bindTarget="bgt_BudgetItemTypes_query_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="budgetItemTypeCode" align="center" editorFunction="bgtBudgetItemTypesEdit" width="150"/>
+                <a:column name="description" align="left" editor="description_tf" width="230"/>
+                <a:column name="notes" align="left" editor="notes_tf" width="230"/>
+                <a:column name="enabledFlag" editor="enabledFlag_ckb" sortable="false" width="90"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="BGT1040_LOV"/>
+                <a:tledit id="description_tf"/>
+                <a:textField id="notes_tf"/>
+                <a:textField id="code_tf" typeCase="upper"/>
+                <a:checkBox id="enabledFlag_ckb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

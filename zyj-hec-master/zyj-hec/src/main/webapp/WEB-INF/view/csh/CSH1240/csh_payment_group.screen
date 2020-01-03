@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang05@hand-china.com
+    $Date: 2019-02-26 下午2:20:17
+    $Revision: 1.0
+    $Purpose: 付款工作组定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1240_csh_payment_gps_ref_emp_link" url="$[/request/@context_path]/csh/CSH1240/csh_payment_gps_ref_emp.screen"/>
+        <a:link id="CSH1240_csh_payment_gps_asgn_ae_link" url="$[/request/@context_path]/csh/CSH1240/csh_payment_gps_asgn_ae.screen"/>
+        <script><![CDATA[
+            function CSH1240_closePaymentGroupsCreateWindow() {
+                var url = $au('CSH1240_csh_payment_groups_mag_org_select_link').getUrl();
+                window.location.href = url;
+            }
+
+            function CSH1240_groupCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1240_textField_upper';
+                } else {
+                    return '';
+                }
+            }
+
+            function CSH1240_Submit(ds) {
+                ds.query();
+            }
+            //组员分配-跳转
+            function CSH1240_refEmpDetail(value, record, name) {
+                var groupId = record.get('groupId');
+                if(record.isNew){
+                    return '';
+                }else{
+                     return '<a href="javascript:CSH1240_openRefEmpDetail(' + groupId + ')">' + '$[l:csh_payment_group.group_emp]' + '</a>';
+                }
+            }
+
+            function CSH1240_openRefEmpDetail(id) {
+                var magOrgId = $au('CSH1240_csh_payment_group_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1240_csh_payment_gps_ref_emp_link').getUrl() + '?groupId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1240_csh_payment_gps_ref_emp_window',
+                    url: url,
+                    title: '$[l:csh_payment_group.group_emp]',
+                    side:'right',width:1020
+                });
+            }
+             //支付主体分配-跳转
+             function CSH1240_asgnAeDetail(value, record, name) {
+                var groupId = record.get('groupId');
+                if(record.isNew){
+                    return '';
+                }else{
+                     return '<a href="javascript:CSH1240_openAsgnAeDetail(' + groupId + ')">' + '$[l:csh_payment_group.asgn_accentity]' + '</a>';
+                }
+            }
+
+            function CSH1240_openAsgnAeDetail(id) {
+                var magOrgId = $au('CSH1240_csh_payment_group_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1240_csh_payment_gps_asgn_ae_link').getUrl() + '?groupId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1240_csh_payment_gps_asgn_ae_window',
+                    url: url,
+                    title: '$[l:csh_payment_group.asgn_accentity]',
+                    side:'right',width:1020
+                });
+            }
+            function CSH1240_add(ds){
+                 var magOrgId = $au('CSH1240_csh_payment_group_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            function CSH1240_update(ds,record,name,value){
+                if(name=='magOrgId'){
+                    $au('CSH1240_csh_payment_group_result_ds').query();
+                }
+            }
+            function CSH1240_BeforeCreate(){
+                 if (Ext.isEmpty($au('CSH1240_csh_payment_group_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="CSH1240_csh_payment_group_magOrgList_ds" autoQuery="true" fetchAll="true" loadData="true" model="hec_util.fnd_util.fnd_mag_organizations_form_query"/>-->
+            <a:dataSet id="CSH1240_csh_payment_group_magOrgList_ds">
+                 <a:datas dataSource="fndManagingOrganizationList/records"/>
+            </a:dataSet>
+            <a:dataSet id="CSH1240_csh_payment_group_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="groupCode"/>
+                    <a:field name="description"/>
+                    <a:field name="magOrgName"  defaultValue="$[/model/fndManagingOrganization/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1240_csh_payment_group_magOrgList_ds" prompt="exp_mo_req_type.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/fndManagingOrganization/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1240_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1240_csh_payment_group_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-group" queryDataSet="CSH1240_csh_payment_group_query_ds" queryUrl="$[/request/@context_path]/csh/payment-group/query" selectable="true" submitUrl="$[/request/@context_path]/csh/payment-group/submit">
+                <a:fields>
+                    <a:field name="groupId"/>
+                    <a:field name="groupCode" required="true"/>
+                    <a:field name="description" required="true"/>
+                    <!--<a:field name="descriptionId"/>-->
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_type.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1240_Submit"/>
+                    <a:event name="add" handler="CSH1240_add"/>
+                    <a:event name="beforecreate" handler="CSH1240_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1240_csh_payment_group_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1240_csh_payment_group_grid" type="save" width="80"/>
+                <a:gridButton bind="CSH1240_csh_payment_group_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1240_csh_payment_group_query_ds" resultTarget="CSH1240_csh_payment_group_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="CSH1240_csh_payment_group_query_ds" prompt="exp_mo_req_type.mag_org_id" width="170"/>
+                    <a:textField name="groupCode" bindTarget="CSH1240_csh_payment_group_query_ds" prompt="csh_payment_group.group_code"/>
+                    <a:textField name="description" bindTarget="CSH1240_csh_payment_group_query_ds" prompt="csh_payment_group.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1240_csh_payment_group_grid" bindTarget="CSH1240_csh_payment_group_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="groupCode" align="center" editorFunction="CSH1240_groupCodeEdit" width="120" prompt="csh_payment_group.group_code"/>
+                <a:column name="description" editor="CSH1240_textField" width="200" prompt="csh_payment_group.description"/>
+                <a:column name="enabledFlag" editor="CSH1240_checkBox" width="80" prompt="csh_payment_group.enabledFlag"/>
+                <a:column name="refEmp" align="center" renderer="CSH1240_refEmpDetail" width="120"/>
+                <a:column name="asgnAe" align="center" renderer="CSH1240_asgnAeDetail" width="120"/>
+
+            </a:columns>
+            <a:editors>
+                <a:textField id="CSH1240_textField"/>
+                <a:textField id="CSH1240_textField_upper" typeCase="upper"/>
+                <a:checkBox id="CSH1240_checkBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

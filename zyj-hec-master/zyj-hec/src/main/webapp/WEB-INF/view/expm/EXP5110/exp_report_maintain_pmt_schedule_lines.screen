@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/03/06 9:47:59 $
+    $Revision: 1.0
+    $Purpose: 计划付款行
+-->
+<a:screen xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script"
+          trace="true">
+    <a:view>
+        <a:link id="EXP5110_report_write_off_payment_link"
+                url="$[/request/@context_path]/expm/EXP5110/exp_report_write_off_prepayment.screen"/>
+        <a:link id="EXP5110_report_more_taxs_link" url="$[/request/@context_path]/expm/exp_report_more_taxs.screen"/>
+        <a:link id="EXP5110_report_csh_write_off_check_link" url="$[/request/@context_path]/csh/write-off/cshWriteOffCheck"/>
+        <script><![CDATA[
+        function EXP5110_pmtWriteOffRenderer(value, record, name) {
+            var id = record.get('paymentScheduleLineId');
+            var payeeId = record.get('payeeId');
+            var payeeName = record.get('payeeName');
+            if (id) {
+                var content = ">>";
+                //如果收款方没有值，则不走存在未核销借款改变超链接颜色的逻辑
+                // modified by LiLiang 2018/9/15
+                if (payeeId && payeeName) {
+                    // for (i = 0;i < record.length;i++) {
+                    //当存在未核销借款时，超链接显示为红色
+                    // modified by LiLiang 2018/9/14
+                    //因为需要事实动态的改变超链接的颜色，所以再次给a标签插入ID。方便后续通过dom来修改标签的属性。
+                    //因为计划付款行可能会存在多行的情况，所以再此使用pmtWriteOffRenderer_加上计划付款行id作为此a标签的id。
+                    var a_id = 'pmtWriteOffRenderer_' + id;
+                    if (record.get('csh_write_off_check_flag') == 'Y') {
+                        return '<a id="' + a_id + '" href = "javascript:EXP5110_writePaymentWindow(' + id + ')" style="color:red">' + content + '</a>';
+                    } else {
+                        return '<a id="' + a_id + '" href = "javascript:EXP5110_writePaymentWindow(' + id + ')">' + content + '</a>';
+                    }
+                } else {
+                    return '<a id="ext-gen4316-a001' + a_id + '" href = "javascript:EXP5110_writePaymentWindow(' + id + ')">' + content + '</a>';
+                }
+                // }
+            }
+            return '';
+        }
+
+        //add by penglei 20180417 新增更多税种链接 begin
+
+        function EXP_pmtMoreTaxsRenderer(value, record, name) {
+            var id = record.get('paymentScheduleLineId');
+            var moreTaxFlag = record.get('moreTaxFlag');
+            if (id && moreTaxFlag == 'Y') {
+                return '<a href = "javascript:EXP5110_MoreTaxsWindow(' + id + ')">' + '$[l:exp_report_lines.more_tax]' + '</a>';
+            }
+            return '';
+        }
+
+        function EXP5110_writePaymentWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_report_write_off_payment_link').getUrl() + '?paymentScheduleLineId=' + id,
+                id: 'EXP5110_exp_report_write_off_prepayment_window',
+                title: '$[l:exp_report_pmtplan_schedule.hexiao_lender]',
+                fullScreen: true
+            }).on('close', function () {
+                EXP5110_pmtSchedulesQuery();
+            });
+        }
+
+        function EXP5110_MoreTaxsWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_report_more_taxs_link').getUrl() + '?paymentScheduleLineId=' + id,
+                id: 'EXP5110_exp_report_more_taxs_window',
+                title: '$[l:exp_report_lines.more_tax]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP5110_pmt_schedules_ds').query();
+            });
+        }
+
+        function EXP5110_pmtGridcellclick(grid, row, name, record) {
+            var headerRd = $au('EXP5110_exp_report_header_ds').getAt(0);
+            if (name == 'payeeName') {
+                record.getField('payeeName').setLovPara('payeeCategory', record.get('payeeCategory'));
+                record.getField('payeeName').setLovPara('accEntityId', headerRd.get('accEntityId'));
+            } else if (name == 'accountNumber') {
+                record.getField('accountNumber').setLovPara('payeeId', record.get('payeeId'));
+                record.getField('accountNumber').setLovPara('payeeCategory', record.get('payeeCategory'));
+                record.getField('accountNumber').setLovPara('accEntityId', record.get('accEntityId'));
+            }
+            if (name == 'contractNumber') {
+                record.getField('contractNumber').setLovPara('accEntityId', record.get('accEntityId'));
+                record.getField('contractNumber').setLovPara('partnerCategory', record.get('payeeCategory'));
+                record.getField('contractNumber').setLovPara('partnerId', record.get('payeeId'));
+                record.getField('contractNumber').setLovPara('paymentCurrencyCode', record.get('paymentCurrencyCode'));
+            }
+            if (name == 'conPmtScheduleLineNumber') {
+                record.getField('conPmtScheduleLineNumber').setLovPara('accEntityId', $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId'));
+                record.getField('conPmtScheduleLineNumber').setLovPara('contractHeaderId', record.get('contractHeaderId'));
+                record.getField('conPmtScheduleLineNumber').setLovPara('paymentScheduleLineId', record.get('paymentScheduleLineId'));
+            }
+            if(name == 'paymentMethodName'){
+                $au('EXP5110_pmt_payment_method_ds').setQueryParameter('companyId','$[/session/@companyId]');
+                $au('EXP5110_pmt_payment_method_ds').setQueryParameter('magOrgId','$[/session/@magOrgId]');
+                $au('EXP5110_pmt_payment_method_ds').query();
+            }
+        }
+
+        function EXP5110_pmtGetNextLineNumber() {
+            var nextLineNumber = 10;
+            var allPmtRecords = $au('EXP5110_pmt_schedules_ds').getAll();
+            Ext.each(allPmtRecords, function (allPmtRecord) {
+                if (allPmtRecord.get('scheduleLineNumber') >= nextLineNumber) {
+                    nextLineNumber = allPmtRecord.get('scheduleLineNumber') + 10;
+                }
+            }, this);
+            return nextLineNumber;
+        }
+
+        function EXP5110_pmtScheduleAdd() {
+            var selectedPmtRecords = $au('EXP5110_pmt_schedules_ds').getSelected();
+            if (selectedPmtRecords && selectedPmtRecords.length && selectedPmtRecords.length != 0) {
+                Ext.each(selectedPmtRecords, function (selectedPmtRecord) {
+                    var data = {};
+                    for (var field in $au('EXP5110_pmt_schedules_ds').fields) {
+                        data[field] = selectedPmtRecord.get(field);
+                    }
+                    data['paymentScheduleLineId'] = null;
+                    data['scheduleLineNumber'] = EXP5110_pmtGetNextLineNumber();
+                    $au('EXP5110_pmt_schedules_ds').create(data);
+                });
+            } else {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                $au('EXP5110_gld_payee_v_lov_ds').setQueryParameter('payeeCategory', headerRecord.get('payeeCategory'));
+                $au('EXP5110_gld_payee_v_lov_ds').setQueryParameter('payeeId', headerRecord.get('payeeId'));
+                $au('EXP5110_gld_payee_v_lov_ds').setQueryParameter('accEntityId', headerRecord.get('accEntityId'));
+                $au('EXP5110_gld_payee_v_lov_ds').query();
+            }
+        }
+
+        function EXP5110_pmtSchedulesQuery() {
+            $au('EXP5110_pmt_schedules_ds').query();
+        }
+
+        /* Modified by Arthur.Chen Date:2017-09-14 10:05:15
+         1.payeeCategoryName字段发生变化，将相关字段置空
+         */
+
+        function EXP5110_onSchedulesDsLoad(dataSet) {
+            var records = dataSet.getAll();
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('contractHeaderId')) {
+                    records[i].getField('conPmtScheduleLineNumber').setReadOnly(false);
+                    records[i].getField('conPmtScheduleLineNumber').setRequired(true);
+                } else {
+                    records[i].getField('conPmtScheduleLineNumber').setReadOnly(true);
+                    records[i].getField('conPmtScheduleLineNumber').setRequired(false);
+                }
+
+                //update by penglei 20180418 根据报销单类型-指定页面元素中的flag判断是否显示隐藏
+                var taxFlag = records[i].get('taxFlag');
+                var moreTaxFlag = records[i].get('moreTaxFlag');
+                var grid = $au('EXP5110_pmt_schedules_grid');
+                if (taxFlag == 'N') {
+                    grid.hideColumn('taxTypeName');
+                    grid.hideColumn('taxAmount');
+                }
+                if (moreTaxFlag == 'N') {
+                    grid.hideColumn('moreTaxs');
+                }
+            }
+        }
+
+        function EXP5110_onSchedulesDsUpdate(ds, record, name, value, oldvalue) {
+            var id = record.get('paymentScheduleLineId');
+            var a_id = 'pmtWriteOffRenderer_' + id;
+            if ('payeeCategoryName' == name) {
+                if (id != undefined && id != null) {
+                    document.getElementById(a_id).style.color = "black";
+                }
+                record.set('payeeName', null);
+                record.set('payeeId', null);
+                record.set('accountName', null);
+                record.set('accountNumber', null);
+                record.set('bankCode', null);
+                record.set('bankName', null);
+                record.set('bankLocationCode', null);
+                record.set('bankLocationName', null);
+                record.set('provinceCode', null);
+                record.set('provinceName', null);
+                record.set('cityCode', null);
+                record.set('cityName', null);
+            }
+            //当改变收款方时，动态改变核销借款文本的颜色
+            //add by LiLiang 2018/9/15
+            if (name == 'payeeId') {
+                Aurora.request({
+                    lockMessage: '$[l:hap_handle_waiting]',
+                    url: $au('EXP5110_report_csh_write_off_check_link').getUrl(),
+                    para: {
+                        payeeCategory: record.get('payeeCategory'),
+                        payeeId: record.get('payeeId'),
+                        companyId: record.get('companyId'),
+                        accEntityId: record.get('accEntityId')
+                    },
+                    success: function (resp) {
+                        var a_id = 'pmtWriteOffRenderer_' + record.get('paymentScheduleLineId');
+                        if (resp.row[0] == 'Y') {
+                            document.getElementById(a_id).style.color = "red";
+                        } else {
+                            document.getElementById(a_id).style.color = "black";
+                        }
+                    }
+                });
+            }
+            if (name == 'contractHeaderId') {
+                record.set('conPmtSchedulelineId', '');
+                record.set('conPmtScheduleLineNumber', '');
+                if (record.get('contractHeaderId')) {
+                    record.getField('conPmtScheduleLineNumber').setReadOnly(false);
+                    record.getField('conPmtScheduleLineNumber').setRequired(true);
+                } else {
+                    record.getField('conPmtScheduleLineNumber').setReadOnly(true);
+                    record.getField('conPmtScheduleLineNumber').setRequired(false);
+                }
+            }
+        }
+
+        //控制税率类型和税额的必输性和可输入性。
+        function EXP5110_pmtTaxEditorFun(record, name) {
+            if (name == 'taxTypeName') {
+                var taxRow = !record.get('taxCount') ? 0 : record.get('taxCount');
+                if (taxRow <= 1) {
+                    record.getField('taxTypeName').setRequired(false);
+                    return 'EXP5110_pmt_cb';
+                }
+            } else if (name == 'taxAmount') {
+                var taxRow = !record.get('taxCount') ? 0 : record.get('taxCount');
+                if (taxRow <= 1) {
+                    record.getField('taxAmount').setRequired(false);
+                    return 'EXP5110_pmt_nf';
+                }
+            }
+        }
+
+        function EXP5110_payee_loadHandler(dateSet) {
+            data = {};
+            var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+            data['scheduleLineNumber'] = EXP5110_pmtGetNextLineNumber();
+            data['paymentCurrencyName'] = headerRecord.get('paymentCurrencyName');
+            data['paymentCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+            data['payeeCategoryName'] = headerRecord.get('payeeCategoryName');
+            data['payeeCategory'] = headerRecord.get('payeeCategory');
+            data['payeeName'] = headerRecord.get('payeeName');
+            data['payeeId'] = headerRecord.get('payeeId');
+            var payeeRecord = $au('EXP5110_gld_payee_v_lov_ds').getAt(0);
+            data['accountNumber'] = payeeRecord.get('accountNumber');
+            data['accountName'] = payeeRecord.get('accountName');
+            data['bankCode'] = payeeRecord.get('bankCode');
+            data['bankName'] = payeeRecord.get('bankName');
+            data['bankLocationCode'] = payeeRecord.get('bankLocationCode');
+            data['bankLocationName'] = payeeRecord.get('bankLocation');
+            data['provinceCode'] = payeeRecord.get('provinceCode');
+            data['provinceName'] = payeeRecord.get('provinceName');
+            data['cityCode'] = payeeRecord.get('cityCode');
+            data['cityName'] = payeeRecord.get('cityName');
+            data['scheduleStartDate'] = headerRecord.get('reportDate');
+            data['scheduleDueDate'] = headerRecord.get('reportDate');
+            data['companyName'] = headerRecord.get('companyName');
+            data['companyId'] = headerRecord.get('companyId');
+            data['accEntityName'] = headerRecord.get('accEntityName');
+            data['accEntityId'] = headerRecord.get('accEntityId');
+            data['paymentMethodName'] = headerRecord.get('paymentMethodName');
+            data['paymentMethodId'] = headerRecord.get('paymentMethodId');
+            data['paymentUsedeName'] = headerRecord.get('paymentUsedeName');
+            data['paymentUsedeId'] = headerRecord.get('paymentUsedeId');
+            $au('EXP5110_pmt_schedules_ds').create(data);
+        }
+
+        $au('EXP5110_exp_report_header_ds')['on']('submitsuccess', EXP5110_pmtSchedulesQuery);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_pmt_payeeCategory_ds" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="EXP5110_pmt_payment_usede_ds" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/csh/mo-payment-used/queryPaymentUsed"/>
+            <a:dataSet id="EXP5110_pmt_payment_method_ds" loadData="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod"/>
+            <a:dataSet id="EXP5110_pmt_tax_type_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/tax-type-code/queryTaxTypeWithholding"/>
+            <a:dataSet id="EXP5110_gld_payee_v_lov_ds" queryUrl="$[/request/@context_path]/exp/employee-account/queryPayeeV">
+                <a:events>
+                    <a:event name="load" handler="EXP5110_payee_loadHandler"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_pmt_schedules_ds" autoQuery="true" bindName="pmtSchedules"
+                       queryUrl="$[/request/@context_path]/exp/report-pmt-schedule/query"
+                       bindTarget="EXP5110_exp_report_header_ds" prompt="prompt.scheduled_payment"
+                       queryDataSet="EXP5110_exp_report_header_ds" selectable="true"
+                       submitUrl="$[/request/@context_path]/exp/report-pmt-schedule/deletePmt">
+                <a:fields>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="paymentScheduleLineId"/>
+                    <a:field name="scheduleLineNumber"/>
+                    <!--add by penglei 20180417 新增计划付款行的上的税率类型和税额 -->
+                    <a:field name="taxTypeName" displayField="description" options="EXP5110_pmt_tax_type_ds"
+                             prompt="exp_report_line.tax_rate_type" returnField="taxRate" valueField="taxTypeRate">
+                        <a:mapping>
+                            <a:map from="taxTypeId" to="taxTypeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="taxTypeId"/>
+                    <a:field name="taxRate"/>
+                    <a:field name="description" prompt="exp_report_pmt_schedule.description"/>
+                    <a:field name="paymentCurrencyName" displayField="currency_name" options="EXP5110_currency_ds"
+                             returnField="paymentCurrencyCode" valueField="currency_code"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="payeeCategoryName" displayField="meaning"
+                             options="EXP5110_pmt_payeeCategory_ds" prompt="exp_report_header.payee_category"
+                             required="true" returnField="payeeCategory" title="acp_invoice_header.payee_category"
+                             valueField="value"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeName" lovCode="GLD_PAYEE_V_LOV" prompt="acp_invoice_header.payee_id"
+                             required="true" title="acp_invoice_header.payee_id">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountNumber" to="accountNumber"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                            <a:map from="bankLocationCode" to="bankLocationCode"/>
+                            <a:map from="bankLocationName" to="bankLocationName"/>
+                            <a:map from="provinceCode" to="provinceCode"/>
+                            <a:map from="provinceName" to="provinceName"/>
+                            <a:map from="cityCode" to="cityCode"/>
+                            <a:map from="cityName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="scheduleStartDate"/>
+                    <a:field name="scheduleDueDate" prompt="exp_report_pmt_schedule.schedule_due_date"/>
+                    <a:field name="dueAmount" prompt="payment_amount" required="true"/>
+                    <a:field name="companyName"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="paymentMethodName" displayField="description"
+                             options="EXP5110_pmt_payment_method_ds" prompt="exp_report_header.payment_method"
+                             required="true" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentUsedeName" displayField="description" options="EXP5110_pmt_payment_usede_ds"
+                             prompt="csh_payment_useds.useds_code" required="true" returnField="paymentUsedeId"
+                             valueField="paymentUsedeId"/>
+                    <a:field name="paymentUsedeId"/>
+                    <a:field name="cashFlowItemName"/>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="frozenFlag" prompt="sys_user.frozen_flag" checkedValue="Y" defaultValue="N"
+                             uncheckedValue="N"/>
+                    <a:field name="accountName" prompt="csh_bank_balance.bank_account_id"/>
+                    <a:field name="accountNumber" prompt="exp_employee.bank_account" lovCode="GLD_PAYEE_ACCOUNT_VL_LOV"
+                             title="csh_bank_account.bank_account_num">
+                        <a:mapping>
+                            <a:map from="accountNumber" to="accountNumber"/>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                            <a:map from="bankLocationCode" to="bankLocationCode"/>
+                            <a:map from="bankLocationName" to="bankLocationName"/>
+                            <a:map from="provinceCode" to="provinceCode"/>
+                            <a:map from="provinceName" to="provinceName"/>
+                            <a:map from="cityCode" to="cityCode"/>
+                            <a:map from="cityName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankCode"/>
+                    <a:field name="bankName"/>
+                    <a:field name="bankLocationCode"/>
+                    <a:field name="bankLocationName"/>
+                    <a:field name="provinceCode"/>
+                    <a:field name="provinceName"/>
+                    <a:field name="cityCode"/>
+                    <a:field name="cityName"/>
+                    <a:field name="writeOffAmount" prompt="csh_write_off.csh_write_off_amount"/>
+                    <a:field name="contractHeaderId"/>
+                    <a:field name="contractNumber" autoComplete="true" autoCompleteField="contractNumber"
+                             lovCode="EXP_REPORT_PMT_CONTRACT_REQ_LOV" prompt="con_contract_header.contract_number"
+                             title="con_contract_header.contract_number">
+                        <a:mapping>
+                            <a:map from="contractHeaderId" to="contractHeaderId"/>
+                            <a:map from="contractNumber" to="contractNumber"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="conPmtScheduleLineId"/>
+                    <a:field name="conPmtScheduleLineNumber" autoComplete="true" autoCompleteField="lineNumber"
+                             lovCode="EXP_REPORT_PMT_CONTTRACT_PMT_SCHEDULE_LOV" prompt="con_contract.landmark_phase"
+                             readOnly="true" title="con_contract.landmark_phase">
+                        <a:mapping>
+                            <a:map from="paymentScheduleLineId" to="conPmtScheduleLineId"/>
+                            <a:map from="lineNumber" to="conPmtScheduleLineNumber"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5110_onSchedulesDsUpdate"/>
+                    <a:event name="load" handler="EXP5110_onSchedulesDsLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="0" showmargin="0" style="margin-top:10px;"
+                title="$[/model/standard_pmt_line_description/records/record/@description]">
+            <a:grid id="EXP5110_pmt_schedules_grid" autoAdjustHeight="true" bindTarget="EXP5110_pmt_schedules_ds"
+                    height="600" marginWidth="-1" navBar="true" showRowNumber="false">
+                <a:toolBar>
+                    <a:button click="EXP5110_pmtScheduleAdd" type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="writeOffPrepayment" align="center"
+                              prompt="exp_report_pmtplan_schedule.hexiao_lender" renderer="EXP5110_pmtWriteOffRenderer"
+                              width="35"/>
+                    <a:column name="writeOffAmount" align="right" prompt="csh_write_off.csh_write_off_amount"
+                              renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="description" align="left" editor="EXP5110_pmt_tf"
+                              prompt="acp_invoice_ref_dimension.description" width="200"/>
+                    <a:column name="dueAmount" align="right" editor="EXP5110_pmt_nf" prompt="payment_amount"
+                              renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="payeeCategoryName" align="center" editor="EXP5110_pmt_cb"
+                              prompt="exp_report_header.payee_category" width="80"/>
+                    <a:column name="payeeName" align="center" editor="EXP5110_pmt_lov"
+                              prompt="acp_invoice_header.payee_id" width="120"/>
+                    <a:column name="accountNumber" align="center" editor="EXP5110_pmt_lov"
+                              prompt="exp_employee.bank_account" width="80"/>
+                    <a:column name="accountName" align="center" editor="EXP5110_pmt_tf"
+                              prompt="csh_bank_balance.bank_account_id" width="120"/>
+                    <a:column name="paymentMethodName" align="center" editor="EXP5110_pmt_paymentMethodcb"
+                              prompt="exp_report_header.payment_method" width="80"/>
+                    <a:column name="paymentUsedeName" align="center" editor="EXP5110_pmt_cb"
+                              prompt="csh_payment_useds.useds_code" width="80"/>
+                    <a:column name="scheduleDueDate" align="center" editor="EXP5110_pmt_dp"
+                              prompt="exp_report_pmt_schedule.schedule_due_date" renderer="Aurora.formatDate"
+                              width="80"/>
+                    <a:column name="frozenFlag" align="center" editor="EXP5110_pmt_ck" prompt="sys_user.frozen_flag"
+                              width="60"/>
+                    <a:column name="contractNumber" align="center" editor="EXP5110_pmt_lov" width="80"/>
+                    <a:column name="conPmtScheduleLineNumber" align="center" editor="EXP5110_pmt_lov" width="80"/>
+                    <a:column name="taxTypeName" align="center" editorFunction="EXP5110_pmtTaxEditorFun"
+                              prompt="exp_report_line.tax_rate_type" width="80"/>
+                    <a:column name="taxAmount" align="right" editorFunction="EXP5110_pmtTaxEditorFun"
+                              prompt="vat_invoice_line.tax_amount" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="moreTaxs" align="center" renderer="EXP_pmtMoreTaxsRenderer" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="EXP5110_pmt_nf"/>
+                    <a:textField id="EXP5110_pmt_tf"/>
+                    <a:comboBox id="EXP5110_pmt_cb"/>
+                    <a:comboBox id="EXP5110_pmt_paymentMethodcb"/>
+                    <a:checkBox id="EXP5110_pmt_ck"/>
+                    <a:lov id="EXP5110_pmt_lov"/>
+                    <a:datePicker id="EXP5110_pmt_dp"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP5110_pmtGridcellclick"/>
+                </a:events>
+            </a:grid>
+        </a:form>
+    </a:view>
+</a:screen>

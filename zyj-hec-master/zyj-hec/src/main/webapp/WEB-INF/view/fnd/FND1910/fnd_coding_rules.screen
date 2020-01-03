@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <!--<a:init-procedure>-->
+        <!--<a:model-query autocount="true" defaultWhereClause="(sysdate between fc.start_date_active  and nvl(fc.end_date_active ,sysdate))" fetchall="true" model="fnd.fnd_companies" queryOrderBy="fc.company_code" rootpath="companies"/>-->
+    <!--</a:init-procedure>-->
+    <a:view>
+        <a:link id="FND1910_fnd_coding_rules_check_link" url="$[/request/@context_path]//fnd/coding-rule/queryByCodingRuleObjectId" modelaction="query"/>
+        <a:link id="FND1910_fnd_coding_rule_details_link" url="$[/request/@context_path]/fnd/FND1910/fnd_coding_rule_details.screen"/>
+        <script><![CDATA[
+            function FND1910_closeCodingRulesCreateWindow() {
+                $au('FND1910_fnd_coding_rules_window').close();
+            }
+            
+            function FND1910_codingRuleCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'FND1910_codingRule_tf_upper';
+                }
+                return '';
+            }
+            
+            function FND1910_codingRulesDetailsRenderer(value, record, name) {
+                if (!record.isNew) {
+                    var codingRuleObjectId = record.get('codingRuleObjectId');
+                    var codingRuleId = record.get('codingRuleId');
+                    return '<a href="javascript:FND1910_codingRulesDetailsRendererInfo(' + codingRuleObjectId + ',' + codingRuleId + ')">$[l:fnd_coding_rule.detail]</a>';
+                }
+            }
+            
+            function FND1910_codingRulesDetailsRendererInfo(codingRuleObjectId, codingRuleId) {
+                new Aurora.Window({
+                    id: 'FND1910_fnd_coding_rule_details_window',
+                    url: $au('FND1910_fnd_coding_rule_details_link').getUrl() + '?codingRuleObjectId=' + codingRuleObjectId + '&codingRuleId=' + codingRuleId,
+                    title: '$[l:fnd_coding_rule.detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function FND1910_updateRuleCodeCheck(ds, record, name, value, oldvalue) {
+                if (record.isNew && name == 'codingRuleCode') {
+                    var codingRuleCode = record.get("codingRuleCode");
+            
+                    if (value) {
+                        var records = ds.getAll();
+                        for (var i = 0;i < records.length;i++) {
+                            if (records[i].isNew) {
+                                if (records[i].get('codingRuleCode') == value && records[i] != record) {
+                                    new Aurora.showInfoMessage('$[l:exp1900_ask_commit]', codingRuleCode + ' $[l:fnd_coding_rule_obj.code_have_exists]', function callback() {
+                                        record.set('codingRuleCode', '');
+                                    }, 250, 100);
+                                }
+                            }
+                        }
+                    }
+            
+                    Aurora.request({
+                        lockMessage: '$[l:hap_waiting]',
+                        url: $au('FND1910_fnd_coding_rules_check_link').getUrl(),
+                        para: {
+                            codingRuleCode: codingRuleCode
+                        },
+                        success: function(args) {
+                            if (args.result) {
+                                if (args.result.record) {
+                                    if (args.result.record.codingRuleCode) {
+                                        new Aurora.showInfoMessage('$[l:exp1900_ask_commit]', codingRuleCode + ' $[l:fnd_coding_rule_obj.code_have_defined]', function callback() {
+                                            record.set('codingRuleCode', '');
+                                        }, 250, 100);
+                                    }
+                                }
+                            }
+                        },
+                        scope: this
+                    });
+                }
+            }
+            
+            function FND1910_ruleCodeSubmit(ds) {
+                ds.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1910_coding_rule_reset_frequency_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/CODING_RULE_RESET_FREQUENCY/" />
+            <a:dataSet id="FND1910_fnd_coding_rules_ds" autoQuery="true" fetchAll="false" baseUrl="/fnd/coding-rule"
+                       queryUrl="$[/request/@context_path]/fnd/coding-rule/queryByCodingRuleObjectId?codingRuleObjectId=$[/parameter/@codingRuleObjectId]"
+                       selectable="true" submitUrl="$[/request/@context_path]/fnd/coding-rule/submit">
+                <a:fields>
+                    <a:field name="codingRuleObjectId" defaultValue="$[/parameter/@codingRuleObjectId]"/>
+                    <a:field name="codingRuleCode" required="true"/>
+                    <a:field name="description" required="true"/>
+                    <a:field name="resetFrequencyDisplay" displayField="description" options="FND1910_coding_rule_reset_frequency_ds" required="true" returnField="resetFrequence" valueField="value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1910_updateRuleCodeCheck"/>
+                    <a:event name="submitSuccess" handler="FND1910_ruleCodeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND1910_fnd_coding_rules_form" column="2" labelWidth="150" title="fnd_coding_rules.fnd_coding_rule_object_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1910_fnd_coding_rules_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND1910_fnd_coding_rules_grid" type="save" width="80"/>
+                    <a:gridButton bind="FND1910_fnd_coding_rules_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="FND1910_closeCodingRulesCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="documentCategoryDisplay" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="fnd_coding_rule_object.document_category" readOnly="true"/>
+                <a:textField name="documentTypeName" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="fnd_coding_rule_object.document_type" readOnly="true"/>
+                <a:textField name="companyShortName" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="fnd_company.company_short_name" readOnly="true"/>
+                <a:textField name="accEntityName" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="gld_accounting_entity.acc_entity_code" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1910_fnd_coding_rules_grid" bindTarget="FND1910_fnd_coding_rules_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="codingRuleCode" prompt="fnd_coding_rule.coding_rule_code" align="center" editorFunction="FND1910_codingRuleCodeEdit" width="100"/>
+                    <a:column name="description" prompt="fnd_coding_rule.coding_rules_description" align="left" editor="FND1910_codingRule_tf" width="150"/>
+                    <a:column name="note" align="left" prompt="fnd_coding_rule.note" editor="FND1910_codingRule_note" width="150"/>
+                    <a:column name="resetFrequencyDisplay" prompt="fnd_coding_rule.reset_frequency" align="center" editor="FND1910_codingRule_cmb" width="100"/>
+                    <a:column name="enabledFlag" prompt="fnd_coding_rule.enabled_flag" align="center" editor="FND1910_codingRule_ckb" width="80"/>
+                    <a:column name="codingRuleId" prompt="fnd_coding_rule.detail" align="center"  renderer="FND1910_codingRulesDetailsRenderer" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="FND1910_codingRule_cmb"/>
+                    <a:textField id="FND1910_codingRule_tf_upper" typeCase="upper"/>
+                    <a:tledit id="FND1910_codingRule_tf"/>
+                    <a:textField id="FND1910_codingRule_note"/>
+                    <a:checkBox id="FND1910_codingRule_ckb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

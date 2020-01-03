@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtEntityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtEntity">
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="ENTITY_CODE" property="entityCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="ENTITY_TYPE" property="entityType" jdbcType="VARCHAR"/>
+        <result column="SOURCE_TYPE_CODE" property="sourceTypeCode" jdbcType="VARCHAR"/>
+        <result column="SOURCE_ID" property="sourceId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="ENTITY_NAME" property="entityName" jdbcType="VARCHAR"/>
+        <result column="EXISTS_FLAG" property="existsFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="checkBgtEntity" resultMap="BaseResultMap">
+      select a.* from bgt_entity a
+        where
+        a.bgt_org_id = #{bgtOrgId}
+        and
+        (
+            (
+                #{filtrateMethod} = 'INCLUDE'
+                and
+                (
+                    (
+                        #{controlType} = 'DETAIL'
+                        and a.entity_id = #{entityId}
+                        and a.entity_type = 'DETAILS'
+                        and (
+                              #{controlEntityCodeFrom} is null
+                              or a.entity_code &gt;= #{controlEntityCodeFrom}
+                            )
+                        and (
+                              #{controlEntityCodeTo} is null
+                              or a.entity_code &lt;= #{controlEntityCodeTo}
+                            )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'SUMMARY'
+                        and exists (
+                                select 1 from bgt_entity_hierarchy h
+                                where h.entity_id = #{entityId}
+                                and h.parent_entity_id = a.entity_id
+                                and h.enabled_flag = 'Y'
+                            )
+                        and a.entity_type = 'SUMMARY'
+                        and (
+                              #{controlEntityCodeFrom} is null
+                              or a.entity_code &gt;= #{controlEntityCodeFrom}
+                            )
+                        and (
+                              #{controlEntityCodeTo} is null
+                              or a.entity_code &lt;= #{controlEntityCodeTo}
+                            )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'ALL'
+                        and
+                        (
+                            (
+                                a.entity_id = #{entityId}
+                                and a.entity_type = 'DETAILS'
+                                and (
+                                      #{controlEntityCodeFrom} is null
+                                      or a.entity_code &gt;= #{controlEntityCodeFrom}
+                                    )
+                                and (
+                                      #{controlEntityCodeTo} is null
+                                      or a.entity_code &lt;= #{controlEntityCodeTo}
+                                    )
+                                and a.enabled_flag = 'Y'
+                            )
+                            or
+                            (
+                                exists (
+                                        select 1 from bgt_entity_hierarchy h
+                                        where h.entity_id = #{entityId}
+                                        and h.parent_entity_id = a.entity_id
+                                        and h.enabled_flag = 'Y'
+                                    )
+                                and a.entity_type = 'SUMMARY'
+                                and (
+                                      #{controlEntityCodeFrom} is null
+                                      or a.entity_code &gt;= #{controlEntityCodeFrom}
+                                    )
+                                and (
+                                      #{controlEntityCodeTo} is null
+                                      or a.entity_code &lt;= #{controlEntityCodeTo}
+                                    )
+                                and a.enabled_flag = 'Y'
+                            )
+                        )
+                    )
+                )
+            )
+            or
+            (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (
+                        #{controlType} = 'DETAIL'
+                        and a.entity_id = #{entityId}
+                        and a.entity_type = 'DETAILS'
+                        and
+                        (
+                            (
+                              #{controlEntityCodeFrom} is null
+                              or a.entity_code &lt; #{controlEntityCodeFrom}
+                            )
+                            or (
+                              #{controlEntityCodeTo} is null
+                              or a.entity_code &gt; #{controlEntityCodeTo}
+                            )
+                        )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'SUMMARY'
+                        and exists (
+                                select 1 from bgt_entity_hierarchy h
+                                where h.entity_id = #{entityId}
+                                and h.parent_entity_id = a.entity_id
+                                and h.enabled_flag = 'Y'
+                            )
+                        and a.entity_type = 'SUMMARY'
+                        and
+                        (
+                            (
+                              #{controlEntityCodeFrom} is null
+                              or a.entity_code &lt; #{controlEntityCodeFrom}
+                            )
+                            or (
+                              #{controlEntityCodeTo} is null
+                              or a.entity_code &gt; #{controlEntityCodeTo}
+                            )
+                        )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'ALL'
+                        and
+                        (
+                            (
+                                a.entity_id = #{entityId}
+                                and a.entity_type = 'DETAILS'
+                                and
+                                (
+                                    (
+                                      #{controlEntityCodeFrom} is null
+                                      or a.entity_code &lt; #{controlEntityCodeFrom}
+                                    )
+                                    or (
+                                      #{controlEntityCodeTo} is null
+                                      or a.entity_code &gt; #{controlEntityCodeTo}
+                                    )
+                                )
+                                and a.enabled_flag = 'Y'
+                            )
+                            or
+                            (
+                                exists (
+                                        select 1 from bgt_entity_hierarchy h
+                                        where h.entity_id = #{entityId}
+                                        and h.parent_entity_id = a.entity_id
+                                        and h.enabled_flag = 'Y'
+                                    )
+                                and a.entity_type = 'SUMMARY'
+                                and
+                                (
+                                  (
+                                      #{controlEntityCodeFrom} is null
+                                      or a.entity_code &lt; #{controlEntityCodeFrom}
+                                    )
+                                  or (
+                                      #{controlEntityCodeTo} is null
+                                      or a.entity_code &gt; #{controlEntityCodeTo}
+                                    )
+                                )
+                                and a.enabled_flag = 'Y'
+                            )
+                        )
+                    )
+                )
+            )
+          )
+    </select>
+
+    <select id="queryDefaultBgtEntity" resultMap="BaseResultMap">
+        SELECT
+            crb.entity_id,
+            be.entity_code,
+            ( CASE WHEN bet.description IS NULL THEN be.DESCRIPTION ELSE bet.DESCRIPTION END ) entity_name,
+            be.bgt_org_id
+        FROM
+            fnd_company_ref_bgt_entity crb,
+            bgt_entity be
+            LEFT OUTER JOIN bgt_entity_tl bet on ( be.ENTITY_ID = bet.ENTITY_ID and bet.lang = #{request.locale,jdbcType=VARCHAR})
+        WHERE
+            crb.entity_id = be.entity_id
+            AND crb.enabled_flag = 'Y'
+            AND crb.default_flag = 'Y'
+            AND be.enabled_flag = 'Y'
+            AND crb.company_id = #{companyId}
+    </select>
+
+    <select id="queryForBatch" parameterType="com.hand.hec.bgt.dto.BgtEntity" resultMap="BaseResultMap">
+        SELECT
+            be.entity_id,
+            be.bgt_org_id,
+            be.entity_code,
+            bt.description entity_name,
+            be.currency_code,
+            be.entity_type,
+            be.source_type_code,
+            be.source_id,
+            be.enabled_flag
+        FROM
+            bgt_entity be
+            LEFT OUTER JOIN bgt_entity_tl bt ON ( be.ENTITY_ID = bt.ENTITY_ID AND bt.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            be.enabled_flag = 'Y'
+            AND be.bgt_org_id = #{bgtOrgId}
+            AND be.entity_type = 'DETAILS'
+            AND NOT EXISTS ( SELECT 1 FROM bgt_entity_hierarchy beh WHERE beh.parent_entity_id = #{parentEntityId} AND beh.entity_id = be.entity_id )
+    </select>
+    
+    <select id="queryForSync" parameterType="com.hand.hec.bgt.dto.BgtEntity" resultType="java.util.Map">
+        SELECT
+            be.entity_id entityId,
+            gae.start_date_active startDateActive,
+            gae.end_date_active endDateActive,
+            be.enabled_flag enabledFlag
+        FROM
+            gld_acc_entity_hierarchy gaeh,
+            gld_accounting_entity gae,
+            bgt_entity be
+        WHERE
+            gaeh.parent_entity_id = #{parentEntityId}
+            AND gaeh.entity_id = gae.acc_entity_id
+            AND gae.acc_entity_code = be.entity_code
+            AND be.bgt_org_id = #{bgtOrgId}
+            AND be.source_type_code = 'ACCOUNTING'
+            AND be.entity_type = 'DETAILS'
+    </select>
+    
+    <select id="queryByCompanyId"  resultType="java.util.Map">
+        SELECT
+            be.entity_id sourceId,
+            be.entity_code sourceCode,
+            concat(be.entity_code, '-' , bet.description) sourceName,
+            be.description NAME
+        FROM  bgt_entity be
+        LEFT OUTER JOIN bgt_entity_tl bet on (be.ENTITY_ID = bet.ENTITY_ID and bet.LANG = #{request.locale,jdbcType=VARCHAR})
+        WHERE
+            be.enabled_flag = 'Y'
+        AND be.entity_type <![CDATA[ <> ]]> 'SUMMARY'
+        AND EXISTS (
+            SELECT 1
+            FROM
+                fnd_company fc,
+                fnd_managing_organization fmo,
+                fnd_mag_org_ref_bgt_org fmbo,
+                bgt_organization bo
+            WHERE
+                fc.company_id = #{companyId}
+            AND fc.mag_org_id = fmo.mag_org_id
+            AND fmo.enabled_flag = 'Y'
+            AND fmo.mag_org_id = fmbo.mag_org_id
+            AND fmbo.enabled_flag = 'Y'
+            AND fmbo.bgt_org_id = bo.bgt_org_id
+            AND bo.enabled_flag = 'Y'
+            AND bo.bgt_org_id = be.bgt_org_id
+        )
+    </select>
+    
+    <select id="queryAll" parameterType="com.hand.hec.bgt.dto.BgtEntity" resultMap="BaseResultMap">
+        SELECT
+            bev.entity_id,
+            bev.bgt_org_id,
+            bev.entity_code,
+            bet.DESCRIPTION,
+            bev.currency_code,
+            gcl.CURRENCY_NAME,
+            bev.entity_type,
+            bev.entity_type entity_type_old_value,
+            (
+        SELECT
+            scv.MEANING
+        FROM
+            sys_code_b sc,
+            sys_code_value_b scv
+        WHERE
+            sc.CODE_ID = scv.CODE_ID
+            AND sc.`CODE` = 'BGT_ENTITY_TYPE'
+            AND scv.`VALUE` = bev.ENTITY_TYPE
+            ) entity_type_name,
+            bev.source_type_code source_type_code,
+            (
+        SELECT
+            scv.MEANING
+        FROM
+            sys_code_b sc,
+            sys_code_value_b scv
+        WHERE
+            sc.CODE_ID = scv.CODE_ID
+            AND sc.`CODE` = 'BGT_ORG_SOURCE_TYPE'
+            AND scv.`VALUE` = bev.source_type_code
+            ) source_type_name,
+            bev.source_id,
+            ( SELECT a.source_type_code FROM bgt_organization a WHERE a.bgt_org_id = bev.bgt_org_id ) bgt_source_type_code,
+            (
+        CASE
+            bev.source_type_code
+            WHEN 'ACCOUNTING' THEN
+            (
+        SELECT
+            gael.ACC_ENTITY_NAME
+        FROM
+            gld_accounting_entity gaev
+            LEFT OUTER JOIN gld_accounting_entity_tl gael ON ( gaev.ACC_ENTITY_ID = gael.ACC_ENTITY_ID AND gael.Lang = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            gaev.acc_entity_id = bev.source_id
+            )
+            WHEN 'MANAGEMENT' THEN
+            (
+        SELECT
+            fct.company_short_name
+        FROM
+            fnd_company fcv
+            LEFT OUTER JOIN fnd_company_tl fct ON ( fcv.COMPANY_ID = fct.company_id AND fct.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            fcv.company_id = bev.source_id
+            )
+        END
+            ) source_name,
+            bev.enabled_flag,
+            (
+        CASE
+            (
+        SELECT
+            count(*)
+        FROM
+            bgt_organization bo,
+            bgt_org_ref_detail bord
+        WHERE
+            bo.bgt_org_id = bev.bgt_org_id
+            AND bo.source_type_code IN ( 'ACCOUNTING', 'MANAGEMENT' )
+            AND bo.bgt_org_id = bord.bgt_org_id
+            AND bo.source_type_code = bev.source_type_code
+            AND bord.source_id = bev.source_id
+            AND bord.enabled_flag = 'Y'
+            )
+        WHEN 0 THEN
+            'N' ELSE 'Y'
+        END
+            ) exists_flag
+        FROM
+            bgt_entity bev
+            LEFT OUTER JOIN bgt_entity_tl bet ON ( bev.ENTITY_ID = bet.ENTITY_ID AND bet.LANG = #{request.locale,jdbcType=VARCHAR} )
+            LEFT OUTER JOIN gld_currency gcv ON ( bev.currency_code = gcv.currency_code )
+            LEFT OUTER JOIN gld_currency_tl gcl ON ( gcv.CURRENCY_ID = gcl.CURRENCY_ID AND gcl.LANG = #{request.locale,jdbcType=VARCHAR} )
+        <where>
+            <if test="bgtOrgId!=null">
+              bev.bgt_org_id = #{bgtOrgId}
+            </if>
+            <if test="entityCode!=null">
+              and  bev.entity_code like concat('%',#{entityCode},'%')
+            </if>
+            <if test="description!=null">
+              and  bet.DESCRIPTION like concat('%',#{description},'%')
+            </if>
+            <if test="entityId!=null">
+              and bev.entity_id = #{entityId}
+            </if>
+        </where>
+        <trim prefix="where" prefixOverrides="AND">
+        </trim>
+    </select>
+
+    <select id="bgtJournalBatch" resultMap="BaseResultMap">
+        SELECT
+            a.entity_id,
+            a.entity_code,
+            al.DESCRIPTION
+        FROM
+            bgt_entity a
+            LEFT OUTER JOIN bgt_entity_tl al ON ( a.ENTITY_ID = al.ENTITY_ID AND al.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            a.bgt_org_id = #{bgtOrgId} AND
+            a.entity_id NOT IN ( SELECT b.entity_id FROM bgt_journal_tp_range_et b WHERE b.range_id = #{rangeId}
+            )
+        ORDER BY
+            a.entity_code
+    </select>
+
+    <select id="queryDetailEntity" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select e.currency_code,
+               e.entity_id
+        from bgt_entity_hierarchy h,
+             bgt_entity           e
+        where h.entity_id = #{entityId}
+        and h.parent_entity_id = e.entity_id
+    </select>
+
+</mapper>

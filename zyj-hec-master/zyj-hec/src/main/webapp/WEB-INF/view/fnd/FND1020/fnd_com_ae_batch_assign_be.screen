@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/01/25 15:30:04 $
+    $Revision: 1 $
+    $Purpose: 管理公司分配核算主体-批量分配预算实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="FND1020_fnd_com_ref_acc_be_batch_link" url="$[/request/@context_path]/fnd/company-ref-acc-be/submit"/>
+        <script><![CDATA[
+            
+            function FND1020_BatchAssignBeFun() {
+                var bgt_entities_datas = $au('FND1020_bgt_entity_ds').getJsonData(true);
+                if (bgt_entities_datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 200);
+                    return;
+                }
+                for (var i = 0;i < bgt_entities_datas.length;i++) {
+                    bgt_entities_datas[i]['accRefId'] = '$[/parameter/@accRefId]';
+                    bgt_entities_datas[i]['companyId'] = '$[/parameter/@companyId]';
+                    bgt_entities_datas[i]['defaultFlag'] = 'N';
+                    bgt_entities_datas[i]['enabledFlag'] = 'Y';
+                    bgt_entities_datas[i]['magOrgId'] = '$[/parameter/@magOrgId]';
+                    bgt_entities_datas[i]['__status'] = 'add';
+                    bgt_entities_datas[i]['_token'] = null;
+
+                }
+                Aurora.request({
+                    url: $au('FND1020_fnd_com_ref_acc_be_batch_link').getUrl(),
+                    para: bgt_entities_datas,
+                    success: FND1020_BatchAssignBeBack,
+                    scope: this
+                });
+            }
+            function FND1020_BatchAssignBeBack(){
+                var id = this.__host.id;
+                $au(id).close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1020_bgt_entity_ds" autoCount="true" autoPageSize="true" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/fnd/company-ref-acc-be/queryBgtEntity?accRefId=$[/parameter/@accRefId]&amp;magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityCode" prompt="bgt_entity.entity_code"/>
+                    <a:field name="bgtEntityName" prompt="bgt_entity.entity_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="fnd_company.info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="FND1020_BatchAssignBeFun" text="HEC_ASSIGN" width="80"/>
+                    <a:toolbarButton click="FND1020_BatchAssignBeBack" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="comCodeNameA" id="comCodeNameA" prompt="fnd_company.company_name" readOnly="true"/>
+                <a:textField name="magCodeNameA" id="magCodeNameA" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1020_bgt_entity_grid" bindTarget="FND1020_bgt_entity_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="bgtEntityCode" align="center" width="120"/>
+                    <a:column name="bgtEntityName" align="left" width="120"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function init() {
+                var comCodeName = $au('comCodeName').getValue();
+                var magCodeName = $au('magCodeName').getValue();
+                $au('comCodeNameA').setValue(comCodeName);
+                $au('magCodeNameA').setValue(magCodeName);
+            }
+            init();
+        ]]></script>
+    </a:view>
+</a:screen>

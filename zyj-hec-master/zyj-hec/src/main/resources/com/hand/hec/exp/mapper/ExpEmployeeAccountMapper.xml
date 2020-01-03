@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpEmployeeAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpEmployeeAccount">
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_CODE" property="bankLocationCode" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION" property="bankLocation" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_CODE" property="provinceCode" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_NAME" property="provinceName" jdbcType="VARCHAR"/>
+        <result column="CITY_CODE" property="cityCode" jdbcType="VARCHAR"/>
+        <result column="CITY_NAME" property="cityName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="NOTES" property="notes" jdbcType="VARCHAR"/>
+        <result column="PRIMARY_FLAG" property="primaryFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CODE" property="payeeCode" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_TYPE_ID" property="payeeTypeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_TYPE_CODE" property="payeeTypeCode" jdbcType="VARCHAR"/>
+        <result column="PAYEE_TYPE_NAME" property="payeeTypeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <!--hec_util_pkg.gld_payee_v_lov-->
+    <select id="queryGldPayeeV" resultMap="BaseResultMap">
+        SELECT
+        payee_name,
+        payee_code,
+        payee_id,
+        bank_code,
+        bank_name,
+        bank_location_code,
+        bank_location,
+        province_code,
+        province_name,
+        city_code,
+        city_name,
+        account_number,
+        account_name,
+        notes,
+        payee_category,
+        acc_entity_id,
+        payee_type_id,
+        payee_type_code,
+        payee_type_name
+        FROM
+        (
+        SELECT
+        ee.NAME AS payee_name,
+        ee.employee_code AS payee_code,
+        ee.employee_id AS payee_id,
+        ea.bank_code,
+        ea.bank_name,
+        ea.bank_location_code,
+        ea.bank_location,
+        ea.province_code,
+        ea.province_name,
+        ea.city_code,
+        ea.city_name,
+        ea.account_number,
+        ea.account_name,
+        ea.notes,
+        'EMPLOYEE' AS payee_category,
+        NULL AS acc_entity_id,
+        emtv.employee_type_id payee_type_id,
+        emtv.employee_type_code payee_type_code,
+        et.description payee_type_name
+        FROM
+        exp_employee ee
+        LEFT JOIN exp_employee_account ea ON ( ee.employee_id = ea.employee_id AND ea.enabled_flag = 'Y' )
+        LEFT JOIN exp_mo_employee_type emtv
+        LEFT JOIN exp_mo_employee_type_tl et ON (
+        emtv.employee_type_id = et.EMPLOYEE_TYPE_ID
+        AND et.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( ee.employee_type_id =
+        emtv.employee_type_id AND emtv.enabled_flag = 'Y' ) UNION ALL
+        SELECT
+        vvt.description AS payee_name,
+        vv.vender_code AS payee_code,
+        vv.vender_id AS payee_id,
+        bv.bank_code,
+        bvt.bank_name,
+        cn.bank_location_code,
+        cn.bank_location_name as bank_location,
+        va.province_code,
+        va.province_name,
+        va.city_code,
+        va.city_name,
+        va.account_number,
+        va.account_name,
+        va.notes,
+        'VENDER' AS payee_category,
+        vae.acc_entity_id,
+        pvtv.vender_type_id payee_type_id,
+        pvtv.vender_type_code payee_type_code,
+        pvtvt.DESCRIPTION payee_type_name
+        FROM
+        pur_system_vender vv
+        LEFT JOIN pur_system_vender_tl vvt ON (
+        vv.VENDER_ID = vvt.VENDER_ID
+        AND vvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        LEFT JOIN pur_vender_account va
+        LEFT JOIN csh_cnaps cn ON ( va.cnaps_code = cn.bank_location_code )
+        LEFT JOIN csh_bank bv
+        LEFT JOIN csh_bank_tl bvt ON (
+        bv.BANK_ID = bvt.BANK_ID
+        AND bvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( va.bank_id = bv.bank_id ) ON
+        ( vv.vender_id = va.vender_id AND va.enabled_flag = 'Y' )
+        LEFT JOIN pur_system_vender_ref_ae vae
+        LEFT JOIN pur_vender_account_ref_ae aae ON ( vae.acc_entity_id = aae.acc_entity_id AND aae.enabled_flag = 'Y' )
+        ON ( vv.vender_id = vae.vender_id )
+        LEFT JOIN pur_vender_type pvtv
+        LEFT JOIN pur_vender_type_tl pvtvt ON (
+        pvtvt.VENDER_TYPE_ID = pvtv.VENDER_TYPE_ID
+        AND pvtvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( vv.vender_type_id =
+        pvtv.vender_type_id AND pvtv.enabled_flag = 'Y' )
+
+        WHERE
+        va.account_id = aae.account_id
+        AND vae.enabled_flag = 'Y' UNION ALL
+        SELECT
+        cvt.description AS payee_name,
+        cv.customer_code AS payee_code,
+        cv.customer_id AS payee_id,
+        bv.bank_code,
+        bvt.bank_name,
+        cn.bank_location_code,
+        cn.bank_location_name as bank_location,
+        ca.province_code,
+        ca.province_name,
+        ca.city_code,
+        ca.city_name,
+        ca.account_number,
+        ca.account_name,
+        ca.notes,
+        'CUSTOMER' AS payee_category,
+        cae.acc_entity_id,
+        ostv.customer_type_id payee_type_id,
+        ostv.customer_type_code payee_type_code,
+        ostvt.DESCRIPTION payee_type_name
+        FROM
+        ord_system_customer cv
+        LEFT JOIN ord_system_customer_tl cvt ON (
+        cv.CUSTOMER_ID = cvt.CUSTOMER_ID
+        AND cvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        LEFT JOIN ord_customer_account ca
+        LEFT JOIN csh_bank bv
+        LEFT JOIN csh_bank_tl bvt ON (
+        bv.BANK_ID = bvt.BANK_ID
+        AND bvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( ca.bank_id = bv.bank_id ) ON
+        ( cv.customer_id = ca.customer_id AND ca.enabled_flag = 'Y' )
+        LEFT JOIN csh_cnaps cn ON ( ca.cnaps_code = cn.bank_location_code )
+        LEFT JOIN ord_system_customer_ref_ae cae
+        RIGHT JOIN ord_customer_account_ref_ae aae ON ( cae.acc_entity_id = aae.acc_entity_id AND aae.enabled_flag = 'Y'
+        ) ON ( cv.customer_id = cae.customer_id )
+        LEFT JOIN ord_customer_type ostv
+        LEFT JOIN ord_customer_type_tl ostvt ON ( ostv.CUSTOMER_TYPE_ID = ostvt.CUSTOMER_TYPE_ID AND ostvt.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( cv.customer_type_id = ostv.customer_type_id
+        AND ostv.enabled_flag = 'Y' )
+        WHERE ca.account_id = aae.account_id ) v
+        WHERE payee_category = #{payeeCategory} and (#{payeeCategory} = 'EMPLOYEE' or acc_entity_id = #{accEntityId} or
+        #{accEntityId} is null) and #{request.userId} is not null
+        <if test="payeeId!=null">
+            and payee_id = #{payeeId}
+        </if>
+    </select>
+
+    <!-- Modify Tagin/2019.04.11 根据用户、银行账户及开户行获取详细信息 -->
+    <select id="getEmployeeAccount" resultMap="BaseResultMap">
+        select eea.bank_code,
+        eea.bank_name,
+        eea.bank_location_code,
+        eea.bank_location,
+        eea.province_code,
+        eea.province_name,
+        eea.city_code,
+        eea.city_name,
+        eea.account_number,
+        eea.account_name
+        from exp_employee_account eea
+        where eea.employee_id = #{employeeId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        <if test="accountName != null and accountName != ''">
+            and eea.account_name = #{accountName, jdbcType=VARCHAR, javaType=java.lang.String}
+        </if>
+        <if test="accountNumber != null and accountNumber != ''">
+            and eea.account_number = #{accountNumber, jdbcType=VARCHAR, javaType=java.lang.String}
+        </if>
+    </select>
+</mapper>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-25 上午10:16:09
+    $Revision: 1.0  
+    $Purpose: 审核退回申请
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="wbc_business_confirm_and_allocation_link" url="$[/request/@context_path]/ssc/SSC1070/ssc_business_confirm_and_allocation.screen"/>
+        <a:link id="wbc_process_refuse_return_link" url="$[/request/@context_path]/ssc/task-dispatch-record/doRejectReturn"/>
+        <a:link id="wbc_process_confirm_return_link" url="$[/request/@context_path]/ssc/task-dispatch-record/doAgreetReturn"/>
+        <div/>
+        <script><![CDATA[
+            function requireReturnQuery() {
+                $au('wbc_audit_require_return_dis_ds').query();
+            }
+            
+            //同意退回申请
+            
+            function confirmReturnProcess() {
+                var selRecordsData = getSelRecords();
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('wbc_process_confirm_return_link').getUrl(),
+                    para: selRecordsData,
+                    success: function() {
+                        requireReturnQuery();
+                    }
+                });
+            }
+            //拒绝退回申请
+            
+            function processRefuseReturn() {
+                var selRecordsData = getSelRecords();
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('wbc_process_refuse_return_link').getUrl(),
+                    para: selRecordsData,
+                    success: function() {
+                        requireReturnQuery();
+                    },
+                    scope: this
+                });
+            }
+
+            //同意并指派
+            function confirmAndAllocation() {
+                var selRecords = $au('wbc_audit_require_return_dis_ds').getSelected();
+                if (selRecords.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'allocationPage',
+                    url: $au('wbc_business_confirm_and_allocation_link').getUrl(),
+                    title: '$[l:wbc_business allocation.title]',
+                    height: 470,
+                    width: 450
+                });
+            }
+            //组装数据
+            
+            function getSelRecords() {
+                var selRecordsData = $au('wbc_audit_require_return_dis_ds').getJsonData(true);
+                if (selRecordsData.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    return;
+                }
+                var reviewOpinion = document.getElementById('reviewOpinion').value;
+                for (var i = 0;i < selRecordsData.length;i++) {
+                    selRecordsData[i]['opinion'] = reviewOpinion;
+                }
+                return selRecordsData;
+            }
+            
+            function requireReturnReset() {
+                $au('wbc_audit_require_return_query_ds').reset();
+            }
+            //查看详细
+            
+            function repDetail(value, record, field) {
+                url = '$[/request/@context_path]/' + record.get('pageName') + '=' + record.get('docId')  + '&canUploadFlag=false';
+                return '<a href="javascript:WBC1130_openDocDetail(\'' + url + '\')">' + value + '</a>';
+            }
+            
+            function WBC1130_openDocDetail(url) {
+                if(url.indexOf('exp_report_view_main.screen.ftl')){
+                 var id = 'exp_report_view_main_screen';   
+                }
+                new Aurora.Window({
+                    url: url,
+                    id: id,
+                    title: '单据明细',
+                    fullScreen: true
+                });
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="doc_category_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SSC_DOC_CATEGORY/"/>
+            <a:dataSet id="wbc_audit_require_return_query_ds">
+                <a:fields>
+                    <a:field name="businessTypeName" displayField="meaning" options="doc_category_ds" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docNumber"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="wbc_audit_require_return_dis_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/task-pool/returnQuery" queryDataSet="wbc_audit_require_return_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="dispatchRecordId"/>
+                    <a:field name="taskId"/>
+                    <a:field name="docId"/>
+                    <a:field name="nodeId"/>
+                    <a:field name="businessTypeName" displayField="meaning" options="doc_category_ds" returnField="docCategory" valueField="value" prompt="csh_payment_entity_rule.business_type"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docNumber" prompt="wbc_dispatch_process_audit_require_return.document_num"/>
+                    <a:field name="nodeName" prompt="wbc_dispatch_process_audit_require_return.business_node_description"/>
+                    <a:field name="workEmployeeName" prompt="wbc_dispatch_process_audit_require_return.current_handler"/>
+                    <a:field name="processOpinion" prompt="wbc_dispatch_process_audit_require_return.process_opinion"/>
+                    <a:field name="opinion"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:hBox style="margin-left:-4px;">
+                    <a:textarea id="reviewOpinion" height="25" prompt="wbc_dispatch_process_audit_require_return.review_opinion"/>
+                    <a:toolbarButton click="confirmReturnProcess" text="wbc_dispatch_process_audit_require_return.pass" width="80"/>
+                    <a:toolbarButton click="processRefuseReturn" text="wbc_dispatch_process_audit_require_return.refuse" width="80"/>
+                    <a:toolbarButton click="confirmAndAllocation" text="wbc_dispatch_process_audit_require_return.assigned" width="80"/>
+                </a:hBox>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="wbc_audit_require_return_query_ds" resultTarget="wbc_audit_require_return_dis_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="businessTypeName" bindTarget="wbc_audit_require_return_query_ds" prompt="wbc_dispatch_process_audit_require_return.doc_category"/>
+                    <a:textField name="docNumber" bindTarget="wbc_audit_require_return_query_ds" prompt="wbc_dispatch_process_audit_require_return.document_num"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="WBC1130_grid" bindTarget="wbc_audit_require_return_dis_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="businessTypeName" align="center"/>
+                <a:column name="docNumber" align="center" renderer="repDetail" width="185"/>
+                <a:column name="nodeName" align="center"/>
+                <a:column name="workEmployeeName" align="center"/>
+                <a:column name="processOpinion"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

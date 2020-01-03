@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-5-5 下午4:14:05  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+
+        function BPM102_doFieldBack() {
+            $au('BPM102_pageGroupFieldScreen').close();
+        }
+
+        function BPM102_doFieldQuery() {
+            $au('BPM102_fieldResultDs').query();
+        }
+
+        function BPM102_onFieldUpdate(ds, record, name, value) {
+            if (name == 'dataType') {
+                if (value != null && value != '') {
+                    record.getField('name_').setLovPara('dataType', value);
+                    record.getField('name_').setLovPara('entityId', '$[/parameter/@entityId]');
+                    record.getField('name_').setLovService('java@bpmPageGroupFieldsController@selectUserTabColumnsLov');
+                    record.getField('name_').setReadOnly(false);
+                } else {
+                    record.getField('name_').setLovService('');
+                    record.getField('name_').setReadOnly(true);
+                }
+                record.set('name_', '');
+            }
+            if (name == 'logicType') {
+                dataType = record.get('dataType');
+                desc = record.get('fieldDesc');
+                fieldId = record.get('fieldId');
+                if (value != null && value != '') {
+                    if (value == 'ID') {
+                        record.set('logicBelongFieldDesc', desc);
+                        record.set('logicBelongFieldId', fieldId);
+                    } else {
+                        record.set('logicBelongFieldDesc', '');
+                        record.set('logicBelongFieldId', '');
+                    }
+                    record.getField('logicBelongFieldDesc').setLovPara('entityId', '$[/parameter/@entityId]');
+                    record.getField('logicBelongFieldDesc').setLovService('java@bpmPageGroupFieldsController@selectLogicFieldsLov');
+                    record.getField('logicBelongFieldDesc').setRequired(true);
+                    record.getField('logicBelongFieldDesc').setReadOnly(false);
+                } else {
+                    record.getField('logicBelongFieldDesc').setLovService('');
+                    record.getField('logicBelongFieldDesc').setRequired(false);
+                    record.getField('logicBelongFieldDesc').setReadOnly(true);
+                    record.set('logicBelongFieldDesc', '');
+                    record.set('logicBelongFieldId', '');
+                }
+            }
+            else if (name == 'logicTypeDesc') {
+                if (value == '') {
+                    record.set('logicType', '');
+                }
+            }
+        }
+
+        function BPM102_doFieldSave() {
+            $au('BPM102_fieldResultDs').submit();
+        }
+
+        function BPM102_onFieldLoad(ds) {
+            var records = ds.getAll();
+            for (var i = 0; i < records.length; i++) {
+                records[i].getField('name_').setLovPara('dataType', records[i].get('dataType'));
+                records[i].getField('name_').setLovPara('entityId', '$[/parameter/@entityId]');
+                records[i].getField('name_').setLovService('java@bpmPageGroupFieldsController@selectUserTabColumnsLov');
+                records[i].getField('name_').setReadOnly(false);
+                records[i].getField('logicBelongFieldDesc').setLovPara('entityId', '$[/parameter/@entityId]');
+                records[i].getField('logicBelongFieldDesc').setLovService('java@bpmPageGroupFieldsController@selectLogicFieldsLov');
+                records[i].getField('logicBelongFieldDesc').setReadOnly(false);
+            }
+        }
+
+        function BPM102_onPageGroupFieldAdd(ds, record, index) {
+            var lineNum = 0;
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('orderNum') > lineNum) {
+
+                    lineNum = records[i].get('orderNum');
+                }
+            }
+            record.set('orderNum', (Math.floor(lineNum / 10) + 1) * 10);
+        }
+
+        function BPM102_onFieldCellclick(grid, row, name, record) {
+            var value = null;
+            if (name == 'fieldName') {
+                value = record.get('dataType');
+                var fieldId = record.get('fieldId');
+                if (value != null && value != '') {
+                    record.getField('fieldName').setLovPara('dataType', value);
+                    record.getField('fieldName').setLovPara('entityId', '$[/parameter/@entityId]');
+                    if (fieldId) {
+                        record.getField('fieldName').setLovPara('fieldId', fieldId);
+                    }
+                    record.getField('fieldName').setReadOnly(false);
+                } else {
+                    record.getField('fieldName').setLovService('');
+                    record.getField('fieldName').setReadOnly(true);
+                }
+            }
+            if (name == 'logicBelongFieldDesc') {
+                value = record.get('logicType');
+
+                dataType = record.get('dataType');
+                desc = record.get('fieldDesc');
+                fieldId = record.get('fieldId');
+                if (value != null && value != '') {
+                    if (value == 'ID') {
+                        record.set('logicBelongFieldDesc', desc);
+                        record.set('logicBelongFieldId', fieldId);
+                    }
+                    record.getField('logicBelongFieldDesc').setLovPara('entityId', '$[/parameter/@entityId]');
+                    //record.getField('logicBelongFieldDesc').setLovService('java@bpmPageGroupFieldsController@selectLogicFieldsLov');
+                    record.getField('logicBelongFieldDesc').setRequired(true);
+                    record.getField('logicBelongFieldDesc').setReadOnly(false);
+                } else {
+                    record.getField('logicBelongFieldDesc').setLovService('');
+                    record.getField('logicBelongFieldDesc').setRequired(false);
+                    record.getField('logicBelongFieldDesc').setReadOnly(true);
+                    record.set('logicBelongFieldDesc', '');
+                    record.set('logicBelongFieldId', '');
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_dataTypeDs">
+                <a:datas dataSource="dataType/records"></a:datas>
+            </a:dataSet>
+            <a:dataSet id="BPM102_logicTypeDs">
+                <a:datas dataSource="logicType/records"></a:datas>
+            </a:dataSet>
+            <a:dataSet id="BPM102_fieldResultDs" autoQuery="true"
+                       baseUrl="/bpm/pageGroupField"
+                       queryUrl="$[/request/@context_path]/bpm/pageGroupField/query?entityId=$[/parameter/@entityId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="orderNum" prompt="bpm_page_group_field.order_num" required="true"/>
+                    <a:field name="fieldDesc" prompt="bpm_page_group_field.desc" required="true"/>
+                    <a:field name="dataTypeDesc" displayField="description" options="BPM102_dataTypeDs"
+                             prompt="bpm_page_group_field.data_type" required="true" returnField="dataType"
+                             valueField="value"/>
+                    <a:field name="dataType"/>
+                    <a:field name="tableName" defaultValue="BPM_DYNAMIC_DATA_LINES" prompt="bpm_page_group_field.table"
+                             readOnly="true"/>
+                    <a:field name="fieldName" lovCode="LOV_DYNAMIC_TABLE_COLUMN" prompt="bpm_page_group_field.name"
+                             autoComplete="true" autoCompleteField="columnName"
+                             required="true"
+                             title="bpm_page_group_field.name">
+                        <a:mapping>
+                            <a:map from="columnName" to="fieldName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="logicTypeDesc" displayField="description" options="BPM102_logicTypeDs"
+                             prompt="bpm_page_group_field.logic_type" returnField="logicType"
+                             valueField="value"/>
+                    <a:field name="logicType"/>
+                    <a:field name="logicBelongFieldDesc"
+                             lovCode="LOV_BPM_PAGE_GROUP_FIELD?entityId=$[/parameter/@entityId]"
+                             prompt="bpm_page_group_field.logic_belong_field_id"
+                             title="bpm_page_group_field.logic_belong_field_id" lovHeight="600" lovWidth="650">
+                        <a:mapping>
+                            <a:map from="fieldDesc" to="logicBelongFieldDesc"/>
+                            <a:map from="fieldId" to="logicBelongFieldId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="bpm_page_group_field.enabled_flag" uncheckedValue="N"/>
+                    <a:field name="queryFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="查询条件" uncheckedValue="N"/>
+                    <a:field name="entityId" defaultValue="$[/parameter/@entityId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BPM102_onFieldUpdate"/>
+                    <a:event name="load" handler="BPM102_onFieldLoad"/>
+                    <!-- <a:event name="submitsuccess" handler="BPM102_doFieldQuery"/> -->
+                    <a:event name="add" handler="BPM102_onPageGroupFieldAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bpm_page_group_field.field_define" style="width:100%">
+                <a:label name="entityCode" bindTarget="BPM102_entityResultDs" prompt="实体代码"/>
+                <a:label name="entityName" bindTarget="BPM102_entityResultDs" prompt="实体名称"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doFieldSave" text="hap.save"/>
+                <a:button click="BPM102_doFieldBack" text="hap.back"/>
+            </a:hBox>
+            <a:grid id="BPM102_fieldGrid" bindTarget="BPM102_fieldResultDs" height="330" marginHeight="230"
+                    marginWidth="40" navBar="true" width="805">
+                <a:toolBar>
+                    <a:button text="hap.new" type="add"/>
+                    <a:button text="hap.delete" type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="orderNum" editor="BPM102_fieldNf"/>
+                    <a:column name="fieldDesc" editor="BPM102_fieldTf"/>
+                    <a:column name="dataTypeDesc" editor="BPM102_fieldCb"/>
+                    <a:column name="tableName" width="175"/>
+                    <a:column name="fieldName" editor="BPM102_fieldLov"/>
+                    <a:column name="logicTypeDesc" editor="BPM102_fieldCb"/>
+                    <a:column name="logicBelongFieldDesc" editor="BPM102_fieldLov"/>
+                    <a:column name="enabledFlag" editor="BPM102_fieldCk"/>
+                    <a:column name="queryFlag" editor="BPM102_fieldCk"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="BPM102_fieldCk"/>
+                    <a:comboBox id="BPM102_fieldCb"/>
+                    <a:numberField id="BPM102_fieldNf" allowDecimals="false"/>
+                    <a:textField id="BPM102_fieldTf"/>
+                    <a:lov id="BPM102_fieldLov"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="BPM102_onFieldCellclick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

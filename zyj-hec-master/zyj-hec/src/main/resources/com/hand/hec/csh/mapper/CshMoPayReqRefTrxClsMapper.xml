@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoPayReqRefTrxClsMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoPayReqRefTrxCls">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="MO_PAYMENT_REQ_TYPE_ID" property="moPaymentReqTypeId" jdbcType="DECIMAL" />
+        <result column="MO_CSH_TRX_CLASS_ID" property="moCshTrxClassId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="MO_CSH_TRX_CLASS_CODE" property="moCshTrxClassCode" jdbcType="VARCHAR" />
+        <result column="MO_CSH_TRX_CLASS_DESC" property="moCshTrxClassDesc" jdbcType="VARCHAR" />
+        <result column="MO_PAYMENT_REQ_TYPE_CODE" property="moPaymentReqTypeCode" jdbcType="VARCHAR" />
+        <result column="MO_PAYMENT_REQ_TYPE_DESC" property="moPaymentReqTypeDesc" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryByMagOrgId" resultMap="BaseResultMap">
+      select rtc.ref_id,
+			 rtc.mo_csh_trx_class_id,
+			 rtc.mo_payment_req_type_id,
+			 rtc.enabled_flag,
+			 (select tcv.mo_csh_trx_class_code
+			    from csh_mo_transaction_class tcv
+			   where tcv.mo_csh_trx_class_id = rtc.mo_csh_trx_class_id) mo_csh_trx_class_code,
+			 (select tct.description
+			    from csh_mo_transaction_class tcv
+			    left join csh_mo_transaction_class_tl tct
+			      on tcv.MO_CSH_TRX_CLASS_ID = tct.MO_CSH_TRX_CLASS_ID
+			     and tct.LANG = #{request.locale}
+			   where tcv.mo_csh_trx_class_id = rtc.mo_csh_trx_class_id) mo_csh_trx_class_desc,
+			 (select rcv.mo_payment_req_type_code
+				from csh_mo_payment_req_type rcv
+			   where rcv.mo_payment_req_type_id = rtc.mo_payment_req_type_id) mo_payment_req_type_code,
+			 (select rct.description
+				from csh_mo_payment_req_type rcv
+				left join csh_mo_payment_req_type_tl rct
+				  on rcv.mo_payment_req_type_id = rct.mo_payment_req_type_id
+				 and rct.lang = #{request.locale}
+			   where rcv.mo_payment_req_type_id = rtc.mo_payment_req_type_id) mo_payment_req_type_desc
+      from csh_mo_pay_req_ref_trx_cls rtc
+     where rtc.mo_payment_req_type_id = #{moPaymentReqTypeId}
+    </select>
+
+    <select id="queryForLoan" resultMap="BaseResultMap">
+      select rtc.ref_id,
+			 rtc.mo_csh_trx_class_id,
+			 rtc.mo_payment_req_type_id,
+			 mtc.mo_csh_trx_class_code,
+			 tct.description AS mo_csh_trx_class_desc
+      from csh_mo_pay_req_ref_trx_cls rtc,
+           csh_mo_transaction_class mtc
+           left join csh_mo_transaction_class_tl tct
+			      on mtc.mo_csh_trx_class_id = tct.mo_csh_trx_class_id
+			     and tct.lang = #{request.locale}
+     where rtc.mo_csh_trx_class_id       = mtc.mo_csh_trx_class_id AND
+           rtc.enabled_flag              = 'Y' AND
+           mtc.csh_transaction_type_code = 'PREPAYMENT' AND
+           mtc.enabled_flag              = 'Y' AND
+           mtc.mag_org_id                = #{request.magOrgId} AND
+           rtc.mo_payment_req_type_id = #{moPaymentReqTypeId}
+    </select>
+
+</mapper>

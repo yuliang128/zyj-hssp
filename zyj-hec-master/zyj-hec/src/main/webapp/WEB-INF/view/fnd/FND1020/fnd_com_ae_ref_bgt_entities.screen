@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+   $Author: xiuxian.wu
+    $Date: 2019/01/25 15:30:04 $
+    $Revision: 1 $
+    $Purpose: 管理公司分配核算主体-预算实体分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND1020_batch_assign_be_link" url="$[/request/@context_path]/fnd/FND1020/fnd_com_ae_batch_assign_be.screen"/>
+        <script><![CDATA[
+            function FND1020_AeRefBeUpdate(dataSet, record, name, value, oldvalue) {
+                if (name == 'defaultFlag') {
+                    if (value == 'Y' && record.get('enabledFlag') == 'N') {
+                        record.set('defaultFlag', 'N');
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:enabled_default_bgt_entity]', null, 300, 150);
+                        return;
+                    }
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+            }
+            
+            function FND1020_BatchAssignBe() {
+                var companyId = '$[/parameter/@companyId]';
+                var magOrgId = '$[/parameter/@magOrgId]';
+                var accRefId = '$[/parameter/@accRefId]';
+                new Aurora.Window({
+                    id: 'GLD2020_batch_assign_be_window',
+                    url: $au('FND1020_batch_assign_be_link').getUrl() + '?companyId=' + companyId + '&magOrgId=' + magOrgId + '&accRefId=' + accRefId,
+                    title: '$[l:bgt_entity_batch_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('FND1020_com_ref_acc_be_ds').query();
+                });
+            }
+            
+            function FND1020_AssignBeBack() {
+                var id = this.__host.id;
+                $au(id).close();
+            }
+
+        function FND1020_ComRefAccBeSave() { /* 最多只能启用一个 默认组织*/
+            debugger;
+
+            var all_dataset = $au('FND1020_com_ref_acc_be_ds').getAll();
+            var checkNumber = 0;
+            if (all_dataset.length > 0) {
+                for (var i = 0;i < all_dataset.length;i++) {
+                    if ((all_dataset[i].get('enabledFlag') == 'Y' && all_dataset[i].get('defaultFlag') == 'Y')) {
+                        checkNumber += 1;
+                    }
+                }
+
+                if (checkNumber == 0) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_enabled_flag_bgt_entity]', null, 250, 100);
+                    return;
+                }
+                if (checkNumber > 1) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_enabled_flag_bgt_entityes]', null, 250, 100);
+                    return;
+                }
+            }
+
+
+            $au('FND1020_com_ref_acc_be_ds').submit();
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1020_com_ref_acc_be_ds" autoPageSize="true" submitUrl="$[/request/@context_path]/fnd/company-ref-acc-be/submit" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/company-ref-acc-be/query?accRefId=$[/parameter/@accRefId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accRefId" defaultValue="$[/parameter/@accRefId]"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityCode" LovCode="LOV_SELECT_BGT_ENTITY?magOrgId=$[/parameter/@magOrgId]&amp;accRefId=$[/parameter/@accRefId]" prompt="bgt_entity.entity_code" required="true" title="bgt_entity.bgt_entity">
+                        <a:mapping>
+                            <a:map from="bgtEntityId" to="bgtEntityId"/>
+                            <a:map from="bgtEntityCode" to="bgtEntityCode"/>
+                            <a:map from="bgtEntityName" to="bgtEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtEntityName" prompt="bgt_entity.entity_name"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" prompt="travel_plan_type.default_flag" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="fnd_company_group.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1020_AeRefBeUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="" column="2" title="fnd_company.info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1020_com_ref_acc_be_grid" type="add" width="80"/>
+                    <a:toolbarButton click="FND1020_ComRefAccBeSave" text="HAP_SAVE" width="80"/>
+                    <a:gridButton click="FND1020_BatchAssignBe" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:gridButton click="FND1020_AssignBeBack" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="comCodeName" id="comCodeName" prompt="fnd_company.company_name" readOnly="true"/>
+                <a:textField name="magCodeName" id="magCodeName" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1020_com_ref_acc_be_grid" bindTarget="FND1020_com_ref_acc_be_ds" marginHeight="200" navBar="true" width="1000">
+                <a:columns>
+                    <a:column name="bgtEntityCode" align="center" editor="FND1020_acc_entity_ref_Lov" width="120"/>
+                    <a:column name="bgtEntityName" align="left" width="200"/>
+                    <a:column name="defaultFlag" editor="FND1020_acc_entity_ref_Ck"/>
+                    <a:column name="enabledFlag" editor="FND1020_acc_entity_ref_Ck"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND1020_acc_entity_ref_Lov"/>
+                    <a:checkBox id="FND1020_acc_entity_ref_Ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function init() {
+                var comCodeName = $au('companyCodeName').getValue();
+                var magCodeName = $au('magOrgCodeName').getValue();
+                $au('comCodeName').setValue(comCodeName);
+                $au('magCodeName').setValue(magCodeName);
+            }
+            init();
+        ]]></script>
+    </a:view>
+</a:screen>

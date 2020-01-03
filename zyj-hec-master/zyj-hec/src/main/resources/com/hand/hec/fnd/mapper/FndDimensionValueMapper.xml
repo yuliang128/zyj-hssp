@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndDimensionValueMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndDimensionValue">
+        <result column="DIMENSION_VALUE_ID" property="dimensionValueId" jdbcType="DECIMAL" />
+        <result column="DIMENSION_ID" property="dimensionId" jdbcType="DECIMAL" />
+        <result column="DIMENSION_VALUE_CODE" property="dimensionValueCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="SUMMARY_FLAG" property="summaryFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="checkFndDimension" resultMap="BaseResultMap">
+      select a.* from fnd_dimension_value a
+        where
+        a.dimension_id = #{dimensionId}
+        and
+        (
+            #{filtrateMethod} = 'INCLUDE'
+            and
+            (
+                (
+                    #{controlType} = 'DETAIL'
+                    and a.dimension_value_id = #{dimensionValueId}
+                    and a.summary_flag = 'N'
+                    and (
+                          #{controlDimValueCodeFrom} is null
+                          or a.dimension_value_code &gt;= #{controlDimValueCodeFrom}
+                        )
+                    and (
+                          #{controlDimValueCodeTo} is null
+                          or a.dimension_value_code &lt;= #{controlDimValueCodeTo}
+                        )
+                    and a.enabled_flag = 'Y'
+                )
+                or
+                (
+                    #{controlType} = 'SUMMARY'
+                    and exists (
+                            select 1 from fnd_dim_value_hierarchy h
+                            where h.dimension_value_id = #{dimensionValueId}
+                            and h.parent_dim_value_id = a.dimension_value_id
+                        )
+                    and a.summary_flag = 'Y'
+                    and (
+                          #{controlDimValueCodeFrom} is null
+                          or a.dimension_value_code &gt;= #{controlDimValueCodeFrom}
+                        )
+                    and (
+                          #{controlDimValueCodeTo} is null
+                          or a.dimension_value_code &lt;= #{controlDimValueCodeTo}
+                        )
+                    and a.enabled_flag = 'Y'
+                )
+                or
+                (
+                    #{controlType} = 'ALL'
+                    and
+                    (
+                        (
+                            a.dimension_value_id = #{dimensionValueId}
+                            and a.summary_flag = 'N'
+                            and (
+                                  #{controlDimValueCodeFrom} is null
+                                  or a.dimension_value_code &gt;= #{controlDimValueCodeFrom}
+                                )
+                            and (
+                                  #{controlDimValueCodeTo} is null
+                                  or a.dimension_value_code &lt;= #{controlDimValueCodeTo}
+                                )
+                            and a.enabled_flag = 'Y'
+                        )
+                        or
+                        (
+                            exists (
+                                    select 1 from fnd_dim_value_hierarchy h
+                                    where h.dimension_value_id = #{dimensionValueId}
+                                    and h.parent_dim_value_id = a.dimension_value_id
+                                )
+                            and a.summary_flag = 'Y'
+                            and (
+                                  #{controlDimValueCodeFrom} is null
+                                  or a.dimension_value_code &gt;= #{controlDimValueCodeFrom}
+                                )
+                            and (
+                                  #{controlDimValueCodeTo} is null
+                                  or a.dimension_value_code &lt;= #{controlDimValueCodeTo}
+                                )
+                            and a.enabled_flag = 'Y'
+                        )
+                    )
+                )
+            )
+        )
+        or
+        (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (
+                    #{controlType} = 'DETAIL'
+                    and a.dimension_value_id = #{dimensionValueId}
+                    and a.summary_flag = 'N'
+                    and
+                    (
+                        (
+                          #{controlDimValueCodeFrom} is null
+                          or a.dimension_value_code &lt; #{controlDimValueCodeFrom}
+                        )
+                        or (
+                          #{controlDimValueCodeTo} is null
+                          or a.dimension_value_code &gt; #{controlDimValueCodeTo}
+                        )
+                    )
+                    and a.enabled_flag = 'Y'
+                )
+                or
+                (
+                    #{controlType} = 'SUMMARY'
+                    and exists (
+                            select 1 from fnd_dim_value_hierarchy h
+                            where h.dimension_value_id = #{dimensionValueId}
+                            and h.parent_dim_value_id = a.dimension_value_id
+                        )
+                    and a.summary_flag = 'Y'
+                    and
+                    (
+                        (
+                          #{controlDimValueCodeFrom} is null
+                          or a.dimension_value_code &lt; #{controlDimValueCodeFrom}
+                        )
+                        or (
+                          #{controlDimValueCodeTo} is null
+                          or a.dimension_value_code &gt; #{controlDimValueCodeTo}
+                        )
+                    )
+                    and a.enabled_flag = 'Y'
+                )
+                or
+                (
+                    #{controlType} = 'ALL'
+                    and
+                    (
+                        (
+                            a.dimension_value_id = #{dimensionValueId}
+                            and a.summary_flag = 'N'
+                            and
+                            (
+                                (
+                                  #{controlDimValueCodeFrom} is null
+                                  or a.dimension_value_code &lt; #{controlDimValueCodeFrom}
+                                )
+                                or (
+                                  #{controlDimValueCodeTo} is null
+                                  or a.dimension_value_code &gt; #{controlDimValueCodeTo}
+                                )
+                            )
+                            and a.enabled_flag = 'Y'
+                        )
+                        or
+                        (
+                            exists (
+                                    select 1 from fnd_dim_value_hierarchy h
+                                    where h.dimension_value_id = #{dimensionValueId}
+                                    and h.parent_dim_value_id = a.dimension_value_id
+                                )
+                            and a.summary_flag = 'Y'
+                            and
+                            (
+                                (
+                                  #{controlDimValueCodeFrom} is null
+                                  or a.dimension_value_code &lt; #{controlDimValueCodeFrom}
+                                )
+                                or (
+                                  #{controlDimValueCodeTo} is null
+                                  or a.dimension_value_code &gt; #{controlDimValueCodeTo}
+                                )
+                            )
+                            and a.enabled_flag = 'Y'
+                        )
+                    )
+                )
+            )
+        )
+    </select>
+    <select id="checkDimensionValue" resultType="int">
+        select count(1)
+            from fnd_dimension       fdv,
+                 fnd_dimension_value fdvv
+           where fdv.dimension_id = fdvv.dimension_id
+                 and fdv.dimension_sequence = #{sequence}
+                 and fdvv.dimension_value_id = #{dimensionValueId}
+    </select>
+
+</mapper>

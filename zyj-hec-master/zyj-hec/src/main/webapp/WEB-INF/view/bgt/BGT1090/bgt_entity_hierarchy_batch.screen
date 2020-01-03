@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/21 $
+    $Revision: 1.0 $
+    $Purpose: 预算实体定义-分配实体-批量分配实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1090_entity_hie_batch_link" model="bgt.BGT1090.bgt_entity_hierarchy_batch" modelaction="batch_update"/>
+        <script><![CDATA[
+            function BGT1090_ReturnPeriod() {
+                $au('bgt1090_entity_hierarchy_batch_window').close();
+            }
+            
+            function BGT1090_BatchEntity() {
+                var dataSet = $au('BGT1090_entity_hierarchy_batch_ds');
+                var batchDs = $au('BGT1090_entity_hierarchy_batch_submit_ds');
+                var records = dataSet.getJsonData(true);
+                if (records.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:fnd.please_add_line]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    var record = records[i];
+                    var batchRecord = batchDs.create();
+                    batchRecord.set('entityId',record['entityId']);
+
+                }
+                batchDs.submit();
+
+            }
+            function onBgtEntityBatchSuccess(){
+                $au('BGT1090_entity_hierarchy_batch_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1090_entity_hierarchy_batch_ds" autoPageSize="true" autoQuery="true" fetchAll="true" baseUrl="/bgt/entity" queryUrl="$[/request/@context_path]/bgt/entity/queryForBatch?bgtOrgId=$[/parameter/@bgtOrgId]&amp;parentEntityId=$[/parameter/@parentEntityId]" selectable="true">
+                <a:fields>
+                    <a:field name="entityId"/>
+                    <a:field name="entityCode" readOnly="true" prompt="bgt_entities.entity_code"/>
+                    <a:field name="entityName" readOnly="true" prompt="bgt_entities.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_entity_hierarchy_batch_submit_ds" autoPageSize="true" autoQuery="false" baseUrl="/bgt/entity-hierarchy" selectable="false">
+                <a:fields>
+                    <a:field name="hierarchyId"/>
+                    <a:field name="parentEntityId" defaultValue="$[/parameter/@parentEntityId]"/>
+                    <a:field name="entityId"/>
+                    <a:field name="entityName" prompt="bgt_entities.description" readOnly="true"/>
+                    <a:field name="entityCode" prompt="bgt_entities.entity_code" autoComplete="true" autoCompleteField="entityCode" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="LOV_BGT_ENTITY_DETAIL?bgtOrgId=$[/parameter/@bgtOrgId]" lovWidth="540"  title="exp_org_unit.choice_bgt_entity_display">
+                        <a:mapping>
+                            <a:map from="entityId" to="entityId"/>
+                            <a:map from="entityCode" to="entityCode"/>
+                            <a:map from="description" to="entityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onBgtEntityBatchSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_entity_batch_assign">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="BGT1090_BatchEntity" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="BGT1090_ReturnPeriod" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="entityCode" bindTarget="BGT1090_entity_ds" prompt="bgt_entities.entity_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="BGT1090_entity_ds" prompt="bgt_entities.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="BGT1090_entity_hierarchy_batch_grid" bindTarget="BGT1090_entity_hierarchy_batch_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="entityCode" align="center"  width="80"/>
+                    <a:column name="entityName"  width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

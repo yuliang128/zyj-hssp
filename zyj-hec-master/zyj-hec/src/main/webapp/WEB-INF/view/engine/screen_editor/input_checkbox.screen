@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:link id="bpm_page_tags_data_guide_link" url="${/request/@context_path}/modules/bpm/BPM1020/bpm_page_tags_data_guide.screen"/>
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '${/parameter/@component_id}';
+            var bpm_type = '${/parameter/@bpm_type}';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('input_checkbox_ds').getAt(0);
+                cmp.initRecord(record);
+                var template_flag=record.get('template_flag');
+                if(bpm_type=='page' && record.get('tag_id')){
+                    $au('datarelationbtn').enable();
+                }
+                if(bpm_type=='page' && template_flag=='Y'){
+                    record.getField('field_name').setReadOnly(true);
+            	    record.getField('tag_sequence').setReadOnly(true);
+            	    record.getField('tag_code').setReadOnly(true);
+            	    record.getField('tag_type_desc').setReadOnly(true);
+	            	record.getField('colspan').setReadOnly(true);
+	                record.getField('rowspan').setReadOnly(true);
+	                record.getField('align_desc').setReadOnly(true);
+	                record.getField('footerrenderer').setReadOnly(true);
+	                record.getField('lock').setReadOnly(true);
+	                record.getField('sortable').setReadOnly(true);
+	                record.getField('parent_tag_desc').setReadOnly(true);
+            	}
+            	else{
+                	record.getField('field_name').setReadOnly(false);
+                	record.getField('field_name').setLovPara('layout_id',record.get('layout_id'));
+                	record.getField('field_name').setLovPara('tag_id',record.get('tag_id'));
+                	record.getField('parent_tag_desc').setLovPara('layout_id', record.get('layout_id'));
+	                var layout_view_id=record.get('layout_view_id');
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        // $au('colspanfield').show();
+	                        // $au('rowspanfield').show();
+	                        record.getField('align_desc').setReadOnly(true);
+			                record.getField('footerrenderer').setReadOnly(true);
+			                record.getField('lock').setReadOnly(true);
+			                record.getField('sortable').setReadOnly(true);
+			                record.getField('parent_tag_desc').setReadOnly(true);
+	                        record.getField('colspan').setReadOnly(false);
+	                        record.getField('rowspan').setReadOnly(false);
+	                        // record.getField('colspan').setRequired(true);
+	                        // record.getField('rowspan').setRequired(true);
+	                    }
+	                    else if(layoutCmp && layoutCmp.getCmpType()=='grid'){
+	                        //$au('alignfield').show();
+	                        record.getField('colspan').setReadOnly(true);
+	                        record.getField('rowspan').setReadOnly(true);
+	                        record.getField('align_desc').setReadOnly(false);
+	                        record.getField('footerrenderer').setReadOnly(false);
+	                        record.getField('lock').setReadOnly(false);
+	                        record.getField('sortable').setReadOnly(false);
+	                        record.getField('parent_tag_desc').setReadOnly(false);
+	                    }
+	                }
+            	}
+            	if(bpm_type=='tplt'){
+            	      record.getField('field_name').setReadOnly(true);
+            	     // record.getField('tag_code').setRequired(true);
+            	}else if(bpm_type=='page'){
+            	      record.getField('field_name').setRequired(true);
+            	      record.getField('ck_checkedvalue').setRequired(true);
+            	      record.getField('ck_uncheckedvalue').setRequired(true);
+            	}
+            });
+            
+            function saveCheckBox() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('input_checkbox_ds').getAt(0);
+               	 var url='';
+                if(bpm_type == 'tplt'){
+                    if(!record.isNew || record.get('tag_id')){
+                        url=$au('tag_tplt_update_link').getUrl();
+                    }else{
+                        url=$au('tag_tplt_insert_link').getUrl();
+                    }
+                }else if(bpm_type == 'page'){
+                    if(!record.isNew || record.get('tag_id')){
+	                    url=$au('tag_page_update_link').getUrl();
+                    }else{
+                        url=$au('tag_page_insert_link').getUrl();
+                    }
+                }
+                if($au('input_checkbox_ds').validate()){
+	                Aurora.request({
+	                    url: url,
+	                    para: record.data,
+	                    success: function(result) {
+	                        if(result.result){
+	                            for(var field in result.result){
+	                                record.set(field,result.result[field]);
+	                            }
+	                             cmp.setAttr(record);
+	                        }
+	                        toastr.remove();
+                			toastr.success("操作成功");
+	                    },
+	                    scope: this
+	                });
+                }
+            }
+            
+            function cancelCheckBox() {
+                $au('CheckBox_window').close();
+            }
+            
+            function onUpdateHandler(ds,record,name,newValue,oldValue){
+                var layout_view_id=record.get('layout_view_id');
+                if(name=='colspan'){
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        var column=layoutCmp.getColumn();
+	                        if(column){
+	                            if(newValue>column){
+	                                Aurora.showWarningMessage('', '最大值为：'+column, function(){
+	                                    newValue=column;
+	                                });
+	                            }
+	                        }
+	                    }
+	                }
+                }
+                else if(name=='tag_desc'){
+                    record.get('prompt',newValue);
+                }
+                else if(name=='field_name'){
+                    var type=record.get('tag_type');
+                    if(layout_view_id && type && newValue){
+                        record.set('id',layout_view_id+'_'+newValue+'_'+type);
+                        record.set('name',newValue);
+                    }
+                }
+                else if(name=='id'){
+                    if(newValue && record.get('template_flag')=='N'){
+	                    record.set('tag_code',newValue);
+                    }
+                }
+                else if(name=='tag_id'){
+                        if(!oldValue && newValue && bpm_type=='page'){
+                            $au('datarelationbtn').enable();
+                        }
+                    }
+            }
+            
+             function dataGuideRenderer() {
+                var record = $au('input_checkbox_ds').getAt(0);
+                if (record.get('tag_id')) {
+                	newDataGuideFunction(record.get('tag_id'));
+                }
+            }
+            
+            function newDataGuideFunction(tag_id) {
+                new Aurora.Window({
+                    id: 'bpm_page_tags_data_guide_screen',
+                    url: $au('bpm_page_tags_data_guide_link').getUrl() + '?tag_id=' + tag_id,
+                    title: '${l:BPM_PAGE_TAGS_BASIC.DATA_GUIDE}',
+                    fullScreen: false,
+                    width:1200,
+                    height:550
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="tag_type_list" lookupCode="BPM_TAG_TYPE"/>
+            <a:dataSet id="input_checkbox_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="bindtarget" prompt="BPM_PAGE_TAGS_BASIC.BINDTARGET"/>
+                    <a:field name="name" prompt="BPM_PAGE_TAGS_BASIC.NAME"/>
+                    <a:field name="prompt" prompt="BPM_PAGE_GROUP_FIELDS.DESC"/>
+                    <a:field name="placeholder" prompt="PROMPT"/>
+                    <a:field name="defaultvalue" prompt="GL.DEFAULT_VALUE"/>
+                    <a:field name="required" checkedValue="true" defaultValue="false" prompt="BPM_TPLT_TAGS_BASIC.REQUIRED" uncheckedValue="false"/>
+                    <a:field name="readonly" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_TAGS_BASIC.READONLY" uncheckedValue="false"/>
+                    <a:field name="layout_view_id" prompt="所属布局ID"/>
+                    <a:field name="tag_sequence" prompt="BPM_PAGE_TAGS_BASIC.TAG_SEQUENCE" readOnly="true"/>
+                    <a:field name="tag_code" prompt="BPM_TPLT_TAGS_BASIC.TAG_CODE" readOnly="true"/>
+                    <a:field name="tag_desc" prompt="BPM_PAGE_TAGS_BASIC.TAG_DESC"/>
+                    <a:field name="tag_type_desc" displayfield="code_value_name" options="tag_type_list" prompt="BPM_TPLT_TAGS_BASIC.TAG_TYPE" readOnly="true" returnField="tag_type" valueField="code_value"/>
+                    <a:field name="tag_type" readOnly="true"/>
+                    <a:field name="field_name" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_ref_field" lovWidth="500" prompt="BPM_PAGE_TAGS_BASIC.FIELD_ID" title="BPM_PAGE_TAGS_BASIC.FIELD_ID">
+                        <a:mapping>
+                            <a:map from="field_id" to="field_id"/>
+                            <a:map from="name" to="field_name"/>
+                            <a:map from="desc" to="tag_desc"/>
+                            <a:map from="returnfield_desc" to="cb_returnfield_desc"/>
+                            <a:map from="returnfield_name" to="cb_returnfield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="field_id"/>
+                    <a:field name="layout_id"/>
+                    <a:field name="id" prompt="BPM_PAGE_TAGS_BASIC.ID" readOnly="true"/>
+                    <a:field name="colspan" prompt="BPM_PAGE_TAGS_BASIC.COLSPAN"/>
+                    <a:field name="rowspan" prompt="BPM_PAGE_TAGS_BASIC.ROWSPAN"/>
+                    <a:field name="align_desc" displayfield="code_value_name" options="tag_alignment_list" prompt="BPM_PAGE_TAGS_BASIC.ALIGN" returnField="align" valueField="code_value"/>
+                    <a:field name="align"/>
+                    <a:field name="footerrenderer" checkedValue="Y" defaultValue="N" prompt="BPM_PAGE_TAGS_BASIC.FOOTERRENDERER" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="lock" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_TAGS_BASIC.LOCK" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="sortable" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_TAGS_BASIC.SORTABLE" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="parent_tag_desc" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_basic_parent_lov" lovWidth="500" prompt="BPM_PAGE_TAGS_BASIC.PARENT_TAG_ID" title="BPM_PAGE_TAGS_BASIC.PARENT_TAG_ID">
+                        <a:mapping>
+                            <a:map from="tag_desc" to="parent_tag_desc"/>
+                            <a:map from="tag_id" to="parent_tag_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parent_tag_id"/>
+                    <a:field name="width" prompt="BPM_PAGE_LAYOUT_BASIC.WIDTH"/>
+                    <a:field name="template_flag" checkedValue="Y" defaultValue="N" prompt="BPM_PAGE_LAYOUT_BASIC.TEMPLATE_FLAG" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="printable" checkedValue="true" defaultValue="true" prompt="BPM_PAGE_TAGS_BASIC.PRINTABLE" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_LAYOUT_BASIC.HIDDEN" uncheckedValue="false"/>
+                    <a:field name="ck_checkedvalue" prompt="BPM_PAGE_TAGS_BASIC.CK_CHECKEDVALUE"/>
+                    <a:field name="ck_uncheckedvalue" prompt="BPM_PAGE_TAGS_BASIC.CK_UNCHECKEDVALUE"/>
+                    <a:field name="ck_label" prompt="BPM_PAGE_TAGS_BASIC.CK_LABEL"/>
+                    <a:field name="tag_id"/>
+                    <a:field name="app_hide_flag" checkedValue="Y" defaultValue="N" prompt="BPM_TPLT_TAGS_BASIC.APP_HIDE_FLAG" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdateHandler"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="CheckBox">
+                <!-- <a:textField name="bindtarget" bindTarget="input_checkbox_ds"/> -->
+                <!-- <a:textField name="layout_view_id" bindTarget="input_checkbox_ds"/> -->
+                <a:textField name="tag_sequence" bindTarget="input_checkbox_ds"/>
+                <a:placeHolder id="fieldnameConfig"/>
+                <a:textField name="tag_desc" bindTarget="input_checkbox_ds"/>
+                <a:comboBox name="tag_type_desc" bindTarget="input_checkbox_ds"/>
+                <a:textField name="id" bindTarget="input_checkbox_ds"/>
+                <a:textField name="tag_code" bindTarget="input_checkbox_ds"/>
+                <a:textField name="name" bindTarget="input_checkbox_ds"/>
+                <!-- <a:textField name="prompt" bindTarget="input_checkbox_ds"/> -->
+                <!-- <a:textField name="placeholder" bindTarget="input_checkbox_ds"/> -->
+                <a:textField name="defaultvalue" bindTarget="input_checkbox_ds"/>
+                <a:checkBox name="required" bindTarget="input_checkbox_ds"/>
+                <a:checkBox name="readonly" bindTarget="input_checkbox_ds"/>
+                <a:checkBox name="hidden" bindTarget="input_checkbox_ds"/>
+                <a:numberField name="width" bindTarget="input_checkbox_ds"/>
+                <a:placeHolder id="templateflagConfig"/>
+                <a:placeHolder id="formConfig"/>
+            </a:form>
+            <a:hBox>
+                <a:placeHolder id="datarelaConfig"/>
+                <a:button click="saveCheckBox" skin="green" text="HAP_SAVE"/>
+                <a:button click="cancelCheckBox" skin="red" text="HAP_CLOSE"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="datarelaConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="page">
+                    <c:process-config>
+                        <a:button id="datarelationbtn" click="dataGuideRenderer" disabled="true" text="BPM_PAGE_TAGS_BASIC.DATA_GUIDE"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="fieldnameConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="page">
+                    <c:process-config>
+                        <a:lov name="field_name" bindTarget="input_checkbox_ds"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="templateflagConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="page">
+                    <c:process-config>
+                        <a:checkBox name="template_flag" bindTarget="input_checkbox_ds"/>
+                        <a:checkBox name="app_hide_flag" bindTarget="input_checkbox_ds"/>
+                        <a:checkBox name="printable" bindTarget="input_checkbox_ds"/>
+                        <a:textField name="ck_checkedvalue" bindTarget="input_checkbox_ds"/>
+                        <a:textField name="ck_uncheckedvalue" bindTarget="input_checkbox_ds"/>
+                        <a:textField name="ck_label" bindTarget="input_checkbox_ds"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="formConfig">
+            <p:switch test="/parameter/@layout_type">
+                <p:case value="form">
+                    <c:process-config>
+                        <a:numberField name="colspan" allowDecimals="false" bindTarget="input_checkbox_ds" min="1"/>
+                        <a:numberField name="rowspan" allowDecimals="false" bindTarget="input_checkbox_ds" min="1"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="grid">
+                    <c:process-config>
+                        <a:comboBox name="align_desc" id="alignfield" bindTarget="input_checkbox_ds"/>
+                        <a:checkBox name="footerrenderer" bindTarget="input_checkbox_ds"/>
+                        <a:checkBox name="lock" bindTarget="input_checkbox_ds"/>
+                        <a:checkBox name="sortable" bindTarget="input_checkbox_ds"/>
+                        <a:lov name="parent_tag_desc" bindTarget="input_checkbox_ds"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

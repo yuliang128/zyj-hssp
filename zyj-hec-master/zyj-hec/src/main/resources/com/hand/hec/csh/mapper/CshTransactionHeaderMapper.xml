@@ -1,0 +1,1445 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshTransactionHeaderMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshTransactionHeader">
+        <result column="TRANSACTION_HEADER_ID" property="transactionHeaderId" jdbcType="DECIMAL"/>
+        <result column="TRANSACTION_NUM" property="transactionNum" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_TYPE" property="transactionType" jdbcType="VARCHAR"/>
+        <result column="MO_CSH_TRX_CLASS_ID" property="moCshTrxClassId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_WRITE_OFF_FLAG" property="enabledWriteOffFlag" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_DATE" property="transactionDate" jdbcType="DATE"/>
+        <result column="TRANSACTION_DATE_TZ" property="transactionDateTz" jdbcType="DATE"/>
+        <result column="TRANSACTION_DATE_LTZ" property="transactionDateLtz" jdbcType="DATE"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="TRANSACTION_CATEGORY" property="transactionCategory" jdbcType="VARCHAR"/>
+        <result column="POSTED_FLAG" property="postedFlag" jdbcType="VARCHAR"/>
+        <result column="REVERSED_FLAG" property="reversedFlag" jdbcType="VARCHAR"/>
+        <result column="REVERSED_DATE" property="reversedDate" jdbcType="DATE"/>
+        <result column="REVERSED_DATE_TZ" property="reversedDateTz" jdbcType="DATE"/>
+        <result column="REVERSED_DATE_LTZ" property="reversedDateLtz" jdbcType="DATE"/>
+        <result column="RETURNED_FLAG" property="returnedFlag" jdbcType="VARCHAR"/>
+        <result column="WRITE_OFF_FLAG" property="writeOffFlag" jdbcType="VARCHAR"/>
+        <result column="WRITE_OFF_COMPLETED_DATE" property="writeOffCompletedDate" jdbcType="DATE"/>
+        <result column="WRITE_OFF_COMPLETED_DATE_TZ" property="writeOffCompletedDateTz" jdbcType="DATE"/>
+        <result column="WRITE_OFF_COMPLETED_DATE_LTZ" property="writeOffCompletedDateLtz" jdbcType="DATE"/>
+        <result column="SOURCE_HEADER_ID" property="sourceHeaderId" jdbcType="DECIMAL"/>
+        <result column="GLD_INTERFACE_FLAG" property="gldInterfaceFlag" jdbcType="VARCHAR"/>
+        <result column="SOURCE_PAYMENT_HEADER_ID" property="sourcePaymentHeaderId" jdbcType="DECIMAL"/>
+        <result column="EBANKING_FLAG" property="ebankingFlag" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_CATEGORY" property="documentCategory" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_TYPE_ID" property="documentTypeId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="BANK_ACCOUNT_ID" property="bankAccountId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <sql id="payeeCategoryName">
+        (SELECT
+             scv.meaning
+         FROM
+             sys_code_b sc,
+             sys_code_value_b scv
+         WHERE
+             sc.code = 'PAYMENT_OBJECT'
+           AND sc.code_id = scv.code_id
+           AND scv.value = ctl.payee_category
+        )  payeeCategoryName
+    </sql>
+
+    <sql id="payeeName">
+        case
+          when ctl.payee_category = 'EMPLOYEE'
+          then (select ee.name
+                from exp_employee ee
+                where ee.employee_id = ctl.payee_id)
+          when ctl.payee_category = 'VENDER'
+          then (select vv.description
+                from pur_system_vender vv LEFT OUTER JOIN pur_system_vender_tl psvt ON (vv.vender_id = psvt.vender_id
+                                                            AND psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                where vv.vender_id = ctl.payee_id)
+          when ctl.payee_category = 'CUSTOMER'
+          then (select osct.description
+                from ord_system_customer cv
+                LEFT OUTER JOIN ord_system_customer_tl osct ON (cv.customer_id = osct.customer_id
+                                                            AND osct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                where cv.customer_id = ctl.payee_id)
+        end payeeName
+    </sql>
+
+    <sql id="transactionAmount">
+        (SELECT
+            IFNULL( SUM( ctlx.transaction_amount ), 0 )
+        FROM
+            csh_transaction_header cthx,
+            csh_transaction_line ctlx
+        WHERE
+            cthx.transaction_header_id = ctlx.transaction_header_id
+            AND cthx.source_header_id = cth.transaction_header_id
+            AND cthx.reversed_flag = 'N'
+            AND cthx.returned_flag = 'R')
+    </sql>
+
+    <sql id="documentWriteOffAmount">
+        (SELECT
+        IFNULL( SUM( cwo.document_write_off_amount ), 0 )
+        FROM
+        csh_write_off cwo
+        WHERE
+        cwo.csh_transaction_line_id = ctl.transaction_line_id
+        AND cwo.source_csh_trx_line_id IS NULL)
+    </sql>
+
+    <select id="queryByPayReqHeaderId" resultType="java.util.Map">
+        SELECT
+                *
+            FROM
+                (
+            SELECT DISTINCT
+                cth.transaction_header_id transactionHeaderId,
+                cth.transaction_header_id paymentHeaderId,
+                cth.transaction_num transactionNum,
+                cth.transaction_type transactionType,
+                (
+            SELECT
+                cvt.meaning
+            FROM
+                sys_code_b cb
+                LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+            WHERE
+                cb.CODE = 'CSH_TRANSACTION_TYPE'
+                AND cvb.VALUE = cth.transaction_type
+                AND cvt.lang = #{request.locale}
+                ) transactionTypeName,
+                cth.transaction_date transactionDate,
+                cth.transaction_date charTransactionDate,
+                ctl.currency_code currencyCode,
+                ctl.transaction_amount transactionAmount,
+                ( SELECT cba.bank_account_num FROM csh_bank_account cba WHERE cba.bank_account_id = ctl.bank_account_id ) bankAccountNum,
+                ( SELECT cbat.bank_account_name FROM csh_bank_account_tl cbat WHERE cbat.bank_account_id = ctl.bank_account_id AND cbat.lang = #{request.locale} ) bankAccountName,
+                ctl.payee_category payeeCategory,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'PAYMENT_OBJECT'
+                    AND cvb.VALUE = ctl.payee_category
+                    AND cvt.lang = #{request.locale}
+                ) payeeCategoryName,
+                ctl.payee_id payeeId,
+                (
+                CASE
+
+                    WHEN ctl.payee_category = 'EMPLOYEE' THEN
+                    ( SELECT concat( ee.employee_code, '-', ee.NAME ) FROM exp_employee ee WHERE ee.employee_id = ctl.payee_id )
+                    WHEN ctl.payee_category = 'VENDER' THEN
+                    (
+                    SELECT
+                        concat( sv.vender_code, '-', svt.description )
+                    FROM
+                        pur_system_vender sv
+                        LEFT JOIN pur_system_vender_tl svt ON sv.vender_id = svt.vender_id
+                    WHERE
+                        svt.lang = #{request.locale}
+                        AND sv.vender_id = ctl.payee_id
+                    )
+                    WHEN ctl.payee_category = 'CUSTOMER' THEN
+                    (
+                    SELECT
+                        concat( sc.customer_code, '-', sct.description )
+                    FROM
+                        ord_system_customer sc
+                        LEFT JOIN ord_system_customer_tl sct ON sc.customer_id = sct.customer_id
+                    WHERE
+                        sc.customer_id = ctl.payee_id
+                        AND sct.lang = #{request.locale}
+                    )
+                END
+                ) payeeCodeName,
+                ctl.document_num documentNum,
+                ( SELECT su.user_name FROM sys_user su WHERE su.user_id = cth.created_by ) userName,
+                ( SELECT su.description FROM sys_user su WHERE su.user_id = cth.created_by ) userDesc,
+                cth.payment_method_id paymentMethodId,
+                ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = ctl.agent_employee_id ) agentEmployeeName,
+                cth.posted_flag postedFlag,
+                cth.reversed_flag reversedFlag,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_REVERSE_SELECT'
+                    AND cvb.VALUE = cth.reversed_flag
+                    AND cvt.lang = #{request.locale}
+                ) reversed,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_RETURN_SELECT'
+                    AND cvb.VALUE = cth.returned_flag
+                    AND cvt.lang = #{request.locale}
+                ) returned
+            FROM
+                csh_payment_requisition_ref = cpr,
+                csh_transaction_header cth,
+                csh_transaction_line ctl,
+                csh_payment_requisition_ln lns,
+                csh_payment_requisition_hd hds
+            WHERE
+                ctl.transaction_header_id = cth.transaction_header_id
+                AND cpr.csh_transaction_line_id = ctl.transaction_line_id
+                AND cpr.payment_requisition_line_id = lns.payment_requisition_line_id
+                AND lns.payment_requisition_header_id = hds.payment_requisition_header_id
+            AND hds.payment_requisition_header_id = #{headerId}
+
+            UNION ALL
+            SELECT
+                cth.transaction_header_id transactionHeaderId,
+                cth.transaction_header_id paymentHeaderId,
+                cth.transaction_num transactionNum,
+                cth.transaction_type transactionType,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_TRANSACTION_TYPE'
+                    AND cvb.VALUE = cth.transaction_type
+                    AND cvt.lang = #{request.locale}
+                ) transactionTypeName,
+                cth.transaction_date transactionDate,
+                cth.transaction_date charTransactionDate,
+                ctl.currency_code currencyCode,
+                ctl.transaction_amount transactionAmount,
+                ( SELECT cba.bank_account_num FROM csh_bank_account cba WHERE cba.bank_account_id = ctl.bank_account_id ) bankAccountNum,
+                ( SELECT cbat.bank_account_name FROM csh_bank_account_tl cbat WHERE cbat.bank_account_id = ctl.bank_account_id AND cbat.lang = #{request.locale} ) bankAccountName,
+                ctl.payee_category payeeCategory,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'PAYMENT_OBJECT'
+                    AND cvb.VALUE = ctl.payee_category
+                    AND cvt.lang = #{request.locale}
+                ) payeeCategoryName,
+                ctl.payee_id payeeId,
+                (
+                CASE
+
+                    WHEN ctl.payee_category = 'EMPLOYEE' THEN
+                    ( SELECT concat( ee.employee_code, '-', ee.NAME ) FROM exp_employee ee WHERE ee.employee_id = ctl.payee_id )
+                    WHEN ctl.payee_category = 'VENDER' THEN
+                    (
+                    SELECT
+                        concat( sv.vender_code, '-', svt.description )
+                    FROM
+                        pur_system_vender sv
+                        LEFT JOIN pur_system_vender_tl svt ON sv.vender_id = svt.vender_id
+                    WHERE
+                        svt.lang = #{request.locale}
+                        AND sv.vender_id = ctl.payee_id
+                    )
+                    WHEN ctl.payee_category = 'CUSTOMER' THEN
+                    (
+                    SELECT
+                        concat( sc.customer_code, '-', sct.description )
+                    FROM
+                        ord_system_customer sc
+                        LEFT JOIN ord_system_customer_tl sct ON sc.customer_id = sct.customer_id
+                    WHERE
+                        sc.customer_id = ctl.payee_id
+                        AND sct.lang = #{request.locale}
+                    )
+                END
+                ) payeeCodeName,
+                ctl.document_num documentNum,
+                ( SELECT su.user_name FROM sys_user su WHERE su.user_id = cth.created_by ) userName,
+                ( SELECT su.description FROM sys_user su WHERE su.user_id = cth.created_by ) userDesc,
+                cth.payment_method_id paymentMethodId,
+                ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = ctl.agent_employee_id ) agentEmployeeName,
+                cth.posted_flag postedFlag,
+                cth.reversed_flag reversedFlag,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_REVERSE_SELECT'
+                    AND cvb.VALUE = cth.reversed_flag
+                    AND cvt.lang = #{request.locale}
+                ) reversed,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_RETURN_SELECT'
+                    AND cvb.VALUE = cth.returned_flag
+                    AND cvt.lang = #{request.locale}
+                ) returned
+                FROM
+                    csh_transaction_header cth,
+                    csh_transaction_line ctl
+                WHERE
+                    cth.transaction_header_id = ctl.transaction_header_id
+                    AND cth.source_header_id IN (
+                    SELECT DISTINCT
+                        tl.transaction_header_id
+                FROM
+                    csh_payment_requisition_ref cpr,
+                    csh_transaction_line   tl,
+                    csh_payment_requisition_ln lns,
+                    csh_payment_requisition_hd hds
+                WHERE
+                    cpr.csh_transaction_line_id = tl.transaction_line_id
+                    AND cpr.payment_requisition_line_id = lns.payment_requisition_line_id
+                    AND lns.payment_requisition_header_id = hds.payment_requisition_header_id
+                    AND hds.payment_requisition_header_id = #{headerId}
+                )
+
+                UNION ALL
+                SELECT
+                cth.transaction_header_id transactionHeaderId,
+                cth.transaction_header_id paymentHeaderId,
+                cth.transaction_num transactionNum,
+                cth.transaction_type transactionType,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_TRANSACTION_TYPE'
+                    AND cvb.VALUE = cth.transaction_type
+                    AND cvt.lang = #{request.locale}
+                ) transactionTypeName,
+                cth.transaction_date transactionDate,
+                cth.transaction_date charTransactionDate,
+                ctl.currency_code currencyCode,
+                ctl.transaction_amount transactionAmount,
+                ( SELECT cba.bank_account_num FROM csh_bank_account cba WHERE cba.bank_account_id = ctl.bank_account_id ) bankAccountNum,
+                ( SELECT cbat.bank_account_name FROM csh_bank_account_tl cbat WHERE cbat.bank_account_id = ctl.bank_account_id AND cbat.lang = #{request.locale} ) bankAccountName,
+                ctl.payee_category payeeCategory,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'PAYMENT_OBJECT'
+                    AND cvb.VALUE = ctl.payee_category
+                    AND cvt.lang = #{request.locale}
+                ) payeeCategoryName,
+                ctl.payee_id payeeId,
+                (
+                CASE
+
+                    WHEN ctl.payee_category = 'EMPLOYEE' THEN
+                    ( SELECT concat( ee.employee_code, '-', ee.NAME ) FROM exp_employee ee WHERE ee.employee_id = ctl.payee_id )
+                    WHEN ctl.payee_category = 'VENDER' THEN
+                    (
+                    SELECT
+                        concat( sv.vender_code, '-', svt.description )
+                    FROM
+                        pur_system_vender sv
+                        LEFT JOIN pur_system_vender_tl svt ON sv.vender_id = svt.vender_id
+                    WHERE
+                        svt.lang = #{request.locale}
+                        AND sv.vender_id = ctl.payee_id
+                    )
+                    WHEN ctl.payee_category = 'CUSTOMER' THEN
+                    (
+                    SELECT
+                        concat( sc.customer_code, '-', sct.description )
+                    FROM
+                        ord_system_customer sc
+                        LEFT JOIN ord_system_customer_tl sct ON sc.customer_id = sct.customer_id
+                    WHERE
+                        sc.customer_id = ctl.payee_id
+                        AND sct.lang = #{request.locale}
+                    )
+                END
+                ) payeeCodeName,
+                ctl.document_num documentNum,
+                ( SELECT su.user_name FROM sys_user su WHERE su.user_id = cth.created_by ) userName,
+                ( SELECT su.description FROM sys_user su WHERE su.user_id = cth.created_by ) userDesc,
+                cth.payment_method_id paymentMethodId,
+                ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = ctl.agent_employee_id ) agentEmployeeName,
+                cth.posted_flag postedFlag,
+                cth.reversed_flag reversedFlag,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_REVERSE_SELECT'
+                    AND cvb.VALUE = cth.reversed_flag
+                    AND cvt.lang = #{request.locale}
+                ) reversed,
+                (
+                SELECT
+                    cvt.meaning
+                FROM
+                    sys_code_b cb
+                    LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+                    LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+                WHERE
+                    cb.CODE = 'CSH_RETURN_SELECT'
+                    AND cvb.VALUE = cth.returned_flag
+                    AND cvt.lang = #{request.locale}
+                ) returned
+                FROM
+                    csh_transaction_header cth,
+                    csh_transaction_line ctl
+                WHERE
+                    cth.transaction_header_id = ctl.transaction_header_id
+                    AND cth.source_header_id IN (
+                    SELECT
+                        th.transaction_header_id
+                    FROM
+                        csh_payment_requisition_ref cpr,
+                        csh_transaction_line tl,
+                        csh_payment_requisition_ln lns,
+                        csh_payment_requisition_hd hds,
+                        csh_transaction_header th
+                    WHERE
+                        cpr.csh_transaction_line_id = tl.transaction_line_id
+                        AND cpr.payment_requisition_line_id = lns.payment_requisition_line_id
+                        AND lns.payment_requisition_header_id = hds.payment_requisition_header_id
+                        AND th.source_header_id = tl.transaction_header_id
+                    AND hds.payment_requisition_header_id = #{headerId}
+                )
+            ) v
+            ORDER BY
+              v.charTransactionDate,
+              v.transactionHeaderId
+    </select>
+
+    <select id="queryWriteOffByPaYReqHeaderId" resultType="java.util.Map">
+        SELECT
+            v.*
+            FROM
+            (
+            SELECT
+            erps.exp_report_header_id docHeaderId,
+            erh.exp_report_number docNumber,
+            cwo.write_off_id writeOffId,
+            'EXP_REPORT' docType,
+            (
+            SELECT
+            rtt.description
+            FROM
+            exp_mo_report_type rt
+            LEFT JOIN exp_mo_report_type_tl rtt ON rt.mo_exp_report_type_id = rtt.mo_exp_report_type_id
+            WHERE
+            rtt.lang = #{request.locale}
+            AND rt.mo_exp_report_type_id = erh.mo_exp_report_type_id
+            ) AS docTypeName,
+            cwo.write_off_date writeOffDate,
+            (
+            SELECT
+            gp.period_name
+            FROM
+            gld_period gp,
+            gld_period_set gps
+            WHERE
+            gp.adjustment_flag = 'N'
+            AND gps.period_set_id = gp.period_set_id
+            AND gps.period_set_code = (
+            SELECT
+            sob.period_set_code
+            FROM
+            gld_set_of_book sob,
+            gld_accounting_entity ae
+            WHERE
+            ae.acc_entity_id = (
+            SELECT
+            rae.acc_entity_id
+            FROM
+            fnd_company_ref_acc_entity rae
+            WHERE
+            rae.company_id = erps.company_id
+            AND rae.enabled_flag = 'Y'
+            AND rae.default_flag = 'Y'
+            )
+            AND ae.default_set_of_books_id = sob.set_of_books_id
+            )
+            AND cwo.write_off_date BETWEEN gp.start_date
+            AND gp.end_date
+            ) periodName,
+            (
+            SELECT
+            cvt.meaning
+            FROM
+            sys_code_b cb
+            LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+            LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+            WHERE
+            cb.CODE = 'CSH_WRITE_OFF_TYPE'
+            AND cvb.VALUE = cwo.write_off_type
+            AND cvt.lang = #{request.locale}
+            ) writeOffTypeName,
+            cwo.csh_write_off_amount cshWriteOffAmount,
+            cth.transaction_num transactionNum,
+            cth.transaction_header_id transactionHeaderId
+            FROM
+            exp_report_pmt_schedule erps,
+            exp_report_header erh,
+            csh_write_off cwo,
+            csh_transaction_line ctl,
+            csh_transaction_header cth
+            WHERE
+            1 = 1
+            AND erps.exp_report_header_id = erh.exp_report_header_id
+            AND erps.payment_schedule_line_id = cwo.document_line_id
+            AND erps.exp_report_header_id = cwo.document_header_id
+            AND cwo.document_source = 'EXPENSE_REPORT'
+            AND cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+            AND cwo.csh_transaction_line_id = ctl.transaction_line_id
+            AND ctl.transaction_header_id = cth.transaction_header_id
+            AND EXISTS (
+            SELECT
+            d.write_off_type
+            FROM
+            doc_csh_write_off_more_vl d
+            WHERE
+            d.transaction_header_id = cth.source_payment_header_id
+            AND d.write_off_type = 'PAYMENT_PREPAYMENT'
+            AND d.document_header_id = #{headerId}
+            )
+
+          UNION
+            SELECT
+            crrl.register_hds_id docHeaderId,
+            crrh.register_number docNumber,
+            cwo.write_off_id writeOffId,
+            'CSH_REPAYMENT' docType,
+            (
+            SELECT
+            rtt.description
+            FROM
+            csh_mo_repayment_reg_type rt
+            LEFT JOIN csh_mo_repayment_reg_type_tl rtt ON rt.mo_repayment_reg_type_id = rtt.mo_repayment_reg_type_id
+            WHERE
+            rtt.mo_repayment_reg_type_id = crrh.mo_repayment_reg_type_id
+            AND rtt.lang = #{request.locale}
+            ) AS docTypeName,
+            crrh.repayment_date writeOffDate,
+            (
+            SELECT
+            gp.period_name
+            FROM
+            gld_period gp,
+            gld_period_set gps
+            WHERE
+            gp.adjustment_flag = 'N'
+            AND gps.period_set_id = gp.period_set_id
+            AND gps.period_set_code = (
+            SELECT
+            sob.period_set_code
+            FROM
+            gld_set_of_book sob,
+            gld_accounting_entity ae
+            WHERE
+            ae.acc_entity_id = (
+            SELECT
+            rae.acc_entity_id
+            FROM
+            fnd_company_ref_acc_entity rae
+            WHERE
+            rae.company_id = crrh.company_id
+            AND rae.enabled_flag = 'Y'
+            AND rae.default_flag = 'Y'
+            )
+            AND ae.default_set_of_books_id = sob.set_of_books_id
+            )
+            AND crrh.repayment_date BETWEEN gp.start_date
+            AND gp.end_date
+            ) periodName,
+            '还款单还款' writeOffTypeName,
+            crrl.amount cshWriteOffAmount,
+            cth2.transaction_num transactionNum,
+            cth2.transaction_header_id transactionHeaderId
+            FROM
+            csh_repayment_register_hd crrh,
+            csh_repayment_register_ln crrl,
+            csh_payment_requisition_ln cprl,
+            csh_payment_requisition_hd cprh,
+            csh_payment_requisition_ref cprs,
+            csh_transaction_line ctl,
+            csh_transaction_header cth,
+            csh_write_off cwo,
+            csh_transaction_line ctl2,
+            csh_transaction_header cth2
+            WHERE
+            crrh.register_hds_id = crrl.register_hds_id
+            AND crrl.payment_requisition_line_id = cprl.payment_requisition_line_id
+            AND cprl.payment_requisition_header_id = cprh.payment_requisition_header_id
+            AND cprh.payment_requisition_header_id = #{headerId}
+            AND cprs.payment_requisition_line_id = cprl.payment_requisition_line_id
+            AND ctl.transaction_header_id = cth.transaction_header_id
+            AND ctl.transaction_line_id = cprs.csh_transaction_line_id
+            AND cwo.csh_transaction_line_id = ctl.transaction_line_id
+            AND cwo.csh_transaction_line_id = cprs.csh_transaction_line_id
+            AND cth.returned_flag = 'Y'
+            AND cwo.csh_write_off_amount &lt; 0
+            AND ctl2.transaction_header_id = cth2.transaction_header_id
+            AND cth2.source_header_id = cth.transaction_header_id
+            AND cprs.amount &gt; 0
+            ) v
+    </select>
+
+    <select id="queryPrePay" resultType="java.util.Map">
+        SELECT
+        v.*
+        FROM
+        (SELECT
+        cth.transaction_header_id transactionHeaderId,
+        ctl.transaction_line_id transactionLineId,
+        cth.payment_method_id paymentMethodId,
+        cth.acc_entity_id accEntityId,
+        cth.transaction_num transactionNum,
+        cth.transaction_type transactionType,
+        date_format(cth.transaction_date, '%Y-%m-%d') transactionDate,
+        ctl.currency_code currencyCode,
+        ctl.transaction_amount transactionAmount,
+        ctl.bank_account_id bankAccountId,
+        cbav.bank_account_num bankAccountNum,
+        cbav.bank_account_name bankAccountName,
+        ctl.payee_category payeeCategory,
+        <include refid="payeeCategoryName"/>,
+        ctl.payee_id payeeId,
+        <include refid="payeeName"/>,
+        ctl.document_num documentNum,
+        su.user_name userName,
+        su.DESCRIPTION userDesc,
+        cth.posted_flag postedFlag,
+        ctl.agent_employee_id agentEmployeeId,
+        ee.name agentEmployeeName,
+        (SELECT
+        cprh.requisition_number
+        FROM
+        csh_transaction_header cth2,
+        csh_transaction_line ctl2,
+        csh_payment_requisition_ref cprr,
+        csh_payment_requisition_ln cprl,
+        csh_payment_requisition_hd cprh
+        WHERE
+        cth2.transaction_header_id = cth.source_payment_header_id AND
+        cth2.transaction_header_id = ctl2.transaction_header_id AND
+        ctl2.transaction_line_id = cprr.csh_transaction_line_id AND
+        cprr.payment_requisition_line_id = cprl.payment_requisition_line_id AND
+        cprl.payment_requisition_header_id = cprh.payment_requisition_header_id
+        LIMIT 0,1
+        ) requisitionNumber,
+        (SELECT
+        cprl.payment_requisition_header_id
+        FROM
+        csh_transaction_header cth3,
+        csh_transaction_line ctl3,
+        csh_payment_requisition_ref cprr,
+        csh_payment_requisition_ln cprl
+        WHERE
+        cth3.transaction_header_id = cth.source_payment_header_id AND
+        cth3.transaction_header_id = ctl3.transaction_header_id AND
+        ctl3.transaction_line_id = cprr.csh_transaction_line_id AND
+        cprr.payment_requisition_line_id = cprl.payment_requisition_line_id
+        LIMIT 0,1
+        ) paymentRequisitionHeaderId,
+        (SELECT
+        cch.contract_number
+        FROM
+        con_contract_header cch,
+        con_document_flow cdf
+        WHERE
+        cch.contract_header_id = cdf.document_id AND
+        cdf.document_type = 'CON_CONTRACT_HEADER' AND
+        cdf.source_document_type = 'CSH_TRANSACTION_HEADER' AND
+        cdf.source_document_id = cth.transaction_header_id
+        ) contactNumber,
+        (ctl.transaction_amount -
+        (SELECT
+        IFNULL(SUM(cwo.csh_write_off_amount), 0)
+        FROM
+        csh_write_off cwo
+        WHERE
+        cwo.csh_transaction_line_id = ctl.transaction_line_id AND
+        cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+        ) -
+        (SELECT
+        IFNULL(SUM(ctl2.transaction_amount), 0)
+        FROM
+        csh_transaction_header cth1,
+        csh_transaction_line ctl1,
+        csh_transaction_header cth2,
+        csh_transaction_line ctl2
+        WHERE
+        ctl1.transaction_line_id = ctl.transaction_line_id AND
+        ctl1.transaction_header_id = cth1.transaction_header_id AND
+        cth2.source_header_id = cth1.transaction_header_id AND
+        cth2.transaction_header_id = ctl2.transaction_header_id AND
+        cth2.reversed_flag = 'N'
+        )) unWriteOffAmount
+        FROM
+        csh_transaction_header cth,
+        csh_transaction_line ctl,
+        csh_bank_account cbav,
+        sys_user su,
+        exp_employee ee
+        WHERE
+        cth.company_id = #{request.companyId} AND
+        cth.transaction_type = 'PREPAYMENT' AND
+        cth.write_off_flag != 'C' AND
+        cth.returned_flag IN ('N', 'Y') AND
+        cth.posted_flag = 'Y' AND
+        cth.reversed_flag = 'N' AND
+        cth.enabled_write_off_flag = 'Y' AND
+        cth.transaction_header_id = ctl.transaction_header_id AND
+        ctl.bank_account_id = cbav.bank_account_id AND
+        cth.created_by = su.user_id AND
+        ctl.agent_employee_id = ee.employee_id
+        ) v
+        where
+        v.unWriteOffAmount &gt; 0
+        <if test="accEntityId != null">
+            AND v.accEntityId = '${accEntityId}'
+        </if>
+        <if test="payeeCategory != null">
+            AND v.payeeCategory = '${payeeCategory}'
+        </if>
+        <if test="payeeId != null">
+            AND v.payeeId = '${payeeId}'
+        </if>
+        <if test="currencyCode != null">
+            AND v.currencyCode = '${currencyCode}'
+        </if>
+        <if test="transactionNum != null">
+            AND v.transactionNum LIKE '%${transactionNum}%'
+        </if>
+        <if test="transactionDateFrom != null">
+            AND v.transactionDate &gt;= '${transactionDateFrom}'
+        </if>
+        <if test="transactionDateTo != null">
+            AND v.transactionDate &lt;= '${transactionDateTo}'
+        </if>
+        <if test="paymentMethodId != null">
+            AND v.paymentMethodId = '${paymentMethodId}'
+        </if>
+        <if test="userName != null">
+            AND v.userName LIKE '%${userName}%'
+        </if>
+        <if test="agentEmployeeId != null">
+            AND v.agentEmployeeId = '${agentEmployeeId}'
+        </if>
+        <if test="contactNumber != null">
+            AND v.contactNumber LIKE '%${contactNumber}%'
+        </if>
+        <if test="amountFrom != null">
+            AND v.transactionAmount &gt;= '${amountFrom}'
+        </if>
+        <if test="amountTo != null">
+            AND v.transactionAmount &lt;= '${amountTo}'
+        </if>
+        <if test="requisitionNumber != null">
+            AND v.requisitionNumber LIKE '%${requisitionNumber}%'
+        </if>
+        <if test="bankAccountId != null">
+            AND v.bankAccountId = '${bankAccountId}'
+        </if>
+        ORDER BY
+        v.transactionNum DESC
+    </select>
+
+    <select id="queryPrePayWtfByHId" parameterType="java.lang.Long" resultType="java.util.Map">
+        SELECT
+        v.*
+        FROM
+        (
+        SELECT
+        cth.transaction_header_id transactionHeaderId,
+        ctl.transaction_line_id transactionLineId,
+        cth.transaction_num transactionNum,
+        ctl.transaction_amount transactionAmount,
+        ctl.currency_code currencyCode,
+        date_format( CURRENT_DATE, '%Y-%m-%d' ) writeOffDate,
+        ctl.exchange_rate_type exchangeRateType,
+        ( SELECT tv.DESCRIPTION FROM gld_exchangerate_type tv WHERE tv.type_code = ctl.exchange_rate_type )
+        exchangeRateTypeName,
+        ctl.exchange_rate exchangeRate,
+        ctl.payee_category payeeCategory,
+        <include refid="payeeCategoryName"/>,
+        ctl.payee_id payeeId,
+        <include refid="payeeName"/>,
+        ctl.transaction_amount -
+        <include refid="transactionAmount"/>
+        -
+        <include refid="documentWriteOffAmount"/>
+        unWriteOffAmount
+        FROM
+        csh_transaction_header cth,
+        csh_transaction_line ctl
+        WHERE
+        cth.transaction_header_id = ctl.transaction_header_id
+        ) v
+        WHERE
+        1 =1
+        <if test="transactionHeaderId != null">
+            AND v.transactionHeaderId = #{transactionHeaderId}
+        </if>
+    </select>
+
+    <!-- Modify Tagin/2019.03.29 更新现金事务相关标识 -->
+    <update id="updateTrxHeaderFlag">
+        update csh_transaction_header cth
+        set cth.last_update_date = CURRENT_DATE,
+        cth.last_updated_by = #{request.userId, jdbcType=DECIMAL, javaType=java.lang.Long},
+        <trim suffixOverrides=",">
+            <if test="postedFlag != null and postedFlag != ''">
+                cth.posted_flag = #{postedFlag, jdbcType=VARCHAR, javaType=java.lang.String},
+            </if>
+            <if test="returnedFlag != null and returnedFlag != ''">
+                cth.returned_flag = #{returnedFlag, jdbcType=VARCHAR, javaType=java.lang.String},
+            </if>
+            <if test="reversedFlag != null and reversedFlag != ''">
+                cth.reversed_flag = #{reversedFlag, jdbcType=VARCHAR, javaType=java.lang.String},
+            </if>
+            <!--
+            <if test="reversedDate != null and reversedDate != ''">
+                cth.reversed_date = #{reversedDate},
+                cth.reversed_date_tz = #{reversedDate},
+                cth.reversed_date_ltz = #{reversedDate},
+            </if>
+            -->
+        </trim>
+        <trim prefix="WHERE" prefixOverrides="AND | OR ">
+            <choose>
+                <when test="transactionType != null and transactionType != ''">
+                    and cth.transaction_type = #{transactionType, jdbcType=VARCHAR, javaType=java.lang.String}
+                </when>
+                <when test="sourcePaymentHeaderId != null and sourcePaymentHeaderid != ''">
+                    and cth.source_payment_header_id = #{sourcePaymentHeaderId, jdbcType=DECIMAL, javaType=java.lang.Long}
+                </when>
+                <otherwise>
+                    and cth.transaction_header_id = #{transactionHeaderId, jdbcType=DECIMAL, javaType=java.lang.Long}
+                </otherwise>
+            </choose>
+        </trim>
+    </update>
+    <select id="getPrepaymentReturnedAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(l.transaction_amount),
+                         0)
+                from csh_transaction_header h,
+                     csh_transaction_line   l
+               where h.transaction_header_id = l.transaction_header_id
+                     and
+                     h.returned_flag = 'R'
+                     and h.source_header_id = #{sourceHeaderId}
+                     and ifnull(h.reversed_flag,
+                             'N') = 'N'
+    </select>
+
+    <select id="queryPaymentReverse" resultType="java.util.Map">
+        select
+        v.*
+        from (SELECT
+        t.transaction_header_id as transactionHeaderId,
+        t.transaction_header_id paymentHeaderId,
+        t.transaction_num as transactionNum,
+        date_format(t.transaction_date,'%Y-%m-%d') as transactionDate,
+        t.transaction_type as transactionType,
+        l.document_num as documentNum,
+        l.currency_code as currencyCode,
+        (select gct.currency_name from gld_currency gc left join gld_currency_tl gct on gc.CURRENCY_ID = gct.CURRENCY_ID and gct.lang = #{request.locale} where gc.currency_code =
+        l.currency_code) AS currencyName,
+        l.transaction_amount as transactionAmount,
+        l.bank_account_id as bankAccountId,
+        t.transaction_category as transactionCategory,
+        null AS docNumber,
+        null AS docCategory,
+        null AS docCategoryName,
+        null AS docId,
+        b.bank_account_num as bankAccountNum,
+        b.bank_account_name as bankAccountName,
+        l.payee_category as payeeCategory,
+        (SELECT scv.MEANING FROM sys_code_value_b scv LEFT JOIN sys_code_b sc ON scv.code_id = sc.code_id WHERE sc.CODE = 'PAYMENT_OBJECT' AND scv.VALUE = l.payee_category) AS
+        payeeCategoryName,
+        l.payee_id as payeeId,
+        (case l.payee_category
+        when 'EMPLOYEE' then
+        (select ee.name from exp_employee ee where ee.employee_id = l.payee_id)
+        when 'VENDER' then
+        (select pvt.DESCRIPTION from pur_system_vender pv left join pur_system_vender_tl pvt on pv.VENDER_ID = pvt.VENDER_ID and pvt.LANG = #{request.locale} where pv.VENDER_ID =
+        l.payee_id)
+        else
+        (select osct.DESCRIPTION from ord_system_customer osc left join ord_system_customer_tl osct on osc.CUSTOMER_ID = osct.CUSTOMER_ID and osct.lang=#{request.locale} where
+        osc.CUSTOMER_ID = l.payee_id)
+        end) AS payeeName,
+        t.posted_flag as postFlag,
+        t.reversed_flag as reversedFlag,
+        t.returned_flag as returnedFlag,
+        t.write_off_flag as writeOffFlag,
+        t.write_off_completed_date as writeOffCompletedDate,
+        t.company_id as companyId,
+        t.payment_method_id as paymentMethodId,
+        t.gld_interface_flag as gldInterfaceFlag,
+        l.transaction_line_id as transactionLineId,
+        su.user_name as userName,
+        l.description as description,
+        (select ee.name from exp_employee ee where ee.employee_id = l.agent_employee_id) AS agentEmployeeName,
+        (select ee.name from exp_employee ee where ee.employee_id = su.employee_id) AS paymentEmployeeName
+        FROM
+        csh_transaction_header t,
+        csh_transaction_line l,
+        (select ba.bank_account_id,ba.bank_account_num,bt.bank_account_name from csh_bank_account ba left join
+        csh_bank_account_tl bt on ba.bank_account_id = bt.bank_account_id and bt.lang = #{request.locale}) b,
+        sys_user su
+        WHERE
+        t.posted_flag = 'Y' AND
+        (case when t.reversed_flag is null then 'N' else t.reversed_flag end) = 'N' AND
+        (case when t.returned_flag is null then 'N' else t.returned_flag end) NOT IN ('Y', 'C') AND
+        t.transaction_type = 'PAYMENT' AND
+        t.transaction_header_id = l.transaction_header_id AND
+        l.bank_account_id = b.bank_account_id AND
+        t.created_by = su.user_id AND
+        t.acc_entity_id = #{accEntityId} AND
+        NOT EXISTS
+        (SELECT
+        *
+        FROM
+        csh_transaction_header h1,
+        csh_transaction_line l1,
+        csh_write_off W
+        WHERE
+        h1.transaction_header_id = L1.transaction_header_id AND
+        L1.transaction_line_id = W.source_csh_trx_line_id AND
+        W.write_off_type = 'PAYMENT_PREPAYMENT' AND
+        W.csh_transaction_line_id = L1.transaction_line_id AND
+        h1.write_off_flag != 'N'
+        )
+        ) v
+        <where>
+            1=1
+            <if test="payeeCategory != null">
+                AND v.payeeCategory = #{payeeCategory}
+            </if>
+            <if test="payeeId != null">
+                AND v.payeeId = #{payeeId}
+            </if>
+            <if test="currencyCode != null">
+                AND v.currencyCode = #{currencyCode}
+            </if>
+            <if test="transactionNum != null">
+                AND v.transactionNum LIKE CONCAT('%',#{transactionNum},'%')
+            </if>
+            <if test="transactionDateFrom != null">
+                AND v.transactionDate &gt;= #{transactionDateFrom}
+            </if>
+            <if test="transactionDateTo != null">
+                AND v.transactionDate &lt;= #{transactionDateTo}
+            </if>
+            <if test="paymentMethodId != null">
+                AND v.paymentMethodId = #{paymentMethodId}
+            </if>
+            <if test="agentEmployeeName != null">
+                AND v.agentEmployeeName LIKE CONCAT('%',#{agentEmployeeName},'%')
+            </if>
+            <if test="paymentEmployeeName != null">
+                AND v.paymentEmployeeName LIKE CONCAT('%',#{paymentEmployeeName},'%')
+            </if>
+            <if test="transactionAmountFrom != null">
+                AND v.transactionAmount &gt;= #{transactionAmountFrom}
+            </if>
+            <if test="transactionAmountTo != null">
+                AND v.transactionAmount &lt;= #{transactionAmountTo}
+            </if>
+        </where>
+        ORDER BY
+        v.transactionNum DESC
+    </select>
+
+    <select id="cshTransactionInfoQuery" resultType="java.util.Map">
+          SELECT
+                    h.transaction_num as transactionNum,
+                    date_format(h.transaction_date,'%Y-%m-%d') as transactionDate,
+                    h.period_name as periodName,
+                    h.payment_method_id as paymentMethodId,
+                    (select t.DESCRIPTION from csh_payment_method a left join csh_payment_method_tl t on a.PAYMENT_METHOD_ID = t.PAYMENT_METHOD_ID and t.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+where a.PAYMENT_METHOD_ID =  h.payment_method_id) AS paymentMethodName,
+                    l.payee_category as payeeCategory,
+                    (SELECT scv.meaning FROM sys_code_b sc,sys_code_value_b scv WHERE sc.code = 'PAYMENT_OBJECT' AND sc.code_id = scv.code_id AND scv.value = l.payee_category) AS payeeCategoryName,
+                    l.payee_id as payeeId,
+                    (case
+                      when l.payee_category = 'EMPLOYEE'
+                      then (select ee.name
+                            from exp_employee ee
+                            where ee.employee_id = l.payee_id)
+                      when l.payee_category = 'VENDER'
+                      then (select vv.description
+                            from pur_system_vender vv LEFT OUTER JOIN pur_system_vender_tl psvt ON vv.vender_id = psvt.vender_id
+                                                                        AND psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                            where vv.vender_id = l.payee_id)
+                      when l.payee_category = 'CUSTOMER'
+                      then (select osct.description
+                            from ord_system_customer cv
+                            LEFT OUTER JOIN ord_system_customer_tl osct ON cv.customer_id = osct.customer_id
+                                                                        AND osct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                            where cv.customer_id = l.payee_id)
+                    end) AS payeeName,
+                    l.currency_code as currencyCode,
+                    (select gct.currency_name from gld_currency gc left join gld_currency_tl gct on gc.CURRENCY_ID = gct.CURRENCY_ID and gct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} where gc.currency_code = l.currency_code) AS currencyName,
+                    l.exchange_rate_type as exchangeRateType,
+                    (SELECT tvt.DESCRIPTION FROM gld_exchangerate_type tv left join gld_exchangerate_type_tl tvt on tv.type_id = tvt.type_id and tvt.lang = #{request.locale} WHERE tv.type_code = l.exchange_rate_type) AS exchangeRateTypeName,
+                    l.exchange_rate as exchangeRate,
+                    l.transaction_amount as transactionAmount,
+                    l.bank_account_id as bankAccountId,
+                    (select cbat.BANK_ACCOUNT_NAME from csh_bank_account cba left join csh_bank_account_tl cbat on cba.BANK_ACCOUNT_ID = cbat.BANK_ACCOUNT_ID and cbat.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+where cba.BANK_ACCOUNT_ID = l.bank_account_id) AS bankAccountName,
+                    (select cba.BANK_ACCOUNT_NUM from csh_bank_account cba
+where cba.BANK_ACCOUNT_ID = l.bank_account_id) AS bankAccountNum,
+                    l.agent_employee_id as agentEmployeeId,
+                    (select ee.name from exp_employee ee where ee.employee_id = l.agent_employee_id) AS agentEmployeeName,
+                    (select ee.name from exp_employee ee where ee.employee_id =
+                    (SELECT
+                        su.employee_id
+                    FROM
+                        sys_user su
+                    WHERE
+                        su.user_id = h.created_by
+                    )) AS paymentEmployeeName,
+                    (
+                    (
+                    SELECT
+                        (case when SUM(wo.csh_write_off_amount) is null then 0 else SUM(wo.csh_write_off_amount) end)
+                    FROM
+                        csh_write_off wo
+                    WHERE
+                        wo.csh_transaction_line_id = l.transaction_line_id
+                    ) -
+                    (SELECT
+                        (case when SUM(wo.csh_write_off_amount) is null then 0 else SUM(wo.csh_write_off_amount) end)
+                    FROM
+                        csh_write_off wo,
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        wo.csh_transaction_line_id   = ctl.transaction_line_id AND
+                        ctl.transaction_header_id    = cth.transaction_header_id AND
+                        cth.source_payment_header_id = h.transaction_header_id
+                    )) AS unreturnedAmount
+                FROM
+                    csh_transaction_header h,
+                    csh_transaction_line l
+                WHERE
+                    h.transaction_header_id = l.transaction_header_id AND
+                    h.transaction_header_id = #{transactionHeaderId}
+    </select>
+
+    <select id="cshTransactionQuery" resultType="java.util.Map">
+        select
+        a.*
+        from (SELECT
+        v.transaction_header_id as transactionHeaderId,
+        v.transaction_header_id as paymentHeaderId,
+        v.transaction_num as transactionNum,
+        v.acc_entity_id as accEntityId,
+        date_format(v.transaction_date,'%Y-%m-%d') AS transactionDate,
+        v.currency_code as currencyCode,
+        (select gct.currency_name from gld_currency gc left join gld_currency_tl gct on gc.CURRENCY_ID = gct.CURRENCY_ID and gct.lang = #{request.locale} where gc.currency_code =
+        v.currency_code) as currencyName,
+        null AS docNumber,
+        null AS docCategory,
+        null AS docCategoryName,
+        null AS docId,
+        v.transaction_amount as transactionAmount,
+        v.bank_account_id as bankAccountId,
+        v.bank_account_name as bankAccountName,
+        v.bank_account_num as bankAccountNum,
+        v.payee_category as payeeCategory,
+        (SELECT scv.meaning FROM sys_code_b sc,sys_code_value_b scv WHERE sc.code = 'PAYMENT_OBJECT' AND sc.code_id = scv.code_id AND scv.value = v.payee_category) AS
+        payeeCategoryName,
+        v.payee_id as payeeId,
+        (case
+        when v.payee_category = 'EMPLOYEE'
+        then (select ee.name
+        from exp_employee ee
+        where ee.employee_id = v.payee_id)
+        when v.payee_category = 'VENDER'
+        then (select vv.description
+        from pur_system_vender vv LEFT OUTER JOIN pur_system_vender_tl psvt ON (vv.vender_id = psvt.vender_id
+        AND psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where vv.vender_id = v.payee_id)
+        when v.payee_category = 'CUSTOMER'
+        then (select osct.description
+        from ord_system_customer cv
+        LEFT OUTER JOIN ord_system_customer_tl osct ON (cv.customer_id = osct.customer_id
+        AND osct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where cv.customer_id = v.payee_id)
+        end) AS payeeName,
+        v.document_num as documentNum,
+        v.user_name as userName,
+        v.user_desc as userDesc,
+        v.payment_method_id as paymentMethodId,
+        v.agent_employee_name as agentEmployeeName,
+        (select ee.name from exp_employee ee where exists (select 1 from sys_user su where su.employee_id = ee.employee_id and su.user_id = v.created_by)) AS paymentEmployeeName,
+        v.posted_flag as postedFlag,
+        v.returned_flag as returnedFlag,
+        (SELECT scv.meaning FROM sys_code_b sc,sys_code_value_b scv WHERE sc.code = 'CSH_RETURN_SELECT' AND sc.code_id = scv.code_id AND scv.value = v.returned_flag) AS
+        returnedFlagName,
+        v.reversed_flag as reversedFlag,
+        (SELECT scv.meaning FROM sys_code_b sc,sys_code_value_b scv WHERE sc.code = 'CSH_REVERSE_SELECT' AND sc.code_id = scv.code_id AND scv.value = v.reversed_flag) AS
+        reversedFlagName,
+        v.transaction_type as transactionType,
+        (SELECT scv.meaning FROM sys_code_b sc,sys_code_value_b scv WHERE sc.code = 'CSH_TRANSACTION_TYPE' AND sc.code_id = scv.code_id AND scv.value = v.transaction_type) AS
+        transactionTypeName,
+        v.description,
+        v.source_header_id as sourceHeaderId,
+        (SELECT
+        cth.transaction_num
+        FROM
+        csh_transaction_header cth
+        WHERE
+        cth.transaction_header_id = v.source_header_id
+        ) AS sourceTransactionNum
+        FROM
+        csh_transaction_v v) a
+        <where>
+            a.accEntityId = #{accEntityId} AND
+            a.transactionType IN ('PAYMENT', 'PREPAYMENT') AND
+            a.transactionDate &gt;= #{transactionDateFrom} AND
+            a.transactionDate &lt;= #{transactionDateTo}
+            <if test="payeeCategory!=null">
+                AND a.payeeCategory = #{payeeCategory}
+            </if>
+            <if test="payeeId!=null">
+                AND a.payeeId = #{payeeId}
+            </if>
+            <if test="currencyCode!=null">
+                AND a.currencyCode = #{currencyCode}
+            </if>
+            <if test="transactionNum!=null">
+                AND a.transactionNum like concat('%',#{transactionNum},'%')
+            </if>
+            <if test="bankAccountId!=null">
+                AND a.bankAccountId = #{bankAccountId}
+            </if>
+            <if test="paymentMethodId!=null">
+                AND a.paymentMethodId = #{paymentMethodId}
+            </if>
+            <if test="paymentEmployeeName!=null">
+                AND a.paymentEmployeeName = #{paymentEmployeeName}
+            </if>
+            <if test="agentEmployeeName!=null">
+                AND a.agentEmployeeName = #{agentEmployeeName}
+            </if>
+            <if test="contactNumber!=null">
+                AND a.contactNumber like concat('%',#{contactNumber},'%')
+            </if>
+            <if test="transactionType!=null">
+                AND a.transactionType = #{transactionType}
+            </if>
+            <if test="transactionAmountFrom!=null">
+                AND a.transactionAmount &gt;= #{transactionAmountFrom}
+            </if>
+            <if test="transactionAmountTo!=null">
+                AND a.transactionAmount &lt;= #{transactionAmountTo}
+            </if>
+            <if test="sourceTransactionNum!=null">
+                AND a.sourceTransactionNum like concat('%',#{sourceTransactionNum},'%')
+            </if>
+        </where>
+    </select>
+
+    <select id="queryPrePayForReverse" resultType="java.util.Map">
+        SELECT
+                    *
+                FROM
+                    (SELECT
+                        v.transactionHeaderId,
+                        v.transactionDate,
+                        v.transactionNum,
+                        v.currencyCode,
+                        v.currencyName,
+                        v.payeeCategory,
+                        v.payeeCategoryName,
+                        v.payeeId,
+                        v.payeeName,
+                        v.transactionAmount,
+                        v.writeOffAmount,
+                        v.contractNumber,
+                        ( SELECT DISTINCT
+                            t.requisition_number
+                        FROM
+                            csh_payment_requisition_hd t
+                        WHERE
+                            t.payment_requisition_header_id=
+                            (SELECT
+                                l.payment_requisition_header_id
+                            FROM
+                                csh_payment_requisition_ln l
+                            WHERE
+                                l.payment_requisition_line_id =
+                                (SELECT
+                                    a.payment_requisition_line_id
+                                FROM
+                                    csh_payment_requisition_ref a
+                                WHERE
+                                    a.csh_transaction_line_id =
+                                    (SELECT
+                                        b.transaction_line_id
+                                    FROM
+                                        csh_transaction_line b
+                                    WHERE
+                                        b.transaction_header_id =
+                                        (SELECT
+                                            c.source_payment_header_id
+                                        FROM
+                                            CSH_TRANSACTION_HEADER c
+                                        WHERE
+                                            c.transaction_header_id =
+                                            (SELECT
+                                                d.transaction_header_id
+                                            FROM
+                                                csh_transaction_line d
+                                            WHERE
+                                                d.transaction_line_id = v.transactionLineId
+                                            )
+                                        )
+                                    )LIMIT 0,1
+                                )
+                            )
+                        ) docNumber,
+                        ( SELECT DISTINCT
+                            t.payment_requisition_header_id
+                        FROM
+                            csh_payment_requisition_hd t
+                        WHERE
+                            t.payment_requisition_header_id=
+                            (SELECT
+                                l.payment_requisition_header_id
+                            FROM
+                                csh_payment_requisition_ln l
+                            WHERE
+                                l.payment_requisition_line_id =
+                                (SELECT
+                                    a.payment_requisition_line_id
+                                FROM
+                                    csh_payment_requisition_ref a
+                                WHERE
+                                    a.csh_transaction_line_id =
+                                    (SELECT
+                                        b.transaction_line_id
+                                    FROM
+                                        csh_transaction_line b
+                                    WHERE
+                                        b.transaction_header_id =
+                                        (SELECT
+                                            c.source_payment_header_id
+                                        FROM
+                                            CSH_TRANSACTION_HEADER c
+                                        WHERE
+                                            c.transaction_header_id =
+                                            (SELECT
+                                                d.transaction_header_id
+                                            FROM
+                                                csh_transaction_line d
+                                            WHERE
+                                                d.transaction_line_id = v.transactionLineId
+                                            )
+                                        )
+                                    )LIMIT 0,1
+                                )
+                            )
+                        ) docHeaderId
+                    FROM
+                        (SELECT
+                            cth.transaction_header_id transactionHeaderId,
+                            DATE_FORMAT(cth.transaction_date, '%Y-%m-%d') transactionDate,
+                            cth.transaction_num transactionNum,
+                            cth.transaction_type transactionType,
+                            ctl.currency_code currencyCode,
+                            ctl.transaction_line_id transactionLineId,
+                            (select ct.currency_name from gld_currency gc
+                            left join gld_currency_tl ct
+                            on gc.currency_id = ct.currency_id
+                            where gc.currency_code = ctl.currency_code and ct.lang = #{request.locale}) AS currencyName,
+                            ctl.payee_category payeeCategory,
+                            <include refid="payeeCategoryName"/>,
+                            ctl.payee_id payeeId,
+                            <include refid="payeeName"/>,
+                            ctl.transaction_amount transactionAmount,
+                            (SELECT
+                                SUM(cwo.csh_write_off_amount)
+                            FROM
+                                csh_write_off cwo,
+                                csh_transaction_line c
+                            WHERE
+                                c.transaction_header_id     = cth.transaction_header_id AND
+                                cwo.csh_transaction_line_id = c.transaction_line_id
+                            ) writeOffAmount,
+                            (SELECT
+                                cch.contract_number
+                            FROM
+                                con_document_flow cdf,
+                                con_contract_header cch
+                            WHERE
+                                cdf.document_type        = 'CON_CONTRACT' AND
+                                cdf.source_document_type = 'CSH_TRANSACTION_HEADERS' AND
+                                cdf.document_id          = cch.contract_header_id AND
+                                cdf.source_document_id   = cth.transaction_header_id
+                            ) contractNumber
+                        FROM
+                            csh_transaction_line ctl,
+                            csh_transaction_header cth
+                        WHERE
+                            ctl.transaction_header_id = cth.transaction_header_id AND
+                            cth.company_id = #{request.companyId} AND
+                            cth.transaction_type = 'PREPAYMENT' AND
+                            cth.write_off_flag != 'N'
+                        )v
+                )t where 1=1
+                <if test="payeeCategory != null">
+                    AND t.payeeCategory = '${payeeCategory}'
+                </if>
+                <if test="payeeId != null">
+                    AND t.payeeId = '${payeeId}'
+                </if>
+                <if test="currencyCode != null">
+                    AND t.currencyCode = '${currencyCode}'
+                </if>
+                <if test="transactionNum != null">
+                    AND t.transactionNum LIKE '%${transactionNum}%'
+                </if>
+                <if test="transactionDateFrom != null">
+                    AND t.transactionDate &gt;= '${transactionDateFrom}'
+                </if>
+                <if test="transactionDateTo != null">
+                    AND t.transactionDate &lt;= '${transactionDateTo}'
+                </if>
+                <if test="contractNumber != null">
+                    AND t.contractNumber LIKE '%${contractNumber}%'
+                </if>
+                ORDER BY
+                    t.transactionNum DESC
+    </select>
+
+    <select id="cshTransInfoQuery" resultType="java.util.Map">
+        select cth.transaction_header_id transactionHeaderId,
+               cth.transaction_num transactionNum,
+               cth.period_name periodName,
+               (select mt.description
+                from csh_payment_method_tl mt
+                where mt.payment_method_id = cth.payment_method_id
+                and mt.lang = #{request.locale}) paymentMethod,
+               (SELECT
+                scvt.meaning
+                FROM
+                sys_code_b scb,
+                sys_code_value_b scvb
+                LEFT JOIN sys_code_value_tl scvt ON ( scvb.code_value_id = scvt.code_value_id AND scvt.lang =
+                #{request.locale})
+                WHERE
+                scb.code_id = scvb.code_id
+                AND scb.CODE = 'CSH_TRANSACTION_CATEGORY'
+                AND scvb.VALUE = cth.transaction_category) pTransactionCategory,
+               date_format(cth.transaction_date, '%Y-%m-%d') transactionDate,
+               ctl.transaction_line_id transactionLineId,
+               ctl.transaction_amount transactionAmount,
+               ctl.currency_code currencyCode,
+               (select ett.description
+                from gld_exchangerate_type et
+                left join gld_exchangerate_type_tl ett
+                on et.type_id = ett.type_id
+                and ett.lang = #{request.locale}
+                where et.enabled_flag = 'Y'
+                and et.type_code = ctl.exchange_rate_type) exchangeRateType,
+               ctl.exchange_rate exchangeRate,
+               concat(bat.bank_account_name,'-',ba.bank_account_num) bankAccount,
+               ctl.document_num documentNum,
+               (SELECT
+                scvt.meaning
+                FROM
+                sys_code_b scb,
+                sys_code_value_b scvb
+                LEFT JOIN sys_code_value_tl scvt ON ( scvb.code_value_id = scvt.code_value_id AND scvt.lang =
+                #{request.locale})
+                WHERE
+                scb.code_id = scvb.code_id
+                AND scb.CODE = 'PAYMENT_OBJECT'
+                AND scvb.VALUE = cth.payee_category) partnerCategory,
+               (CASE WHEN cth.payee_category = 'EMPLOYEE' THEN
+                ( SELECT CONCAT(ee.employee_code,'-',ee.NAME) FROM exp_employee ee WHERE ee.employee_id = cth.payee_id )
+                WHEN cth.payee_category = 'VENDER' THEN
+                ( SELECT CONCAT(psv.vender_code,'-',psvt.description) FROM pur_system_vender psv left join pur_system_vender_tl
+                psvt on psv.vender_id = psvt.vender_id AND psvt.lang =
+                #{request.locale} where psv.vender_id = cth.payee_id)
+                WHEN cth.payee_category = 'CUSTOMER' THEN
+                ( SELECT CONCAT(osc.customer_code,'-',osct.description) FROM
+                ord_system_customer osc left join ord_system_customer_tl osct on(osc.customer_id=osct.customer_id AND osct.lang
+                = #{request.locale}) where osc.customer_id = cth.payee_id)
+                END) partner,
+               ba.bank_account_num BankAccountCode,
+               bat.bank_account_name bankAccountName,
+               cth.reversed_date reversedDate,
+               ctl.description,
+               (select concat(ee.name,'-', ee.employee_code) nameCode
+                  from exp_employee ee
+                 where ee.employee_id = ctl.agent_employee_id) agentEmployee,
+               cth.transaction_category transactionCategory,
+               (select cch.contract_number
+                  from con_contract_header cch,con_document_flow s
+                 where contract_header_id =s.document_id
+                 and s.document_type='CON_CONTRACT_HEADER'
+                 and s.source_document_type ='CSH_TRANSACTION_HEADER'
+                 and  s.source_document_id =cth.transaction_header_id) contactNumber,
+                cth.transaction_type transactionType
+          from csh_transaction_header cth,
+               csh_transaction_line   ctl
+               left join csh_bank_account ba
+               on ba.bank_account_id = ctl.payee_bank_account_id
+               left join csh_bank_account_tl bat
+               on ba.bank_account_id = bat.bank_account_id
+               and bat.lang = #{request.locale}
+         where cth.transaction_header_id = #{transactionHeaderId}
+           and cth.transaction_header_id = ctl.transaction_header_id
+    </select>
+</mapper>

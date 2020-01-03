@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/02/21
+    $Revision: 1.0  
+    $Purpose: 政策标准-条件分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1170_conditionHds_link" url="$[/request/@context_path]/exp/EXP1170/exp_mo_exp_policy_condition_match_select.screen"/>
+        <a:link id="EXP1170_conditionLns_link" url="$[/request/@context_path]/exp/EXP1170/exp_mo_exp_policy_cond_lns.screen"/>
+        <script><![CDATA[
+            function EXP1170_conditionCloseFunc() {
+                $au('EXP1170_exp_mo_exp_policy_condition_window').close();
+            }
+            
+            function EXP1170_conditionCodeFunc(record) {
+                if (record.isNew) {
+                    return 'EXP1170_conditionTextField';
+                }
+                return '';
+            }
+            
+            function EXP1170_dateValidator(record, name, value) { //日期校验方法
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                        if (!EXP1170_compareDate(start_date, end_date)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function EXP1170_compareDate(start, end) {
+                if (new Date(start) > new Date(end)) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP1170_onSubmitSuccessResultDs(ds) {
+                ds.query();
+            }
+            
+            function EXP1170_assignDetailRenderer(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:EXP1170_assignDetailWindow(\'' + record.get('conditionId') + '\')">$[l:hap_assign_detail]</>';
+            }
+            
+            function EXP1170_assignDetailWindow(id) {
+                new Aurora.Window({
+                    id: 'EXP1170_conditionLns_window',
+                    url: $au('EXP1170_conditionLns_link').getUrl() + '?detailId=$[/parameter/@detailId]&conditionId=' + id + '&magOrgId=$[/parameter/@magOrgId]',
+                    title: '$[l:exp_mo_exp_policy_detail.detail_condition]',
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('EXP1170_conditionResult_ds').query();
+                });
+            }
+            
+            function EXP1170_conditionNewFunc() {
+                new Aurora.Window({
+                    id: 'EXP1170_conditionHds_window',
+                    url: $au('EXP1170_conditionHds_link').getUrl() + '?detailId=$[/parameter/@detailId]&magOrgId=$[/parameter/@magOrgId]',
+                    title: '$[l:exp_mo_exp_policy_detail.detail_condition]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP1170_conditionResult_ds').query();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1170_conditionResult_ds" autoCount="true" autoQuery="true"  queryUrl="$[/request/@context_path]/exp/mo-exp-policy-condition/query?detailId=$[/parameter/@detailId]" selectable="false" submitUrl="$[/request/@context_path]/exp/mo-exp-policy-condition/submit">
+                <a:fields>
+                    <a:field name="conditionId"/>
+                    <a:field name="detailId" defaultValue="$[/parameter/@detailId]"/>
+                    <a:field name="conditionCode" prompt="exp_mo_exp_policy_condition.condition_code"/>
+                    <a:field name="conditionName" dto="com.hand.hec.exp.dto.ExpMoExpPolicyCondition" dtoId="conditionId" prompt="exp_mo_exp_policy_condition.condition_name"/>
+                    <a:field name="startDateActive" prompt="exp_mo_exp_policy_condition.start_date_active"  required="true" validator="EXP1170_dateValidator"/>
+                    <a:field name="endDateActive" prompt="exp_mo_exp_policy_condition.end_date_active"  validator="EXP1170_dateValidator"/>
+                    <a:field name="assignDetail"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1170_onSubmitSuccessResultDs"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="exp_mo_expense_policy.expense_detail" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP1170_conditionNewFunc" text="hap_new" width="80"/>
+                    <a:gridButton bind="EXP1170_condition_grid" type="save" width="80"/>
+                    <a:toolbarButton click="EXP1170_conditionCloseFunc" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="detailCode" readOnly="true" prompt="exp_mo_exp_policy_detail.detail_code" bindTarget="EXP1170_exp_mo_exp_policy_detail_result_ds"/>
+                <a:textField name="description" readOnly="true" prompt="exp_mo_exp_policy_detail.description" bindTarget="EXP1170_exp_mo_exp_policy_detail_result_ds"/>
+            </a:form>
+            <a:grid id="EXP1170_condition_grid"  bindTarget="EXP1170_conditionResult_ds" marginHeight="200" navBar="true" width="1000">
+                <a:columns>
+                    <a:column name="conditionCode" align="center" editorFunction="EXP1170_conditionCodeFunc" width="80"/>
+                    <a:column name="conditionName" editor="EXP1170_conditionTledit" width="200"/>
+                    <a:column name="startDateActive" align="center" editor="EXP1170_conditionDatePicker" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="endDateActive" align="center" editor="EXP1170_conditionDatePicker" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="assignDetail" align="center" renderer="EXP1170_assignDetailRenderer" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:tledit id="EXP1170_conditionTledit"/>
+                    <a:textField id="EXP1170_conditionTextField"/>
+                    <a:dateTimePicker id="EXP1170_conditionDatePicker"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-27 15:45
+    $Revision: 1.0
+    $Purpose: 管理组织级费用政策地点类型定义-费用政策地点批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1310_exp_policy_ref_places_batch_assign_save_link" url="$[/request/@context_path]/exp/policy-plc-tp-ref-plc/submit"/>
+        <div/>
+        <script><![CDATA[
+        
+            function EXP1310_batchAssignPlaces(){
+            	 var records=$au('EXP1310_exp_policy_ref_places_batch_assign_result_ds').getSelected();
+            	 if(records.length<1){
+            	 	 Aurora.showMessage('$[l:prompt]','$[l:exp_policy_batch_assign.no_place_dispa]',function(){
+                        return;
+                    });
+                }else{
+            	 	var param = $au('EXP1310_exp_policy_ref_places_batch_assign_result_ds').getJsonData(true);            	 	
+            	 	for(var i = 0; i < param.length ; i ++){
+            	 		param[i]['__status'] = 'add';
+            	 		param[i]['assignId'] = '$[/parameter/@assignId]';
+                        param[i]['enabledFlag'] = 'Y';
+                        param[i]['_token'] = null;
+            	 	}
+            	 	Aurora.request({
+                        lockMessage:'$[l:hap_waiting]',
+            	 		url:$au('EXP1310_exp_policy_ref_places_batch_assign_save_link').getUrl(),
+            	 		para:param,
+            	 		success:function(){
+            	 		    EXP1310_closeBatchAsgnPlacesCreateWindow();
+            	 		},
+            	 		scope:this
+            	 	});
+            	}
+            }
+            
+            function EXP1310_closeBatchAsgnPlacesCreateWindow(){
+            	$au('EXP1310_exp_policy_place_batch_assign_window').close();
+            	$au('EXP1310_exp_policy_place_ref_places_ds').query();
+            }
+            
+            
+            function EXP1310_selectAction(record){
+                var lovFieldFrom = record.getMeta().getField("placeFrom");
+                var lovFieldTo = record.getMeta().getField("placeTo");
+                lovFieldFrom.setLovPara('districtFromCode', record.get('districtFromCode'));
+                lovFieldFrom.setLovPara('districtToCode', record.get('districtToCode'));
+                lovFieldTo.setLovPara('districtFromCode', record.get('districtFromCode'));
+                lovFieldTo.setLovPara('districtToCode', record.get('districtToCode'));
+            }
+            
+            function EXP1310_query(){
+	            $au('EXP1310_exp_policy_ref_places_batch_assign_result_ds').query();
+            }
+            
+            function EXP1310_batchAssignUpdateFunction(dataSet,record,name,value,oldValue){
+            	if(name == 'districtFromCode' || name == 'districtToCode'){
+            		EXP1310_selectAction(record);
+            	}
+            }
+            
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1310_exp_policy_ref_places_batch_assign_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="placeTypeId" defaultValue="$[/parameter/@placeTypeId]"/>
+                    <a:field name="districtFrom" autoComplete="true" autoCompleteField="code_name" autoCompleteSize="1"  lovCode="EXP_POLICY_PLACE_LIST_DISTRICT_LOV"  title="prompt.policy_district">
+                        <a:mapping>
+                            <a:map from="districtDesc" to="districtFrom"/>
+                            <a:map from="districtId" to="districtFromId"/>
+                            <a:map from="districtCode" to="districtFromCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="districtTo" autoComplete="true" autoCompleteField="code_name" autoCompleteSize="1"  lovCode="EXP_POLICY_PLACE_LIST_DISTRICT_LOV"  title="prompt.policy_district">
+                        <a:mapping>
+                            <a:map from="districtDesc" to="districtTo"/>
+                            <a:map from="districtId" to="districtToId"/>
+                            <a:map from="districtCode" to="districtToCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="placeFrom" autoComplete="true" autoCompleteField="code_name" autoCompleteSize="1" lovCode="EXP_POLICY_PLACE_LIST_PLACE_LOV"  title="prompt.place_query">
+                        <a:mapping>
+                            <a:map from="placeId" to="placeFromId"/>
+                            <a:map from="placeCode" to="placeFromCode"/>
+                            <a:map from="placeName" to="placeFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="placeTo" autoComplete="true" autoCompleteField="code_name" autoCompleteSize="1" lovCode="EXP_POLICY_PLACE_LIST_PLACE_LOV"  title="prompt.place_query">
+                        <a:mapping>
+                            <a:map from="placeId" to="placeToId"/>
+                            <a:map from="placeCode" to="placeToCode"/>
+                            <a:map from="placeName" to="placeTo"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1310_batchAssignUpdateFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1310_exp_policy_ref_places_batch_assign_result_ds" autoPageSize="true" autoQuery="true"  queryDataSet="EXP1310_exp_policy_ref_places_batch_assign_query_ds" queryUrl="$[/request/@context_path]/exp/policy-plc-tp-ref-plc/queryRemainPolicyPlace?assignId=$[/parameter/@assignId]" selectable="true" >
+                <a:fields>
+                    <a:field name="placeTypeId" defaultValue="$[/parameter/@placeTypeId]"/>
+                    <a:field name="placeId"/>
+                    <a:field name="placeDesc" prompt="exp_policy_place.description2"/>
+                    <a:field name="districtDesc" prompt="exp_policy_place.district_desc"/>
+                    <a:field name="placeCode"/>
+                    <a:field name="districtId"/>
+                    <a:field name="districtCode"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="100" title="exp_policy_batch_assign.policy_batch_disp">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="EXP1310_query" text="hap_query" width="80"/>
+                    <a:button click="EXP1310_batchAssignPlaces" text="hec_assign" width="80"/>
+                    <a:button click="EXP1310_closeBatchAsgnPlacesCreateWindow" text="prompt.return" width="80"/>
+                </a:formToolbar>
+                <a:textField name="placeTypeCode" bindTarget="EXP1310_exp_policy_place_types_result_ds" prompt="exp_policy_place_type.place_type_code" readOnly="true" typeCase="upper" width="150"/>
+                <a:textField name="description" bindTarget="EXP1310_exp_policy_place_types_result_ds" prompt="exp_policy_place_type.description" readOnly="true" width="150"/>
+                <a:lov name="districtFrom" bindTarget="EXP1310_exp_policy_ref_places_batch_assign_query_ds" prompt="exp_policy_place.district_from"/>
+                <a:lov name="districtTo" bindTarget="EXP1310_exp_policy_ref_places_batch_assign_query_ds" prompt="exp_policy_place.district_to"/>
+                <a:lov name="placeFrom" id="placeFrom_lov" bindTarget="EXP1310_exp_policy_ref_places_batch_assign_query_ds" prompt="exp_policy_place.place_from"/>
+                <a:lov name="placeTo" id="placeTo_lov" bindTarget="EXP1310_exp_policy_ref_places_batch_assign_query_ds" prompt="exp_policy_place.place_to"/>
+            </a:form>
+            <a:grid bindTarget="EXP1310_exp_policy_ref_places_batch_assign_result_ds" marginHeight="267" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="placeDesc" align="center"  width="200"/>
+                    <a:column name="districtDesc" align="center"  width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

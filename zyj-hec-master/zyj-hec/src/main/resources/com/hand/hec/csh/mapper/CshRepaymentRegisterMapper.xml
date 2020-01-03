@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshRepaymentRegisterMapper">
+    <select id="validateCurrency" resultType="int">
+       select count(0)
+                from csh_repayment_register_hd  crrh,
+                     csh_repayment_register_ln  crrl,
+                     csh_bank_account           cba,
+                     csh_payment_requisition_hd cprh,
+                     csh_payment_requisition_ln crpl
+               where crrh.register_hds_id = 1
+                     and crrl.register_hds_id = #{registerHdsId}
+                     and crrl.payment_requisition_line_id =
+                     crpl.payment_requisition_line_id
+                     and crpl.payment_requisition_header_id =
+                     cprh.payment_requisition_header_id
+                     and crrh.bank_account_id = cba.bank_account_id
+                     and cba.currency_code != cprh.currency_code
+    </select>
+    <select id="sumLeftPaymentAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(pctl.transaction_amount -
+                     (select ifnull(sum(sc.csh_write_off_amount),
+                                 0)
+                        from csh_write_off sc
+                       where sc.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+                             and sc.csh_transaction_line_id =
+                             pctl.transaction_line_id) -
+                     (select ifnull(sum(ctl2.transaction_amount),
+                                 0)
+                        from csh_transaction_header cth1,
+                             csh_transaction_line   ctl1,
+                             csh_transaction_header cth2,
+                             csh_transaction_line   ctl2
+                       where ctl1.transaction_line_id =
+                             pctl.transaction_line_id
+                             and ctl1.transaction_header_id =
+                             cth1.transaction_header_id
+                             and cth2.source_header_id =
+                             cth1.transaction_header_id
+                             and cth2.transaction_header_id =
+                             ctl2.transaction_header_id
+                             and cth2.reversed_flag = 'N')),
+                 0)
+        from csh_payment_requisition_ref r,
+             csh_transaction_header      cth,
+             csh_transaction_line        ctl,
+             csh_transaction_header      pcth,
+             csh_transaction_line        pctl,
+             csh_write_off                cwo
+       where r.csh_transaction_line_id = ctl.transaction_line_id
+             and ctl.transaction_header_id = cth.transaction_header_id
+             and cth.transaction_header_id = pcth.source_payment_header_id
+             and pcth.transaction_header_id = pctl.transaction_header_id
+             and cwo.csh_transaction_line_id = ctl.transaction_line_id
+             and r.write_off_id = cwo.write_off_id
+             and cwo.source_csh_trx_line_id = pctl.transaction_line_id
+             and r.payment_requisition_line_id = #{paymentRequisitionLineId}
+             and pcth.transaction_type = 'PREPAYMENT'
+             and pcth.posted_flag = 'Y'
+             and pcth.reversed_flag = 'N'
+             and pcth.returned_flag in ('Y',
+                                        'N')
+    </select>
+    <select id="sumRepaymentAmount" resultType="java.math.BigDecimal">
+        select
+            ifnull(sum(crrl.amount),
+            0)
+        from
+            csh_repayment_register_ln crrl
+        where
+            crrl.register_hds_id =
+            #{dto.registerHdsId}
+            and crrl.payment_requisition_line_id =
+            #{dto.paymentRequisitionLineId}
+    </select>
+    <select id="selectRepayTrxByLn" resultType="java.util.Map">
+        select
+            d.repay_trx_line_id,
+            sum(d.amount) sum_amount
+        from
+            csh_repayment_register_dist d
+        where
+            d.register_lns_id = #{registerLnsId}
+        group by
+            d.repay_trx_line_id
+    </select>
+    <select id="sumLeftTrxAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(l.transaction_amount -
+                       (select ifnull(sum(sc.csh_write_off_amount),
+                                   0)
+                          from csh_write_off sc
+                         where sc.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+                               and sc.csh_transaction_line_id = l.transaction_line_id) -
+                       (select ifnull(sum(ctl2.transaction_amount),
+                                   0)
+                          from csh_transaction_header cth1,
+                               csh_transaction_line   ctl1,
+                               csh_transaction_header cth2,
+                               csh_transaction_line   ctl2
+                         where ctl1.transaction_line_id = l.transaction_line_id
+                               and
+                               ctl1.transaction_header_id = cth1.transaction_header_id
+                               and cth2.source_header_id = cth1.transaction_header_id
+                               and
+                               cth2.transaction_header_id = ctl2.transaction_header_id
+                               and cth2.reversed_flag = 'N')),
+                   0)
+          from csh_transaction_header h,
+               csh_transaction_line   l
+         where h.transaction_header_id = l.transaction_header_id
+               and l.transaction_line_id = #{repayTrxLineId}
+               and h.transaction_type = 'PREPAYMENT'
+               and h.reversed_flag = 'N'
+               and h.posted_flag = 'Y'
+               and h.returned_flag in ('Y',
+                                       'N')
+    </select>
+    <select id="selectRepaymentDistForAcc" resultType="java.util.Map">
+        select
+            cprl.payment_requisition_header_id,
+            cprl.payment_requisition_line_id,
+            crrl.company_id,
+            crrl.acc_entity_id,
+            crrl.cash_flow_item_id,
+            ctl.transaction_header_id pay_trx_header_id,
+            crrd.register_dist_id,
+            crrd.pay_trx_line_id,
+            crrd.repay_trx_line_id,
+            crrd.amount
+        from
+            csh_repayment_register_ln crrl,
+            csh_repayment_register_dist crrd,
+            csh_payment_requisition_ln cprl,
+            csh_transaction_line ctl
+        where
+            crrl.register_hds_id = #{registerHdsId}
+            and crrl.register_lns_id = crrd.register_lns_id
+            and crrl.payment_requisition_line_id = cprl.payment_requisition_line_id
+            and crrd.pay_trx_line_id = ctl.transaction_line_id
+    </select>
+    <select id="getRepayableAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(l.transaction_amount -
+                          (select ifnull(sum(sc.csh_write_off_amount),
+                                         0)
+                             from csh_write_off sc
+                            where sc.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+                                  and
+                                  sc.csh_transaction_line_id = l.transaction_line_id) -
+                          (select ifnull(sum(ctl2.transaction_amount),
+                                         0)
+                             from csh_transaction_header cth1,
+                                  csh_transaction_line   ctl1,
+                                  csh_transaction_header cth2,
+                                  csh_transaction_line   ctl2
+                            where ctl1.transaction_line_id = l.transaction_line_id
+                                  and ctl1.transaction_header_id =
+                                  cth1.transaction_header_id
+                                  and
+                                  cth2.source_header_id = cth1.transaction_header_id
+                                  and cth2.transaction_header_id =
+                                  ctl2.transaction_header_id
+                                  and cth2.reversed_flag = 'N')),
+                      0) as amount
+          from csh_transaction_header h,
+               csh_transaction_line   l
+         where h.transaction_header_id = l.transaction_header_id
+               and l.transaction_line_id = #{prepayTrxLineId}
+               and h.transaction_type = 'PREPAYMENT'
+               and h.reversed_flag = 'N'
+               and h.posted_flag = 'Y'
+               and h.returned_flag in ('Y',
+                                       'N')
+
+    </select>
+</mapper>

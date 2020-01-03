@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoReqTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoReqType">
+        <result column="MO_EXP_REQ_TYPE_ID" property="moExpReqTypeId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_REQ_TYPE_CODE" property="moExpReqTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_PAGE_TYPE" property="documentPageType" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="ACCRUED_FLAG" property="accruedFlag" jdbcType="VARCHAR"/>
+        <result column="LINE_NUMBER_BEGINNING" property="lineNumberBeginning" jdbcType="DECIMAL"/>
+        <result column="STEP_LENGTH" property="stepLength" jdbcType="DECIMAL"/>
+        <result column="AUTO_APPROVE_FLAG" property="autoApproveFlag" jdbcType="VARCHAR"/>
+        <result column="AUTO_AUDIT_FLAG" property="autoAuditFlag" jdbcType="VARCHAR"/>
+        <result column="ONE_OFF_FLAG" property="oneOffFlag" jdbcType="VARCHAR"/>
+        <result column="TOLERANCE_FLAG" property="toleranceFlag" jdbcType="VARCHAR"/>
+        <result column="TOLERANCE_RANGE" property="toleranceRange" jdbcType="VARCHAR"/>
+        <result column="TOLERANCE_RATIO" property="toleranceRatio" jdbcType="DECIMAL"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="REPORT_NAME" property="reportName" jdbcType="VARCHAR"/>
+        <result column="RESERVE_BUDGET" property="reserveBudget" jdbcType="VARCHAR"/>
+        <result column="BUDGET_CONTROL_ENABLED" property="budgetControlEnabled" jdbcType="VARCHAR"/>
+        <result column="ICON" property="icon" jdbcType="VARCHAR"/>
+        <result column="CAPTION_HDS_ID" property="captionHdsId" jdbcType="DECIMAL"/>
+        <result column="APP_PAGE_CODE" property="appPageCode" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="SERVICE_NAME" property="serviceName" jdbcType="VARCHAR"/>
+        <result column="ICON_FILE_NAME" property="iconFileName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryChoiceRequisitionTypeInfor" resultMap="BaseResultMap">
+SELECT
+	emtv.mo_exp_req_type_id,
+	emtv.mo_exp_req_type_code,
+	emrtt.description ,
+	emtv.currency_code,
+	( SELECT currency_name FROM gld_currency gcv WHERE gcv.currency_code = emtv.CURRENCY_CODE ) currency_name,
+	IFNULL( emtv.icon, 'resources/images/aurora/4.0/documents/Default.png' ) AS icon_file_name,
+	(
+SELECT
+	srb.URL
+FROM
+	exp_mo_req_type_ref_ele ere,
+	exp_req_page_element epe,
+	sys_resource_b srb
+WHERE
+	ere.MO_EXP_REQ_TYPE_ID = emtv.MO_EXP_REQ_TYPE_ID
+	AND epe.REQ_PAGE_ELEMENT_ID = ere.REQ_PAGE_ELEMENT_ID
+	AND epe.SERVICE_ID = srb.RESOURCE_ID
+	AND ere.DOC_TYPE_CODE = 'HEADER'
+	AND ere.ENABLED_FLAG = 'Y'
+	AND epe.ENABLED_FLAG = 'Y'
+	) service_name
+FROM
+	exp_mo_req_type emtv
+	LEFT JOIN exp_mo_req_type_tl emrtt ON emtv.MO_EXP_REQ_TYPE_ID = emrtt.MO_EXP_REQ_TYPE_ID
+	AND emrtt.LANG = #{request.locale}
+WHERE
+	emtv.ENABLED_FLAG = 'Y'
+	AND EXISTS (
+SELECT
+	1
+FROM
+	exp_mo_req_type_ref_emp_gp emeg,
+	exp_mo_emp_group emgx,
+	exp_mo_emp_group_asgn_com emac,
+	exp_com_emp_group_ref_emp ecre
+WHERE
+	emtv.mo_exp_req_type_id = emeg.mo_exp_req_type_id
+	AND emeg.enabled_flag = 'Y'
+	AND emeg.mo_emp_group_id = emgx.mo_emp_group_id
+	AND emgx.enabled_flag = 'Y'
+	AND emgx.mo_emp_group_id = emac.mo_emp_group_id
+	AND emac.enabled_flag = 'Y'
+	AND emac.assign_id = ecre.emp_group_com_assign_id
+	AND ecre.enabled_flag = 'Y'
+	AND emac.company_id = #{request.companyId}
+	AND ecre.employee_id = #{request.employeeId}
+	)
+    AND EXISTS ( SELECT 1
+                 FROM exp_mo_req_type_asgn_com emrt
+                 WHERE emrt.mo_exp_req_type_id = emtv.mo_exp_req_type_id
+                 AND emrt.company_id = #{request.employeeId}
+                 AND emrt.enabled_flag = 'Y' )
+     </select>
+</mapper>

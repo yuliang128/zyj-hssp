@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.pur.mapper.PurSystemVenderMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.pur.dto.PurSystemVender">
+        <result column="VENDER_ID" property="venderId" jdbcType="DECIMAL"/>
+        <result column="VENDER_CODE" property="venderCode" jdbcType="VARCHAR"/>
+        <result column="VENDER_TYPE_ID" property="venderTypeId" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ADDRESS" property="address" jdbcType="VARCHAR"/>
+        <result column="ARTIFICIAL_PERSON" property="artificialPerson" jdbcType="VARCHAR"/>
+        <result column="TAX_ID_NUMBER" property="taxIdNumber" jdbcType="VARCHAR"/>
+        <result column="BANK_BRANCH_CODE" property="bankBranchCode" jdbcType="VARCHAR"/>
+        <result column="BANK_ACCOUNT_CODE" property="bankAccountCode" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_TERM_ID" property="paymentTermId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_METHOD" property="paymentMethod" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="TAX_TYPE_ID" property="taxTypeId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_ITEM_FLAG" property="enabledItemFlag" jdbcType="VARCHAR"/>
+        <result column="APPROVED_VENDER_FLAG" property="approvedVenderFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="VENDER_TYPE_CODE" property="venderTypeCode" jdbcType="VARCHAR"/>
+        <result column="VENDER_TYPE_NAME" property="venderTypeName" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE_NAME" property="currencyCodeName" jdbcType="VARCHAR"/>
+        <result column="TAX_TYPE_NAME" property="taxTypeName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_NAME" property="paymentMethodName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_TERM_NAME" property="paymentTermName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryForSystemLevel" resultMap="BaseResultMap" parameterType="com.hand.hec.pur.dto.PurSystemVender">
+        SELECT
+            PSV.VENDER_ID,
+            PSV.VENDER_CODE,
+            PSVTL.DESCRIPTION,
+            PSV.ADDRESS,
+            PSV.ARTIFICIAL_PERSON,
+            PSV.TAX_ID_NUMBER,
+            PSV.BANK_BRANCH_CODE,
+            PSV.BANK_ACCOUNT_CODE,
+            PSV.ENABLED_ITEM_FLAG,
+            PSV.ENABLED_FLAG,
+            PSV.VENDER_TYPE_ID,
+            PSV.PAYMENT_TERM_ID,
+            PSV.PAYMENT_METHOD,
+            PSV.CURRENCY_CODE,
+            PSV.TAX_TYPE_ID,
+            PSV.APPROVED_VENDER_FLAG,
+            ( SELECT PVT.VENDER_TYPE_CODE FROM PUR_VENDER_TYPE PVT WHERE PVT.VENDER_TYPE_ID = PSV.VENDER_TYPE_ID ) AS VENDER_TYPE_CODE,
+            (
+            SELECT
+                PVT.DESCRIPTION 
+            FROM
+                PUR_VENDER_TYPE PVT,
+                PUR_VENDER_TYPE_TL PVTTL 
+            WHERE
+                PVT.VENDER_TYPE_ID = PSV.VENDER_TYPE_ID 
+                AND PVT.VENDER_TYPE_ID = PVTTL.VENDER_TYPE_ID 
+                AND PVTTL.LANG = #{request.locale}
+            ) AS VENDER_TYPE_NAME,
+            (
+            SELECT
+                GCTL.CURRENCY_NAME 
+            FROM
+                GLD_CURRENCY GC,
+                GLD_CURRENCY_TL GCTL 
+            WHERE
+                GC.CURRENCY_CODE = PSV.CURRENCY_CODE 
+                AND GC.CURRENCY_ID = GCTL.CURRENCY_ID 
+                AND GCTL.LANG = #{request.locale} 
+            ) AS CURRENCY_CODE_NAME,
+            (
+            SELECT
+                FTTCTL.DESCRIPTION 
+            FROM
+                FND_TAX_TYPE_CODE FTTC,
+                FND_TAX_TYPE_CODE_TL FTTCTL 
+            WHERE
+                FTTC.TAX_TYPE_ID = PSV.TAX_TYPE_ID 
+                AND FTTC.TAX_TYPE_ID = FTTCTL.TAX_TYPE_ID 
+                AND FTTCTL.LANG = #{request.locale} 
+            ) AS TAX_TYPE_NAME,
+            (
+            SELECT
+                CPMTL.DESCRIPTION 
+            FROM
+                CSH_PAYMENT_METHOD CPM,
+                CSH_PAYMENT_METHOD_TL CPMTL 
+            WHERE
+                CPM.PAYMENT_METHOD_CODE = PSV.PAYMENT_METHOD 
+                AND CPM.PAYMENT_METHOD_ID = CPMTL.PAYMENT_METHOD_ID 
+                AND CPMTL.LANG = #{request.locale} 
+            ) AS PAYMENT_METHOD_NAME,
+            (
+            SELECT
+                CPTTL.DESCRIPTION 
+            FROM
+                CSH_PAYMENT_TERM CPT,
+                CSH_PAYMENT_TERM_TL CPTTL 
+            WHERE
+                CPT.PAYMENT_TERM_ID = PSV.PAYMENT_TERM_ID 
+                AND CPT.PAYMENT_TERM_ID = CPTTL.PAYMENT_TERM_ID 
+                AND CPTTL.LANG = #{request.locale} 
+            ) AS PAYMENT_TERM_NAME 
+        FROM
+            PUR_SYSTEM_VENDER PSV
+            LEFT JOIN
+            PUR_SYSTEM_VENDER_TL PSVTL
+            ON (PSV.VENDER_ID = PSVTL.VENDER_ID AND PSVTL.LANG = #{request.locale} )
+        <where>
+            <if test="venderTypeId !=null and venderTypeId!=''">
+                AND PSV.VENDER_TYPE_ID = #{venderTypeId}
+            </if>
+            <if test="venderCode !=null and venderCode!=''">
+                AND PSV.VENDER_CODE like concat('%',#{venderCode},'%')
+            </if>
+            <if test="description !=null and description!=''">
+                AND PSVTL.DESCRIPTION like concat('%',#{description},'%')
+            </if>
+        </where>
+        ORDER BY
+            PSV.VENDER_TYPE_ID,
+            PSV.VENDER_CODE
+    </select>
+    
+    <select id="queryByNonSysLevel" resultMap="BaseResultMap" >
+        SELECT
+            psv.vender_id,
+            psv.vender_code,
+            psvtl.description,
+            psv.vender_type_id,
+            pvt.vender_type_code,
+            pvttl.description vender_type_name,
+            psv.address,
+            psv.artificial_person,
+            psv.tax_id_number,
+            psv.bank_branch_code,
+            psv.bank_account_code,
+            psv.payment_term_id,
+            cpt.payment_term_code,
+            cpttl.description payment_term_name,
+            psv.payment_method,
+            cpmtl.description payment_method_name,
+            psv.currency_code,
+            gctl.currency_name currency_code_name,
+            psv.tax_type_id,
+            fttc.tax_type_code,
+            fttctl.description tax_type_name,
+            psv.approved_vender_flag,
+            psv.enabled_item_flag,
+            psv.enabled_flag
+        FROM
+            pur_system_vender psv
+            left join pur_system_vender_tl psvtl on (psv.vender_id = psvtl.vender_id and psvtl.lang = #{request.locale,javaType=java.lang.String})
+            left join pur_vender_type pvt on (psv.vender_type_id = pvt.vender_type_id)
+            left join pur_vender_type_tl pvttl on (pvt.vender_type_id = pvttl.vender_type_id and pvttl.lang = #{request.locale,javaType=java.lang.String})
+            left join csh_payment_term cpt on (psv.payment_term_id = cpt.payment_term_id)
+            left join csh_payment_term_tl cpttl on (cpt.payment_term_id = cpttl.payment_term_id and cpttl.lang = #{request.locale,javaType=java.lang.String})
+            left join csh_payment_method cpm on (psv.PAYMENT_METHOD = cpm.PAYMENT_METHOD_CODE)
+            left join csh_payment_method_tl cpmtl on (cpm.payment_method_id = cpmtl.payment_method_id and cpmtl.lang = #{request.locale,javaType=java.lang.String})
+            left join fnd_tax_type_code fttc on (psv.tax_type_id = fttc.tax_type_id)
+            left join fnd_tax_type_code_tl fttctl on (fttc.tax_type_id = fttctl.tax_type_id and fttctl.lang = #{request.locale,javaType=java.lang.String})
+            left join gld_currency gc on (psv.currency_code = gc.currency_code)
+            left join gld_currency_tl gctl on (gc.currency_id = gctl.currency_id and gctl.lang = #{request.locale,javaType=java.lang.String})
+        WHERE
+            EXISTS ( SELECT 1 FROM pur_system_vender_ref_ae psra WHERE psra.vender_id = psv.vender_id AND psra.acc_entity_id = #{accEntityId,javaType=java.lang.Long} )
+        <if test="systemVender.venderTypeId !=null and systemVender.venderTypeId!=''">
+            AND psv.vender_type_id = #{systemVender.venderTypeId}
+        </if>
+        <if test="systemVender.venderCode !=null and systemVender.venderCode!=''">
+            AND PSV.VENDER_CODE like concat('%',#{systemVender.venderCode},'%')
+        </if>
+    </select>
+
+</mapper>

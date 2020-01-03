@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Description: 核算主体级成本中心-预算实体分配
+ * Version: 1.0
+ * Author: rui.shi@hand-china.com
+ * Copyright Hand China Co.,Ltd.
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function GLD2030_RespCenterRefBeBack() {
+                var id = this.__host.id;
+                $au(id).close();
+            }
+            
+            function GLD2030_BgtCenterEditorFun(record, name) {
+                if (name == 'bgtCenterName') {
+                    var bgtEntityId = record.get('bgtEntityId');
+                    if (!Ext.isEmpty(bgtEntityId)) {
+                        return 'GLD2030_accEntityRefLov';
+                    }
+                    return '';
+                }
+            }
+            
+            function GLD2030_GridCellClick(grid, row, name, record) {
+                if (name == 'bgtCenterName') {
+                    var bgtEntityId = record.get('bgtEntityId');
+                    record.getMeta().getField('bgtCenterName').setLovPara('bgtEntityId', bgtEntityId);
+                }
+            }
+            
+            function GLD2030_AcRefBeUpdate(dataSet, record, name, value, oldvalue) {
+                if (name == 'defaultFlag') {
+                    if (value == 'Y' ) {
+                        if(record.get('enabledFlag') == 'N'){
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:gld2030_enabled_flag_not_select]', null, 300, 150);
+                            return;
+                        }
+                        debugger;
+
+                        var datas =  $au('GLD2030_respCenterRefBeDs').getAll();
+                        var currentRecordrecord = $au("GLD2030_respCenterRefBeDs").getCurrentRecord();
+                        var defaultCount=0;
+                        datas.forEach(function(record) {
+                            //同一个预算实体下不允许默认多个成本中心
+                            if (record.get('defaultFlag') == 'Y' && record.get('bgtEntityName') == currentRecordrecord.get('bgtEntityName')){
+                                ++defaultCount;
+                            }
+                        });
+
+                        if (defaultCount > 1) {
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:gld2030_one_bgt_entity_ref_too_much_bgt_cernter]', null, 300, 150);
+                            record.set('defaultFlag', 'N');
+                            return;
+                        }
+                        
+                    }
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+            }
+            
+            function GLD2030_AcRefBeSubmitSuccess(ds) {
+                ds.query();
+            }
+            
+            function GLD2030_RespRefBeSave() {
+                if (!$au('GLD2030_respCenterRefBeDs').validate()) {
+                    return;
+                }
+                // $au('GLD2030_resp_center_ds').submit();
+                $au('GLD2030_respCenterRefBeDs').submit();
+            }
+        ]]></script>
+        <a:dataSets>
+
+            <a:dataSet id="GLD2030_respCenterRefBeDs" autoPageSize="true" autoQuery="true"   baseUrl="/gld/resp-center-ref-bc" pageSize="10" queryUrl="$[/request/@context_path]/gld/resp-center-ref-bc/query?respCenterId=$[/parameter/@respCenterId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="respCenterId" defaultValue="$[/parameter/@respCenterId]"/>
+                    <a:field name="bgtEntityId"/>
+
+                    <a:field name="bgtEntityName" lovCode="LOV_BGT_ENTITY?accEntityId=$[/parameter/@accEntityId]" autoComplete="true" required="true" prompt="bgt_entity.description" title="bgt_entity.bgt_entity">
+                        <a:mapping>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                            <a:map from="description" to="bgtEntityName"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="bgtCenterName" lovCode="LOV_BGT_CENTER" autoComplete="true" required="true"  prompt="bgt_center.description" title="bgt_center.bgt_center">
+                        <a:mapping>
+                            <a:map from="bgtCenterId" to="bgtCenterId"/>
+                            <a:map from="description" to="bgtCenterName"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD2030_AcRefBeUpdate"/>
+                    <a:event name="submitsuccess" handler="GLD2030_AcRefBeSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD_infoFs" column="2" title="exp_org_unit.responsibility_center" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD2030_respCenterRefBeGrid" type="add" width="80"/>
+                    <a:toolbarButton click="GLD2030_RespRefBeSave" text="hap_save" width="80"/>
+                    <a:gridButton click="GLD2030_RespCenterRefBeBack" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="responsibilityCenterCode" bindTarget="GLD2030_responsibilityCentersResultDs" prompt="gld_responsibility_center.responsibility_center_code" readOnly="true"/>
+                <a:textField name="responsibilityCenterName" bindTarget="GLD2030_responsibilityCentersResultDs" prompt="gld_responsibility_center.responsibility_center_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="GLD2030_respCenterRefBeGrid" bindTarget="GLD2030_respCenterRefBeDs" marginHeight="200" navBar="true" width="1000">
+                <a:columns>
+                    <a:column name="bgtEntityName" align="center" editor="GLD2030_accEntityRefLov" width="200"/>
+                    <a:column name="bgtCenterName" align="center" editorFunction="GLD2030_BgtCenterEditorFun" width="120"/>
+                    <a:column name="defaultFlag" editor="GLD2030_accEntityRefCk" prompt="travel_plan_type.default_flag"/>
+                    <a:column name="enabledFlag" editor="GLD2030_accEntityRefCk" prompt="fnd_company_group.enabled_flag"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD2030_accEntityRefLov"/>
+                    <a:checkBox id="GLD2030_accEntityRefCk"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="GLD2030_GridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

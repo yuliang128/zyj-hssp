@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscTaskDispatchRecordMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscTaskDispatchRecord">
+        <result column="DISPATCH_RECORD_ID" property="dispatchRecordId" jdbcType="DECIMAL" />
+        <result column="TASK_ID" property="taskId" jdbcType="DECIMAL" />
+        <result column="NODE_ID" property="nodeId" jdbcType="DECIMAL" />
+        <result column="WORK_TEAM_ID" property="workTeamId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+        <result column="STATUS" property="status" jdbcType="VARCHAR" />
+        <result column="ENTER_TIME" property="enterTime" jdbcType="DATE" />
+        <result column="EXIT_TIME" property="exitTime" jdbcType="DATE" />
+
+        <result column="PROC_NAME" property="procName" jdbcType="VARCHAR"/>
+        <result column="creation_date" property="createDate" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getActionProcedure" resultMap="BaseResultMap">
+        select sp.proc_name
+          from ssc_workflow_node_actions ap
+               left join  ssc_task_dispatch_record  r on r.node_id = ap.node_id
+               left join  wfl_workflow_procedure_base sp on ap.procedure_id = sp.procedure_id
+         where r.dispatch_record_id = #{dispatchRecordId}
+           and ap.action_id = #{actionId}
+           and sp.ssc_flag='Y'
+    </select>
+    <select id="getFinishProcedure" resultMap="BaseResultMap">
+         select
+	        sp.proc_name
+          from
+	        ssc_workflow sw
+            left join wfl_workflow_procedure_base sp on
+	          sw.finish_procedure_id = sp.PROC_ID
+            left join ssc_task_pool tp on
+	          sw.workflow_id = tp.workflow_id
+          where tp.task_id = #{taskId}
+            and sp.ssc_flag='Y'
+    </select>
+
+    <select id="ReturnQuery" resultMap="BaseResultMap">
+        SELECT
+        dispatch_record_id dispatchRecordId,
+        task_id,
+        NAME workEmployeeName,
+        doc_category docCategory,
+        doc_number docNumber,
+        doc_id docId,
+        node_name nodeName,
+        process_opinion processOpinion,
+        node_id,
+        page_name pageName
+        FROM
+        (
+        SELECT
+        str.dispatch_record_id,
+        stp.task_id,
+        ee.NAME,
+        stp.doc_category,
+        stp.doc_number,
+        stp.doc_id,
+        str.STATUS,
+        swn.description node_name,
+        wptt.process_opinion,
+        str.node_id,
+        '' page_name
+        FROM
+        ssc_task_dispatch_record str,
+        ssc_task_pool stp,
+        exp_employee ee,
+        ssc_workflow_node swn,
+        (
+        SELECT
+        sp.dispatch_record_id,
+        sp.process_opinion
+        FROM
+        ssc_process sp
+        WHERE
+        EXISTS (
+        SELECT
+        MAX( sp.process_id )
+        FROM
+        ssc_process wp
+        GROUP BY
+        wp.dispatch_record_id
+        HAVING
+        wp.dispatch_record_id = MAX( sp.dispatch_record_id )
+        )
+        ) wptt
+        WHERE
+        str.STATUS = 'APPLYING_RETURN'
+        AND str.employee_id = ee.employee_id
+        AND str.node_id = swn.node_id
+        AND str.task_id = stp.task_id
+        AND str.dispatch_record_id = wptt.dispatch_record_id
+        AND str.node_id IN (
+        SELECT
+        sc.node_id
+        FROM
+        ssc_node_asgn_work_center sc
+        WHERE
+        sc.work_center_id IN (
+        SELECT
+        st.work_center_id
+        FROM
+        ssc_work_team st
+        WHERE
+        st.manager_employee_id IN (
+        SELECT
+        ev.employee_id
+        FROM
+        (
+        select employee_id,manager_id from (
+        select t1.employee_id,
+        t1.manager_id,
+        if(find_in_set(t1.manager_id, @manager_id) > 0, @r := concat(@manager_id,',',t1.employee_id), 0) as ischild
+        from
+        (
+        SELECT
+        sst.manager_employee_id AS manager_id,
+        sw.employee_id
+        FROM
+        ssc_work_team sst,
+        ssc_node_assign_worker sw
+        WHERE
+        sst.work_team_id = sw.work_team_id
+        AND sst.manager_employee_id != sw.employee_id
+        ) t1,
+        (select @manager_id := ( SELECT su.employee_id FROM sys_user su WHERE su.user_id = #{request.userId}) manager_id) t2
+        ) t3 where ischild != 0
+        UNION ALL
+        SELECT
+        su.employee_id AS manager_id,
+        su.employee_id AS employee_id
+        FROM
+        sys_user su
+        WHERE
+        su.user_id = #{request.userId}
+        ) ev
+        )
+        )
+        )
+        ) t
+        <if test="docCategory != null and docCategory != ''">
+            and t.docCategory = #{docCategory}
+        </if>
+        <if test="docNumber != null and docNumber != ''">
+            and t.docNumber LIKE '%${docNumber}%'
+        </if>
+    </select>
+
+    <select id="forceQuery" resultMap="BaseResultMap">
+        SELECT
+        v.task_id,
+        v.work_team_id workTeamId,
+        v.dispatch_record_id,
+        v.doc_category docCategory,
+        v.doc_category_name docCategoryName,
+        v.doc_number docNumber,
+        v.doc_id docId,
+        v.company_id companyId,
+        v.acc_entity_id accEntityId,
+        v.acc_entity_name accEntityName,
+        v.dispatch_status dispatchStatus,
+        v.dispatch_status_name dispatchStatusName,
+        v.node_id nodeId,
+        v.node_name nodeName,
+        v.employee_id employeeId,
+        v.employee_name workEmployeeName,
+        v.current_employee_id currentEmployeeId,
+        v.can_process_name canProcessName,
+        v.view_url pageName,
+        v.creation_date
+        FROM
+        (
+        SELECT
+        stp.task_id,
+        stdr.work_team_id,
+        stdr.dispatch_record_id,
+        stp.doc_category,
+        scv1.meaning doc_category_name,
+        stp.doc_number,
+        stp.doc_id,
+        stp.company_id,
+        stp.acc_entity_id,
+        acc.acc_entity_name,
+        stdr.STATUS dispatch_status,
+        scv2.meaning dispatch_status_name,
+        stdr.node_id,
+        swnv.description node_name,
+        stdr.employee_id,
+        ee.name employee_name,
+        stp.current_employee_id,
+        '' can_process_name,
+        '' view_url,
+        date_format(stp.creation_date, '%Y-%m-%d %H:%i:%s') creation_date
+        FROM
+        ssc_task_pool stp,
+        ssc_task_dispatch_record stdr,
+        ssc_workflow_node swnv,
+        sys_code_v scv1,
+        sys_code_v scv2,
+        gld_accounting_entity acc,
+        exp_employee ee
+        WHERE
+        stp.task_id = stdr.task_id
+        AND stp.current_node_id = stdr.node_id
+        AND stdr.node_id = swnv.node_id
+        AND stp.task_status = 'ONGOING'
+        AND stdr.STATUS = 'IN_PROGRESS'
+        AND scv1.code = 	'SSC_DOC_CATEGORY'
+        AND scv1.value = stp.doc_category
+        AND scv2.code = 	'SSC_DISPATCH_STATUS'
+        AND scv2.value = stdr.STATUS
+        AND acc.acc_entity_id = stp.acc_entity_id
+        AND ee.employee_id = stdr.employee_id
+        AND EXISTS(
+        SELECT
+        1
+        FROM
+        (
+        select
+        employee_id
+        from (
+        select
+        t1.employee_id,
+        if(find_in_set(t1.manager_employee_id, @manager_id) > 0, @r := concat(@manager_id,',',t1.employee_id), 0) as ischild
+        from
+        (
+        SELECT
+        teams.manager_employee_id,
+        workers.employee_id
+        FROM
+        ssc_work_team teams,
+        ssc_worker workers
+        WHERE
+        teams.work_center_id = #{workCenterId}
+        AND teams.work_team_id = workers.work_team_id
+        AND teams.manager_employee_id != workers.employee_id
+        AND teams.enabled_flag = 'Y'
+        AND workers.enabled_flag = 'Y'
+        ) t1,
+        (
+        select
+        @manager_id := ( SELECT su.employee_id FROM sys_user su WHERE su.user_id = #{request.userId} ) manager_id
+        ) t2
+        ) t3
+        where ischild != 0
+        UNION ALL
+        SELECT
+        su.employee_id
+        FROM sys_user su
+        WHERE su.user_id = #{request.userId}
+        ) emp
+        WHERE
+        stdr.employee_id = stp.current_employee_id
+        )
+        UNION ALL
+        SELECT
+        stp.task_id,
+        stdr.work_team_id,
+        stdr.dispatch_record_id,
+        stp.doc_category,
+        scv1.meaning doc_category_name,
+        stp.doc_number,
+        stp.doc_id,
+        stp.company_id,
+        stp.acc_entity_id,
+        acc.acc_entity_name,
+        stdr.STATUS dispatch_status,
+        scv2.meaning dispatch_status_name,
+        stdr.node_id,
+        swnv.description node_name,
+        stdr.employee_id,
+        ee.name employee_name,
+        stp.current_employee_id,
+        '' can_process_name,
+        '' view_url,
+        date_format(stp.creation_date, '%Y-%m-%d %H:%i:%s') creation_date
+        FROM
+        ssc_task_pool stp,
+        ssc_task_dispatch_record stdr,
+        ssc_workflow_node swnv,
+        sys_code_v scv1,
+        sys_code_v scv2,
+        gld_accounting_entity acc,
+        exp_employee ee
+        WHERE
+        stdr.STATUS = 'WAITING'
+        AND stp.task_id = stdr.task_id
+        AND stdr.node_id = swnv.node_id
+        AND scv1.code = 	'SSC_DOC_CATEGORY'
+        AND scv1.value = stp.doc_category
+        AND scv2.code = 	'SSC_DISPATCH_STATUS'
+        AND scv2.value = stdr.STATUS
+        AND acc.acc_entity_id = stp.acc_entity_id
+        AND ee.employee_id = stdr.employee_id
+        AND stdr.node_id IN (
+        SELECT
+        snwc.node_id
+        FROM
+        ssc_node_asgn_work_center snwc
+        WHERE
+        snwc.enabled_flag = 'Y'
+        AND snwc.work_center_id IN (
+        SELECT
+        swtx.work_center_id
+        FROM
+        ssc_work_team swtx
+        WHERE
+        swtx.work_center_id = #{workCenterId}
+        AND swtx.enabled_flag = 'Y'
+        AND swtx.manager_employee_id IN (
+        SELECT
+        ev.employee_id
+        FROM
+        (
+        select
+        employee_id,
+        manager_id
+        from (
+        select
+        t1.employee_id,
+        t1.manager_id,
+        if(find_in_set(t1.manager_id, @manager_id) > 0, @r := concat(@manager_id,',',t1.employee_id), 0) as ischild
+        from
+        (
+        SELECT
+        swt.manager_employee_id manager_id,
+        snaw.employee_id
+        FROM
+        ssc_work_team swt,
+        ssc_node_assign_worker snaw
+        WHERE
+        swt.work_center_id = #{workCenterId}
+        AND swt.work_team_id = snaw.work_team_id
+        AND swt.manager_employee_id != snaw.employee_id
+        AND swt.enabled_flag = 'Y'
+        AND snaw.enabled_flag = 'Y'
+        ) t1,
+        (
+        select
+        @manager_id := ( SELECT su.employee_id FROM sys_user su WHERE su.user_id = #{request.userId}) manager_id
+        ) t2
+        ) t3
+        where ischild != 0
+        UNION ALL
+        SELECT
+        su.employee_id AS manager_id,
+        su.employee_id AS employee_id
+        FROM
+        sys_user su
+        WHERE
+        su.user_id = #{request.userId}
+        ) ev
+        )
+        )
+        )
+        ) v
+        where
+        1=1
+        <if test="docCategory != null">
+            and v.docCategory = #{docCategory}
+        </if>
+        <if test="docNumber != null">
+            and v.docNumber LIKE '%${docNumber}%'
+        </if>
+        <if test="companyId != null">
+            and v.companyId = #{companyId}
+        </if>
+        <if test="workTeamId != null">
+            and v.workTeamId = #{workTeamId}
+        </if>
+        <if test="accEntityId != null">
+            and v.accEntityId = #{accEntityId}
+        </if>
+        <if test="dateFrom != null">
+            and v.creationDate &gt;= #{dateFrom}
+        </if>
+        <if test="dateTo != null">
+            and v.creationDate &lt;= #{dateTo}
+        </if>
+        ORDER BY
+        v.doc_number
+    </select>
+
+    <select id="conAndAgenQuery" resultMap="BaseResultMap">
+        SELECT
+            *
+        FROM
+            (
+        SELECT
+            ee.employee_code employeeCode,
+            ee.NAME workEmployeeName,
+            ee.employee_id,
+            sv.description workTeamName,
+            sw.work_team_id,
+            sw.node_id
+        FROM
+            ssc_work_team sv,
+            ssc_node_assign_worker sw,
+            exp_employee ee
+        WHERE
+            sw.work_team_id = sv.work_team_id
+            AND sw.employee_id = ee.employee_id
+            AND sw.enabled_flag = 'Y'
+            AND sv.work_team_id IN ( SELECT wt.work_team_id FROM ssc_work_team wt )
+	) v
+    </select>
+
+    <select id="selectWatingData" resultMap="BaseResultMap">
+        select r.dispatch_record_id,
+               n.node_id,
+               r.task_id
+          from ssc_task_dispatch_record r left join
+               ssc_workflow_nodes       n on r.node_id = n.node_id
+         where r.status = 'WAITING'
+           and n.auto_dispatch_flag = 'Y'
+      order by r.creation_date asc
+    </select>
+</mapper>

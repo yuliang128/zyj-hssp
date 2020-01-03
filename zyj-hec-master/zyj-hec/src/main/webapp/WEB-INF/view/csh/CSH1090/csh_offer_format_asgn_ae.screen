@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-04 14:31:33
+    $Revision: 1.1 $
+    $Purpose: 报盘文件导出格式定义-分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="sc_csh_offer_type_com_batch_link" url="$[/request/@context_path]/csh/CSH1090/csh_offer_format_batch_asgn_ae.screen"/>
+        <script><![CDATA[
+            
+            function sc_csh_offer_type_com_saveAssignCom() {
+                new Aurora.Window({
+                    id: 'csh_offer_format_asgn_ae_batch_screen',
+                    url: $au('sc_csh_offer_type_com_batch_link').getUrl() + '?formatHdsId=' + '$[/parameter/@formatHdsId]',
+                    title: '$[l:prompt.batch_asgn_ae]',
+                    side:'right',
+                    width:1020
+                }).on('close', function(){
+                    $au('sc_csh_offer_type_com_ass_ds').query();
+                });
+            }
+
+            function sc_csh_offer_type_closeAssignPage() {
+                $au('openAssignCompanyWindow').close();
+            }
+
+
+            function sc_csh_offer_type_acc_code(record, name) {
+                if (record.isNew) {
+                    return "sc_csh_offer_type_lov";
+                } else {
+                    return "";
+                }
+
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="sc_csh_offer_type_com_ass_ds" autoQuery="true" baseUrl="/csh/offer-format-asgn-ae" pageSize="10" queryUrl="$[/request/@context_path]/csh/offer-format-asgn-ae/query?formatHdsId=$[/parameter/@formatHdsId]" selectable="true">
+                <a:fields>
+                    <a:field name="formatHdsId" defaultValue="$[/parameter/@formatHdsId]"/>
+                    <a:field name="accEntityCode" lovCode="FND_ACCOUNTING_ENTITY_LOV?formatHdsId=$[/parameter/@formatHdsId]" prompt="csh_pay_batch_rule_asgn.acc_entity_code" required="true" title="prompt.accounting_distribution">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:form id="sc_csh_offer_type_asgn_ae_form" column="2" labelWidth="100" title="export file format definition - allocation" width="1000">
+                    <a:formToolbar>
+                        <a:label name="separator"/>
+                        <a:gridButton bind="sc_csh_offer_type_com_grid" type="add" width="80"/>
+                        <a:gridButton bind="sc_csh_offer_type_com_grid" type="save" width="80"/>
+                        <a:gridButton bind="sc_csh_offer_type_com_grid" type="delete" width="80"/>
+                        <a:toolbarButton click="sc_csh_offer_type_com_saveAssignCom" text="batch_asgn_ae" width="80"/>
+                        <a:toolbarButton click="sc_csh_offer_type_closeAssignPage" text="hap_back" width="80"/>
+                    </a:formToolbar>
+                    <a:textField name="formatCode" align="center" bindTarget="csh_offer_type_ds" prompt="csh_offer_format.format_code" readOnly="true"/>
+                    <a:textField name="description" align="center" bindTarget="csh_offer_type_ds" prompt="csh_offer_format.format_name" readOnly="true"/>
+                </a:form>
+            </span>
+            <a:grid id="sc_csh_offer_type_com_grid" bindTarget="sc_csh_offer_type_com_ass_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" editorFunction="sc_csh_offer_type_acc_code" prompt="csh_pay_batch_rule_asgn.acc_entity_code" width="120"/>
+                    <a:column name="accEntityName" prompt="csh_pay_batch_rule_asgn.acc_entity_name" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="sc_csh_offer_type_lov"/>
+                    <a:checkBox id="sc_csh_offer_type_flag_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

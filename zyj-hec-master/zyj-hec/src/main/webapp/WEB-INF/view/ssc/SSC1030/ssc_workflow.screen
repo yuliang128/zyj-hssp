@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-14 13:22:06
+    $Revision: 1.0  
+    $Purpose: 共享业务流程定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="SSC1030_editLink" url="$[/request/@context_path]/ssc/SSC1030/ssc_workflow_edit.screen"/>
+        <script><![CDATA[
+            function SSC1030_submitsuccess(ds) {
+                ds.query();
+            }
+            
+            function SSC1030_gridEditor(rd, name) {
+                if (name == 'workflowCode') {
+                    if (rd.isNew) {
+                        return 'SSC1030_gridTf';
+                    }
+                    return '';
+                }
+            }
+            
+            function SSC1030_asgnCom(value, rd, name) {
+                var workflowId = rd.get('workflowId');
+                var docCategory = rd.get('docCategory');
+                if (!rd.isNew) {
+                    return '<a href="javascript:SSC1030_openAsgnComWin(' + workflowId + ',\'' + docCategory + '\')">$[l:hap.maintain]</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function SSC1030_openAsgnComWin(workflowId, docCategory) {
+                new Aurora.Window({
+                    id: 'SSC1030_editWin',
+                    title: '$[l:hap.maintain]',
+                    url: $au('SSC1030_editLink').getUrl() + '?workflowId=' + workflowId + '&docCategory=' + docCategory,
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('ssc_workflow_result_ds').query();
+                });
+            }
+            
+            function SSC1030_gridCellClick(grid, row, name, record) {
+                if (name == 'pageCode') {
+                    var docCategory = record.get('docCategory');
+                    record.getMeta().getField('pageCode').setLovPara('docCategory', docCategory);
+                }
+            }
+
+            function SSC1030_update(ds,record,name,value,oldValue){
+                if(name == "docCategory"){
+                    record.set("pageCode","");
+                }
+            }
+
+        function SSC1030_QueryUpdate(ds,record,name,value,oldValue){
+            if(name == "docCategory"){
+                $au('ssc_workflow_result_ds').query();
+            }
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL2070_wfl_workflow_category_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/WFL_WORKFLOW_CATEGORY/"/>
+            <a:dataSet id="ssc_workflow_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="workflowCode"/>
+                    <a:field name="description"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="WFL2070_wfl_workflow_category_ds" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="SSC1030_QueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ssc_workflow_result_ds" autoQuery="true" baseUrl="/ssc/workflow" queryDataSet="ssc_workflow_query_ds" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="workflowId"/>
+                    <a:field name="workflowCode" prompt="sscworkflow.workflowcode" required="true" typeCase="upper"/>
+                    <a:field name="description" dto="com.hand.hec.ssc.dto" dtoId="workflowId" prompt="ssc_workflow.description" required="true"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="WFL2070_wfl_workflow_category_ds" prompt="ssc_workflow.doc_category" required="true" returnField="docCategory" valueField="value"/>
+                    <a:field name="pageId"/>
+                    <a:field name="pageCode" lovAutoQuery="true" lovCode="LOV_SSC_WFL_PAGE" prompt="wfl_page.page_code" required="true">
+                        <a:mapping>
+                            <a:map from="pageId" to="pageId"/>
+                            <a:map from="pageName" to="pageName"/>
+                            <a:map from="pageCode" to="pageCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="pageName" prompt="wfl_page.page_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="SSC1030_submitsuccess"/>
+                    <a:event name="update" handler="SSC1030_update"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:gridButton bind="SSC1030_grid" text="hap.add" type="add" width="80"/>
+            <a:gridButton bind="SSC1030_grid" text="hap.save" type="save" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="ssc_workflow_query_ds" resultTarget="ssc_workflow_result_ds" style="border:none; width:100%;">
+            <a:formToolBar>
+                <a:textField name="workflowCode" bindTarget="ssc_workflow_query_ds" prompt="sscworkflow.workflowcode"/>
+                <a:textField name="description" bindTarget="ssc_workflow_query_ds" prompt="ssc_workflow.description"/>
+                <a:comboBox name="docCategoryName" bindTarget="ssc_workflow_query_ds" prompt="ssc_workflow.doc_category"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <a:grid id="SSC1030_grid" bindTarget="ssc_workflow_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="workflowCode" align="center" editorFunction="SSC1030_gridEditor" width="100"/>
+                <a:column name="description" align="left" editor="SSC1030_gridTl" width="200"/>
+                <a:column name="docCategoryName" align="center" editor="SSC1030_gridCbb" width="100"/>
+                <a:column name="pageCode" align="center" editor="SSC1030_gridLov" width="200"/>
+                <a:column name="pageName" align="left" width="100"/>
+                <a:column name="enabledFlag" align="center" editor="SSC1030_gridCb" width="80"/>
+                <a:column name="asgnCom" align="center" renderer="SSC1030_asgnCom" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="SSC1030_gridTl"/>
+                <a:textField id="SSC1030_gridTf"/>
+                <a:comboBox id="SSC1030_gridCbb"/>
+                <a:lov id="SSC1030_gridLov"/>
+                <a:checkBox id="SSC1030_gridCb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="SSC1030_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei
+    $Date: 201711-29 上午9:35:19  
+    $Revision: 1.0  
+    $Purpose: 付款批类型定义-分配付款主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1260_csh_payment_batch_tp_as_ae_b_link" url="$[/request/@context_path]/csh/CSH1260/csh_payment_batch_tp_as_ae_b.screen"/>
+        <script><![CDATA[
+            //返回
+            
+            function CSH1260_backTpAsgnAeFun() {
+                $au('CSH1260_csh_payment_b_types_tp_asgn_ae_window').close();
+                $au('CSH1260_csh_payment_b_types_result_ds').query();
+            }
+            
+            function CSH1260_queryTpAsgnAeFun() {
+                $au('CSH1260_csh_payment_b_tp_asgn_ae_result_ds').query();
+            }
+            
+            //批量分配核算主体
+            
+            function CSH1260_batchTpAsgnAeFun() {
+                var typeId = '$[/parameter/@typeId]';
+                var magOrgId = '$[/parameter/@magOrgId]';
+                new Aurora.Window({
+                    id: 'CSH1260_csh_payment_batch_tp_as_ae_b_window',
+                    url: $au('CSH1260_csh_payment_batch_tp_as_ae_b_link').getUrl() + '?typeId=' + typeId + '&magOrgId=' + magOrgId,
+                    title: '$[l:prompt.batch_asgn_ae]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    CSH1260_queryTpAsgnAeFun();
+                });
+            }
+            
+            function CSH1260_tpAsgnAeFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'accEntityCode') {
+                        return 'CSH1260_tp_asgn_ae_lov';
+                    }
+                }
+                return;
+            }
+            
+            function CSH1260_tpAsgnAeSuccessFun() {
+                $au('CSH1260_csh_payment_b_tp_asgn_ae_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1260_csh_payment_batch_types_info_ds" autoQuery="true" baseUrl="csh/payment-batch-type" queryUrl="$[/request/@context_path]/csh/payment-batch-type/query?typeId=$[/parameter/@typeId]">
+                <a:fields>
+                    <a:field name="magOrgId"/>
+                    <a:field name="typeCode" prompt="csh_payment_batch_type.type_code" readOnly="true"/>
+                    <a:field name="description" prompt="csh_payment_batch_type.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH1260_csh_payment_b_tp_asgn_ae_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-batch-tp-asgn-ae" queryUrl="$[/request/@context_path]/csh/payment-batch-tp-asgn-ae/query?typeId=$[/parameter/@typeId]" selectable="true">
+                <a:fields>
+                    <a:field name="typeId" defaultValue="$[/parameter/@typeId]"/>
+                    <a:field name="accEntityCode" lovAutoQuery="true" lovGridHeight="320" lovHeight="450" lovCode="CSH_PAY_QUERY_DEFAULT_ENTITY_LOV?typeId=$[/parameter/@typeId]&amp;magOrgId=$[/parameter/@magOrgId]" lovWidth="500" prompt="gld_accounting_entity.acc_entity_code" required="true" title="gld2030_responsibility_centers.acc_entity_choice">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityNameDisplay" to="accEntityNameDisplay"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name_display"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="csh_payment_batch_type.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1260_tpAsgnAeSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1095_paymentRuleAe_form" column="2" labelWidth="100" title="csh_payment_batch_types_tp_asgn_ae" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1260_csh_payment_b_tp_asgn_ae_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1260_csh_payment_b_tp_asgn_ae_grid" type="save" width="80"/>
+                    <a:gridButton bind="PROMPT.BATCH_ASGN_AE" click="CSH1260_batchTpAsgnAeFun" text="prompt.batch_disp" width="80"/>
+                    <a:gridButton bind="CSH1260_csh_payment_b_tp_asgn_ae_grid" click="CSH1260_backTpAsgnAeFun" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="typeCode" bindTarget="CSH1260_csh_payment_b_types_result_ds" prompt="csh_payment_batch_type.type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1260_csh_payment_b_types_result_ds" prompt="csh_payment_batch_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1260_csh_payment_b_tp_asgn_ae_grid" bindTarget="CSH1260_csh_payment_b_tp_asgn_ae_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editor="CSH1260_tp_asgn_ae_lov" editorFunction="CSH1260_tpAsgnAeFun" sortable="true" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="enabledFlag" editor="CSH1260_tp_asgn_ae_checkBox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1260_tp_asgn_ae_lov"/>
+                    <a:checkBox id="CSH1260_tp_asgn_ae_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

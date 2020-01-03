@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="bgt_budget_items_assign_batch_link" url="$[/request/@context_path]/bgt/budget-item/batchAssignMagOrg"/>
+        <script><![CDATA[
+            function BGT2010_closeAsgnBatch() {
+                $au('BGT2010_assign_batch_win').close();
+            }
+            
+            function BGT2010_assignCom() {
+                var mag_org_datas = $au('BGT2010_batch_asgn_ds').getJsonData(true);
+                var bgt_items_datas = $au('bgt_budget_items_query_result_ds').getJsonData(true);
+                if (mag_org_datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < bgt_items_datas.length;i++) {
+                    bgt_items_datas[i]['magOrgList'] = mag_org_datas;
+                }
+            
+                Aurora.request({lockMessage:'$[l:hap_waiting]',lockMessage:'$[l:hap_waiting]',
+                    url: $au('bgt_budget_items_assign_batch_link').getUrl(),
+                    para: bgt_items_datas,
+                    success: BGT2010_closeAsgnBatch,
+                    scope: this
+                });
+            }
+            
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2010_batch_asgn_ds" autoPageSize="true" autoQuery="true" pageSize="50" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption" selectable="true">
+                <a:fields>
+                    <a:field name="magOrgId"/>
+                    <a:field name="description" prompt="fnd_managing_organization.description"/>
+                    <a:field name="magOrgCode" prompt="fnd_managing_organization.mag_org_code"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_period.bgt_period_batch_assign_mo_org">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="BGT2010_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="BGT2010_closeAsgnBatch" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bgtOrgCode" bindTarget="bgt_budget_items_query_ds" prompt="bgt_organization.bgt_org_code" readOnly="true"/>
+                <a:textField name="bgtOrgName" bindTarget="bgt_budget_items_query_ds" prompt="bgt_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="BGT2010_batch_asgn_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="magOrgCode" width="200"/>
+                    <a:column name="description" width="400"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

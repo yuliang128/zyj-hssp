@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscTaskPoolMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscTaskPool">
+        <result column="TASK_ID" property="taskId" jdbcType="DECIMAL"/>
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR"/>
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL"/>
+        <result column="DOC_ID" property="docId" jdbcType="DECIMAL"/>
+        <result column="DOC_NUMBER" property="docNumber" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="ENTER_TIME" property="enterTime" jdbcType="DATE"/>
+        <result column="EXIT_TIME" property="exitTime" jdbcType="DATE"/>
+        <result column="WORK_CENTER_ID" property="workCenterId" jdbcType="DECIMAL"/>
+        <result column="WORKFLOW_ID" property="workflowId" jdbcType="DECIMAL"/>
+        <result column="DOC_WFL_ASSIGN_ID" property="docWflAssignId" jdbcType="DECIMAL"/>
+        <result column="CURRENT_NODE_ID" property="currentNodeId" jdbcType="DECIMAL"/>
+        <result column="CURRENT_WORK_TEAM_ID" property="currentWorkTeamId" jdbcType="DECIMAL"/>
+        <result column="CURRENT_EMPLOYEE_ID" property="currentEmployeeId" jdbcType="DECIMAL"/>
+        <result column="TASK_STATUS" property="taskStatus" jdbcType="VARCHAR"/>
+
+		<result column="DOC_CATEGORY_NAME" property="docCategoryName" jdbcType="VARCHAR"/>
+		<result column="DOC_EMPLOYEE_ID" property="docEmployeeId" jdbcType="DECIMAL"/>
+		<result column="DOC_EMPLOYEE_NAME" property="docEmployeeName" jdbcType="VARCHAR"/>
+		<result column="WORKFLOW_NAME" property="workflowName" jdbcType="VARCHAR"/>
+		<result column="NODE_NAME" property="nodeName" jdbcType="VARCHAR"/>
+		<result column="POOL_TYPE" property="poolType" jdbcType="VARCHAR"/>
+		<result column="POOL_TYPE_NAME" property="poolTypeName" jdbcType="VARCHAR"/>
+		<result column="TASK_STATUS_NAME" property="taskStatusName" jdbcType="VARCHAR"/>
+		<result column="DISPATCH_STATUS" property="dispatchStatus" jdbcType="VARCHAR"/>
+		<result column="DISPATCH_STATUS_NAME" property="dispatchStatusName" jdbcType="VARCHAR"/>
+		<result column="WORK_EMPLOYEE_ID" property="workEmployeeId" jdbcType="VARCHAR"/>
+		<result column="WORK_EMPLOYEE_NAME" property="workEmployeeName" jdbcType="VARCHAR"/>
+		<result column="MAG_ORG_NAME" property="magOrgName" jdbcType="VARCHAR"/>
+		<result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR"/>
+		<result column="DISPATCH_RECORD_ID" property="dispatchRecordId" jdbcType="DECIMAL"/>
+		<result column="ERROR_MESSAGE" property="errorMessage" jdbcType="VARCHAR"/>
+		<result column="NODE_ID" property="nodeId" jdbcType="DECIMAL"/>
+        <result column="LAST_HOLD_REASON" property="lastHoldReason" jdbcType="VARCHAR"/>
+        <result column="LAST_RETURN_REASON" property="lastReturnReason" jdbcType="VARCHAR"/>
+        <result column="LAST_REJECT_OPINION" property="lastRejectOpinion" jdbcType="VARCHAR"/>
+        <result column="LAST_NODE_NAME" property="lastNodeName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_NAME" property="employeeName" jdbcType="VARCHAR"/>
+        <result column="DOC_CREATION_DATE_STR" property="docCreationDateStr" jdbcType="VARCHAR"/>
+        <result column="DOC_TYPE_NAME" property="docTypeName" jdbcType="VARCHAR"/>
+        <result column="CREATION_DATE" property="createDate" jdbcType="VARCHAR"/>
+        <result column="table_name" property="tableName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="gridQuery" resultMap="BaseResultMap">
+           select
+              v.*
+           from
+              (
+              select
+                p.task_id,
+                p.doc_category,
+                scvv.MEANING as doc_category_name,
+                p.doc_id,
+                p.doc_number,
+                p.employee_id as doc_employee_id,
+                ee.NAME as doc_employee_name,
+                p.workflow_id as workflow_id,
+                v.DESCRIPTION as workflow_name,
+                p.current_node_id as node_id,
+                swnv.DESCRIPTION as node_name,
+                'SSC' as pool_type,
+                (
+                  select v.MEANING
+                from
+                  sys_code_value_vl v
+                where
+                  v.CODE = 'SSC_POOL_TYPE'
+                  and v.VALUE = 'SSC') as pool_type_name,
+                p.enter_time,
+                p.exit_time,
+                p.task_status,
+                scvv1.MEANING as task_status_name,
+                r.status as dispatch_status,
+                scvv2.MEANING as dispatch_status_name,
+                r.employee_id as work_employee_id,
+                ee1.NAME as work_employee_name,
+                p.mag_org_id,
+                fmov.DESCRIPTION as mag_org_name,
+                p.company_id,
+                fcv.COMPANY_SHORT_NAME as company_name,
+                r.dispatch_record_id,
+                '' as error_message
+              from
+                ssc_task_pool p
+              left join ssc_task_dispatch_record r on
+                p.task_id = r.task_id
+              left join sys_code_value_vl scvv on
+                scvv.VALUE = p.DOC_CATEGORY
+                and scvv.CODE = 'SSC_DOC_CATEGORY'
+              left join exp_employee ee on
+                ee.EMPLOYEE_ID = p.EMPLOYEE_ID
+              left join sys_code_value_vl scvv1 on
+                scvv1.VALUE = p.TASK_STATUS
+              left join (
+                  select sw.WORKFLOW_ID,
+                  swt.DESCRIPTION
+                from
+                  ssc_workflow sw
+                left join ssc_workflow_tl swt on
+                  sw.WORKFLOW_ID = swt.WORKFLOW_ID
+                  and swt.LANG = #{request.locale,jdbcType = VARCHAR}) v on
+                v.WORKFLOW_ID = p.WORKFLOW_ID
+              left join fnd_managing_organization_vl fmov on
+                fmov.MAG_ORG_ID = p.MAG_ORG_ID
+              left join fnd_company_vl fcv on
+                fcv.COMPANY_ID = p.COMPANY_ID
+              left join sys_code_value_vl scvv2 on
+                scvv2.VALUE = r.STATUS
+                and scvv2.CODE = 'SSC_DISPATCH_STATUS'
+              left join exp_employee ee1 on
+                ee1.EMPLOYEE_ID = r.EMPLOYEE_ID
+              left join (
+                  select swn.node_id,
+                  swnt.DESCRIPTION
+                from
+                  ssc_workflow_node swn
+                left join ssc_workflow_node_tl swnt on
+                  swn.NODE_ID = swnt.NODE_ID
+                  and swnt.LANG = #{request.locale,jdbcType = VARCHAR}) swnv on
+                swnv.node_id = p.CURRENT_NODE_ID
+              where
+                r.status not in ('WAITING',
+                'IN_PROGRESS')
+                and r.employee_id = #{request.employeeId,jdbcType = DECIMAL}
+            union
+              select
+                distinct ph.task_id,
+                ph.doc_category,
+                scvv.MEANING as doc_category_name,
+                ph.doc_id,
+                ph.doc_number,
+                ph.employee_id as doc_employee_id,
+                ee.NAME as doc_employee_name,
+                ph.workflow_id as workflow_id,
+                v.DESCRIPTION as workflow_name,
+                null as node_id,
+                null as node_name,
+                'SSC' as pool_type,
+                (
+                  select v.MEANING
+                from
+                  sys_code_value_vl v
+                where
+                  v.CODE = 'SSC_POOL_TYPE'
+                  and v.VALUE = 'SSC') as pool_type_name,
+                ph.enter_time,
+                ph.exit_time,
+                ph.task_status,
+                scvv1.MEANING as task_status_name,
+                null as dispatch_status,
+                null as dispatch_status_name,
+                null as work_employee_id,
+                null as work_employee_name,
+                ph.mag_org_id,
+                fmov.DESCRIPTION as mag_org_name,
+                ph.company_id,
+                fcv.COMPANY_SHORT_NAME as company_name,
+                -1 dispatch_record_id,
+                '' as error_message
+              from
+                ssc_task_pool_his ph
+              left join ssc_task_dispatch_record_his r on
+                ph.task_id = r.task_id
+              left join sys_code_value_vl scvv on
+                scvv.VALUE = ph.DOC_CATEGORY
+                and scvv.CODE = 'SSC_DOC_CATEGORY'
+              left join exp_employee ee on
+                ee.EMPLOYEE_ID = ph.EMPLOYEE_ID
+              left join sys_code_value_vl scvv1 on
+                scvv1.VALUE = ph.TASK_STATUS
+              left join (
+                  select sw.WORKFLOW_ID,
+                  swt.DESCRIPTION
+                from
+                  ssc_workflow sw
+                left join ssc_workflow_tl swt on
+                  sw.WORKFLOW_ID = swt.WORKFLOW_ID
+                  and swt.LANG = #{request.locale,jdbcType = VARCHAR}) v on
+                v.WORKFLOW_ID = ph.WORKFLOW_ID
+              left join fnd_managing_organization_vl fmov on
+                fmov.MAG_ORG_ID = ph.MAG_ORG_ID
+              left join fnd_company_vl fcv on
+                fcv.COMPANY_ID = ph.COMPANY_ID
+              where
+                r.status not in ('WAITING',
+                'IN_PROGRESS')
+                and r.employee_id = #{request.employeeId,jdbcType = DECIMAL}) v
+            <where>
+				<if test="docCategory != null and docCategory != ''">
+					and v.doc_category = #{docCategory}
+				</if>
+				<if test="docNumber != null and docNumber != ''">
+					and v.doc_number like #{docNumber}
+				</if>
+				<if test="taskStatus != null and taskStatus != ''">
+					and v.task_status = #{taskStatus}
+				</if>
+				<if test="dispatchStatus != null and dispatchStatus != ''">
+					and v.dispatch_status = #{dispatchStatus}
+				</if>
+				<if test="enterTimeFrom != null">
+					and v.enter_time &gt;= #{enterTimeFrom}
+				</if>
+				<if test="enterTimeTo != null">
+					and v.enter_time &lt;= #{enterTimeTo}
+				</if>
+				<if test="exitTimeFrom != null">
+					and v.exit_time &gt;= #{exitTimeFrom}
+				</if>
+				<if test="exitTimeTo != null">
+					and v.exit_time &lt;= #{exitTimeTo}
+				</if>
+				<if test="workEmployeeId != null">
+					and v.work_employee_id = #{workEmployeeId}
+				</if>
+				<if test="docEmployeeId != null">
+					and v.doc_employee_id = #{docEmployeeId}
+				</if>
+				<if test="magOrgId != null">
+					and v.mag_org_id = #{magOrgId}
+				</if>
+				<if test="companyId != null">
+					and v.company_id = #{companyId}
+				</if>
+				<if test="workflowId != null">
+					and v.workflow_id = #{workflowId}
+				</if>
+				<if test="nodeId != null">
+					and v.node_id = #{nodeId}
+				</if>
+			</where>
+            order by
+              enter_time desc
+    </select>
+
+    <select id="queryServiceNameBydispatchId" parameterType="java.lang.Long" resultType="java.lang.String">
+        select p.service_name
+        from ssc_task_dispatch_record r,
+               ssc_workflow_node n,
+               wfl_workflow_page p
+        where r.dispatch_record_id = #{dispatchRecordId}
+               and r.node_id = n.node_id
+               and n.view_page_id = p.record_id
+               and n.enabled_flag = 'Y'
+    </select>
+
+    <select id="queryServiceNameBytaskId" parameterType="java.lang.Long" resultType="java.lang.String">
+         select wp.service_name
+         from ssc_task_pool p,
+               ssc_workflow sw,
+               wfl_workflow_page wp
+         where p.task_id = #{taskId}
+               and p.workflow_id = sw.workflow_id
+               and sw.page_id = wp.record_id
+    </select>
+
+    <select id="queryDocCategoryBytaskId" parameterType="java.lang.Long" resultType="java.lang.String">
+        select v.doc_category docCategory
+        from (select doc_category
+                from ssc_task_pool_prepare p1
+               where p1.task_id = #{taskId}
+              union all
+              select doc_category
+                from ssc_task_pool p2
+               where p2.task_id = #{taskId}
+              union all
+              select doc_category
+                from ssc_task_pool_his p3
+               where p3.task_id = #{taskId}
+              union all
+              select doc_category
+                from ssc_task_pool_local p4
+               where p4.task_id = #{taskId}) v
+    </select>
+
+    <select id="doingTaskQuery" parameterType="com.hand.hec.ssc.dto.SscTaskPool" resultMap="BaseResultMap">
+              SELECT
+	p.task_id,
+	r.dispatch_record_id,
+	p.doc_number,
+	gae.acc_entity_name AS acc_entity_name,
+	p.doc_category,
+	p.employee_id,
+	ee. NAME employee_name,
+	DATE_FORMAT(
+		(
+			CASE
+			WHEN p.doc_category = 'EXP_REPORT' THEN
+				(
+					SELECT
+						h.creation_date
+					FROM
+						exp_report_header h
+					WHERE
+						h.exp_report_header_id = p.doc_id
+				)
+			WHEN p.doc_category = 'PAYMENT_REQUISITION' THEN
+				(
+					SELECT
+						h.creation_date
+					FROM
+						csh_payment_requisition_hd h
+					WHERE
+						h.payment_requisition_header_id = p.doc_id
+				)
+			END
+		),
+		'%Y-%m-%d'
+	) AS doc_creation_date_str,
+	DATE_FORMAT(p.enter_time, '%Y-%m-%d') AS enter_time_str,
+	p.ENTER_TIME,
+	r.node_id,
+	swn.DESCRIPTION AS node_name
+FROM
+	ssc_task_pool p,
+	ssc_task_dispatch_record r,
+	gld_accounting_entity gae,
+	exp_employee ee,
+	ssc_workflow_node swn
+WHERE
+	p.task_id = r.task_id
+AND p.acc_entity_id = gae.acc_entity_id
+AND p.employee_id = ee.employee_id
+AND r.node_id = swn.node_id
+AND ( r.status = 'IN_PROGRESS' OR
+       r.status = 'CANCEL_RETURN_BACK')
+and r.employee_id = #{request.employeeId,jdbcType = DECIMAL}
+        <if test="sscTaskPool.docNumber != null">
+            and p.doc_number = #{sscTaskPool.docNumber}
+        </if>
+    </select>
+
+    <select id="getLastRejectOpinion"  resultType="java.lang.String">
+    select t2.process_opinion as Last_Reject_Opinion
+      from (select t1.process_opinion
+              from (select p.process_opinion,
+                           p.process_id,
+                           p.process_time
+                      from ssc_processes p
+                     where p.task_id = #{taskId}
+                           and p.process_type_code =
+                           'REJECT'
+                    union
+                    select p.process_opinion,
+                           p.process_id,
+                           p.process_time
+                      from ssc_task_pool_his h,
+                           ssc_processes     p
+                     where h.doc_category = #{docCategory}
+                           and h.doc_id = #{docId}
+                           and h.task_id = p.task_id
+                           and p.process_type_code =
+                           'REJECT') t1
+             order by process_time,
+                      process_id) t2
+     LIMIT 1
+    </select>
+
+    <select id="getLastNodeId" resultType="java.lang.Long">
+        select t.node_id
+      from (select h.node_id
+              from ssc_task_dispatch_record_his h
+             where h.task_id in (select #{taskId}
+                                   from dual
+                                 union
+                                 select task_id
+                                   from ssc_task_pool_his ph
+                                  where ph.doc_category = #{doc_category}
+                                        and ph.doc_id = #{doc_id}
+																 )
+             order by h.creation_date      desc,
+                      h.dispatch_record_id desc) t
+     LIMIT 1
+    </select>
+
+    <select id="getLastNodeName" resultType="java.lang.String">
+        select v.node_name as Last_Node_Name
+          from ssc_workflow_node
+          where v.node_id = #{lastNodeId};
+    </select>
+
+    <select id="getLastemployeeId" resultType="java.lang.Long">
+        select t.employee_id
+      from (select h.employee_id
+              from ssc_task_dispatch_record_his h
+             where h.task_id in (select #{taskId}
+                                   from dual
+                                 union
+                                 select task_id
+                                   from ssc_task_pool_his ph
+                                  where ph.doc_category = #[docCategory]
+                                        and ph.doc_id = #{docId})
+             order by h.creation_date      desc,
+                      h.dispatch_record_id desc) t
+     LIMIT 1;
+    </select>
+
+    <select id="getLastEmployeeName" resultType="java.lang.String">
+        select e.name from exp_employee e where e.employee_id= #{lastEmployeeId}
+    </select>
+
+    <select id="holdTaskQuery" parameterType="com.hand.hec.ssc.dto.SscTaskPool" resultMap="BaseResultMap">
+        SELECT
+				    t.task_id,
+                    t.doc_number,
+                    t.doc_category,
+                    t.doc_id,
+                    r.dispatch_record_id
+                FROM
+                    ssc_task_dispatch_record r,
+                    ssc_task_pool t
+                WHERE
+                    r.task_id  = t.task_id
+                AND r.status   = 'HOLDING'
+                AND r.employee_id = #{request.employeeId,jdbcType = DECIMAL}
+                <if test="sscTaskPool.docNumber != null">
+                    and p.doc_number = #{sscTaskPool.docNumber}
+                </if>
+                ORDER BY
+                    r.creation_date DESC
+    </select>
+
+    <select id="getLastHoldReason" resultType="java.lang.String">
+        select 		p.process_opinion as Last_Hold_Reason
+              from ssc_process p,
+					sc_task_pool sp,
+					ssc_task_dispatch_record st
+             where
+				  p.dispatch_record_id = st.dispatch_record_id
+				  and sp.task_id = #{taskId}
+				  and st.TASK_ID = sp.TASK_ID
+                  and p.process_type_code = 'HOLD'
+             order by p.process_time desc
+			LIMIT 1
+    </select>
+
+
+    <select id="returnTaskQuery" parameterType="com.hand.hec.ssc.dto.SscTaskPool" resultMap="BaseResultMap">
+        SELECT
+				    t.task_id,
+                    t.doc_number,
+                    t.doc_category,
+                    t.doc_id,
+                    r.dispatch_record_id
+                FROM
+                    ssc_task_dispatch_record r,
+                    ssc_task_pool t
+                WHERE
+                    r.task_id  = t.task_id
+                AND r.status   = 'RETURN_BACK'
+                AND r.employee_id = #{request.employeeId,jdbcType = DECIMAL}
+              <if test="sscTaskPool.docNumber != null">
+                  and p.doc_number = #{sscTaskPool.docNumber}
+             </if>
+                ORDER BY
+                    r.creation_date DESC
+    </select>
+
+    <select id="getLastReturnReason"  resultType="java.lang.String">
+        select 		p.process_opinion as Last_Hold_Reason
+              from ssc_process p,
+					sc_task_pool sp,
+					ssc_task_dispatch_record st
+             where
+				  p.dispatch_record_id = st.dispatch_record_id
+				  and sp.task_id = #{taskId}
+				  and st.TASK_ID = sp.TASK_ID
+                  and p.process_type_code = 'RETURN_BACK'
+             order by p.process_time desc
+			LIMIT 1
+    </select>
+
+    <select id="getTaskRecordInfo" resultMap="BaseResultMap">
+       select
+          v.*,
+          case
+            when v.doc_category = 'EXP_REPORT' then 'EXP_REPORT_HEADERS'
+            when v.doc_category = 'PAYMENT_REQUISITION' then 'CSH_PAYMENT_REQUISITION_HDS'
+          end table_name
+        from
+          (
+            select p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool p
+          left join ssc_task_dispatch_record r on
+            p.task_id = r.TASK_ID
+          where
+            r.DISPATCH_RECORD_ID = #{dispatchRecordId}
+        union all
+          select
+            p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool_his p
+          left join ssc_task_dispatch_record r on
+            p.task_id = r.TASK_ID
+          where
+            r.DISPATCH_RECORD_ID = #{dispatchRecordId}
+        union all
+          select
+            p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool_local p
+          left join ssc_task_dispatch_record r on
+            p.task_id = r.TASK_ID
+          where
+            r.DISPATCH_RECORD_ID = #{dispatchRecordId}
+        union all
+          select
+            p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool_prepare p
+          left join ssc_task_dispatch_record r on
+            p.task_id = r.TASK_ID
+          where
+            r.DISPATCH_RECORD_ID = #{dispatchRecordId} ) v
+    </select>
+    <select id="getTaskRecordInfoByTaskId" resultMap="BaseResultMap">
+        select
+          v.*,
+          case
+            when v.doc_category = 'EXP_REPORT' then 'EXP_REPORT_HEADERS'
+            when v.doc_category = 'PAYMENT_REQUISITION' then 'CSH_PAYMENT_REQUISITION_HDS'
+          end table_name
+        from
+          (
+            select p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool p
+          where
+            p.task_id = #{taskId}
+        union all
+          select
+            p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool_his p
+          where
+            p.task_id = #{taskId}
+        union all
+          select
+            p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool_local p
+          where
+            p.task_id = #{taskId}
+        union all
+          select
+            p.doc_category,
+            p.doc_id,
+            p.doc_number
+          from
+            ssc_task_pool_prepare p
+          where
+            p.task_id = #{taskId}) v
+    </select>
+</mapper>

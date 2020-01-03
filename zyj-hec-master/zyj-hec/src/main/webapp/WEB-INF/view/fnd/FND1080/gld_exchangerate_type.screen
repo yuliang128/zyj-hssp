@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: leiwang12 $
+    $Date: 2017/04/10 11:33:04 $
+    $Revision: 1.3 $
+    $Purpose:汇率类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+      <p:echo></p:echo>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="FND1080_gld_exchangerate_acc_entities_link"
+                url="$[/request/@context_path]/fnd/FND1080/gld_exchangerate_acc_entities.screen"/>
+        <script><![CDATA[
+        function FND1080_queryExchangeRate() {
+            $au('FND1080_gld_exchangerate_type_result_ds').query();
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1080_typeCodeEditer(record, name) {
+            if (record.isNew) {
+                return 'gld_exchangerate_type_result_grid_tf_upper';
+            } else {
+                return '';
+            }
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1080_rateMethodEditer(record, name) {
+            if (record.isNew) {
+                return 'gld_exchangerate_type_result_grid_cob';
+            } else {
+                return '';
+            }
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1080_accounting_distribution(value, record, name) {
+            var id = record.get('typeId');
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:FND1080_distributionLedger(' + id + ')">$[l:prompt.accounting_distribution]</a>';
+        }
+
+        function FND1080_distributionLedger(id) {
+            new Aurora.Window({
+                id: 'FND1080_distribution_edit_window',
+                url: $au('FND1080_gld_exchangerate_acc_entities_link').getUrl() + '?typeId=' + id,
+                title: '$[l:gld_exchangerate_type.accounting_distribution]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                FND1080_queryExchangeRate();
+            });
+        }
+
+        function FND1080_onCompanyCreateSuccess() {
+            FND1080_queryExchangeRate();
+        }
+
+        function gld_sob_Focus() {
+            $au('FND1080_sobsDs').query();
+        }
+
+        function FND1080_gldExchangerateTypeUpdate(ds, record, name, value) {
+            if (name === 'setOfBooksId') {
+                if (!Ext.isEmpty(value)) {
+                    $au('FND1080_gld_exchangerate_type_result_ds').query();
+                }
+            }
+        }
+
+        function FND1080_add(ds) {
+            var queryRecord = $au('FND1080_gld_exchangerate_type_query_ds').getAt(0);
+            if (!Ext.isEmpty(queryRecord.get('setOfBooksId'))) {
+                ds.getCurrentRecord().set('setOfBooksId', queryRecord.get('setOfBooksId'));
+            }
+        }
+
+        /**
+         * @return {boolean}
+         */
+        function FND1080_BeforeCreate() {
+            var queryRecord = $au('FND1080_gld_exchangerate_type_query_ds').getAt(0);
+            if (Ext.isEmpty(queryRecord.get('setOfBooksId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:dld.sob_is_null]', null, 300, 100);
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        function FND1080_update(ds, record, name, value) {
+            if (name === 'methodCode') {
+                record.set('periodType', '');
+                record.set('periodTypeName', '');
+                if (value === 'PERIOD') {
+                    record.getField('periodTypeName').setRequired(true);
+                    record.getField('periodTypeName').setReadOnly(false);
+                } else {
+                    record.getField('periodTypeName').setRequired(false);
+                    record.getField('periodTypeName').setReadOnly(true);
+                }
+            }
+        }
+
+        function FND1080_gridCellClick(grid, row, name, record) {
+            if (name === 'periodTypeName') {
+                var methodCode = record.get('methodCode');
+                if (methodCode === 'PERIOD') {
+                    record.getField('periodTypeName').setRequired(true);
+                    record.getField('periodTypeName').setReadOnly(false);
+                } else {
+                    record.getField('periodTypeName').setRequired(false);
+                    record.getField('periodTypeName').setReadOnly(true);
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1080_sobsDs" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/gld-set-of-book/querySetOfBookByParam"/>
+            <a:dataSet id="rates_type_combobox_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/EXCHANGE_RATE_METHOD"/>
+            <a:dataSet id="FND1080_period_type_combobox_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SYS_PERIOD_TYPE"/>
+            <a:dataSet id="FND1080_gld_exchangerate_type_query_ds" baseUrl="$[/request/@context_path]/gld/exchangerate-type">
+                <a:fields>
+                    <a:field name="setOfBooksName" defaultValue="$[rs/records/record/@setOfBooksName]"
+                             displayField="setOfBooksName" options="FND1080_sobsDs"
+                             prompt="fnd_set_book_control.bookcode" required="true" returnField="setOfBooksId"
+                             valueField="setOfBooksId"/>
+                    <a:field name="setOfBooksId" defaultValue="$[rs/records/record/@setOfBooksId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1080_gldExchangerateTypeUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="FND1080_gld_exchangerate_type_result_ds" autoCount="true" autoPageSize="true"
+                       autoQuery="true" baseUrl="$[/request/@context_path]/gld/exchangerate-type"
+                       queryDataSet="FND1080_gld_exchangerate_type_query_ds"
+                       queryUrl="$[/request/@context_path]/gld/exchangerate-type/query"
+                       submitUrl="$[/request/@context_path]/gld/exchangerate-type/submit">
+                <a:fields>
+                    <a:field name="typeCode" required="true" prompt="gldexchangeratetype.typecode"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="typeId"/>
+                    <a:field name="description" required="true" prompt="gld_exchangerate_type.description" dto="com.hand.hec.fnd.dto.GldExchangerateType" dtoId="typeId"/>
+                    <a:field name="methodCode" required="true"/>
+                    <a:field name="rateMethodCodeName" displayField="meaning"
+                             options="rates_type_combobox_ds" required="true" returnField="methodCode"
+                             valueField="value" prompt="gld_exchangerate_type.rate_method_code"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="gld_exchangerate_type.enabled_flag"/>
+                    <a:field name="periodType"/>
+                    <a:field name="periodTypeName" displayField="meaning"
+                             options="FND1080_period_type_combobox_ds" prompt="gld_exchangerate_type.period_type"
+                             returnField="periodType" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="FND1080_add"/>
+                    <a:event name="beforecreate" handler="FND1080_BeforeCreate"/>
+                    <a:event name="update" handler="FND1080_update"/>
+                    <a:event name="submitsuccess" handler="FND1080_onCompanyCreateSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND1080_exchagerateType_grid" type="add" width="80"/>
+                <a:gridButton bind="FND1080_exchagerateType_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1080_gld_exchangerate_type_query_ds"
+                         resultTarget="FND1080_gld_exchangerate_type_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="setOfBooksName" bindTarget="FND1080_gld_exchangerate_type_query_ds"
+                                width="200">
+                        <a:events>
+                            <a:event name="focus" handler="gld_sob_Focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="typeCode" bindTarget="FND1080_gld_exchangerate_type_query_ds" typeCase="upper"
+                                 prompt="gldexchangeratetype.typecode">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1080_queryExchangeRate"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND1080_gld_exchangerate_type_query_ds" prompt="gld_exchangerate_type.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1080_queryExchangeRate"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1080_exchagerateType_grid" bindTarget="FND1080_gld_exchangerate_type_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="typeCode" align="center" editorFunction="FND1080_typeCodeEditer" width="80"/>
+                <a:column name="description" align="left" editor="gld_exchangerate_type_result_grid_tl" width="200"/>
+                <a:column name="rateMethodCodeName" align="center" editorFunction="FND1080_rateMethodEditer"
+                          width="80"/>
+                <a:column name="periodTypeName" align="center" editor="gld_exchangerate_type_result_grid_cob"
+                          width="80"/>
+                <a:column name="enabledFlag" align="center" editor="gld_exchangerate_type_result_grid_cb" width="80"/>
+                <a:column name="accountingDistribution" align="center" renderer="FND1080_accounting_distribution"
+                          width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="gld_exchangerate_type_result_grid_tf"/>
+                <a:textField id="gld_exchangerate_type_result_grid_tf_upper" typeCase="upper"/>
+                <a:checkBox id="gld_exchangerate_type_result_grid_cb"/>
+                <a:comboBox id="gld_exchangerate_type_result_grid_cob"/>
+                <a:tledit id="gld_exchangerate_type_result_grid_tl"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="FND1080_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

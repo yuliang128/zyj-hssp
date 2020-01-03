@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscWorkCenterDocTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscWorkCenterDocType">
+        <result column="RECORD_ID" property="recordId" jdbcType="DECIMAL" />
+        <result column="SCOPE_ID" property="scopeId" jdbcType="DECIMAL" />
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="DOC_TYPE_NAME" property="docTypeName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="querySscWorkCenterDocType" resultMap="BaseResultMap">
+        SELECT
+	swdt.record_id,
+	swdt.scope_id,
+	swdt.doc_category,
+	swdt.doc_type_id,
+	CASE swdt.doc_category
+WHEN 'EXP_REPORT' THEN
+	(
+		SELECT
+			emrt.description
+		FROM
+			exp_mo_report_type emr,
+			exp_mo_report_type_tl emrt
+		WHERE
+			emrt.mo_exp_report_type_id = swdt.doc_type_id
+		AND emr.mag_org_id = #{magOrgId}
+		AND emr.MO_EXP_REPORT_TYPE_ID = emrt.MO_EXP_REPORT_TYPE_ID
+		AND emrt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	)
+WHEN 'PAYMENT_REQUISITION' THEN
+	(
+		SELECT
+			cmpvt.description
+		FROM
+			csh_mo_payment_req_type cmpv,
+			csh_mo_payment_req_type_tl cmpvt
+		WHERE
+			cmpv.mo_payment_req_type_id = swdt.doc_type_id
+		AND cmpv.MO_PAYMENT_REQ_TYPE_ID = cmpvt.MO_PAYMENT_REQ_TYPE_ID
+		AND cmpvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+		AND cmpv.mag_org_id = #{magOrgId}
+	)
+WHEN 'ACP_REQUISITION' THEN
+	(
+		SELECT
+			mprt1.DESCRIPTION
+		FROM
+			acp_mo_pay_req_type mprt,
+			acp_mo_pay_req_type_tl mprt1
+		WHERE
+			mprt.MO_PAY_REQ_TYPE_ID = swdt.doc_type_id
+		AND mprt1.MO_PAY_REQ_TYPE_ID = mprt.MO_PAY_REQ_TYPE_ID
+		AND mprt1.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+		AND mprt.mag_org_id = #{magOrgId}
+	)
+WHEN 'WORK_ORDER' THEN
+	swdt.doc_type_id
+END doc_type_name,
+ swdt.enabled_flag
+FROM
+	ssc_work_center_doc_type swdt
+WHERE
+	swdt.scope_id = #{scopeId}
+    </select>
+
+
+</mapper>

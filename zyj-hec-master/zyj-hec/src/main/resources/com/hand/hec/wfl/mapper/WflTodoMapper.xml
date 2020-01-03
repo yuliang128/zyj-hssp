@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflTodoMapper">
+    <select id="getTodoList" resultType="java.util.Map">
+select
+	wi.doc_number,
+	wi.doc_category,
+	sv1.meaning as doc_category_name,
+	wi.doc_amount,
+	wi.status,
+	sv2.meaning as status_name,
+	wi.process_id,
+	wpt.process_name,
+	ee.name as submit_by_name,
+	wi.instance_id,
+	wi.doc_type_id,
+	fdtv.doc_type_name,
+	wi.creation_date as submit_date,
+	r.creation_date as arrive_date
+from
+	wfl_instance wi
+	inner join wfl_ins_task_recipient r
+	on wi.instance_id = r.instance_id
+	left join wfl_process wp
+	on wi.process_id = wp.process_id
+	left join wfl_process_tl wpt
+	on wp.process_id = wpt.process_id
+	and wpt.lang = 'zh_CN'
+	left join sys_code_value_vl sv1
+	on sv1.code = 'FND_DOC_CATEGORY'
+	and wi.doc_category = sv1.value
+	left join sys_code_value_vl sv2
+	on sv2.code = 'WFL_INSTANCE_STATUS'
+	and wi.status = sv2.value
+	left join sys_user su
+	on wi.created_by = su.user_id
+	left join exp_employee ee
+	on su.employee_id = ee.employee_id
+	left join fnd_doc_type_v fdtv
+	on wi.doc_category = fdtv.doc_category
+	and wi.doc_type_id = fdtv.doc_type_id
+where
+	r.approver_id = #{request.userId}
+    </select>
+</mapper>

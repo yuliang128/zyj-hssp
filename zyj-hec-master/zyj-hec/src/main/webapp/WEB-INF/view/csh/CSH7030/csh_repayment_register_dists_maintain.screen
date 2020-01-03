@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-10-17 下午5:47:08  
+    $Revision: 1.0  
+    $Purpose: 还款申请单分配预付款
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+        function CSH7030_cellClickFunc(grid, row, name, record) {
+            var hRecord = $au('CSH7030_repaymentRegisterLnsDs').getCurrentRecord();
+            if (name === 'repayTrxNum') {
+                var field = record.getField(name);
+                field.setLovPara('reqLnId', hRecord.get('paymentRequisitionLineId'));
+                field.setLovWidth(1000);
+                field.setLovHeight(500);
+                field.setLovGridHeight(380);
+            }
+        }
+
+        function CSH7030_back() {
+            $au('CSH7030_repaymentRegisterDists_maintain_window').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7030_repaymentDistsDs" autoQuery="true" fetchAll="true"
+                       baseUrl="/csh/repayment-register-dist"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register-dist/query?registerLnsId=$[/parameter/@registerLnsId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="registerLnsId" defaultValue="$[/parameter/@registerLnsId]"/>
+                    <a:field name="payTrxNum"/>
+                    <a:field name="payTrxLineId"/>
+                    <a:field name="repayTrxLineId"/>
+                    <a:field name="repayTrxNum" required="true" lovCode="CSH_PREPAYMENT_TRANSACTION_LOV"
+                             title="choose_prepayment_transaction">
+                        <a:mapping>
+                            <a:map from="paymentNum" to="payTrxNum"/>
+                            <a:map from="transactionNum" to="repayTrxNum"/>
+                            <a:map from="transactionLineId" to="repayTrxLineId"/>
+                            <a:map from="balance" to="amount"/>
+                            <a:map from="paymentLineId" to="payTrxLineId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="amount" required="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="140" title="repayment_line_info" width="985">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH7030_repaymentDistsGrid" type="add" width="80"/>
+                    <a:gridButton bind="CSH7030_repaymentDistsGrid" type="save" width="80"/>
+                    <a:gridButton bind="CSH7030_repaymentDistsGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH7030_back" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="requisitionNumber" bindTarget="CSH7030_repaymentRegisterLnsDs"
+                             prompt="csh_repayment_register_ln.requisition_number" readOnly="true"/>
+                <a:textField name="accountName" bindTarget="CSH7030_repaymentRegisterLnsDs"
+                             prompt="csh_repayment_register_ln.account_name" readOnly="true"/>
+                <a:textField name="accountNumber" bindTarget="CSH7030_repaymentRegisterLnsDs"
+                             prompt="csh_repayment_register_ln.account_number" readOnly="true"/>
+                <a:numberField name="amount" allowFormat="true" bindTarget="CSH7030_repaymentRegisterLnsDs"
+                               prompt="csh_repayment_register_ln.amount" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH7030_repaymentRegisterLnsDs"
+                             prompt="csh_repayment_register_ln.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH7030_repaymentDistsGrid" bindTarget="CSH7030_repaymentDistsDs" marginHeight="267"
+                    navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="repayTrxNum" align="center" editor="repay_trx_num" width="80"
+                              prompt="csh_repayment_register_dist.prepay_trx_num"/>
+                    <a:column name="payTrxNum" align="center" width="80"
+                              prompt="csh_repayment_register_dist.pay_trx_num"/>
+                    <a:column name="amount" align="right" editor="amount_tf" renderer="Aurora.formatMoney" width="80"
+                              prompt="csh_repayment_register_dist.repayment_amount"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH7030_cellClickFunc"/>
+                </a:events>
+                <a:editors>
+                    <a:lov id="repay_trx_num"/>
+                    <a:numberField id="amount_tf" allowDecimals="true" allowFormat="true" allowNegative="false"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

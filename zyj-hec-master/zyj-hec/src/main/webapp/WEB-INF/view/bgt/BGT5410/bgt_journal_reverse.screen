@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT5410_bgt_journal_reverse_note_link" url="$[/request/@context_path]/bgt/BGT5410/bgt_journal_reverse_note.screen"/>
+        <a:link id="BGT5410_bgt_journal_view_link" url="$[/request/@context_path]/bgt/BGT5120/bgt_journal_view.screen"/>
+        <script><![CDATA[
+            function BGT5410_query() {
+                $au('BGT5410_bgt_journal_ds').query();
+            }
+            
+            function BGT5410_onJournalTypeFocus() {
+                var record = $au('BGT5410_budget_query_ds').getAt(0);
+                $au('BGT5410_bgtJournalTypeDs').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+                $au('BGT5410_bgtJournalTypeDs').query();
+            }
+            
+            function BGT5410_onStructureFocus() {
+                var record = $au('BGT5410_budget_query_ds').getAt(0);
+                $au('BGT5410_bgtStructureDs').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+                $au('BGT5410_bgtStructureDs').query();
+            }
+            
+            function BGT5410_onScenarioFocus() {
+                var record = $au('BGT5410_budget_query_ds').getAt(0);
+                $au('BGT5410_bgtScenarioDs').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+                $au('BGT5410_bgtScenarioDs').query();
+            }
+            
+            function BGT5410_onVersionFocus() {
+                var record = $au('BGT5410_budget_query_ds').getAt(0);
+                $au('BGT5410_bgtVersionDs').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+                $au('BGT5410_bgtVersionDs').query();
+            }
+            
+            function BGT5410_journalRenderer(value, record, name) {
+                return '<a href="javascript:BGT5410_openJournal(\'' + record.get('journalHeaderId') + '\')">' + value + '</a>';
+            }
+            
+            function BGT5410_openJournal(journalHeaderId) {
+                new Aurora.Window({
+                    url: $au('BGT5410_bgt_journal_view_link').getUrl() + '?journalHeaderId=' + journalHeaderId,
+                    id: 'BGT5120_bgt_journal_view_window',
+                    title: '$[l:bgt_journal_main.journal_detail]',
+                    fullScreen: true
+                });
+            }
+            
+            function BGT5410_openReverseWindow() {
+                var records = $au('BGT5410_bgt_journal_ds').getSelected();
+                if (records.length == 0) {
+                    Aurora.showErrorMessage('$[l:hap.error]', '$[l:prompt.select_line_data]');
+                    return;
+                }
+                new Aurora.Window({
+                    url: $au('BGT5410_bgt_journal_reverse_note_link').getUrl(),
+                    id: 'BGT5410_bgt_journal_reverse_note_window',
+                    title: '',
+                    width: 560,
+                    height: 220
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT5410_bgtOrgDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrganizationOptions"/>
+            <a:dataSet id="BGT5410_employeeDs" autoQuery="true" baseUrl="/exp/employee" queryUrl="$[/request/@context_path]/exp/employee/queryEmployeeByAuth?docCategory=BUDGET_JOURNAL"/>
+            <a:dataSet id="BGT5410_dateScopeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/DATE_SCOPE/"/>
+            <a:dataSet id="BGT5410_bgtJournalTypeDs"  baseUrl="/bgt/journal-type" queryUrl="$[/request/@context_path]/bgt/journal-type/query?enabledFlag=Y"/>
+            <a:dataSet id="BGT5410_bgtScenarioDs" baseUrl="/bgt/scenario" queryUrl="$[/request/@context_path]/bgt/scenario/query?enabledFlag=Y"/>
+            <a:dataSet id="BGT5410_bgtVersionDs" baseUrl="/bgt/version" queryUrl="$[/request/@context_path]/bgt/version/query?enabledFlag=Y"/>
+            <a:dataSet id="BGT5410_bgtStructureDs" baseUrl="/bgt/structure" queryUrl="$[/request/@context_path]/bgt/structure/queryForBgtJournal"/>
+            <a:dataSet id="BGT5410_bgtStatusDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_BUDGET_STATUS/"/>
+            <a:dataSet id="BGT5410_bgtPeriodStrategyDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BUDGET_PERIOD/"/>
+            <a:dataSet id="BGT5410_budget_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="budgetJournalNumber" placeHolder="bgt_journal_header.budget_journal_number"/>
+                    <a:field name="journalHeaderId"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgName]" displayField="bgtOrgName" prompt="bgt_organization.description" options="BGT5410_bgtOrgDs"  returnField="bgtOrgId" valueField="bgtOrgId"/>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="structureName" displayField="structureName" options="BGT5410_bgtStructureDs" placeHolder="bgt_journal_header.budget_structure_id" returnField="structureId" valueField="structureId"/>
+                    <a:field name="structureId"/>
+                    <a:field name="periodStrategyName" displayField="meaning" options="BGT5410_bgtPeriodStrategyDs" placeHolder="bgtJournalQuery.periodStrategyDesc" returnField="periodStrategy" valuefield="value"/>
+                    <a:field name="scenarioName" displayField="description" options="BGT5410_bgtScenarioDs" placeHolder="bgt_journal_header.scenario_id" returnField="scenarioId" valueField="scenarioId"/>
+                    <a:field name="scenarioId"/>
+                    <a:field name="versionName" displayField="description" options="BGT5410_bgtVersionDs" placeHolder="bgt_journal_header.version_id" returnField="versionId" valueField="versionId"/>
+                    <a:field name="versionId"/>
+                    <a:field name="bgtVersionStatus"/>
+                    <a:field name="statusName" displayField="meaning" options="BGT5410_bgtStatusDs" placeHolder="bgt_journal_header.status" returnField="status" valueField="code_value"/>
+                    <a:field name="periodYear" placeHolder="bgt_journal_header.period_year"/>
+                    <a:field name="periodQuarter" placeHolder="bgt_journal_header.period_quarter"/>
+                    <a:field name="periodName" placeHolder="bgt_journal_header.period_name"/>
+                    <a:field name="bgtJournalTypeName" displayField="description" options="BGT5410_bgtJournalTypeDs" placeHolder="bgt_journal_main.bgt_journal_type_name" returnField="bgtJournalTypeId" valueField="bgtJournalTypeId"/>
+                    <a:field name="bgtJournalTypeId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT5410_bgt_journal_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/journal-header" queryUrl="$[/request/@context_path]/bgt/journal-header/query-main?status=POSTED&amp;reversedFlag=N" queryDataSet="BGT5410_budget_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="operationUnitDesc" prompt="bgt_journal_header.operation_unit_id"/>
+                    <a:field name="budgetJournalNumber" prompt="bgt_journal_header.budget_journal_number"/>
+                    <a:field name="periodStrategyName" prompt="bgt_journal_header.period_strategy"/>
+                    <a:field name="structureName" prompt="bgt_journal_main.structure_name"/>
+                    <a:field name="periodYear" prompt="bgt_journal_header.period_year"/>
+                    <a:field name="periodQuarter" prompt="bgt_journal_header.period_quarter"/>
+                    <a:field name="periodName" prompt="bgt_journal_header.period_name"/>
+                    <a:field name="scenarioName" prompt="bgt_balance_query_cond_h.scenario_code"/>
+                    <a:field name="versionName" prompt="bgt_balance_query_cond_h.version_code"/>
+                    <a:field name="statusName" prompt="bgt_journal_header.status"/>
+                    <a:field name="journalHeaderNotes" prompt="bgt_journal_header.journal_header_notes"/>
+                    <a:field name="bgtJournalTypeName" prompt="bgt_journal_main.bgt_journal_type_name"/>
+                    <a:field name="bgtOrgName" prompt="bgt_budget_item.budget_org_id"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton text="prompt.reverse" click="BGT5410_openReverseWindow" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT5410_budget_query_ds" resultTarget="BGT5410_bgt_journal_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="bgtOrgName" bindTarget="BGT5410_budget_query_ds"/>
+                    <a:comboBox name="bgtJournalTypeName" bindTarget="BGT5410_budget_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT5410_onJournalTypeFocus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="budgetJournalNumber" bindTarget="BGT5410_budget_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="periodStrategyName" bindTarget="BGT5410_budget_query_ds"/>
+                    <a:comboBox name="statusName" bindTarget="BGT5410_budget_query_ds"/>
+                    <a:comboBox name="structureName" bindTarget="BGT5410_budget_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT5410_onStructureFocus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="versionName" bindTarget="BGT5410_budget_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT5410_onVersionFocus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="scenarioName" bindTarget="BGT5410_budget_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT5410_onScenarioFocus"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT5410_bgt_journal_grid" bindTarget="BGT5410_bgt_journal_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="budgetJournalNumber" align="center" renderer="BGT5410_journalRenderer" width="80"/>
+                <a:column name="bgtJournalTypeName" align="center" width="120"/>
+                <a:column name="bgtOrgName" align="center" width="120"/>
+                <a:column name="periodStrategyName" align="center" width="120"/>
+                <a:column name="structureName" align="center" width="120"/>
+                <a:column name="scenarioName" align="center" width="120"/>
+                <a:column name="versionName" align="center" width="120"/>
+                <a:column name="statusName" align="center" width="80"/>
+                <a:column name="journalHeaderNotes" align="left" width="200"/>
+            </a:columns>
+            <a:editors/>
+        </a:grid>
+    </a:view>
+</a:screen>

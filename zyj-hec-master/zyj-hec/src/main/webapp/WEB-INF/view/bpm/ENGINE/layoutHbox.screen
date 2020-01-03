@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '$[/parameter/@componentId]';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('layoutHboxDs').getAt(0);
+                 cmp.initRecord(record);
+                 if(bpm_type=='tplt'){
+                    record.getField('layoutCode').setRequired(true); 
+                    record.getField('layoutDesc').setRequired(true);
+                 }
+                 else if(bpm_type=='page'){
+                    record.getField('layoutCode').setReadOnly(true); 
+                    record.getField('layoutDesc').setReadOnly(true);
+                    record.getField('dataset').setReadOnly(true);
+                 }
+            });
+            
+            function saveHBox() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('layoutHboxDs').getAt(0);
+                var url='';
+                if(bpm_type == 'page'){
+                    url=$au('engineLayoutPageUpdatelink').getUrl();
+                }
+                if($au('layoutHboxDs').validate()){
+	                Aurora.request({
+	                    url: url,
+	                    para: record.data,
+	                    success: function(result) {
+                            if(result.rows && result.rows[0]){
+                                for(var field in result.rows[0]){
+                                    record.set(field,result.rows[0][field]);
+                                }
+                                cmp.setAttr(record);
+                            }
+	                        cancelHBox();
+	                    },
+	                    scope: this
+	                });
+                }
+            }
+            
+            function cancelHBox() {
+                $au('HBox_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="layoutHboxDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="layoutCode" prompt="bpm_tplt_layout_basic.layout_code"/>
+                    <a:field name="layoutDesc" prompt="bpm_tplt_layout_basic.layout_desc"/>
+                    <a:field name="prompt" prompt="bpm_tplt_tag_basic.prompt"/>
+                    <a:field name="dataset" displayField="datasetId" options="engineBpmBindtargetDs" prompt="bpm_tplt_layout_basic.dataset" returnField="dataset" valueField="datasetId"/>
+                    <a:field name="id" prompt="prompt.layout_id" readOnly="true"/>
+                    <a:field name="labelwidth" prompt="bpm_tplt_layout_basic.labelwidth"/>
+                    <a:field name="row" defaultValue="1" prompt="bpm_tplt_layout_basic.row"/>
+                    <a:field name="columnNum" defaultValue="1" prompt="bpm_tplt_layout_basic.column"/>
+                    <a:field name="layoutSequence" prompt="bpm_tplt_layout_basic.layout_sequence" readOnly="true"/>
+                    <a:field name="layoutTypeDesc" displayfield="meaning" options="engineLayoutTypeDs" prompt="bpm_tplt_layout_basic.layout_type" readOnly="true" returnField="layoutType" valueField="value"/>
+                    <a:field name="layoutType" readOnly="true"/>
+                    <a:field name="viewParentLayoutId" prompt="bpm_tplt_layout_basic.parent_layout_id" readOnly="true"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" prompt="bpm_page_layout_basic.template_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="parentLayoutDesc" autoComplete="true" autoCompleteField="layoutDesc" lovCode="LOV_PARENT_LAYOUT?templateId=$[/model/pageTpltInfo/records/record/@templateId]" prompt="bpm_tplt_layout_basic.parent_layout_id" title="bpm_tplt_layout_basic.parent_layout_id">
+                        <a:mapping>
+                            <a:map from="layoutDesc" to="parentLayoutDesc"/>
+                            <a:map from="layoutId" to="parentLayoutId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentLayoutId"/>
+                    <a:field name="templateId"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="bpm_page_layout_basic.hidden" uncheckedValue="false"/>
+                    <a:field name="layoutId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="HBox">
+                <a:textField name="layoutSequence" bindTarget="layoutHboxDs"/>
+                <a:textField name="layoutCode" bindTarget="layoutHboxDs"/>
+                <a:textField name="layoutDesc" bindTarget="layoutHboxDs"/>
+                <a:comboBox name="layoutTypeDesc" bindTarget="layoutHboxDs"/>
+                <a:placeHolder id="datasetConfig"/>
+                <a:textField name="id" bindTarget="layoutHboxDs"/>
+                <a:numberField name="columnNum" allowDecimals="false" bindTarget="layoutHboxDs"/>
+                <a:textField name="viewParentLayoutId" bindTarget="layoutHboxDs"/>
+                <a:checkBox name="hidden" bindTarget="layoutHboxDs"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="saveHBox" skin="green" text="hap_confirm"/>
+                <a:button click="cancelHBox" skin="red" text="hap_cancel"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="datasetConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="tplt">
+                    <c:process-config>
+                        <a:comboBox name="dataset" bindTarget="layoutHboxDs"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="page">
+                    <c:process-config>
+                        <a:checkBox name="templateFlag" bindTarget="layoutHboxDs"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

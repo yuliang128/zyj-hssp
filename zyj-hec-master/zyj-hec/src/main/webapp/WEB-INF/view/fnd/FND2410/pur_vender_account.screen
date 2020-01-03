@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-5-31 下午4:14:10  
+    $Revision: 1.0  
+    $Purpose: 供应商银行账户分配
+
+    $Author: jialin.xing
+    $Date: 2019/2/20 11:47:05 $
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2410_pur_vender_account_ref_ae_link"
+                url="$[/request/@context_path]/fnd/FND2410/pur_vender_account_ref_ae.screen"/>
+        <script><![CDATA[
+        function FND2410_closeVenderAccountsCreateWindow() {
+            $au('FND2410_pur_vender_accounts_window').close();
+        }
+
+        function FND2410_venderAccountsUpdate(ds, record, name, value) {
+            if (name === 'provinceCode') {
+                var field = record.getMeta().getField('cityName');
+                field.setLovPara('districtCode', record.get('provinceCode'));
+
+                record.set("cityCode", null);
+                record.set("cityName", null);
+            }
+            //modify lcy 2018/3/15  16:20:33  银行改变清空分行，省名，市名
+            if (name === 'bankId') {
+                record.set('cnapsCode', '');
+                record.set('bankLocation', '');
+                record.set('provinceCode', '');
+                record.set('provinceName', '');
+                record.set('cityCode', '');
+                record.set('cityName', '');
+            }
+
+        }
+
+        function FND2410_venderAccountsAdd(ds, record, index) {
+            var name = $au("FND2410_pur_system_vender_result_ds").getCurrentRecord().get("description");
+            record.set("accountName", name);
+        }
+
+        function FND2410_venderAccountsSubmit(ds) {
+            ds.query();
+        }
+
+        //分配核算主体-跳转
+
+        /**
+         * @return {string}
+         */
+        function FND2410_accountsAssignAe(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:FND2410_openAccountAssignAE(' + record.get('venderId') + ',\'' + record.get('accountId') + '\')">$[l:sys_parameter.acc_entity]</>';
+        }
+
+        function FND2410_openAccountAssignAE(venderId, accountId) {
+            new Aurora.Window({
+                id: 'FND2410_pur_vender_account_ref_ae_window',
+                url: $au('FND2410_pur_vender_account_ref_ae_link').getUrl() + '?venderId=' + venderId + '&accountId=' + accountId,
+                title: '$[l:pur_system_vender.asgn_acc_entity]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function FND2410_onCellClick(grid, row, name, record) {
+            //modify lcy 2018/3/15  16:20:33  把bankId传给分行
+            if (name === 'cnapsCode') {
+                var field = record.getMeta().getField('cnapsCode');
+                field.setLovPara('bankId', record.get('bankId'));
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2410_pur_vender_accounts_ds" autoCount="true" autoPageSize="true" autoQuery="true"
+                       baseUrl="/pur/vender-account"
+                       queryUrl="$[/request/@context_path]/pur/vender-account/query/$[/parameter/@venderId]">
+                <a:fields>
+                    <a:field name="accountId"/>
+                    <a:field name="bankCode" autoComplete="true" autoCompleteField="bankName"
+                             lovCode="LOV_BANK"
+                             prompt="csh_bank.bank_code" required="true" title="csh_bank.bank_code">
+                        <a:mapping>
+                            <a:map from="bankId" to="bankId"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankId"/>
+                    <a:field name="bankName"/>
+                    <!--  modify lcy 2018/3/15  16:20:33  分行带出 省名，市名 -->
+                    <a:field name="cnapsCode" lovCode="LOV_BANK_CNAP" prompt="csh_bank_branch.cnaps"
+                             required="true" title="csh_bank_branch.cnaps">
+                        <a:mapping>
+                            <a:map from="bankLocationCode" to="cnapsCode"/>
+                            <a:map from="bankLocationName" to="bankLocation"/>
+                            <a:map from="provinceCode" to="provinceCode"/>
+                            <a:map from="provinceName" to="provinceName"/>
+                            <a:map from="cityCode" to="cityCode"/>
+                            <a:map from="cityName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="provinceCode"/>
+                    <a:field name="ProvinceName"/>
+                    <a:field name="cityCode"/>
+                    <a:field name="cityName"/>
+                    <a:field name="accountName" required="true"/>
+                    <a:field name="accountNumber" prompt="csh_bank_account.bank_account_num" required="true"/>
+                    <a:field name="notes"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="venderId" defaultValue="$[/parameter/@venderId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND2410_venderAccountsUpdate"/>
+                    <a:event name="add" handler="FND2410_venderAccountsAdd"/>
+                    <a:event name="submitsuccess" handler="FND2410_venderAccountsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2410_pur_vender_accounts_form" column="2" title="pur_system_vender.info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2410_pur_vender_accounts_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2410_pur_vender_accounts_grid" type="save" width="80"/>
+                    <a:toolbarButton click="FND2410_closeVenderAccountsCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="venderCode" bindTarget="FND2410_pur_system_vender_result_ds"
+                             prompt="pursystemvender.vendercode" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2410_pur_system_vender_result_ds"
+                             prompt="pur_system_vender.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2410_pur_vender_accounts_grid" bindTarget="FND2410_pur_vender_accounts_ds" marginHeight="186"
+                    marginWidth="3" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="bankCode" align="center" editor="FND2410_venderAccounts_lov"
+                              prompt="csh_bank.bank_code" width="120"/>
+                    <a:column name="bankName" align="left" prompt="csh_bank.bank_name" width="200"/>
+                    <a:column name="cnapsCode" align="center" editor="FND2410_venderAccounts_lov"
+                              prompt="csh_bank_branch.cnaps" width="120"/>
+                    <a:column name="provinceName" align="center" prompt="fnd_region_province.prov_name" width="120"/>
+                    <a:column name="cityName" align="center" prompt="fnd_region_province.city_name" width="120"/>
+                    <a:column name="accountName" align="left" editor="FND2410_venderAccounts_tf"
+                              prompt="exp_employee_account.bank_account_name" width="200"/>
+                    <a:column name="accountNumber" align="left" editor="FND2410_venderAccounts_tf"
+                              prompt="csh_bank_account.bank_account_num" width="200"/>
+                    <a:column name="notes" align="left" editor="FND2410_venderAccounts_tf"
+                              prompt="hap.comment" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2410_venderAccounts_cb"
+                              prompt="hap_enabled_flag" width="100"/>
+                    <a:column name="asgnAccEntity" align="center" renderer="FND2410_accountsAssignAe" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND2410_venderAccounts_lov"/>
+                    <a:textField id="FND2410_venderAccounts_tf"/>
+                    <a:numberField id="FND2410_venderAccounts_nf" allowDecimals="false" allowNegative="false"/>
+                    <a:checkBox id="FND2410_venderAccounts_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="FND2410_onCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

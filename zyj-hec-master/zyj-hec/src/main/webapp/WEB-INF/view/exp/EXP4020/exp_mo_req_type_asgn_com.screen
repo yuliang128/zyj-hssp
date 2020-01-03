@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+        function EXP4020_closeAsgnComCreateWindow() {
+            $au('EXP4020_exp_mo_req_type_asgn_window').close();
+        }
+
+        function EXP4020_batchAssignCom() {
+            new Aurora.Window({
+                id: 'EXP4020_mo_req_type_batch_asgn_com_window',
+                url: $au('EXP4020_mo_req_batch_assign_company_link').getUrl() + '?moExpReqTypeId=' + '$[/parameter/@moExpReqTypeId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                title: '$[l:exp_mo_req_type.batch_assign_company]',
+                width: 1020,
+                side: 'right'
+            });
+        }
+
+        function EXP4020_exp_company_code(record, name) {
+            if (record.isNew) {
+                return "EXP4020_AssignComLov";
+            } else {
+                return "";
+            }
+        }
+
+        function EXP4020_asgnCompanySubmit(ds) {
+            ds.query();
+        }
+
+        function EXP4020_MoTypeAssignComGridCellClickFun(grid, row, name, record) {
+            var magOrgId = '$[/parameter/@magOrgId]';
+            if (name == 'companyCode') {
+                if (!magOrgId) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:fnd_company.company_org_code]', null, 250, 100);
+                    return;
+                } else {
+                    record.getMeta().getField('companyCode').setLovPara('magOrgId', magOrgId);
+                    record.getMeta().getField('companyCode').setLovPara('moExpReqTypeId', '$[/parameter/@moExpReqTypeId]');
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4020_moReqTypesDs" autoQuery="true"
+                       baseUrl="/exp/mo-req-type"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]">
+                <a:fields>
+                    <a:field name="moExpReqTypeCode" prompt="exp_mo_req_types.mo_exp_req_type_code"
+                             typeCase="upper"/>
+                    <a:field name="description" prompt="exp_mo_req_types.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP4020_MoReqTypeAssignComDs"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type-asgn-com/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]"
+                       baseUrl="/exp/mo-req-type-asgn-com" autoPageSize="true" autoQuery="true" selectable="true">
+                <a:fields>
+                    <a:field name="companyCode" lovCode="EXP_MO_REQ_TYPE_COMPANY_LOV" prompt="fnd_company.company_code"
+                             required="true">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="fnd_company.company_short_name"/>
+                    <a:field name="enabledFlag" prompt="exp_mo_req_types.enabled_flag" checkedValue="Y" defaultValue="Y"
+                             uncheckedValue="N"/>
+                    <a:field name="moExpReqTypeId" defaultValue="$[/parameter/@moExpReqTypeId]"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="assignId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4020_asgnCompanySubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4020_MoReqTypeAssignComForm" column="2" title="exp_mo_req_type_asgn_com.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4020_MoReqTypeAssignComGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4020_MoReqTypeAssignComGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4020_MoReqTypeAssignComGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4020_batchAssignCom" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:toolbarButton click="EXP4020_closeAsgnComCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReqTypeCode" bindTarget="EXP4020_moReqTypesDs" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4020_moReqTypesDs" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4020_MoReqTypeAssignComGrid" bindTarget="EXP4020_MoReqTypeAssignComDs"
+                    marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="EXP4020_exp_company_code"/>
+                    <a:column name="companyName" width="225"/>
+                    <a:column name="enabledFlag" editor="EXP4020_AssignComCheckBox"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP4020_AssignComLov"/>
+                    <a:checkBox id="EXP4020_AssignComCheckBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4020_MoTypeAssignComGridCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

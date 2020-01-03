@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/02/15 10:07 $
+    $Revision: 1.0 $
+    $Purpose: 预算场景定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function BGT1020_QueryScenarios() {
+            $au('BGT1020_scenarios_query_result_ds').query();
+        }
+
+        function BGT1020_ScenarioCode(record, name) {
+            if (record.isNew) {
+                if (name == 'scenarioCode') {
+                    return 'BGT1020_grid_scenario_tf';
+                }
+            }
+            return '';
+        }
+
+        function BGT1020_BgtOrgDesc(record, name) {
+            if (record.isNew) {
+                return 'BGT1020_grid_comboBox';
+            }
+            return '';
+        }
+
+        function BGT1020_submitSuccessFunction() {
+            $au('BGT1020_scenarios_query_result_ds').query();
+        }
+
+        function BGT1020_beforeEntitiesDsCreate() {
+            var bgtOrgName = $au('BGT1020_scenarios_query_ds').getAt(0).get('bgtOrgName');
+            if (Ext.isEmpty(bgtOrgName)) {
+                new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function BGT1020_onEntitisDsAdd(ds, rd, idx) {
+            var bgtOrgId = $au('BGT1020_scenarios_query_ds').getAt(0).get('bgtOrgId');
+            rd.set('bgtOrgId', bgtOrgId);
+        }
+
+        // 只有已启用的预算场景才能设置为默认预算场景
+        function BGT1020_update(dataSet, record, name, value, oldvalue) {
+            if (name == 'defaultFlag') {
+                if (value == 'Y') {
+                    var enabledFlag = record.get('enabledFlag');
+                    if (enabledFlag == 'N') {
+                        record.set('defaultFlag', 'N');
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:bgt1020_default_flag_required]', null, 300, 150);
+                        return;
+                    }
+
+                    var rds = dataSet.getAll();
+                    for (var i = 0; i < rds.length; i++) {
+                        if (rds[i] == record) continue;
+                        if (rds[i].get('defaultFlag') == 'Y') {
+                            record.set('defaultFlag', 'N');
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:bgt1020_enabled_flag_scenarios]', null, 250, 100);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (name == 'enabledFlag') {
+                if (value == 'N') {
+                    record.set('defaultFlag', 'N');
+                }
+            }
+        }
+
+        function BGT1020_saveBgtScenario() {
+            var ds = $au('BGT1020_scenarios_query_result_ds').getAll();
+            var checkNumber = 0;
+            //最多只能启用一个默认预算场景
+            if (ds.length > 0) {
+                for (var i = 0; i < ds.length; i++) {
+                    if ((ds[i].get('enabledFlag') == 'Y' && ds[i].get('defaultFlag') == 'Y')) {
+                        checkNumber += 1;
+                    }
+                }
+
+                if (checkNumber == 0) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:bgt1020_enabled_flag_scenario]', null, 250, 100);
+                    return;
+                }
+                if (checkNumber > 1) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:bgt1020_enabled_flag_scenarios]', null, 250, 100);
+                    return;
+                }
+            }
+
+            $au('BGT1020_scenarios_query_result_ds').submit();
+        }
+
+        function BGT1020_bgtOrgsDsQuery() {
+            $au('BGT1020_bgtOrgsDs').query();
+        }
+
+        function BGT1020_onQueryDsUpdate(ds, rd, name, value, old) {
+            if (name == 'bgtOrgName') {
+                $au('BGT1020_scenarios_query_result_ds').query();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1020_bgtOrgsDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/organization/bgtOrgOption"/>
+            <a:dataSet id="BGT1020_scenarios_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName"
+                             defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgCodeName]"
+                             displayField="bgtOrgCodeName" options="BGT1020_bgtOrgsDs" required="true"
+                             prompt="bgt_budget_item.budget_org_id" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1020_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT1020_scenarios_query_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       baseUrl="/bgt/scenario" selectable="false" queryDataSet="BGT1020_scenarios_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgCode"/>
+                    <a:field name="scenarioCode" prompt="bgt_scenario.scenario_code" required="true"/>
+                    <a:field name="description" prompt="bgt_scenario.description" required="true"
+                             dto="com.hand.hec.bgt.dto.BgtScenario" dtoId="scenarioId"/>
+                    <a:field name="notes" prompt="bgt_scenario.notes"/>
+                    <a:field name="defaultFlag" prompt="bgt_journal_interface.defaule_scenario_code" checkedValue="Y"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="bgt_scenario.enabled_flag" checkedValue="Y" defaultValue="Y"
+                             uncheckedValue="N"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="scenarioId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT1020_submitSuccessFunction"/>
+                    <a:event name="beforecreate" handler="BGT1020_beforeEntitiesDsCreate"/>
+                    <a:event name="add" handler="BGT1020_onEntitisDsAdd"/>
+                    <a:event name="update" handler="BGT1020_update"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="BGT1020_scenarios_grid" type="add" width="80"/>
+                <a:gridButton bind="BGT1020_scenarios_grid" click="BGT1020_saveBgtScenario" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT1020_scenarios_query_ds" resultTarget="BGT1020_scenarios_query_result_ds"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="bgtOrgName" bindTarget="BGT1020_scenarios_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT1020_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="scenarioCode" bindTarget="BGT1020_scenarios_query_ds"
+                                 prompt="bgt_scenario.scenario_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="BGT1020_QueryScenarios"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="BGT1020_scenarios_query_ds"
+                                 prompt="bgt_scenario.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="BGT1020_QueryScenarios"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT1020_scenarios_grid" bindTarget="BGT1020_scenarios_query_result_ds" marginHeight="115"
+                marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="scenarioCode" align="center" editorFunction="BGT1020_ScenarioCode" sortable="true"
+                          width="80"/>
+                <a:column name="description" align="left" editor="BGT1020_grid_desc_tld" width="200"/>
+                <a:column name="notes" align="left" editor="BGT1020_grid_desc_tf" width="200"/>
+                <a:column name="defaultFlag" editor="BGT1020_grid_ck" width="80"/>
+                <a:column name="enabledFlag" editor="BGT1020_grid_ck" sortable="false" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="BGT1020_grid_scenario_tf" typeCase="upper"/>
+                <a:tledit id="BGT1020_grid_desc_tld"/>
+                <a:textField id="BGT1020_grid_desc_tf"/>
+                <a:checkBox id="BGT1020_grid_ck"/>
+                <a:comboBox id="BGT1020_grid_comboBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

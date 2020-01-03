@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_budget_item_hierarchy_batch_insert_link" url="$[/request/@context_path]/bgt/BGT2020/bgt_budget_item_hierarchy_batch_insert.screen"/>
+        <script><![CDATA[
+            function BGT2020_sub_batch() {
+                new Aurora.Window({
+                    id: 'bgt_budget_item_hierarchy_batch_insert',
+                    url: $au('bgt_budget_item_hierarchy_batch_insert_link').getUrl() + '?parentBudgetItemId=' + '$[/parameter/@parentBudgetItemId]' + '&bgtOrgId=' + $au('budget_item_hierarchy_sub_header').getAt(0).get('bgtOrgId'),
+                    title: '$[l:bgt_budget_item_hierarchy.batch_insert]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function BGT2020_sub_back() {
+                $au('bgt_budget_item_hierarchy_sub_window').close();
+            }
+            
+            function BGT2020_sub_cellclick(grid, row, name, record) {
+                if (name == 'budgetItemCode') {
+                    var field = record.getMeta().getField('budgetItemCode');
+                    field.setLovPara('bgtOrgId', $au('budget_item_hierarchy_sub_header').getAt(0).get('bgtOrgId'));
+                }
+            }
+            
+            function BGT2020_sub_reLoad(dataSet, record) {
+                dataSet.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="budget_item_hierarchy_sub_header" autoQuery="true" baseUrl="/bgt/budget-item" queryUrl="$[/request/@context_path]/bgt/budget-item/query?budgetItemId=$[/parameter/@parentBudgetItemId]">
+                <a:fields>
+                    <a:field name="budgetItemCode" prompt="bgt_budget_item.budget_item_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_budget_item.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="budget_item_hierarchy_sub_ds" autoPageSize="true" autoQuery="true" fetchAll="true" baseUrl="/bgt/budget-item-hierarchy" queryUrl="$[/request/@context_path]/bgt/budget-item-hierarchy/queryByParentItem?parentBudgetItemId=$[/parameter/@parentBudgetItemId]" selectable="true">
+                <a:fields>
+                    <a:field name="hierarchyId"/>
+                    <a:field name="parentBudgetItemId" defaultValue="$[/parameter/@parentBudgetItemId]"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="budgetItemCode" autoComplete="true" autoCompleteField="budgetItemCode" lovGridHeight="320" lovHeight="450" lovCode="LOV_BUDGET_ITEM_NO_SUMMARY?parentBudgetItemId=$[/parameter/@parentBudgetItemId]" lovWidth="500" prompt="bgt_budget_item.budget_item_code" required="true" title="exp_req_item.budget_item">
+                        <a:mapping>
+                            <a:map from="budgetItemId" to="budgetItemId"/>
+                            <a:map from="budgetItemCode" to="budgetItemCode"/>
+                            <a:map from="description" to="budgetItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="description" prompt="bgt_budget_item.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT2020_sub_reLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="110" title="bgt_hierarchy.budget_item_sub_item">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="budget_item_hierarchy_sub_grid" type="add" width="80"/>
+                    <a:gridButton bind="budget_item_hierarchy_sub_grid" type="save" width="80"/>
+                    <a:gridButton bind="budget_item_hierarchy_sub_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="BGT2020_sub_batch" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:toolbarButton click="BGT2020_sub_back" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="budgetItemCode" bindTarget="budget_item_hierarchy_sub_header"/>
+                <a:textField name="description" bindTarget="budget_item_hierarchy_sub_header"/>
+            </a:form>
+            <a:grid id="budget_item_hierarchy_sub_grid" bindTarget="budget_item_hierarchy_sub_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="budgetItemCode" align="center" editor="budget_item_editor" width="80"/>
+                    <a:column name="budgetItemName" align="left" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="budget_item_editor"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="BGT2020_sub_cellclick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

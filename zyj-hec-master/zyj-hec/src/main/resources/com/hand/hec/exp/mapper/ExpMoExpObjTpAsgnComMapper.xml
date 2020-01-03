@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpObjTpAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpObjTpAsgnCom">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_OBJ_TYPE_ID" property="moExpObjTypeId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <resultMap id="FndCompanyResultMap" type="com.hand.hap.fnd.dto.FndCompany">
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryFndCompanyTypeId" resultMap="FndCompanyResultMap">
+    SELECT
+	fc.company_id companyId,
+	fc.company_code companyCode,
+	fc.company_short_name companyShortName
+FROM
+	fnd_company fc
+	LEFT JOIN fnd_company_tl fct ON fc.COMPANY_ID = fct.company_id
+	and fct.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    where  fc.mag_org_id=#{magOrgId}
+    and not exists (select 1
+    from exp_mo_exp_obj_tp_asgn_com ec
+    where ec.mo_exp_obj_type_id=#{moExpObjTypeId}
+    and ec.company_id=fc.company_id)
+ORDER BY
+	fc.COMPANY_CODE
+    </select>
+
+</mapper>

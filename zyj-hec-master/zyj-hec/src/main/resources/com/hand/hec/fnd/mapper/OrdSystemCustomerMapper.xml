@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.OrdSystemCustomerMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.OrdSystemCustomer">
+        <result column="CUSTOMER_ID" property="customerId" jdbcType="DECIMAL" />
+        <result column="CUSTOMER_CODE" property="customerCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="CUSTOMER_TYPE_ID" property="customerTypeId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="CUSTOMER_TYPE_CODE" property="customerTypeCode" jdbcType="VARCHAR" />
+        <result column="CUSTOMER_TYPE_NAME" property="customerTypeName" jdbcType="VARCHAR" />
+        <result column="CUSTOMER_CODE" property="customerCode" jdbcType="VARCHAR" />
+        <!--<result column="CUSTOMER_NAME" property="customerName" jdbcType="VARCHAR" />-->
+    </resultMap>
+
+    <select id="queryByAccEntity" resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.OrdSystemCustomer">
+        SELECT
+            osc.customer_type_id,
+            oct.customer_type_code,
+            octl.DESCRIPTION AS customer_type_name,
+            osc.customer_id,
+            osc.customer_code,
+            oscl.description,
+            osc.enabled_flag
+        FROM
+            ord_system_customer osc
+            LEFT OUTER JOIN ord_system_customer_tl oscl ON ( osc.CUSTOMER_ID = oscl.CUSTOMER_ID AND oscl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ),
+            ord_customer_type oct
+            LEFT OUTER JOIN ord_customer_type_tl octl ON ( oct.CUSTOMER_TYPE_ID = octl.CUSTOMER_TYPE_ID AND octl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+            osc.customer_type_id = oct.customer_type_id
+            AND EXISTS ( SELECT 1 FROM ord_system_customer_ref_ae osra WHERE osra.customer_id = osc.customer_id AND osra.acc_entity_id = #{accEntityId} )
+        <if test="customerTypeId!=null">
+            AND osc.customer_type_id = #{customerTypeId}
+        </if>
+        <if test="customerCode!=null">
+            AND osc.customer_code like concat('%',#{customerCode},'%')
+        </if>
+        <if test="description!=null">
+            AND oscl.description like concat('%',#{description},'%')
+        </if>
+        ORDER BY
+            customer_code
+    </select>
+
+</mapper>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoReqTypeRefEleMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoReqTypeRefEle">
+        <result column="REQ_PAGE_ELE_REF_ID" property="reqPageEleRefId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_REQ_TYPE_ID" property="moExpReqTypeId" jdbcType="DECIMAL" />
+        <result column="REQ_PAGE_ELEMENT_ID" property="reqPageElementId" jdbcType="DECIMAL" />
+        <result column="REQ_PAGE_ELEMENT_CODE" property="reqPageElementCode" jdbcType="VARCHAR"/>
+        <result column="REQ_PAGE_ELEMENT_NAME" property="reqPageElementName" jdbcType="VARCHAR"/>
+        <result column="SEQUENCE" property="sequence" jdbcType="DECIMAL" />
+        <result column="DOC_TYPE_CODE" property="docTypeCode" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_NAME" property="docTypeName" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="REPORT_TYPE_FLAG" property="reportTypeFlag" jdbcType="VARCHAR" />
+        <result column="EXPENSE_OBJECT_FLAG" property="expenseObjectFlag" jdbcType="VARCHAR" />
+        <result column="DIMENSION_FLAG" property="dimensionFlag" jdbcType="VARCHAR" />
+        <result column="SERVICE_NAME" property="serviceName" jdbcType="VARCHAR" />
+        <result column="READONLY_SERVICE_NAME" property="readonlyServiceName" jdbcType="VARCHAR" />
+        <result column="LINE_DS" property="lineDs" jdbcType="VARCHAR" />
+    </resultMap>
+<select id="expReqEleQuery" resultMap="BaseResultMap">
+SELECT
+	srb1.URL service_name,
+	srb2.URL readonly_service_name,
+	re.SEQUENCE,
+	pe.REQ_PAGE_ELEMENT_CODE,
+CASE
+	pe.REQ_PAGE_ELEMENT_CODE
+	WHEN 'PAYMENT' THEN
+	'EXP4010_paymentLineMainResult_ds'
+	WHEN 'STANDARD' THEN
+	'EXP4010_exp_requisition_standard_line_ds'
+	WHEN 'TICKET_LINES' THEN
+	'EXP4010_exp_requisition_ticket_line_ds'
+	WHEN 'TRAVEL' THEN
+	'EXP4010_exp_requisition_travel_line_ds'
+	WHEN 'TRAVEL_DISTANCE_LINES' THEN
+	'EXP4010_exp_requisition_travel_distance_line_ds'
+	WHEN 'TRAVEL_STAY_LINES' THEN
+	'EXP4010_exp_requisition_travel_stay_line_ds' ELSE ''
+END line_ds
+FROM
+	exp_mo_req_type_ref_ele re,
+	exp_req_page_element pe,
+	sys_resource_b srb1,
+	sys_resource_b srb2
+WHERE
+    <if test="moExpReqTypeId!=null">
+        re.MO_EXP_REQ_TYPE_ID = #{moExpReqTypeId}
+    </if>
+    <if test="expRequisitionHeaderId!=null">
+        re.MO_EXP_REQ_TYPE_ID = (SELECT
+        erh.mo_exp_req_type_id
+        FROM
+        exp_requisition_header erh
+        WHERE
+        erh.exp_requisition_header_id = #{expRequisitionHeaderId})
+    </if>
+	AND re.REQ_PAGE_ELEMENT_ID = pe.REQ_PAGE_ELEMENT_ID
+	AND re.doc_type_code = 'LINE'
+	AND re.enabled_flag = 'Y'
+	AND pe.enabled_flag = 'Y'
+	AND pe.SERVICE_ID = srb1.RESOURCE_ID
+	AND pe.READONLY_SERVICE_ID = srb2.RESOURCE_ID
+</select>
+</mapper>

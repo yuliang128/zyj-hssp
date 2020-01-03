@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtCenterMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtCenter">
+        <result column="CENTER_ID" property="centerId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="CENTER_CODE" property="centerCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="CENTER_TYPE" property="centerType" jdbcType="VARCHAR"/>
+        <result column="SOURCE_TYPE_CODE" property="sourceTypeCode" jdbcType="VARCHAR"/>
+        <result column="SOURCE_ID" property="sourceId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+    </resultMap>
+
+    <sql id="centerTypeName">
+        (SELECT
+             scv.meaning
+         FROM
+             sys_code_b sc,
+             sys_code_value_b scv
+         WHERE
+             sc.code = 'BGT_CENTER_TYPE'
+           AND sc.code_id = scv.code_id
+           AND scv.value = bc.center_type
+        )  centerTypeName
+    </sql>
+
+    <sql id="sourceTypeName">
+        (SELECT
+             scv.meaning
+         FROM
+             sys_code_b sc,
+             sys_code_value_b scv
+         WHERE
+             sc.code = 'BGT_ORG_SOURCE_TYPE'
+           AND sc.code_id = scv.code_id
+           AND scv.value = bc.source_type_code
+        )  sourceTypeName
+    </sql>
+
+    <select id="checkBgtCenter" resultMap="BaseResultMap">
+      select a.* from bgt_center a
+        where
+        a.bgt_org_id = #{bgtOrgId}
+        and
+        (
+            (
+                #{filtrateMethod} = 'INCLUDE'
+                and
+                (
+                    (
+                        #{controlType} = 'DETAIL'
+                        and a.center_id = #{centerId}
+                        and a.center_type = 'DETAILS'
+                        and (
+                              #{controlCenterCodeFrom} is null
+                              or a.center_code &gt;= #{controlCenterCodeFrom}
+                            )
+                        and (
+                              #{controlCenterCodeTo} is null
+                              or a.center_code &lt;= #{controlCenterCodeTo}
+                            )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'SUMMARY'
+                        and exists (
+                                select 1 from bgt_center_hierarchy h
+                                where h.center_id = #{centerId}
+                                and h.parent_center_id = a.center_id
+                                and h.enabled_flag = 'Y'
+                            )
+                        and a.center_type = 'SUMMARY'
+                        and (
+                              #{controlCenterCodeFrom} is null
+                              or a.center_code &gt;= #{controlCenterCodeFrom}
+                            )
+                        and (
+                              #{controlCenterCodeTo} is null
+                              or a.center_code &lt;= #{controlCenterCodeTo}
+                            )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'ALL'
+                        and
+                        (
+                            (
+                                a.center_id = #{centerId}
+                                and a.center_type = 'DETAILS'
+                                and (
+                                      #{controlCenterCodeFrom} is null
+                                      or a.center_code &gt;= #{controlCenterCodeFrom}
+                                    )
+                                and (
+                                      #{controlCenterCodeTo} is null
+                                      or a.center_code &lt;= #{controlCenterCodeTo}
+                                    )
+                                and a.enabled_flag = 'Y'
+                            )
+                            or
+                            (
+                                exists (
+                                        select 1 from bgt_center_hierarchy h
+                                        where h.center_id = #{centerId}
+                                        and h.parent_center_id = a.center_id
+                                        and h.enabled_flag = 'Y'
+                                    )
+                                and a.center_type = 'SUMMARY'
+                                and (
+                                      #{controlCenterCodeFrom} is null
+                                      or a.center_code &gt;= #{controlCenterCodeFrom}
+                                    )
+                                and (
+                                      #{controlCenterCodeTo} is null
+                                      or a.center_code &lt;= #{controlCenterCodeTo}
+                                    )
+                                and a.enabled_flag = 'Y'
+                            )
+                        )
+                    )
+                )
+            )
+            or
+            (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (
+                        #{controlType} = 'DETAIL'
+                        and a.center_id = #{centerId}
+                        and a.center_type = 'DETAILS'
+                        and
+                        (
+                            (
+                              #{controlCenterCodeFrom} is null
+                              or a.center_code &lt; #{controlCenterCodeFrom}
+                            )
+                            or (
+                              #{controlCenterCodeTo} is null
+                              or a.center_code &gt; #{controlCenterCodeTo}
+                            )
+                        )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'SUMMARY'
+                        and exists (
+                                select 1 from bgt_center_hierarchy h
+                                where h.center_id = #{centerId}
+                                and h.parent_center_id = a.center_id
+                                and h.enabled_flag = 'Y'
+                            )
+                        and a.center_type = 'SUMMARY'
+                        and
+                        (
+                            (
+                              #{controlCenterCodeFrom} is null
+                              or a.center_code &lt; #{controlCenterCodeFrom}
+                            )
+                            or (
+                              #{controlCenterCodeTo} is null
+                              or a.center_code &gt; #{controlCenterCodeTo}
+                            )
+                        )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'ALL'
+                        and
+                        (
+                            (
+                                a.center_id = #{centerId}
+                                and a.center_type = 'DETAILS'
+                                and
+                                (
+                                    (
+                                      #{controlCenterCodeFrom} is null
+                                      or a.center_code &lt; #{controlCenterCodeFrom}
+                                    )
+                                    or (
+                                      #{controlCenterCodeTo} is null
+                                      or a.center_code &gt; #{controlCenterCodeTo}
+                                    )
+                                )
+                                and a.enabled_flag = 'Y'
+                            )
+                            or
+                            (
+                                exists (
+                                        select 1 from bgt_center_hierarchy h
+                                        where h.center_id = #{centerId}
+                                        and h.parent_center_id = a.center_id
+                                        and h.enabled_flag = 'Y'
+                                    )
+                                and a.center_type = 'SUMMARY'
+                                and
+                                (
+                                    (
+                                      #{controlCenterCodeFrom} is null
+                                      or a.center_code &lt; #{controlCenterCodeFrom}
+                                    )
+                                    or (
+                                      #{controlCenterCodeTo} is null
+                                      or a.center_code &gt; #{controlCenterCodeTo}
+                                    )
+                                )
+                                and a.enabled_flag = 'Y'
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    </select>
+    
+    <select id="selectMain" parameterType="java.lang.String" resultMap="BaseResultMap">
+      SELECT
+			bc.CENTER_ID,
+			bc.BGT_ORG_ID,
+			bc.CENTER_CODE,
+			bcl.DESCRIPTION,
+			bc.SOURCE_ID,
+			bc.CURRENCY_CODE,
+			gc.CURRENCY_NAME,
+			bc.CENTER_TYPE,
+			bc.SOURCE_TYPE_CODE,
+            <include refid="centerTypeName"/>,
+            <include refid="sourceTypeName"/>,
+			bc.ENABLED_FLAG
+            <if test="sourceTypeCode = 'MANAGEMENT'">
+                ,eou.DESCRIPTION sourceDetail
+            </if>
+            <if test="sourceTypeCode = 'ACCOUNTING'">
+                ,grc.RESPONSIBILITY_CENTER_NAME sourceDetail
+            </if>
+		FROM
+			bgt_center_tl bcl,
+			gld_currency gc,
+			bgt_center bc
+        <if test="sourceTypeCode = 'MANAGEMENT'">
+            left outer join
+            exp_org_unit eou
+            on bc.SOURCE_ID = eou.UNIT_ID
+        </if>
+        <if test="sourceTypeCode = 'ACCOUNTING'">
+            left outer join
+            gld_responsibility_center grc
+            on bc.SOURCE_ID = grc.RESPONSIBILITY_CENTER_ID
+        </if>
+		WHERE
+			bc.CENTER_ID = bcl.CENTER_ID
+			AND bcl.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			AND bc.CURRENCY_CODE = gc.CURRENCY_CODE
+            AND bc.BGT_ORG_ID = #{bgtOrgId}
+        <if test="centerCode != null">
+            AND bc.CENTER_CODE LIKE concat('%',#{centerCode},'%')
+        </if>
+        <if test="description != null">
+            AND bo.DESCRIPTION LIKE concat('%',#{description},'%')
+        </if>
+    </select>
+
+    <select id="queryRefByRespCenter" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            bc.center_id,
+            grc.start_date_active,
+            grc.end_date_active,
+            bc.enabled_flag
+        FROM
+            gld_resp_center_hierarchy grch,
+            gld_responsibility_center grc,
+            bgt_center bc
+        WHERE
+            grch.parent_resp_center_id = #{parentRespCenterId}
+            AND grch.responsibility_center_id = grc.responsibility_center_id
+            AND grc.responsibility_center_code = bc.center_code
+            AND bc.bgt_org_id = #{bgtOrgId}
+            AND bc.source_type_code = 'ACCOUNTING'
+            AND bc.center_type = 'DETAILS'
+    </select>
+    
+    <select id="bgtJournalBatch"  resultMap="BaseResultMap">
+        SELECT
+            a.center_id,
+            a.center_code,
+            al.DESCRIPTION
+        FROM
+            bgt_center a
+            LEFT OUTER JOIN bgt_center_tl al ON ( a.CENTER_ID = al.CENTER_ID AND al.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+            a.BGT_ORG_ID = #{bgtOrgId}
+            AND a.center_id NOT IN ( SELECT b.center_id FROM bgt_journal_tp_range_cen b WHERE b.range_ets_id = #{rangeEtsId} )
+        ORDER BY
+            a.center_code
+    </select>
+    
+    <select id="getBgtCenterByBgtCenterCode" resultMap="BaseResultMap">
+        SELECT
+            c.*
+        FROM
+            bgt_center c
+        WHERE
+            c.bgt_org_id = #{bgtOrgId}
+            AND c.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR c.center_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR c.center_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR c.center_code &lt;= #{parameterUpperLimit})
+    </select>
+    
+    <select id="queryDetailCenter" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select c.center_id,
+               c.currency_code
+        from bgt_center_hierarchy h,
+             bgt_center           c
+        where h.center_id = #{centerId}
+        and h.parent_center_id = c.center_id
+    </select>
+
+</mapper>

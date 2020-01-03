@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-03-15 10:13:34
+    $Revision: 1.0
+    $Purpose: 银行账户分配报盘格式
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function CSH1016_branchOfferBackFunc() {
+                $au(this.__host.id).close();
+            }
+            
+            function CSH1016_branchOfferValidatorFunc(record, name, value) { //日期校验方法
+                if (name == 'startDate' || name == 'endDate') {
+                    var date_from = record.get('startDate');
+                    var date_to = record.get('endDate');
+                    if ( !! date_to) {
+                        if (!compareDate(date_from, date_to)) {
+                            return '$[l:time_error]'; //校验不通过返回字符串
+                        }
+                    }
+                    return true; //校验通过返回true
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH1016_branchOfferSuccessFunc(dataSet) {
+                dataSet.query();
+            }
+            
+            function CSH1016_branchOfferUpdateFunc(ds, record, name, value) {
+                if (name == "formatCode") {
+                    if (Ext.isEmpty(value)) {
+                        record.set('formatHdsId', '');
+                        record.set('formatCode', '');
+                        record.set('formatName', '');
+                        record.set('exportTypeCode', '');
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1016_branchOffer_ds" autoPageSize="true" autoQuery="true" submitUrl="$[/request/@context_path]/csh/bank-ref-offer-format/submit" queryUrl="$[/request/@context_path]/csh/bank-ref-offer-format/query?refType=$[/parameter/@refType]&amp;refLineId=$[/parameter/@refLineId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="refType" defaultValue="$[/parameter/@refType]"/>
+                    <a:field name="refLineId" defaultValue="$[/parameter/@refLineId]"/>
+                    <a:field name="formatHdsId"/>
+                    <a:field name="formatCode" lovCode="CSH_OFFER_FORMAT_LOV?accEntityId=$[/parameter/@accEntityId]&amp;refType=$[/parameter/@refType]&amp;refLineId=$[/parameter/@refLineId]" prompt="csh_offer_format.offer_format_code" required="true" title="offer_format">
+                        <a:mapping>
+                            <a:map from="formatHdsId" to="formatHdsId"/>
+                            <a:map from="formatCode" to="formatCode"/>
+                            <a:map from="formatName" to="formatName"/>
+                            <a:map from="exportTypeCode" to="exportTypeCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="formatName" prompt="csh_offer_format.offer_format_name"/>
+                    <a:field name="exportTypeCode" prompt="csh_offer_format.export_format"/>
+                    <a:field name="startDate" prompt="ssc_work_center.start_date" required="true" validator="CSH1016_branchOfferValidatorFunc"/>
+                    <a:field name="endDate" prompt="ssc_work_center.end_date" validator="CSH1016_branchOfferValidatorFunc"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1016_branchOfferUpdateFunc"/>
+                    <a:event name="submitsuccess" handler="CSH1016_branchOfferSuccessFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:placeHolder id="CSH1016_branchOfferPlaceHolder"/>
+            <a:grid id="CSH1016_branchOffer_grid" Width="1010" bindTarget="CSH1016_branchOffer_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="formatCode" align="center" editor="CSH1016_branchOfferLov" width="80"/>
+                    <a:column name="formatName" width="150"/>
+                    <a:column name="exportTypeCode" align="center" width="80"/>
+                    <a:column name="startDate" align="center" editor="CSH1016_branchOfferDatePicker" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="endDate" align="center" editor="CSH1016_branchOfferDatePicker" renderer="Aurora.formatDateTime" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1016_branchOfferLov"/>
+                    <a:dateTimePicker id="CSH1016_branchOfferDatePicker"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+    <p:echo/>
+    <a:view-config>
+        <c:create-config targetId="CSH1016_branchOfferPlaceHolder">
+            <p:switch test="/parameter/@refType">
+                <p:case value="ACCOUNT">
+                    <c:process-config>
+                        <a:form id="CSH1016_branchOffer_form" column="2" labelWidth="120" title="csh_bank_account.bank_account_num">
+                            <a:formToolbar>
+                                <a:label name="separator"/>
+                                <a:gridButton bind="CSH1016_branchOffer_grid" type="add" width="80"/>
+                                <a:gridButton bind="CSH1016_branchOffer_grid" text="hap_save" type="save" width="80"/>
+                                <a:gridButton bind="CSH1016_branchOffer_grid" type="clear" width="80"/>
+                                <a:toolbarButton click="CSH1016_branchOfferBackFunc" text="hap_back" width="80"/>
+                            </a:formToolbar>
+                            <a:textField name="bankAccountName" bindTarget="CSH1016_branchAccount_ds" prompt="csh_bank_account.bank_account_name_id" readOnly="true"/>
+                            <a:textField name="bankAccountNum" bindTarget="CSH1016_branchAccount_ds" prompt="csh_bank_account.bank_account_num" readOnly="true"/>
+                        </a:form>
+                    </c:process-config>
+                </p:case>
+                <p:case value="BRANCH">
+                    <c:process-config>
+                        <a:form id="CSH1016_branchOffer_form" column="2" labelWidth="120" title="csh_bank_detail">
+                            <a:formToolbar>
+                                <a:label name="separator"/>
+                                <a:gridButton bind="CSH1016_branchOffer_grid" type="add" width="80"/>
+                                <a:gridButton bind="CSH1016_branchOffer_grid" text="hap_save" type="save" width="80"/>
+                                <a:gridButton bind="CSH1016_branchOffer_grid" type="clear" width="80"/>
+                                <a:toolbarButton click="CSH1016_branchOfferBackFunc" text="hap_back" width="80"/>
+                            </a:formToolbar>
+                            <a:textField name="bankName" bindTarget="CSH1016_branchResult_ds" prompt="csh_bank.bank_name" readOnly="true"/>
+                            <a:textField name="bankLocationName" bindTarget="CSH1016_branchResult_ds" prompt="csh_bank_branch.branch_name" readOnly="true"/>
+                        </a:form>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

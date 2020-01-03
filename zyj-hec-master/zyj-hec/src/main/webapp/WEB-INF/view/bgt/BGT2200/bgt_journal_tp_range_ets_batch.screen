@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/09 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-指定范围-批量分配实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function BGT2200_etsBatchAssgin() {
+                var resultDs = $au('BGT2200_journal_tp_range_ets_bacth_result_ds');
+                var datas = $au('BGT2200_journal_tp_range_ets_bacth_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    var record = resultDs.create();
+                    record.set('entityId',datas[i]['entityId']);
+                }
+                resultDs.submit();
+            }
+            
+            function BGT2200_range_entity_assign_success() {
+                $au('BGT2200_bgt_jour_t_ets_batch_window').close();
+                $au('BGT2200_journal_type_ref_ets_ds').query();
+            }
+            
+            function BGT2200_etsBatchReturn() {
+                $au("BGT2200_bgt_jour_t_ets_batch_window").close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_journal_tp_range_ets_bacth_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/entity" queryUrl="$[/request/@context_path]/bgt/entity/bgtJournalBatch?bgtOrgId=$[/parameter/@bgtOrgId]&amp;rangeId=$[/parameter/@rangeId]" selectable="true">
+                <a:fields>
+                    <a:field name="rangeId" defaultValue="$[/parameter/@rangeId]"/>
+                    <a:field name="entityId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2200_journal_tp_range_ets_bacth_result_ds" autoPageSize="true" autoQuery="false" baseUrl="/bgt/journal-tp-range-et">
+                <a:fields>
+                    <a:field name="entityCode">
+                        <a:mapping>
+                            <a:map from="entityId" to="entityId"/>
+                            <a:map from="code" to="entityCode"/>
+                            <a:map from="name" to="entityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entityName" readOnly="true" prompt="bgt_entities.description"/>
+                    <a:field name="rangeId" defaultValue="$[/parameter/@rangeId]"/>
+                    <a:field name="entityId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="bgt_budget_item.enabled_flag"/>
+                    <a:field name="rangeEtsId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT2200_range_entity_assign_success"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_journal_tp_ets_bacth">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="BGT2200_etsBatchAssgin" text="hec_assign" width="80"/>
+                    <a:button click="BGT2200_etsBatchReturn" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="employeeCode" bindTarget="BGT2200_journal_type_code_ets_ds" prompt="exp_employee.employee_code"/>
+                <a:textField name="name" bindTarget="BGT2200_journal_type_code_ets_ds" prompt="employee.name"/>
+            </a:form>
+            <a:grid bindTarget="BGT2200_journal_tp_range_ets_bacth_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="entityCode" align="center" prompt="bgt_entities.entity_code" width="80"/>
+                    <a:column name="description" prompt="bgt_entities.description" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

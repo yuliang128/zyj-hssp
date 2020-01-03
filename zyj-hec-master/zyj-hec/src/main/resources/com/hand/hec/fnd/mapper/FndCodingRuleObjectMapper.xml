@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndCodingRuleObjectMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndCodingRuleObject">
+        <result column="CODING_RULE_OBJECT_ID" property="codingRuleObjectId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_CATEGORY" property="documentCategory" jdbcType="VARCHAR" />
+        <result column="PRIORITY" property="priority" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_TYPE" property="documentType" jdbcType="VARCHAR" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="CODE_RULE_HEADER_ID" property="codeRuleHeaderId" jdbcType="DECIMAL" />
+        <result column="RULE_NAME" property="codeRuleName" jdbcType="DECIMAL" />
+        <result column="RULE_CODE" property="codeRuleCode" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="MAG_ORG_CODE" property="magOrgCode" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_CODE_NAME" property="magOrgCodeName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="select" resultMap="BaseResultMap">
+    select
+        crb.CODING_RULE_OBJECT_ID,
+        crb.DOCUMENT_CATEGORY,
+        crb.PRIORITY,
+        crb.MAG_ORG_ID,
+		fmo.MAG_ORG_CODE,
+		fmo.DESCRIPTION MAG_ORG_CODE_NAME,
+        crb.DOCUMENT_TYPE,
+        crb.COMPANY_ID,
+		fc.COMPANY_CODE,
+		fc.COMPANY_SHORT_NAME,
+        crb.ACC_ENTITY_ID,
+		gae.ACC_ENTITY_CODE,
+		gae.ACC_ENTITY_NAME,
+        crb.ENABLED_FLAG,
+        crb.code_rule_header_id,
+        scrh.rule_name,
+        scrh.rule_code
+    from
+        FND_CODING_RULE_OBJECT crb
+        left join  fnd_managing_organization fmo
+        on crb.MAG_ORG_ID = fmo.MAG_ORG_ID
+        left join fnd_company fc
+        on crb.COMPANY_ID = fc.COMPANY_ID
+        left join gld_accounting_entity gae
+        on crb.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+        left join sys_code_rules_header scrh
+        on crb.code_rule_header_id = scrh.header_id
+        <where>
+            <if test="magOrgId!=null and magOrgId!=''">
+            and crb.MAG_ORG_ID = #{magOrgId}
+            </if>
+            <if test="magOrgCodeName!=null and magOrgCodeName!=''">
+            and fmo.DESCRIPTION = #{magOrgCodeName}
+            </if >
+            <if test="documentCategory!= null and documentCategory!=''">
+            and DOCUMENT_CATEGORY = #{documentCategory}
+            </if>
+            <if test="documentType!=null and documentType!=''">
+            and DOCUMENT_TYPE like concat('%',#{documentType},'%')
+            </if>
+            <if test="accEntityName!=null and accEntityName!=''">
+            and gae.ACC_ENTITY_NAME like concat('%',#{accEntityName},'%')
+            </if>
+            <if test="companyShortName!=null and companyShortName!=''">
+            and  fc.COMPANY_SHORT_NAME like concat('%',#{companyShortName},'%')
+            </if>
+        </where>
+        order by DOCUMENT_CATEGORY,PRIORITY
+    </select>
+    <select id="getMatchCodingRuleObject" resultMap="BaseResultMap">
+        select
+          o.*,
+          scrh.rule_name,
+          scrh.rule_code
+        from
+          FND_CODING_RULE_OBJECT o
+        left join sys_code_rules_header scrh
+        on o.code_rule_header_id = scrh.header_id
+        where
+            o.enabled_flag = 'Y'
+            and o.document_category = #{docCategory}
+            and (o.mag_org_id is null or #{magOrgId} is null or o.mag_org_id = #{magOrgId})
+            and (o.company_id is null or #{companyId} is null or o.company_id = #{companyId})
+            and (o.document_type is null or #{docType} is null or o.document_type = #{docType})
+            and (o.acc_entity_id is null or #{accEntityId} is null or o.acc_entity_id = #{accEntityId})
+            order by o.priority
+    </select>
+
+</mapper>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.expm.mapper.ExpReportAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.expm.dto.ExpReportAccount">
+        <result column="EXP_REPORT_JE_LINE_ID" property="expReportJeLineId" jdbcType="DECIMAL" />
+        <result column="EXP_REPORT_HEADER_ID" property="expReportHeaderId" jdbcType="DECIMAL" />
+        <result column="EXP_REPORT_DIST_ID" property="expReportDistId" jdbcType="DECIMAL" />
+        <result column="PAYMENT_SCHEDULE_LINE_ID" property="paymentScheduleLineId" jdbcType="DECIMAL" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="JOURNAL_DATE" property="journalDate" jdbcType="DATE" />
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR" />
+        <result column="SOURCE_CODE" property="sourceCode" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="RESP_CENTER_ID" property="respCenterId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR" />
+        <result column="EXCHANGE_RATE_TYPE" property="exchangeRateType" jdbcType="VARCHAR" />
+        <result column="EXCHANGE_RATE" property="exchangeRate" jdbcType="DECIMAL" />
+        <result column="ENTERED_AMOUNT_DR" property="enteredAmountDr" jdbcType="DECIMAL" />
+        <result column="ENTERED_AMOUNT_CR" property="enteredAmountCr" jdbcType="DECIMAL" />
+        <result column="FUNCTIONAL_AMOUNT_DR" property="functionalAmountDr" jdbcType="DECIMAL" />
+        <result column="FUNCTIONAL_AMOUNT_CR" property="functionalAmountCr" jdbcType="DECIMAL" />
+        <result column="GLD_INTERFACE_FLAG" property="gldInterfaceFlag" jdbcType="VARCHAR" />
+        <result column="TRANSFER_FLAG" property="transferFlag" jdbcType="VARCHAR" />
+        <result column="USAGE_CODE" property="usageCode" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT1" property="accountSegment1" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT2" property="accountSegment2" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT3" property="accountSegment3" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT4" property="accountSegment4" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT5" property="accountSegment5" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT6" property="accountSegment6" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT7" property="accountSegment7" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT8" property="accountSegment8" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT9" property="accountSegment9" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT10" property="accountSegment10" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT11" property="accountSegment11" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT12" property="accountSegment12" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT13" property="accountSegment13" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT14" property="accountSegment14" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT15" property="accountSegment15" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT16" property="accountSegment16" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT17" property="accountSegment17" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT18" property="accountSegment18" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT19" property="accountSegment19" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_SEGMENT20" property="accountSegment20" jdbcType="VARCHAR" />
+        <result column="ENTERED_AMOUNT" property="enteredAmount" jdbcType="DECIMAL"/>
+        <result column="FUNCTIONAL_AMOUNT" property="functionalAmount" jdbcType="DECIMAL"/>
+
+        <result column="RESP_CENTER_NAME" property="respCenterName" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR" />
+        <result column="TRANSACTION_TYPE" property="transactionType" jdbcType="VARCHAR" />
+        <result column="TRANSACTION_TYPE_DESC" property="transactionTypeDesc" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_CODE" property="accountCode" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getJournalDate" resultType="Date">
+         select min(a.journal_date)
+           from exp_report_account a
+          where a.exp_report_header_id = #{expReportHeaderId}
+    </select>
+    <select id="getDrCrAmountDiff" resultMap="BaseResultMap">
+        SELECT
+	      CASE
+            WHEN sum(a.entered_amount_dr) IS NULL THEN
+	          0
+            WHEN sum(a.entered_amount_dr) IS NOT NULL THEN
+	          sum(a.entered_amount_dr)
+            END - CASE
+            WHEN sum(a.entered_amount_cr) IS NULL THEN
+	          0
+            WHEN sum(a.entered_amount_cr) IS NOT NULL THEN
+	          sum(a.entered_amount_cr)
+            END  entered_amount,
+          CASE
+            WHEN sum(a.functional_amount_dr) IS NULL THEN
+	          0
+            WHEN sum(a.functional_amount_dr) IS NOT NULL THEN
+	          sum(a.functional_amount_dr)
+            END - CASE
+            WHEN sum(a.functional_amount_cr) IS NULL THEN
+	          0
+            WHEN sum(a.functional_amount_cr) IS NOT NULL THEN
+	          sum(a.functional_amount_cr)
+            END functional_amount
+        FROM
+	      exp_report_account a
+        WHERE
+	      a.exp_report_header_id = #{expReportHeaderId}
+    </select>
+
+    <update id="batchUpdate">
+        update exp_report_account era
+         set era.gld_interface_flag = 'P',
+             era.last_updated_by    = #{request.userId},
+             era.last_update_date   = current_time
+       where era.exp_report_header_id = #{expReportHeaderId}
+    </update>
+
+    <select id="getExpReportAccountInfo" resultMap="BaseResultMap">
+        select * from exp_report_account era where era.exp_report_header_id = #{expReportHeaderId}
+    </select>
+
+    <select id="selectSetOfBooksId" resultType="Long">
+        select
+          gae.DEFAULT_SET_OF_BOOKS_ID
+        FROM
+		      gld_accounting_entity gae
+		WHERE gae.ACC_ENTITY_ID = #{accEntityId}
+    </select>
+    <select id="auditAccountQuery" resultMap="BaseResultMap">
+       SELECT
+            'EXP_REPORT' transaction_type,
+            '费用凭证' transaction_type_desc,
+            era.exp_report_je_line_id,
+            era.acc_entity_id,
+            et.acc_entity_name,
+            era.resp_center_id,
+            ct.responsibility_center_name AS resp_center_name,
+            era.account_id,
+            ga.account_code,
+            gt.description AS account_name,
+            era.period_name,
+            era.entered_amount_dr,
+            era.entered_amount_cr,
+            era.functional_amount_dr,
+            era.functional_amount_cr,
+            era.description,
+            era.account_segment1,
+            era.account_segment2,
+            era.account_segment3,
+            era.account_segment4,
+            era.account_segment5,
+            era.account_segment6,
+            era.account_segment7,
+            era.account_segment8,
+            era.account_segment9,
+            era.account_segment10,
+            era.account_segment11,
+            era.account_segment12,
+            era.account_segment13,
+            era.account_segment14,
+            era.account_segment15,
+            era.account_segment16,
+            era.account_segment17,
+            era.account_segment18,
+            era.account_segment19,
+            era.account_segment20,
+            era.currency_code,
+            gct.currency_name AS currency_name
+          FROM
+            exp_report_account era
+          LEFT JOIN gld_accounting_entity_tl et ON era.acc_entity_id = et.acc_entity_id
+          AND et.lang = #{request.locale,jdbcType = VARCHAR}
+          LEFT JOIN gld_responsibility_center_tl ct ON era.resp_center_id = ct.responsibility_center_id
+          AND ct.lang = #{request.locale,jdbcType = VARCHAR}
+          LEFT JOIN gld_account ga ON era.account_id = ga.account_id
+          LEFT JOIN gld_account_tl gt ON ga.account_id = gt.account_id
+          AND gt.lang = #{request.locale,jdbcType = VARCHAR}
+          LEFT JOIN gld_currency gc ON gc.country_code = era.currency_code
+          LEFT JOIN gld_currency_tl gct ON gct.currency_id = gc.currency_id
+          AND gct.lang = #{request.locale,jdbcType = VARCHAR}
+          WHERE
+            era.exp_report_header_id = #{expReportHeaderId}
+           UNION ALL
+                SELECT
+                    'CSH_WRITE_OFF' transaction_type,
+                    '核销凭证' transaction_type_desc,
+                    er.write_off_je_line_id,
+                    er.acc_entity_id,
+                     et.acc_entity_name,
+                    er.resp_center_id,
+                    ct.responsibility_center_name AS resp_center_name,
+                    er.account_id,
+										ga.account_code,
+                      gt.description AS account_name,
+                    er.period_name,
+                    er.entered_amount_dr,
+                    er.entered_amount_cr,
+                    er.functional_amount_dr,
+                    er.functional_amount_cr,
+                    er.description,
+                    er.account_segment1,
+                    er.account_segment2,
+                    er.account_segment3,
+                    er.account_segment4,
+                    er.account_segment5,
+                    er.account_segment6,
+                    er.account_segment7,
+                    er.account_segment8,
+                    er.account_segment9,
+                    er.account_segment10,
+                    er.account_segment11,
+                    er.account_segment12,
+                    er.account_segment13,
+                    er.account_segment14,
+                    er.account_segment15,
+                    er.account_segment16,
+                    er.account_segment17,
+                    er.account_segment18,
+                    er.account_segment19,
+                    er.account_segment20,
+                    er.currency_code,
+                    gct.currency_name AS currency_name
+                FROM
+                    csh_write_off_account er
+										 LEFT JOIN gld_accounting_entity_tl et ON er.acc_entity_id = et.acc_entity_id
+          AND et.lang = #{request.locale,jdbcType = VARCHAR}
+          LEFT JOIN gld_responsibility_center_tl ct ON er.resp_center_id = ct.responsibility_center_id
+          AND ct.lang = #{request.locale,jdbcType = VARCHAR}
+          LEFT JOIN gld_account ga ON er.account_id = ga.account_id
+          LEFT JOIN gld_account_tl gt ON ga.account_id = gt.account_id
+          AND gt.lang = #{request.locale,jdbcType = VARCHAR}
+          LEFT JOIN gld_currency gc ON gc.country_code = er.currency_code
+          LEFT JOIN gld_currency_tl gct ON gct.currency_id = gc.currency_id
+          AND gct.lang = #{request.locale,jdbcType = VARCHAR}
+                WHERE
+                    EXISTS
+                    (SELECT
+                        o.write_off_id
+                    FROM
+                        csh_write_off o
+                    WHERE
+                        o.write_off_type     = 'PREPAYMENT_EXPENSE_REPORT' AND
+                        o.document_source    = 'EXPENSE_REPORT' AND
+                        o.write_off_id       = er.write_off_id AND
+                        o.document_header_id = #{expReportHeaderId}
+                    )
+    </select>
+</mapper>

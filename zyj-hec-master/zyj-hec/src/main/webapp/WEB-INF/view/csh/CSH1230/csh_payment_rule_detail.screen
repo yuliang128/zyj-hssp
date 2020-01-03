@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-5-23 上午10:59:42  
+    $Revision: 1.0  
+    $Purpose: 支付权限规则定义-明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1230_csh_payment_rule_details_svc_link" url="$[/request/@context_path]/csh/payment-rule-detail/check"/>
+        <script><![CDATA[
+            var validateFlag = false;
+            /*console.log('传过来的参数'+'$[/parameter/@ruleId]'+'$[/parameter/@magOrgId]');*/
+
+        function CSH1230_closeRuleDetailsCreateWindow(){
+                 $au('CSH1230_csh_payment_rules_details_window').close();
+             }
+            function CSH1230_parameterCodeEdit(record, name) {
+            
+                if (record.isNew) {
+                    return 'CSH1230_detail_lov';
+                } else {
+                    return '';
+                }
+            }
+            
+            
+            
+            function CSH1230_setInitDateDetail(ds, record, index) {
+                var length = ds.getAll().length;
+                /*if (length == 1) {
+                    record.set('andOrCode', 'AND');
+                    record.set('andOr', 'AND');
+                }*/
+                record.set("sequence", (length++) * 10);
+                record.set('ruleId', '$[/parameter/@ruleId]');
+            }
+            
+            function CSH1230_validateBusinessRule() {
+                var data = [];
+                var ds = $au('CSH1230_csh_payment_rule_details_ds');
+                var records = ds.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    var record = records[i];
+                    record.dirty = true;
+                }
+                data = ds.getJsonData();
+                Aurora.request({lockMessage:'$[l:HAP_WAITING]',lockMessage:'$[l:HAP_WAITING]',
+                    url: $au('CSH1230_csh_payment_rule_details_svc_link').getUrl(),
+                    para: data,
+                    scope: this,
+                    success: function() {
+                        validateFlag = true;
+                        Aurora.showMessage('$[l:PROMPT]', '$[l:fnd_dimension_values.opr_suc]');
+                    },
+                    error:function(){
+                        Aurora.showMessage('$[l:PROMPT]', '$[l:fail_operation]')
+                    }
+                });
+                console.log(validateFlag);
+            }
+            
+            function CSH1230_andOrEdit(record, name) {
+                var sequence = record.get("sequence");
+                if (sequence == 10) {
+                    return 'CSH1230_detail_comboBox';
+                } else {
+                    return 'CSH1230_detail_comboBox';
+                }
+            }
+            
+            function CSH1230_beforeSubmitFun(ds){
+               if(!validateFlag){
+                    Aurora.showInfoMessage('$[l:PROMPT]','$[l:wfl_business_validate.data_save_prompt]',null,250,100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH1230_beforeCreateFun(){
+                validateFlag = false;
+            }
+            
+            function CSH1230_beforeRemoveFun(){
+                validateFlag = false;
+            }
+            
+            function CSH1230_updateFun(){
+                validateFlag = false;
+            }
+           
+           function CSH1230_detailSubmit(ds){
+               ds.query();
+           }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1230_andOr_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/WFL_WORKFLOW_APPROVAL_RULE/"/>
+            <a:dataSet id="CSH1230_parenthesisCode_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/WFL_BUSINESS_PARENTHESIS_CODE/"/>
+            <a:dataSet id="CSH1230_conditionTypeCode_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/WFL_BUSINESS_RULE_CONDITION/"/>
+            <a:dataSet id="CSH1230_csh_payment_rule_details_ds" autoCount="true" autoQuery="true" fetchAll="true" baseUrl="/csh/payment-rule-detail" queryUrl="$[/request/@context_path]/csh/payment-rule-detail/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="ruleDetailId"/>
+                    <a:field name="sequence" />
+                    <a:field name="ruleParameterCode" required="true" lovGridHeight="320" lovHeight="440" lovCode="CSH_PAYMENT_RULE_PARAMETER?magOrgId=$[/parameter/@magOrgId]&amp;enabledFlag=Y" lovWidth="500"  title="csh_payment_rule_detail.rule_parameter_code">
+                        <a:mapping>
+                            <a:map from="ruleParameterId" to="ruleParameterId"/>
+                            <a:map from="parameterCode" to="ruleParameterCode"/>
+                            <a:map from="description" to="ruleParameterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="ruleParameterId"/>
+                    <a:field name="ruleParameterName"/>
+                    <a:field name="andOr"/>
+                    <a:field name="andOrCode" required="true" displayField="meaning" options="CSH1230_andOr_ds" returnField="andOr" valueField="value"/>
+                    <a:field name="conditionValue" required="true"/>
+                    <a:field name="rightParenthesisDis" displayField="meaning" options="CSH1230_parenthesisCode_ds" returnField="rightParenthesis" valueField="value"/>
+                    <a:field name="leftParenthesisDis" displayField="meaning" options="CSH1230_parenthesisCode_ds" returnField="leftParenthesis" valueField="value"/>
+                    <a:field name="conditionTypeDis" displayField="meaning" options="CSH1230_conditionTypeCode_ds" returnField="conditionType" valueField="value"/>
+                    <a:field name="sqlParam1"/>
+                    <a:field name="sqlParam2"/>
+                    <a:field name="sqlParam3"/>
+                    <a:field name="sqlParam4"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH1230_setInitDateDetail"/>
+                    <a:event name="beforesubmit" handler="CSH1230_beforeSubmitFun"/>
+                    <a:event name="beforecreate" handler="CSH1230_beforeCreateFun"/>
+                    <a:event name="beforeremove" handler="CSH1230_beforeRemoveFun"/>
+                    <a:event name="remove" handler="CSH1230_validateBusinessRule"/>
+                    <a:event name="update" handler="CSH1230_updateFun"/>
+                    <a:event name="submitsuccess" handler="CSH1230_detailSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1230_csh_payment_rule_details_form" column="2" labelWidth="120" title="csh_payment_rule_info.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1230_csh_payment_rule_details_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1230_csh_payment_rule_details_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1230_csh_payment_rule_details_grid" type="delete" width="80"/>
+                    <a:gridButton click="CSH1230_validateBusinessRule" text="hap_check" width="80"/>
+                    <a:toolbarButton click="CSH1230_closeRuleDetailsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="CSH1230_csh_payment_rules_result_ds" prompt="csh_payment_rule.rule_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1230_csh_payment_rules_result_ds" prompt="csh_payment_rule.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1230_csh_payment_rule_details_grid" bindTarget="CSH1230_csh_payment_rule_details_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="sequence" editor="CSH1230_detail_numberField" prompt="csh_payment_rule_detail.sequence" width="80"/>
+                    <a:column name="andOrCode" editorFunction="CSH1230_andOrEdit" prompt="csh_payment_rule_detail.and_or" width="120"/>
+                    <a:column name="leftParenthesisDis" align="center" editor="CSH1230_detail_comboBox" prompt="csh_payment_rule_detail.left_parenthesis" width="80"/>
+                    <a:column name="ruleParameterCode" editorFunction="CSH1230_parameterCodeEdit" prompt="csh_payment_rule_detail.rule_parameter_code"  width="120"/>
+                    <a:column name="ruleParameterName" width="120" prompt="csh_payment_rule_detail.rule_parameter_name"/>
+                    <a:column name="conditionTypeDis" editor="CSH1230_detail_comboBox" prompt="csh_payment_rule_detail.condition_type" width="120"/>
+                    <a:column name="conditionValue" editor="CSH1230_detail_textField" prompt="csh_payment_rule_detail.condition_value"  width="120"/>
+                    <a:column name="sqlParam_1" editor="CSH1230_detail_textField" prompt="csh_payment_rule_detail.sql_param_1" width="80"/>
+                    <a:column name="sqlParam_2" editor="CSH1230_detail_textField" prompt="csh_payment_rule_detail.sql_param_2" width="80"/>
+                    <a:column name="sqlParam_3" editor="CSH1230_detail_textField" prompt="csh_payment_rule_detail.sql_param_3" width="80"/>
+                    <a:column name="sqlParam_4" editor="CSH1230_detail_textField" prompt="csh_payment_rule_detail.sql_param_4" width="80"/>
+                    <a:column name="rightParenthesisDis" align="center" editor="CSH1230_detail_comboBox" prompt="csh_payment_rule_detail.right_parenthesis" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1230_detail_lov">
+                        <!--  <a:events>
+                            <a:event name="commit" handler="get_limit_function"/>
+                        </a:events> --><![CDATA[
+                        
+                        
+                    ]]></a:lov>
+                    <a:comboBox id="CSH1230_detail_comboBox"/>
+                    <a:textField id="CSH1230_detail_textField"/>
+                    <a:numberField id="CSH1230_detail_numberField"/>
+                </a:editors>
+                <!-- <a:events>
+                    <a:event name="cellclick" handler="gridcellclick"/>
+                </a:events> -->
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

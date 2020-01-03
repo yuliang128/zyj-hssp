@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw
+    $Date: 2018
+    $Revision: 权限规则定义
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND5020_businessRuleDetailLink"
+                url="$[/request/@context_path]/fnd/FND5020/fnd_business_rule_detail.screen"/>
+        <script><![CDATA[
+
+        function FND5020_editorFun(record, name) {
+            if (record.isNew) {
+                return 'FND5020_tf_02';
+            }
+            return '';
+        }
+
+        function FND5020_businessRuleDetails(value, record, name) {
+            var business_rule_id = record.get('businessRuleId');
+            if (!record.isNew) {
+                return '<a href="javascript:FND5020_businessRuleDetailsView(' + business_rule_id + ')">$[l:fnd_business_rule.business_rule_detail]</a>';
+            }
+        }
+
+        function FND5020_businessRuleDetailsView(businessRuleId) {
+            new Aurora.Window({
+                id: 'FND5020_businessRuleDetailWindow',
+                url: $au('FND5020_businessRuleDetailLink').getUrl() + '?businessRuleId=' + businessRuleId,
+                title: '$[l:fnd_business_rule.business_rule_detail]',
+                fullScreen: true
+            }).on('close', function () {
+                $au('FND5020_businessRuleResultDs').query();
+            });
+        }
+
+        function FND5020_businessRuleSubmitSuccess(ds, res) {
+            $au('FND5020_businessRuleResultDs').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND5020_docCategoryDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_DOC_CATEGORY/"/>
+            <a:dataSet id="FND5020_businessRuleQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="businessRuleCode" prompt="fnd_business_rule.business_rule_code"/>
+                    <a:field name="businessRuleName" prompt="fnd_business_rule.business_rule_name"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="FND5020_docCategoryDs"
+                             returnField="docCategory" valueField="value"
+                             prompt="fnd_business_rule.doc_category_name"/>
+                    <a:field name="docCategory"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND5020_businessRuleResultDs" autoQuery="true" baseUrl="/fnd/business-rule"
+                       queryDataSet="FND5020_businessRuleQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="businessRuleCode" required="true" prompt="fnd_business_rule.business_rule_code"/>
+                    <a:field name="businessRuleName"
+                             prompt="fnd_business_rule.business_rule_name"
+                             dto="com.hand.hec.panda.fnd.dto.FndBusinessRule" dtoId="businessRuleId"/>
+                    <a:field name="docCategoryName" required="true" displayField="meaning"
+                             options="FND5020_docCategoryDs"
+                             returnField="docCategory" valueField="value"
+                             prompt="fnd_business_rule.doc_category_name"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="enabledFlag" checkedValue="Y" uncheckedValue="N" defaultValue="Y" required="true"
+                             prompt="fnd_business_rule.enabled_flag"/>
+                </a:fields>
+
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND5020_businessRuleSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND5020_businessRuleResultGrid" type="add" width="80"/>
+                <a:gridButton bind="FND5020_businessRuleResultGrid" type="save" width="80"/>
+                <a:gridButton bind="FND5020_businessRuleResultGrid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND5020_businessRuleQueryDs" resultTarget="FND5020_businessRuleResultDs"
+                         style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:label name="separator"/>
+                    <a:textField name="businessRuleCode" bindTarget="FND5020_businessRuleQueryDs" typeCase="upper"/>
+                    <a:textField name="businessRuleName" bindTarget="FND5020_businessRuleQueryDs"/>
+                    <a:comboBox name="docCategoryName" bindTarget="FND5020_businessRuleQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND5020_businessRuleResultGrid" bindTarget="FND5020_businessRuleResultDs" marginHeight="115"
+                marginWidth="23" navBar="true">
+            <a:columns>
+                <a:column name="businessRuleCode" align="center" editorFunction="FND5020_editorFun" width="80"/>
+                <a:column name="businessRuleName" align="left" editor="FND5020_tld" width="120"/>
+                <a:column name="docCategoryName" align="left" editor="FND5020_cb" width="120"/>
+                <a:column name="enabledFlag" align="center" editor="FND5020_chk" width="80"/>
+                <a:column name="businessRuleDetails" renderer="FND5020_businessRuleDetails" align="center" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="FND5020_tld"/>
+                <a:textField id="FND5020_tf_01"/>
+                <a:textField id="FND5020_tf_02" typeCase="upper"/>
+                <a:lov id="FND5020_lov"/>
+                <a:checkBox id="FND5020_chk"/>
+                <a:comboBox id="FND5020_cb"/>
+                <a:numberField id="FND5020_nf" allowDecimals="false" allowNegative="false"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

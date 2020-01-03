@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019/01/07 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 核算主体定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:view>
+        <a:link id="GLD2020_gld_accounting_entities_create_link" url="$[/request/@context_path]/gld/GLD2020/gld_accounting_entities_create.screen"/>
+        <a:link id="GLD2020_gld_accounting_entities_details_link" url="$[/request/@context_path]/gld/GLD2020/gld_accounting_entities_details.screen"/>
+        <a:link id="GLD2020_gld_accounting_entities_assign_sob_link" url="$[/request/@context_path]/gld/GLD2020/gld_accounting_entities_assign_sob.screen"/>
+        <a:link id="GLD2020_batchAssignAccount_link" url="$[/request/@context_path]/gld/GLD2020/gld_accounting_entities_batch_assign_accounts.screen"/>
+        <a:link id="GLD2020_gld_accounting_entities_assign_be_link" url="$[/request/@context_path]/gld/GLD2020/gld_acc_entity_ref_bgt_entities.screen"/>
+        <script><![CDATA[
+            function GLD2020_accEntityQuery() {
+                $au('GLD2020_accounting_entities_result_ds').query();
+            }
+
+            //打开核算主体明细
+            function GLD2020_openDetails(value, record, name) {
+                if (!record.isNew) {
+                    var url = $au('GLD2020_gld_accounting_entities_details_link').getUrl() + '?accEntityId=' + record.get('accEntityId') + '&setOfBooksId=' + record.get('setOfBooksId');
+                    return '<a href="javascript:GLD2020_openEditDetails(\'' + url + '\')">' + value + '</a>';
+                }
+            }
+
+            function GLD2020_openEditDetails(url) {
+                new Aurora.Window({
+                    id: 'GLD2020_View_Edit_Details',
+                    url: url,
+                    title: '$[l:gld_accounting_entity.detailsedit]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    GLD2020_accEntityQuery();
+                });
+            }
+
+            //新增核算主体
+            function GLD2020_openCreateEntitiesWindow(grid, record, row, index) {
+                new Aurora.Window({
+                    id: 'GLD2020_entities_create_window',
+                    url: $au('GLD2020_gld_accounting_entities_create_link').getUrl(),
+                    title: '$[l:gld_accouning_entity.create]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+            //批量分配科目
+            function GLD2020_batchAssignAccount() {
+                var resultDs = $au('GLD2020_accounting_entities_result_ds');
+                var selectRecord = resultDs.getSelected();
+                if (selectRecord.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < selectRecord.length;i++) {
+                    if (selectRecord[i].isNew) {
+                        Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.data_check_failure]', null, 250, 100);
+                        return;
+                    }
+                }
+
+                //校验选中核算主体是否同一个账套
+                for (var i = 0;i < selectRecord.length;i++) {
+                    var setOfBooksId1 = selectRecord[i].get('setOfBooksId');
+                    for (var j = i + 1;j < selectRecord.length;i++) {
+                        var setOfBooksId2 = selectRecord[j].get('setOfBooksId');
+                        if (setOfBooksId1 != setOfBooksId2) {
+                            Aurora.showMessage('$[l:prompt]', '$[l:prompt.acc_entity_batch_asgn_account]', null, 300, 100);
+                            return false;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                for (var i = 0;i < selectRecord.length;i++) {
+                    var setOfBooksId = selectRecord[i].get('setOfBooksId');
+                }
+                var url = $au('GLD2020_batchAssignAccount_link').getUrl() + '?setOfBooksId=' + setOfBooksId;
+                new Aurora.Window({
+                    id: 'GLD2020_batchAssignAccount_window',
+                    url: url,
+                    title: '$[l:gld.batch_assign_account]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+
+            //分配预算实体
+            function GLD2020_assignBgtEntity(value, record, name) {
+                if (!record.isNew) {
+                    var url = $au('GLD2020_gld_accounting_entities_assign_be_link').getUrl() + '?accEntityId=' + record.get('accEntityId');
+                    return '<a href="javascript:GLD2020_viewAssignBe(\'' + url + '\')">' + '$[l:gld_accounting_entity.assignbgt]' + '</a>';
+
+                }
+            }
+
+            function GLD2020_viewAssignBe(url) {
+                new Aurora.Window({
+                    id: 'Gld2020_View_Assign_Be',
+                    url: url,
+                    title: '$[l:gld_accounting_entity.assignbgt]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    GLD2020_accEntityQuery();
+                });
+            }
+
+            //分配账套
+            function GLD2020_assignSob(value, record, name) {
+                if (!record.isNew) {
+                        var url = $au('GLD2020_gld_accounting_entities_assign_sob_link').getUrl() + '?accEntityId=' + record.get('accEntityId');
+                        return '<a href="javascript:GLD2020_viewAssignSob(\'' + url + '\')">' + '$[l:gld_accounting_entity.assignsob]' + '</a>';
+                }else{
+                    return '';
+                }
+            }
+
+            function GLD2020_viewAssignSob(url) {
+                new Aurora.Window({
+                    id: 'Gld2020_View_Assign_Sob',
+                    url: url,
+                    title: '$[l:gld_accounting_entity.assignsob]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    GLD2020_accEntityQuery();
+                });
+            }
+
+            //保存预算实体
+            function GLD2020_accounting_entities_save(){
+                var ds = $au('GLD2020_accounting_entities_result_ds');
+                var records = ds.getAll();
+                for(var i = 0;i<records.length;i++) {
+                    //保存默认预算实体
+                    //使用create创建的record任何时候都是new，所以_status为add，后台需要额外判断
+                    debugger;
+                    var bgtrecord = $au('GLD2020_accEntityDefaultBe').create();
+                    bgtrecord.set('refId', records[i].get('beRefId'));
+                    bgtrecord.set('accEntityId', records[i].get('accEntityId'));
+                    bgtrecord.set('bgtEntityId', records[i].get('bgtEntityId'));
+                    bgtrecord.set('enabledFlag', 'Y');
+                    bgtrecord.set('defaultFlag', 'Y');
+                    $au('GLD2020_accEntityDefaultBe').submit();
+                }
+            }
+            function GLD2020_onAccEntitySubmitSuccessFun(dataSet, res) {
+                GLD2020_accEntityQuery();
+            }
+
+            function GLD2020_gridCellClick(grid, row, name, record) {
+                var accEntityId = record.get('accEntityId');
+                if (name == 'bgtEntityName') {
+                    record.getField(name).setLovPara('accEntityId', accEntityId);
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_accounting_entities_query_ds">
+                <a:fields>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="accEntityCode" prompt="gldaccountingentity.accentitycode"/>
+                    <a:field name="setOfBooksName" prompt="gld_accounting_entity.default_set_of_books_id"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_accounting_entities_result_ds" queryUrl="$[/request/@context_path]/gld/account-entity/queryMore" queryDataSet="GLD2020_accounting_entities_query_ds" selectable="true" autoPageSize="true" autoQuery="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gldaccountingentity.accentitycode"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+
+                    <a:field name="companyTypeDisplay" prompt="gld_accounting_entity.company_type"/>
+                    <a:field name="companyType"/>
+
+                    <a:field name="functionalCurrencyName" prompt="gld_accounting_entity.functional_currency_name"/>
+                    <a:field name="functionalCurrencyCode"/>
+
+                    <a:field name="payCurrencyName" prompt="gld_accounting_entity.pay_currency_name"/>
+                    <a:field name="payCurrencyCode"/>
+
+                    <a:field name="sobRefId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="setOfBooksName" prompt="gld_accounting_entity.default_set_of_books_id"/>
+
+                    <a:field name="bgtEntityName" lovCode="LOV_ACC_ASGN_BGT" title="gld_accounting_entity.assignbgt" prompt="gld_acc_entity.default_bgt_entity">
+                        <a:mapping>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                            <a:map from="description" to="bgtEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtEntityId"/>
+
+                    <a:field name="beRefId"/>
+                    <a:field name="startDateActive" readOnly="true" prompt="gld_accounting_entity.start_date_active"/>
+                    <a:field name="endDateActive" readOnly="true" prompt="gld_accounting_entity.end_date_active"/>
+                </a:fields>
+               <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_onAccEntitySubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_accEntityDefaultSob" submitUrl="$[/request/@context_path]/gld/acc-entity-ref-sob/submit">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="enabledFlag"/>
+                    <a:field name="defaultFlag"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_accEntityDefaultBe" submitUrl="$[/request/@context_path]/gld/acc-entity-ref-be/submit">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="enabledFlag"/>
+                    <a:field name="defaultFlag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="GLD2020_accounting_entities_grid" click="GLD2020_openCreateEntitiesWindow" text="hap.add" width="80"/>
+                <a:toolbarButton click="GLD2020_accounting_entities_save" text="hap.save" width="80"/>
+                <a:toolbarButton click="GLD2020_batchAssignAccount" text="gld.batch_assign_account" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="GLD2020_accounting_entities_query_ds" resultTarget="GLD2020_accounting_entities_result_ds" style="border:none; width:100%;">
+                <a:formToolBar labelWidth="120">
+                    <a:textField name="accEntityCode" bindTarget="GLD2020_accounting_entities_query_ds" typeCase="upper"/>
+                    <a:textField name="accEntityName" bindTarget="GLD2020_accounting_entities_query_ds"/>
+                    <a:textField name="setOfBooksName" bindTarget="GLD2020_accounting_entities_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="GLD2020_accounting_entities_grid" bindTarget="GLD2020_accounting_entities_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="accEntityCode" align="center" renderer="GLD2020_openDetails" sortable="true" width="100"/>
+                <a:column name="accEntityName" align="left" width="200"/>
+                <a:column name="functionalCurrencyName" align="center" sortable="true" width="120"/>
+                <a:column name="payCurrencyName" align="center" width="120"/>
+                <a:column name="companyTypeDisplay" align="center" width="120"/>
+                <a:column name="startDateActive" align="center" editor="GLD2020_grid_dp" renderer="Aurora.formatDate" width="120"/>
+                <a:column name="endDateActive" align="center" editor="GLD2020_grid_dp" renderer="Aurora.formatDate" width="120"/>
+                <a:column name="bgtEntityName" align="center" editor="GLD2020_grid_lov" width="120"/>
+                <a:column name="setOfBooksName" align="center" width="150"/>
+                <a:column name="assignBe" align="center" renderer="GLD2020_assignBgtEntity" width="80"/>
+                <a:column name="assignSob" align="center" renderer="GLD2020_assignSob" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="GLD2020_grid_lov"/>
+                <a:datePicker id="GLD2020_grid_dp"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="GLD2020_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

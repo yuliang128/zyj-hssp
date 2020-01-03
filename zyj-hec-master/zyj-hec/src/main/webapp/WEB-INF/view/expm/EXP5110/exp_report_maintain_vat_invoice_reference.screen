@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <a:model-query model="vat.VAT1010.vat_invoice_main_query" rootPath="invoice"/>
+        <a:model-query fetchAll="true" model="vat.VAT1010.vat_invoice_line_query" rootPath="invoice_lines"/>
+        <s:server-script><![CDATA[
+            importPackage(java.lang);
+            importPackage(Packages.uncertain.composite);
+            
+            function getTd(text, cssClass, style) {
+                var td = new CompositeMap('td');
+                td['class'] = cssClass;
+                td['style'] = style;
+                td.setText(text);
+                return td;
+            }
+            //头信息补全
+            var invoiceHeader = $ctx.model.getChild('invoice').getChildren()[0];
+            for (key in invoiceHeader) {
+                if (key != "invoice_distrect" || key != "invoice_type") {
+                    var td = new CompositeMap(CompositeUtil.findChild($config(), 'td', 'id', key));
+                    td.setText(invoiceHeader[key] || '');
+                }
+            }
+        ]]></s:server-script>
+    </a:init-procedure>
+    <a:view>
+        <link href="${/request/@context_path}/css/4.0/invoice.css"/>
+        <script src="${/request/@context_path}/javascripts/4.0/invoice.js"/>
+        <script><![CDATA[
+            function EXP5110_invoiceTaxAmountSumRenderer(data, name) {
+                var sumAmount = 0;
+                for (var i = 0;i < data.length;i++) {
+                    var record = data[i];
+                    sumAmount += parseFloat(record.get('tax_amount'));
+                }
+            
+                return '<span style="font-weight:bold;">' + sumAmount + '</span>';
+            }
+            
+            
+            function EXP5110_invoiceWithoutTaxAmountSumRenderer(data, name) {
+                var sumAmount = 0;
+                for (var i = 0;i < data.length;i++) {
+                    var record = data[i];
+                    sumAmount += parseFloat(record.get('without_tax_amount'));
+                }
+            
+                return '<span style="font-weight:bold;">' + sumAmount + '</span>';
+            }
+            
+            function EXP5110_referenceInvoiceLine() {
+                //支持报销单行关联和报销单分配行直接关联
+                if ('${/parameter/@line_ds_id}') {
+                    var lineDs = $au('${/parameter/@line_ds_id}');
+                    var lineRecord = lineDs.getCurrentRecord();
+                } else if ('${/parameter/@dist_ds_id}') {
+                    lineDs = $au('${/parameter/@dist_ds_id}');
+                    lineRecord = lineDs.getCurrentRecord();
+                } else {
+                    Aurora.showErrorMessage('错误', '请在报销单页面进行发票关联!');
+                }
+                var invoiceRecord = $au('EXP5110_reference_invoice_ds').getAt(0);
+                var selectedInvoiceLineRecord = $au('EXP5110_reference_invoice_line_ds').getSelected()[0];
+            
+                //设置原始数据行
+                lineRecord.set('invoice_code', invoiceRecord.get('invoice_code'));
+                lineRecord.set('invoice_number', invoiceRecord.get('invoice_number'));
+                lineRecord.set('invoice_date', invoiceRecord.get('invoice_date'));
+                //金额字段不一致
+                lineRecord.set('invoice_amount', invoiceRecord.get('amount'));
+                lineRecord.set('invoice_id', invoiceRecord.get('invoice_id'));
+                lineRecord.set('invoice_line_id', selectedInvoiceLineRecord.get('invoice_line_id'));
+                //非增值税专用发票，不带出税金相关信息
+                if (invoiceRecord.get('invoice_type') == 'VAT_SPECIAL') {
+                    //计算税率，并根据相近原则自动选择税率信息带到行上
+                    var taxRate = invoiceRecord.get('tax_amount') / invoiceRecord.get('amount');
+                    //如果算出来的税率不为数字，给一个1让他自动计算
+                    if (isNaN(taxRate)) {
+                        taxRate = 1;
+                    }
+                    var totalTaxRecords = $au('EXP5110_reference_tax_rate_type_ds').getAll();
+                    //选择相近原则
+                    //使用当前税率和所有税率的比例进行相除，相除结果 - 1算绝对值，使用绝对值比较大小，最小的说明最相近
+                    var nearestTaxTypeName, nearestTaxTypeId, nearestTaxTypeRate, currentDiff, nearestDiff;
+                    for (var i = 0;i < totalTaxRecords.length;i++) {
+                        var taxRecord = totalTaxRecords[i];
+                        currentDiff = Math.abs(1 - taxRate / taxRecord.get('tax_type_rate'));
+                        if (!nearestDiff || currentDiff < nearestDiff) {
+                            nearestDiff = currentDiff;
+                            nearestTaxTypeName = taxRecord.get('tax_type_name');
+                            nearestTaxTypeId = taxRecord.get('tax_type_id');
+                            nearestTaxTypeRate = taxRecord.get('tax_type_rate');
+                        }
+                    }
+            
+                    if (nearestTaxTypeName && nearestTaxTypeId && nearestTaxTypeRate) {
+                        lineRecord.set('tax_type_name', nearestTaxTypeName);
+                        lineRecord.set('tax_type_id', nearestTaxTypeId);
+                        lineRecord.set('tax_type_rate', nearestTaxTypeRate);
+                    }
+            
+                    //为了防止自动计算的税金覆盖了发票的实际税金，将税金的带出放到后面
+                    lineRecord.set('tax_amount', invoiceRecord.get('tax_amount'));
+                }
+            
+                var currentInvoiceRecord = $au('EXP5110_current_vat_invoice_ds').getAt(0);
+                currentInvoiceRecord.set('invoice_code', invoiceRecord.get('invoice_code'));
+                currentInvoiceRecord.set('invoice_number', invoiceRecord.get('invoice_number'));
+                currentInvoiceRecord.set('invoice_date', invoiceRecord.get('invoice_date'));
+                currentInvoiceRecord.set('amount', invoiceRecord.get('amount'));
+                currentInvoiceRecord.set('tax_amount', invoiceRecord.get('tax_amount'));
+                currentInvoiceRecord.set('invoice_id', invoiceRecord.get('invoice_id'));
+                currentInvoiceRecord.set('purchaser_name', invoiceRecord.get('purchaser_name'));
+                currentInvoiceRecord.set('purchaser_tax_number', invoiceRecord.get('purchaser_tax_number'));
+                currentInvoiceRecord.set('seller_name', invoiceRecord.get('seller_name'));
+                currentInvoiceRecord.set('seller_tax_number', invoiceRecord.get('seller_tax_number'));
+                currentInvoiceRecord.set('save_status', invoiceRecord.get('save_status'));
+                currentInvoiceRecord.set('invoice_source', invoiceRecord.get('invoice_source'));
+            
+            	EXP5110_onInvoiceRelationReady();
+            
+                $au('EXP5110_currentVatInvoiceLineDs').query();
+            
+                $au('EXP5110_exp_report_maintain_vat_invoice_reference_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_reference_tax_rate_type_ds" loadData="true" model="hec_util.fnd_tax_type_code_vl_lov"/>
+            <a:dataSet id="EXP5110_reference_invoice_ds">
+                <a:datas dataSource="/model/invoice"/>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_reference_invoice_line_ds" selectable="true" selectionModel="single">
+                <a:datas dataSource="/model/invoice_lines"/>
+            </a:dataSet>
+        </a:dataSets>
+        <center>
+            <div style="width: 700pt; margin: 0 auto; padding: 20pt;">
+                <table cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td width="20%">
+                            <table cellpadding="5pt" cellspacing="5pt">
+                                <tr>
+                                    <td>
+                                        <div id="qrcode"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="common" colspan="2"/>
+                                </tr>
+                                <tr>
+                                    <td class="common"><![CDATA[机器编号:]]></td>
+                                    <td id="machine_number" class="common"/>
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="text-align: center;">
+                            <table cellpadding="5pt" cellspacing="5pt" width="100%">
+                                <tr>
+                                    <td id="invoice_type" style="font-size: 21pt; color: #9E5209; text-align: center; "><![CDATA[增值税发票]]></td>
+                                </tr>
+                                <tr/>
+                                <tr/>
+                                <tr>
+                                    <td>
+                                        <hr style="height: 2pt; border-top:2pt double #9E6B17;"/>
+                                        <hr style="height: 2pt; border-top:2pt double #9E6B17;"/>
+                                    </td>
+                                    <td/>
+                                </tr>
+                            </table>
+                        </td>
+                        <td width="30%">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common" width="100%">
+                                <tr>
+                                    <td style="color: #9E5209; text-align: right;" width="100pt"><![CDATA[发票代码:]]></td>
+                                    <td id="invoice_code"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; text-align: right;" width="100pt"><![CDATA[发票号码:]]></td>
+                                    <td id="invoice_number"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; text-align: right;" width="100pt"><![CDATA[开票日期:]]></td>
+                                    <td id="invoice_date"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; text-align: right;" width="100pt"><![CDATA[校&nbsp;&nbsp;验&nbsp;&nbsp;码:]]></td>
+                                    <td id="check_code"/>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <table cellpadding="0" cellspacing="0" class="b1" width="100%">
+                    <tr>
+                        <td class="b1" width="20pt">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common" style="color: #9E5209;">
+                                <tr>
+                                    <td><![CDATA[购]]></td>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[买]]></td>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[方]]></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="b1">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common">
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[名&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;称:]]></td>
+                                    <td id="purchaser_name"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[纳税人识别号:]]></td>
+                                    <td id="purchaser_tax_number"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[地&nbsp;址&nbsp;、&nbsp;电&nbsp;话:]]></td>
+                                    <td id="purchaser_address_phone"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[开户行及行号:]]></td>
+                                    <td id="purchaser_bank_account"/>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="b1" width="20pt">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common" style="color: #9E5209;">
+                                <tr>
+                                    <td><![CDATA[密]]></td>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[码]]></td>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[区]]></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="b1" width="300pt"/>
+                    </tr>
+                </table>
+                <table id="goods" cellpadding="0" cellspacing="0" class="b2" width="100%">
+                    <tbody id="goods_body">
+                        <tr>
+                            <td class="b3 common" style="width:">
+                                <a:vBox>
+                                    <a:grid id="EXP5110_reference_invoice_line_grid" autoAdjustHeight="true" bindTarget="EXP5110_reference_invoice_line_ds" style="margin-top:2px;margin-left:2px;" width="915">
+                                        <a:columns>
+                                            <a:column name="goods_or_taxable_service" prompt="货物或应税劳务、服务名称" width="180"/>
+                                            <a:column name="specifications" prompt="规格型号" width="120"/>
+                                            <a:column name="unit" prompt="单位" width="120"/>
+                                            <a:column name="quantity" align="right" prompt="数量" width="80"/>
+                                            <a:column name="unit_price" align="right" prompt="单价" width="80"/>
+                                            <a:column name="without_tax_amount" align="right" footerRenderer="EXP5110_invoiceWithoutTaxAmountSumRenderer" prompt="金额" width="80"/>
+                                            <a:column name="tax_rate_name" align="center" prompt="税率" width="80"/>
+                                            <a:column name="tax_amount" align="right" footerRenderer="EXP5110_invoiceTaxAmountSumRenderer" prompt="税额" width="80"/>
+                                        </a:columns>
+                                    </a:grid>
+                                    <a:hBox>
+                                        <a:button click="EXP5110_referenceInvoiceLine" text="关联发票" type="save"/>
+                                    </a:hBox>
+                                </a:vBox>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table cellpadding="0" cellspacing="0" class="b1" style="border-top: none;" width="100%">
+                    <tr>
+                        <td class="b2 common" style="border-top: none; text-align: center; color: #9E5209;" width="20%"><![CDATA[价税合计（大写）]]></td>
+                        <td id="amount_zhs" class="b4 common" style="text-align: left; padding-left: 5pt; " width="50%"/>
+                        <td class="b5 common" style="text-align: center; color: #9E5209;" width="10%"><![CDATA[（小写）]]></td>
+                        <td id="amount" class="b6 common" style="text-align: right; padding-right: 5pt;" width="20%"/>
+                    </tr>
+                </table>
+                <table cellpadding="0" cellspacing="0" class="b2 common" width="100%">
+                    <tr>
+                        <td class="b2" width="20pt">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common" style="color: #9E5209;">
+                                <tr>
+                                    <td><![CDATA[销]]></td>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[售]]></td>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[方]]></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="b2">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common">
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[名&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;称:]]></td>
+                                    <td id="seller_name"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[纳税人识别号:]]></td>
+                                    <td id="seller_tax_number"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[地&nbsp;址&nbsp;、&nbsp;电&nbsp;话:]]></td>
+                                    <td id="seller_address_phone"/>
+                                </tr>
+                                <tr>
+                                    <td style="color: #9E5209; "><![CDATA[开户行及行号:]]></td>
+                                    <td id="seller_bank_account"/>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="b2" width="20pt">
+                            <table cellpadding="5pt" cellspacing="5pt" class="common" style="color: #9E5209;">
+                                <tr>
+                                    <td><![CDATA[备]]></td>
+                                </tr>
+                                <tr>
+                                    <td/>
+                                </tr>
+                                <tr>
+                                    <td/>
+                                </tr>
+                                <tr>
+                                    <td/>
+                                </tr>
+                                <tr>
+                                    <td><![CDATA[注]]></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td id="remark" class="b2" style="vertical-align: top;" width="300pt"/>
+                    </tr>
+                </table>
+            </div>
+        </center>
+    </a:view>
+</a:screen>

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtStructureMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtStructure">
+        <result column="STRUCTURE_ID" property="structureId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="STRUCTURE_CODE" property="structureCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PERIOD_SET_ID" property="periodSetId" jdbcType="DECIMAL"/>
+        <result column="PERIOD_STRATEGY" property="periodStrategy" jdbcType="VARCHAR"/>
+        <result column="NOTE" property="note" jdbcType="VARCHAR"/>
+        <result column="ENTITY_FLAG" property="entityFlag" jdbcType="VARCHAR"/>
+        <result column="CENTER_FLAG" property="centerFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="BGT_ORG_CODE" property="bgtOrgCode" jdbcType="VARCHAR"/>
+        <result column="BGT_ORG_DESC" property="bgtOrgDesc" jdbcType="VARCHAR"/>
+        <result column="PERIOD_SET_CODE" property="periodSetCode" jdbcType="VARCHAR"/>
+        <result column="PERIOD_SET_DESC" property="periodSetDesc" jdbcType="VARCHAR"/>
+        <result column="STRUCTURE_NAME" property="structureName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryAll" parameterType="com.hand.hec.bgt.dto.BgtStructure" resultMap="BaseResultMap">
+        SELECT
+        t.structure_id,
+        t.bgt_org_id,
+        bo.bgt_org_code,
+        bot.description AS bgt_org_desc,
+        t.structure_code,
+        bt.description,
+        t.period_set_id,
+        bps.period_set_code AS period_set_code,
+        bpst.PERIOD_SET_NAME AS period_set_desc,
+        t.period_strategy,
+        (SELECT
+        scv.MEANING
+        FROM
+        sys_code_b sc,
+        sys_code_value_b scv
+        WHERE
+        sc.CODE = 'BUDGET_PERIOD'
+        AND scv.CODE_ID = sc.CODE_ID
+        AND scv.`VALUE` = t.PERIOD_STRATEGY
+        ) AS period_strategy_display,
+        t.entity_flag,
+        t.center_flag,
+        t.enabled_flag,
+        t.note
+        FROM
+        bgt_structure t
+        LEFT OUTER JOIN bgt_structure_tl bt ON ( t.STRUCTURE_ID = bt.STRUCTURE_ID AND bt.LANG =
+        #{request.locale,jdbcType=VARCHAR} )
+        LEFT OUTER JOIN bgt_organization bo ON ( t.bgt_org_id = bo.bgt_org_id )
+        LEFT OUTER JOIN bgt_organization_tl bot ON ( bo.BGT_ORG_ID = bot.BGT_ORG_ID AND bot.LANG =
+        #{request.locale,jdbcType=VARCHAR} )
+        LEFT OUTER JOIN bgt_period_set bps ON ( t.period_set_id = bps.PERIOD_SET_ID )
+        LEFT OUTER JOIN bgt_period_set_tl bpst ON ( bps.PERIOD_SET_ID = bpst.PERIOD_SET_ID AND bpst.LANG =
+        #{request.locale,jdbcType=VARCHAR} )
+        <where>
+            <if test="structureId!=null">
+                AND t.structure_id = #{structureId}
+            </if>
+            <if test="bgtOrgId!=null">
+                AND t.bgt_org_id = #{bgtOrgId}
+            </if>
+            <if test="structureCode!=null">
+                AND t.structure_code LIKE concat('%',#{structureCode},'%')
+            </if>
+            <if test="description!=null">
+                AND bt.description LIKE concat('%',#{description},'%')
+            </if>
+        </where>
+        <trim prefix="where" prefixOverrides="AND">
+        </trim>
+    </select>
+
+    <update id="updateByStructureId" parameterType="com.hand.hec.bgt.dto.BgtStructure">
+      update bgt_structure
+       set period_strategy  = #{periodStrategy},
+           note             = #{note},
+           enabled_flag     = #{enabledFlag},
+           last_updated_by  = #{request.userId,jdbcType=DECIMAL},
+           last_update_date = CURRENT_TIMESTAMP
+     where structure_id = #{structureId}
+    </update>
+
+    <select id="checkBgtStructure" resultMap="BaseResultMap">
+        select t.* from bgt_structure t
+        where
+        (
+            #{filtrateMethod} = 'INCLUDE'
+            and (#{structureCodeFrom} is null or t.structure_code &gt;= #{structureCodeFrom})
+            and (#{structureCodeTo} is null or t.structure_code &lt;= #{structureCodeTo})
+        )
+        or
+        (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (#{structureCodeFrom} is null or t.structure_code &lt; #{structureCodeFrom})
+                or (#{structureCodeTo} is null or t.structure_code &gt; #{structureCodeTo})
+            )
+        )
+        and t.enabled_flag = 'Y'
+    </select>
+    <select id="getStructureDimInfo" resultType="java.util.Map">
+        select
+            d.dimension_id,
+            d.dimension_sequence,
+            d.dimension_code,
+            d.description as dimension_name,
+            dv.dimension_value_id as default_dim_value_id,
+            dvt.description as default_dim_value_name,
+            concat('dimension' , d.dimension_sequence , 'Id') as return_field,
+            concat('dimension' , d.dimension_sequence , 'Name') as display_field,
+            l.layout_priority
+        from
+            bgt_structure_layout l
+        left join fnd_dimension d on
+            l.dimension_id = d.dimension_id
+        left join fnd_dimension_value dv on
+            l.default_dim_value_id = dv.dimension_value_id
+            and dv.enabled_flag = 'Y'
+        left join fnd_dimension_value_tl dvt on
+            dv.dimension_value_id = dvt.dimension_value_id
+            and dvt.lang = #{request.locale}
+        where
+            l.structure_id = #{structureId}
+            and l.layout_position = #{position}
+        order by
+            l.layout_priority
+    </select>
+    
+    <select id="queryForBgtJournal" resultMap="BaseResultMap">
+        SELECT
+            v.structure_id,
+            v.structure_code,
+            st.description AS structure_name,
+            rs.default_flag
+        FROM
+            bgt_structure v
+            left outer join bgt_structure_tl st on (v.STRUCTURE_ID = st.STRUCTURE_ID and st.LANG = #{request.locale,jdbcType=VARCHAR})
+            left outer join bgt_journal_type_ref_strc rs on (rs.structure_id = v.structure_id)
+        WHERE
+            v.bgt_org_id = #{bgtOrgId }
+            AND rs.bgt_journal_type_id = #{bgtJournalTypeId }
+    </select>
+
+</mapper>

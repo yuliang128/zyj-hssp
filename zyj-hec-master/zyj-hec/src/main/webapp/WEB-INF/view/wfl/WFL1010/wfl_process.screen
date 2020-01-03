@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw
+    $Date: 2018
+    $Revision: 工作流定义
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="WFL1010_wflElementLink" url="$[/request/@context_path]/wfl/WFL1010/wfl_element.screen"/>
+        <a:link id="WFL1010_wflActionLink" url="$[/request/@context_path]/wfl/WFL1010/wfl_process_action.screen"/>
+        <a:link id="WFL1010_wflEditLink" url="$[/request/@context_path]/wfl/WFL1010/wfl_workflow_edit.screen"/>
+        <a:link id="WFL1010_wflTaskLink" url="$[/request/@context_path]/wfl/WFL1010/wfl_workflow_task.screen"/>
+        <a:link id="WFL1010_publishProcessLink" url="$[/request/@context_path]/wfl/process/publish-process"/>
+        <script><![CDATA[
+        function WFL1010_wflElementRender(value, record, name) {
+            var processId = record.get('processId');
+            if (!record.isNew) {
+                return '<a href="javascript:WFL1010_wflElementView(' + processId + ')">$[l:wfl_process.element_detail]</a>';
+            }
+        }
+
+        function WFL1010_wflElementView(processId) {
+            new Aurora.Window({
+                id: 'WFL1010_elementWindow',
+                url: $au('WFL1010_wflElementLink').getUrl() + '?processId=' + processId,
+                title: '$[l:wfl_process.element_detail]',
+                fullScreen: true
+            });
+        }
+
+        function WFL1010_wflActionRender(value, record, name) {
+            var processId = record.get('processId');
+            if (!record.isNew) {
+                return '<a href="javascript:WFL1010_wflActionView(' + processId + ')">$[l:wfl_process.action_detail]</a>';
+            }
+        }
+
+        function WFL1010_wflActionView(processId) {
+            new Aurora.Window({
+                id: 'WFL1010_actionWindow',
+                url: $au('WFL1010_wflActionLink').getUrl() + '?processId=' + processId,
+                title: '$[l:wfl_process.action_detail]',
+                side: 'right',
+                fullScreen: true
+            });
+        }
+
+        function WFL1010_wflEditRender(value, record, name) {
+            var processId = record.get('processId');
+            if (!record.isNew) {
+                return '<a href="javascript:WFL1010_wflEditView(' + processId + ')">$[l:wfl_process.wfl_edit]</a>';
+            }
+        }
+
+        function WFL1010_wflTaskRenderer(value, record, name) {
+            var processId = record.get('processId');
+            if (!record.isNew) {
+                return '<a href="javascript:WFL1010_wflTaskView(' + processId + ')">$[l:wfl_process.workflow_task]';
+            }
+        }
+
+        function WFL1010_wflTaskView(processId) {
+            new Aurora.Window({
+                id: 'WFL1010_taskWindow',
+                url: $au('WFL1010_wflTaskLink').getUrl() + '?processId=' + processId,
+                title: '$[l:wfl_process.workflow_task]',
+                side: 'right',
+                fullScreen: true
+            });
+        }
+
+        function WFL1010_wflEditView(processId) {
+            window.open($au('WFL1010_wflEditLink').getUrl() + '?processId=' + processId);
+        }
+
+        function WFL1010_processCodeEditorFun(record, name) {
+            if (record.isNew) {
+                return 'WFL1010_tf_edit';
+            }
+            return '';
+        }
+
+        function WFL1010_onWlfProcessCellClick(grid, row, name, record) {
+            //子流程标志和父流程控制
+            if (name == 'parentProcessName') {
+                if (record.get('subProcessFlag') == 'Y') {
+                    record.getField('parentProcessName').setReadOnly(false);
+                } else {
+                    record.getField('parentProcessName').setReadOnly(true);
+                }
+            }
+        }
+
+        function WFL1010_publishProcess() {
+            processList = $au('WFL1010_processResultDs').getJsonData(true);
+            Aurora.request({
+                url: $au('WFL1010_publishProcessLink').getUrl(),
+                para: processList,
+                success: function (res) {
+                    debugger;
+                }
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL1010_docCategoryDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_DOC_CATEGORY/"/>
+            <a:dataSet id="WFL1010_processQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="processCode" prompt="wfl_process.process_code"/>
+                    <a:field name="processName" prompt="wfl_process.process_name"/>
+                    <a:field name="docCategoryName" prompt="wfl_process.doc_category_name"
+                             displayField="meaning" options="WFL1010_docCategoryDs"
+                             returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL1010_processResultDs" autoQuery="true" baseUrl="/wfl/process"
+                       queryDataSet="WFL1010_processQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="processCode" prompt="wfl_process.process_code" required="true"/>
+                    <a:field name="processName" descIdField="process_name_id" prompt="wfl_process.process_name"
+                             required="true" dto="com.hand.hec.panda.wfl.dto.WflProcess" dtoId="processId"/>
+                    <a:field name="processNameId"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="WFL1010_docCategoryDs"
+                             prompt="wfl_process.doc_category_name" required="true"
+                             returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="subProcessFlag" checkedValue="Y" defaultValue="N"
+                             prompt="wfl_process.sub_process_flag" uncheckedValue="N"/>
+                    <a:field name="parentProcessName" lovCode="LOV_WFL_PROCESS"
+                             prompt="wfl_process.parent_process_name" title="wfl_process.parent_process_name">
+                        <a:mapping>
+                            <a:map from="processName" to="parentProcessName"/>
+                            <a:map from="processId" to="parentProcessId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentProcessId"/>
+                    <a:field name="processPageName" lovCode="LOV_WFL_PAGE" prompt="wfl_process.process_page_name"
+                             title="wfl_process.process_page_name">
+                        <a:mapping>
+                            <a:map from="pageName" to="processPageName"/>
+                            <a:map from="pageId" to="processPageId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="processPageId"/>
+                    <a:field name="viewPageName" lovCode="LOV_WFL_PAGE" prompt="wfl_process.view_page_name"
+                             title="wfl_process.view_page_name">
+                        <a:mapping>
+                            <a:map from="pageName" to="viewPageName"/>
+                            <a:map from="pageId" to="viewPageId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="viewPageId"/>
+                    <a:field name="startProcedureName" lovCode="LOV_WFL_PROCEDURE"
+                             prompt="wfl_process.start_procedure_name" title="wfl_process.start_procedure_name">
+                        <a:mapping>
+                            <a:map from="procedureName" to="startProcedureName"/>
+                            <a:map from="procedureId" to="startProcedureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="startProcedureId"/>
+                    <a:field name="endProcedureName" lovCode="LOV_WFL_PROCEDURE"
+                             prompt="wfl_process.end_procedure_name" title="wfl_process.end_procedure_name">
+                        <a:mapping>
+                            <a:map from="procedureName" to="endProcedureName"/>
+                            <a:map from="procedureId" to="endProcedureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="endProcedureId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="wfl_process.enabled_flag"
+                             required="true" uncheckedValue="N"/>
+                    <!--配置方式默认为SIMPLE-->
+                    <a:field name="configType" defaultValue="SIMPLE"/>
+                    <!--版本默认为1-->
+                    <a:field name="version" defaultValue="1"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="WFL1010_processResultGrid" text="hap.add" type="add" width="80"/>
+                <a:gridButton bind="WFL1010_processResultGrid" text="hap.save" type="save" width="80"/>
+                <a:gridButton bind="WFL1010_processResultGrid" text="hap.delete" type="delete" width="80"/>
+                <a:button click="WFL1010_publishProcess" text="wfl_process.publish_process" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="WFL1010_processQueryDs" resultTarget="WFL1010_processResultDs"
+                         style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:label name="separator"/>
+                    <a:textField name="processCode" bindTarget="WFL1010_processQueryDs"/>
+                    <a:textField name="processName" bindTarget="WFL1010_processQueryDs"/>
+                    <a:comboBox name="docCategoryName" bindTarget="WFL1010_processQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="WFL1010_processResultGrid" bindTarget="WFL1010_processResultDs" marginHeight="115" marginWidth="23"
+                navBar="true">
+            <a:columns>
+                <a:column name="processCode" align="center" editorFunction="WFL1010_processCodeEditorFun" width="150"/>
+                <a:column name="processName" align="left" editor="WFL1010_tld" width="120"/>
+                <a:column name="docCategoryName" align="left" editor="WFL1010_cb" width="120"/>
+                <a:column name="subProcessFlag" align="left" editor="WFL1010_chk" width="120"/>
+                <a:column name="parentProcessName" align="left" editor="WFL1010_lov" width="120"/>
+                <a:column name="processPageName" align="left" editor="WFL1010_lov" width="120"/>
+                <a:column name="viewPageName" align="left" editor="WFL1010_lov" width="120"/>
+                <a:column name="startProcedureName" align="left" editor="WFL1010_lov" width="120"/>
+                <a:column name="endProcedureName" align="left" editor="WFL1010_lov" width="120"/>
+                <a:column name="enabledFlag" align="left" editor="WFL1010_chk" width="80"/>
+                <a:column name="wflTask" align="center" renderer="WFL1010_wflTaskRenderer"/>
+                <a:column name="wflElement" align="center" renderer="WFL1010_wflElementRender"/>
+                <a:column name="wflAction" align="center" renderer="WFL1010_wflActionRender"/>
+                <a:column name="wflEdit" align="center" renderer="WFL1010_wflEditRender"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="WFL1010_tf"/>
+                <a:textField id="WFL1010_tf_edit" typeCase="upper"/>
+                <a:lov id="WFL1010_lov"/>
+                <a:checkBox id="WFL1010_chk"/>
+                <a:comboBox id="WFL1010_cb"/>
+                <a:datePicker id="WFL1010_dp"/>
+                <a:tledit id="WFL1010_tld"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="WFL1010_onWlfProcessCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

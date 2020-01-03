@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <!--<a:init-procedure>-->
+        <!--<a:model-query defaultWhereClause="v.req_pageElementCode = &apos;TRAVEL_STAY_LINES&apos;" model="expm.EXP4010.exp_requisition_line_dimension_fields_query" rootPath="staylined_line_dimensions"/>-->
+        <!--<a:model-query defaultWhereClause="v.req_pageElementCode = &apos;TRAVEL_STAY_LINES&apos;" model="expm.EXP4010.exp_requisition_line_object_fields_query" rootPath="staylined_line_objects"/>-->
+    <!--</a:init-procedure>-->
+    <a:view>
+        <script><![CDATA[
+            function EXP4010_onStaylinedEditorFocus(cmp) {
+                var name = cmp.binder.name;
+                var record = cmp.binder.ds.getCurrentRecord();
+                if (name == 'unitName') {
+                    record.getField('unitName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'positionName') {
+                    record.getField('positionName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'employeeName') {
+                    record.getField('employeeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'accEntityName') {
+                    record.getField('accEntityName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCenterName') {
+                    record.getField('respCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else if (name == 'placeName') {
+                    record.getField('placeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP4010_travel_stay_expense_type_ds').setQueryParameter('moExpReqTypeId', '$[/parameter/@moExpReqTypeId]');
+                    $au('EXP4010_travel_stay_expense_type_ds').setQueryParameter('pageElementCode', 'TRAVEL_STAY_LINES');
+                    $au('EXP4010_travel_stay_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP4010_travel_stay_expense_type_ds').query();
+                } else if (name == 'moReqItemName') {
+                    /*Modified by Arthur.Chen Date:2017-09-20 19:42:31
+                     1.动态获取mo_req_item_name字段的options
+                     */
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('moExpReqTypeId', '$[/parameter/@moExpReqTypeId]');
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('moExpenseTypeId', record.get('moExpenseTypeId'));
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('pageElementCode', 'TRAVEL_STAY_LINES');
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP4010_travel_stay_item_ds').query();
+                } else if (name == 'business_currency_name') {
+                    // Modify Tagin/2018.04.02 增加业务币种-支付币种获取汇率逻辑
+                    var dataSet = $au('EXP4010_currency_ds');
+                    dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                    dataSet.setQueryParameter('toCurrency', record.get('paymentCurrencyCode'));
+                    dataSet.query();
+                } else if (name == 'departurePlace') {
+                    record.getField('departurePlace').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'arrivalPlace') {
+                    record.getField('arrivalPlace').setLovPara('companyId', record.get('companyId'));
+                } 
+            }
+            
+            function EXP4010_staylinedPreRecord() {
+                $au('EXP4010_exp_requisition_view_travel_stay_line_ds').pre();
+            }
+            
+            function EXP4010_staylinedNextRecord() {
+                $au('EXP4010_exp_requisition_view_travel_stay_line_ds').next();
+            }
+            
+            function EXP4010_staylinedNewRecord() {
+                EXP4010_travelStayLineAdd();
+            }
+            
+            function EXP4010_staylinedExtendClose() {
+                $au(this.__host.id).close();
+            }
+            
+            function EXP4010_staylinedSaveRequisition() {
+                EXP4010_saveRequisition();
+            }
+            
+            Aurora.onReady(function() {
+                var dimFlag = false;
+                var objFlag = false;
+                for (cmpName in $A.CmpManager.cache) {
+                    if (cmpName.indexOf('EXP4010_view_stay_editor_') != -1) {
+                        $au(cmpName)['on']('focus', EXP4010_onStaylinedEditorFocus);
+                    }
+                    if (cmpName.indexOf('EXP4010_view_stay_editor_dim') != -1) {
+                        dimFlag = true;
+                    }
+                    if (cmpName.indexOf('EXP4010_view_stay_editor_obj') != -1) {
+                        objFlag = true;
+                    }
+                }
+                if (!dimFlag) {
+                    Ext.get('EXP4010_view_staylinedDimForm').setStyle('display', 'none');
+                }
+                if (!objFlag) {
+                    Ext.get('EXP4010_view_staylinedObjForm').setStyle('display', 'none');
+                }
+            });
+        ]]></script>
+        <a:screenBody>
+            <a:form showmargin="0" title="EXP_REQUISITION_HEADERS.TRAVEL_STAY_LINES" width="1010">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="EXP4010_staylinedPreRecord" text="hap_previous" width="70"/>
+                    <a:button click="EXP4010_staylinedNextRecord" text="hap_next" width="70"/>
+                    <a:button click="EXP4010_staylinedNewRecord" text="prompt.create" width="70"/>
+                    <a:button click="EXP4010_staylinedSaveRequisition" text="hap_save" width="70"/>
+                    <a:button click="EXP4010_staylinedExtendClose" text="hap_back" width="70"/>
+                </a:formToolbar>
+                <a:box column="3" padding="10" style="width:100%;">
+                    <a:numberField name="lineNumber" id="EXP4010_view_stay_editor_001" allowDecimals="false" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="hap_line_number" readOnly="true"/>
+                    <a:lov name="companyName" id="EXP4010_view_stay_editor_002" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.company_id" readOnly="true"/>
+                    <a:lov name="unitName" id="EXP4010_view_stay_editor_003" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.unit_id" readOnly="true"/>
+                    <a:lov name="positionName" id="EXP4010_view_stay_editor_004" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.position_id" readOnly="true"/>
+                    <a:lov name="employeeName" id="EXP4010_view_stay_editor_005" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_dists.employee_id" readOnly="true"/>
+                    <a:lov name="accEntityName" id="EXP4010_view_stay_editor_006" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="gld_accounting_entities.acc_entity_name" readOnly="true"/>
+                    <a:lov name="respCenterName" id="EXP4010_view_stay_editor_007" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.responsibility_center_id" readOnly="true"/>
+                    <a:comboBox name="moExpenseTypeName" id="EXP4010_view_stay_editor_008" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.expense_type_id" readOnly="true"/>
+                    <a:comboBox name="moReqItemName" id="EXP4010_view_stay_editor_009" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.exp_req_item_id" readOnly="true"/>
+                    <a:lov name="placeName" id="EXP4010_view_stay_editor_010" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.place_id" readOnly="true"/>
+                    <!--  <a:lov name="place_type_name" id="EXP4010_view_stay_editor_011" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REQUISITION_LINES.PLACE_TYPE_ID"/>
+                <a:datePicker name="date_from" id="EXP4010_view_stay_editor_012" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REQUISITION_LINES.DATE_FROM" renderer="Aurora.formatDate"/>
+                <a:datePicker name="date_to" id="EXP4010_view_stay_editor_013" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REQUISITION_LINES.DATE_TO" renderer="Aurora.formatDate"/> -->
+                    <!--     <a:comboBox name="transportation_name" id="EXP4010_view_stay_editor_010" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_TRAVEL_PLAN_LINES.TRANSPORTATION"/>
+                <a:comboBox name="seat_class_name" id="EXP4010_view_stay_editor_011" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REPORT_LINES.SEAT_CLASS"/>
+                <a:lov name="departure_place" id="EXP4010_view_stay_editor_012" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REPORT_TRAVEL_LINES.DEPARTURE_PLACE"/>
+                <a:datePicker name="departure_date" id="EXP4010_view_stay_editor_013" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_TRAVEL_PLAN_LINES.DEPARTURE_DATE" renderer="Aurora.formatDate"/>
+                <a:lov name="arrival_place" id="EXP4010_view_stay_editor_014" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REPORT_TRAVEL_LINES.ARRIVAL_PLACE"/>
+                <a:datePicker name="arrival_date" id="EXP4010_view_stay_editor_015" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REPORT_TRAVEL_LINES.ARRIVAL_DATE" renderer="Aurora.formatDate"/>
+                <a:lov name="peer_people_name" id="EXP4010_view_stay_editor_016" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="EXP_REQUISITION_TRAVEL_LINES.PEER_PEOPLE"/>
+                -->
+                    <a:datePicker name="accommodation_date_from" id="EXP4010_view_stay_editor_015" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_travel_lines.accommodation_date_from" readOnly="true" renderer="Aurora.formatDate"/>
+                    <a:datePicker name="accommodation_date_to" id="EXP4010_view_stay_editor_016" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_travel_lines.accommodation_date_to" readOnly="true" renderer="Aurora.formatDate"/>
+                    <a:comboBox name="business_currency_name" id="EXP4010_view_stay_editor_017" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="business_currency_name" readOnly="true"/>
+                    <a:numberField name="business_price" id="EXP4010_view_stay_editor_018" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="business_price" readOnly="true" renderer="Aurora.formatMoney"/>
+                    <!--
+                <a:textField id="EXP4010_view_stay_editor_016" name="biz2pay_exchange_type_name" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="BIZ2PAY_EXCHANGE_TYPE_NAME"/>
+                <a:textField id="EXP4010_view_stay_editor_017" name="biz2pay_exchange_rate" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="BIZ2PAY_EXCHANGE_RATE"/>
+                <a:textField id="EXP4010_view_stay_editor_018" name="payment_currency_name" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="EXP_REQUISITION_HEADERS.PAYMENT_CURRENCY_NAME"/>
+                <a:textField id="EXP4010_view_stay_editor_019" name="pay2fun_exchange_type_name" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="PAY2FUN_EXCHANGE_TYPE_NAME"/>
+                <a:textField id="EXP4010_view_stay_editor_020" name="pay2fun_exchange_rate" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="PAY2FUN_EXCHANGE_RATE"/>
+                <a:textField id="EXP4010_view_stay_editor_021" name="payment_price" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="PAYMENT_PRICE" renderer="Aurora.formatMoney"/>
+                <a:textField id="EXP4010_view_stay_editor_022" name="management_currency_name" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="FND_COMPANIES.MANAGING_CURRENCY"/>
+                <a:textField id="EXP4010_view_stay_editor_023" name="pay2mag_exchange_type_name" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="PAY2MAG_EXCHANGE_TYPE_NAME"/>
+                <a:textField id="EXP4010_view_stay_editor_024" name="pay2mag_exchange_rate" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="PAY2MAG_EXCHANGE_RATE"/>
+                <a:textField id="EXP4010_view_stay_editor_025" name="management_price" bindTarget="EXP4010_exp_requisition_standard_line_ds" prompt="MANAGEMENT_PRICE" renderer="Aurora.formatMoney"/>
+                -->
+                    <a:numberField name="primaryQuantity" id="EXP4010_view_stay_editor_026" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.primary_quantity" readOnly="true"/>
+                    <a:numberField name="businessAmount" id="EXP4010_view_stay_editor_027" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="business_amount" readOnly="true" renderer="Aurora.formatMoney"/>
+                    <a:numberField name="requisitionFunctionalAmount" id="EXP4010_view_stay_editor_030" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_lines.requisition_functional_amount" readOnly="true" renderer="Aurora.formatMoney"/>
+                    <a:lov name="periodName" id="EXP4010_view_stay_editor_031" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="exp_requisition_dists.period_name" readOnly="true"/>
+                </a:box>
+                <a:box style="width:100%">
+                    <a:textArea name="description" id="EXP4010_view_stay_editor_032" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" colspan="3" prompt="exp_requisition_lines.description" readOnly="true" width="800"/>
+                </a:box>
+            </a:form>
+            <a:form id="EXP4010_view_staylinedDimForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="dimension_information" width="1010">
+                <a:placeHolder id="EXP4010_view_staylinedLineDimensionEditors"/>
+            </a:form>
+            <a:form id="EXP4010_view_staylinedObjForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expense_object_information" width="1010">
+                <a:placeHolder id="EXP4010_view_staylinedLineObjectEditors"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP4010_view_staylinedLineDimensionEditors">
+            <p:loop source="/model/streamlinedLineDimensions">
+                <c:process-config>
+                    <a:lov name="$[@displayField]" id="EXP4010_view_stay_editor_dim_$[@dimensionId]" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="$[@dimensionName]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_view_staylinedLineObjectEditors">
+            <p:loop source="/model/streamlinedLineObjects">
+                <p:switch test="@expenseObjectMethod">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:textField name="$[@displayField]" id="EXP4010_view_stay_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="$[@moExpObjTypeName]"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:lov name="$[@displayField]" id="EXP4010_view_stay_editor_obj_$[@moExpObjTypeId]]" bindTarget="EXP4010_exp_requisition_view_travel_stay_line_ds" prompt="$[@moExpObjTypeName]"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

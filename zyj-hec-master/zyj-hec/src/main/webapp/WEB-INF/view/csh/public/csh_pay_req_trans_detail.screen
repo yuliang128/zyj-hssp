@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <!--<a:model-query model="csh.csh_pay_req_trans_init_pay_header_detail" rootpath="payment_header_detail"/>
+        <a:model-query defaultWhereClause=" acc_entity_id = $[/session/@acc_entity_id] and sysdate between nvl(start_date_active, sysdate) and nvl(end_date_active, sysdate) and ( summary_flag = &apos;N&apos; or summary_flag is null )" model="fnd.fnd_responsibility_centers_vl" rootpath="res_center_list"/>
+        &lt;!&ndash;         <a:model-query defaultWhereClause="company_id = $[/session/@company_id] and enabled_flag = &apos;Y&apos;" model="gld.gld_company_accounts_vl" rootpath="com_accounts_list"/>
+ &ndash;&gt;
+        <a:model-query model="csh.csh_pay_req_trans_init_cr_dr_list" rootpath="cr_dr_list"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="con_contract_headers_add_link_7" url="$[/request/@context_path]/cont/public/con_contract_headers_add.screen"/>
+        <a:link id="csh_pay_req_query_detail_link_10" url="$[/request/@context_path]/csh/public/csh_pay_req_query_detail.screen"/>
+        <a:link id="csh_pay_req_trans_detail_link_1" url="$[/request/@context_path]/csh/public/csh_pay_req_trans_detail.screen"/>
+        <!--Modifiied by caoke/2018-01-29 报销单只读页面路径该成 exp_report_view_main.screen.ftl -->
+        <!-- <a:link id="exp_report_readonly_link_5" url="$[/request/@context_path]/modules/exp/public/exp_report_readonly.screen"/> -->
+        <a:link id="exp_report_readonly_link_5" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <script><![CDATA[
+            function loadComplete_trans_detail() {
+                //通过jsonData获得header_trans_detail_ds的全部field，并以此进行循环
+                var fields = $au('header_trans_detail_ds').fields;
+                var record = $au('header_trans_detail_ds').getAt(0);
+                for (var field in fields) {
+                    record.getMeta().getField(field).setReadOnly(true);
+                }
+            
+                $au('finance_ds').setQueryParameter('transactionHeaderId', '$[/parameter/@transactionHeaderId]');
+                $au('finance_ds').query();
+            
+                $au('write_off_history_ds').setQueryParameter('transactionHeaderId', '$[/parameter/@transactionHeaderId]');
+                $au('write_off_history_ds').query();
+            }
+            
+            function backFunction_trans_detail() {
+                $au('csh_pay_req_trans_detail_screen').close();
+            }
+            
+            function reportDetailRenderer(value, record, name) {
+            
+                if (!value) {
+                    return '';
+                }
+                var url = '<a href="javascript:newWindowReportDetail(' + record.get('expReportHeaderId') + ')">' + value + '</a>';
+                return url;
+            }
+            
+            function newWindowReportDetail(exp_report_header_id) {
+                // new Aurora.Window({
+                    // id: 'exp_report_readonly_screen',
+                    // url: $au('exp_report_readonly_link_5').getUrl() + '?head_id=' + exp_report_header_id,
+                    // title: ' ',
+                    // width: 800,
+                    // height: 500
+                // });
+                //Modifiied by caoke/2018-01-29 报销单只读页面路径改成 exp_report_view_main.screen.ftl
+                   new Aurora.Window({
+                    id: 'exp_report_readonly_screen',
+                    url: $au('exp_report_readonly_link_5').getUrl() + '?expReportHeaderId=' + exp_report_header_id,
+                    title: ' ',
+                   fullScreen: true
+                });
+            }
+            
+            function paymentDetailRenderer(value, record, name) {
+                if (!value) {
+                    return '';
+                }
+                //var url = '<a href="javascript:newWindowpaymentDetail(' + record.get('transaction_id') +')">' + value + '</a>';
+                var url = value;
+                return url;
+            }
+            
+            function newWindowpaymentDetail(transaction_id) {
+                new Aurora.Window({
+                    id: 'csh_pay_req_trans_detail_screen_new',
+                    url: /*csh_pay_req_trans_detail.screen*/
+                    $au('csh_pay_req_trans_detail_link_1').getUrl() + '?transactionHeaderId=' + transaction_id,
+                    title: ' ',
+                    width: 800,
+                    height: 500
+                });
+            }
+            
+            function reqNumRenderer(value, record, name) {
+                if (!value) {
+                    return '';
+                }
+                var url = '<a href="javascript:newWindowReqNum(' + record.get('paymentRequisitionHeaderId') + ')">' + value + '</a>';
+                return url;
+            }
+            
+            function newWindowReqNum(paymentRequisitionHeaderId) {
+                new Aurora.Window({
+                    id: 'csh_pay_req_query_detail_screen',
+                    url: $au('csh_pay_req_query_detail_link_10').getUrl() + '?paymentRequisitionHeaderId=' + paymentRequisitionHeaderId,
+                    title: ' ',
+                    fullScreen: true
+                });
+            }
+            
+            function conNumRenderer(value, record, name) {
+                if (!value) {
+                    return '';
+                }
+                var url = '<a href="javascript:newWindowConNum(' + record.get('contract_header_id') + ')">' + value + '</a>';
+                return url;
+            }
+            
+            function newWindowConNum(contract_header_id) {
+                new Aurora.Window({
+                    id: 'con_contract_headers_add_screen',
+                    url: /*$[/request/@context_path]/modules/cont/con_contract_headers_add.screen*/
+                    $au('con_contract_headers_add_link_7').getUrl() + '?modify_flag=false&flag=query&payment_requisition_contract_header_idheader_id=' + contract_header_id,
+                    title: ' ',
+                    width: 800,
+                    height: 500
+                });
+            }
+            
+            function selectFunction_trans_detail(tab, index) {}
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="res_center_list_ds">
+                <a:datas dataSource="/model/res_center_list"/>
+            </a:dataSet>
+            <!--    <a:dataSet id="com_accounts_list_ds">
+                <a:datas dataSource="/model/com_accounts_list"/>
+            </a:dataSet> -->
+            <a:dataSet id="cr_dr_list_ds">
+                <a:datas dataSource="/model/cr_dr_list"/>
+            </a:dataSet>
+            <a:dataSet id="header_trans_detail_ds">
+                <a:datas dataSource="/model/payment_header_detail/records"/>
+                <a:fields>
+                    <a:field name="reversedDate"/>
+                    <a:field name="transactionType"/>
+                    <a:field name="transactionNum" prompt="csh_prepayment_write_off.transaction_num"/>
+                    <a:field name="transactionDate" prompt="csh_transaction_headers.transaction_date"/>
+                    <a:field name="periodName" prompt="csh_transaction_headers.period_name"/>
+                    <a:field name="transactionCategory" prompt="acp_mo_pay_req_type.payment_type_name"/>
+                    <a:field name="paymentMethod" prompt="csh_transaction_header.payment_method_id"/>
+                    <a:field name="contactNumber" prompt="csh_prepayment_write_off.contact_number"/>
+                    <a:field name="partnerCategory"/>
+                    <a:field name="partner"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="exchangeRateType"/>
+                    <a:field name="transactionAmount"/>
+                    <a:field name="documentNum"/>
+                    <a:field name="exchangeRateQuotation"/>
+                    <a:field name="exchangeRate"/>
+                    <a:field name="bankAccount"/>
+                    <a:field name="description"/>
+                    <a:field name="bankAccountName"/>
+                    <a:field name="bankAccountCode"/>
+                    <a:field name="agentEmployee"/>
+                    <a:field name="transactionLineId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="finance_ds" queryUrl="$[/request/@context_path]/csh/write-off-account/cshPaymentFinanceInfo"/>
+            <a:dataSet id="write_off_history_ds" queryUrl="$[/request/@context_path]/csh/write-off/getWriteOffHistory">
+                <a:fields>
+                    <a:field name="writeOffDate"/>
+                    <a:field name="periodName"/>
+                    <a:field name="writeOffType"/>
+                    <a:field name="transactionClass"/>
+                    <a:field name="expReportNumber"/>
+                    <a:field name="transactionNum"/>
+                    <a:field name="cshWriteOffAmount"/>
+                    <a:field name="requisitionNumber"/>
+                    <a:field name="contractNumber"/>
+                    <a:field name="lineNumber"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="distribute_ds">
+                <!--<a:dataSet id="distribute_ds" model="csh.csh_pa_req_trans_detail_distribute">-->
+                <a:fields>
+                    <a:field name="transactionHeaderId"/>
+                    <a:field name="distributionLineId"/>
+                    <a:field name="sourceDistributionLineId"/>
+                    <a:field name="debitFlagDisplay" displayField="name" options="cr_dr_list_ds" returnField="debit_flag" valueField="value"/>
+                    <a:field name="debitFlag"/>
+                    <a:field name="amount"/>
+                    <a:field name="returnAmount"/>
+                    <a:field name="responsibilityCenterIdDisplay" displayField="responsibility_center_name" options="res_center_list_ds" returnField="responsibility_center_id" valueField="responsibility_center_id"/>
+                    <a:field name="responsibilityCenterId"/>
+                    <!--                     <a:field name="account_id_display" displayField="account_code" options="com_accounts_list_ds" returnField="account_id" valueField="account_id"/>
+ -->
+                    <a:field name="accountIdDisplay"/>
+                    <a:field name="accountId"/>
+                    <a:field name="description"/>
+                    <a:field name="transactionLineId"/>
+                    <a:field name="accountDescription"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="backFunction_trans_detail" text="hap_back" width="80"/>
+            </a:screenTopToolbar>
+            <a:form id="trans_detail_form" column="3" title="csh_payment_transaction_detail.title">
+                <a:textField name="transactionNum" bindTarget="header_trans_detail_ds"/>
+                <a:textField name="transactionDate" bindTarget="header_trans_detail_ds"/>
+                <a:textField name="periodName" bindTarget="header_trans_detail_ds"/>
+                <a:textField name="transactionCategory" bindTarget="header_trans_detail_ds"/>
+                <a:textField name="paymentMethod" bindTarget="header_trans_detail_ds"/>
+                <a:textField name="contactNumber" bindTarget="header_trans_detail_ds"/>
+            </a:form>
+            <a:tabPanel marginHeight="211" marginWidth="45">
+                <a:tabs>
+                    <a:tab padding="0" prompt="csh_payment_detail.paymenttab" selected="true" width="120">
+                        <a:form id="trans_detail_form2" column="1" title="csh_payment_detail.paymenttab">
+                            <a:box column="4" labelWidth="100">
+                                <a:textField name="partnerCategory" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.partner_category"/>
+                                <a:textField name="partner" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.partner_id"/>
+                                <a:textField name="currencyCode" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.currency_code"/>
+                                <a:textField name="exchangeRateType" bindTarget="header_trans_detail_ds" prompt="csh_document_payment.exchange_rate_type"/>
+                                <a:textField name="transactionAmount" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.transaction_amount"/>
+                                <a:textField name="documentNum" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.document_num"/>
+                                <a:textField name="exchangeRateQuotation" bindTarget="header_trans_detail_ds" prompt="exp_report_header.exchange_rate_quotation"/>
+                                <a:textField name="exchangeRate" bindTarget="header_trans_detail_ds" prompt="csh_document_payment.exchange_rate"/>
+                            </a:box>
+                            <a:hBox>
+                                <a:vBox labelWidth="100">
+                                    <a:textField name="bankAccount" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.bank_account_num" width="405"/>
+                                    <a:textArea name="description" bindTarget="header_trans_detail_ds" prompt="code.description" width="400"/>
+                                </a:vBox>
+                                <a:box column="2" labelWidth="95">
+                                    <a:textField name="bankAccountName" bindTarget="header_trans_detail_ds" prompt="csh_prepayment_write_off.bank_account_name"/>
+                                    <a:textField name="bankAccountCode" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.bank_account_code"/>
+                                    <a:textField name="agentEmployee" bindTarget="header_trans_detail_ds" prompt="csh_transaction_line.agent_employee_id"/>
+                                </a:box>
+                            </a:hBox>
+                        </a:form>
+                    </a:tab>
+                    <a:tab prompt="csh_payment_detail.financetab" selected="false">
+                        <a:grid bindTarget="finance_ds" marginHeight="250" marginWidth="62" navBar="true">
+                            <a:columns>
+                                <a:column name="description" prompt="csh_write_off_account.description"/>
+                                <a:column name="accEntityName" prompt="exp_report_account.acc_entity_name"/>
+                                <a:column name="respCenterName" prompt="csh_payment_req_account.responsibility_center_name"/>
+                                <a:column name="accountCode" prompt="gld_account.account_code"/>
+                                <a:column name="accountName" prompt="gld_account.account_description"/>
+                                <a:column name="enteredAmountDr" prompt="csh_write_off_account.entered_amount_dr"/>
+                                <a:column name="enteredAmountCr" prompt="csh_write_off_account.entered_amount_cr"/>
+                                <a:column name="functionalAmountDr" prompt="csh_write_off_account.functional_amount_dr"/>
+                                <a:column name="functionalAmountCr" prompt="csh_write_off_account.functional_amount_cr"/>
+                            </a:columns>
+                        </a:grid>
+                    </a:tab>
+                    <a:tab prompt="csh_payment_detail.write_off_history" selected="false">
+                        <a:grid id="write_off_history_grid1" bindTarget="write_off_history_ds" marginHeight="250" marginWidth="62" navBar="true">
+                            <a:columns>
+                                <a:column name="writeOffDate" prompt="csh_transaction_headers.write_off_completed_date"/>
+                                <a:column name="periodName" prompt="csh_transaction_headers.period_name"/>
+                                <a:column name="writeOffType" prompt="exp_prepayment_post.write_off_type"/>
+                                <a:column name="transactionClass" prompt="csh_prepayment_post.transaction_class"/>
+                                <a:column name="expReportNumber" Renderer="reportDetailRenderer" prompt="exp_report_headers.exp_report_number"/>
+                                <a:column name="transactionNum" Renderer="paymentDetailRenderer" prompt="csh_transaction_headers.transaction_num"/>
+                                <a:column name="cshWriteOffAmount" prompt="csh_write_off.csh_write_off_amount"/>
+                                <a:column name="requisitionNumber" Renderer="reqNumRenderer" prompt="csh_payment_requisition_hds.requisition_number"/>
+                                <a:column name="contractNumber" Renderer="conNumRenderer" prompt="csh_prepayment_write_off.contact_number"/>
+                                <a:column name="lineNumber" prompt="con_payment_schedule.payment_schedule_line_number"/>
+                            </a:columns>
+                        </a:grid>
+                    </a:tab>
+                    <a:tab disabled="true" prompt="csh_payment_detail.distributetab" selected="false">
+                        <a:grid bindTarget="distribute_ds" marginHeight="250" marginWidth="62" navBar="true">
+                            <a:columns>
+                                <a:column name="description"/>
+                                <a:column name="responsibilityCenterIdDisplay" id="combobox_editor_trans_detail"/>
+                                <a:column name="accountIdDisplay" id="combobox_editor_trans_detail"/>
+                                <a:column name="accountDescription"/>
+                                <a:column name="debitFlagDisplay" id="combobox_editor_trans_detail"/>
+                                <a:column name="amount"/>
+                            </a:columns>
+                            <a:editors>
+                                <a:comboBox id="combobox_editor_trans_detail"/>
+                            </a:editors>
+                        </a:grid>
+                    </a:tab>
+                </a:tabs>
+                <a:events>
+                    <a:event name="select" handler="selectFunction_trans_detail"/>
+                </a:events>
+            </a:tabPanel>
+        </a:screenBody>
+        <script><![CDATA[
+
+            loadComplete_trans_detail();
+            
+            function trans_detail_InitSize() {
+                //页面宽度
+                var vw = parseInt(Aurora.getCookie('vw'));
+                //自适应宽度
+                var marginWidth = 45;
+                //Form的自适宽度，需要 -4
+                var formMarginWidth = marginWidth - 4;
+                //Form的宽度
+                var formWidth = vw - formMarginWidth;
+                //设置Form的宽度自适应
+                Ext.get('trans_detail_form').setWidth(formWidth);
+            }
+            //Ext.fly(window).on('resize', trans_detail_InitSize);
+            trans_detail_InitSize();
+            
+            function trans_detail_InitSize2() {
+                //页面宽度
+                var vw = parseInt(Aurora.getCookie('vw'));
+                //自适应宽度
+                var marginWidth = 45;
+                //Form的自适宽度，需要 -4
+                var formMarginWidth = marginWidth + 14;
+                //Form的宽度
+                var formWidth = vw - formMarginWidth;
+                //设置Form的宽度自适应
+                Ext.get('trans_detail_form2').setWidth(formWidth);
+            }
+            //Ext.fly(window).on('resize', trans_detail_InitSize2);
+            trans_detail_InitSize2();
+        ]]></script>
+    </a:view>
+</a:screen>

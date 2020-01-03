@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-15 16:58:28
+    $Revision: 1.0
+    $Purpose: 工作中心定义-分配业务范围
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="SSC1010_work_center_companies_link" url="$[/request/@context_path]/ssc/SSC1010/ssc_work_center_company.screen"/>
+        <a:link id="SSC1010_work_center_doc_type_link" url="$[/request/@context_path]/ssc/SSC1010/ssc_work_center_doc_type.screen"/>
+        <script><![CDATA[
+            function SSC1010_DateValidate(record, name, value) {
+                if (name == 'startDate' || name == 'endDate') {
+                    var start_date = record.get('startDate');
+                    var end_date = record.get('endDate');
+                    if (!Ext.isEmpty(end_date)) {
+                        if (!compareDate(start_date, end_date)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function SSC1010_back() {
+                $au('SSC1010_work_busi_scope_win').close();
+            }
+            
+            function SSC1010_codeEditor(record, name) {
+                if (record.isNew) {
+                    return 'SSC1010_bus_textFiled';
+                }
+                return '';
+            }
+            
+            function SSC1010_MagorgFun(record, name) {
+                if (record.isNew) {
+                    return 'SSC1010_bus_comboBox';
+                }
+                return '';
+            }
+            
+            function SSC1010_bizSubmitSuccess(ds) {
+                ds.query();
+            }
+            
+            function SSC1010_orgscopeFun(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                var scopeId = record.get('scopeId');
+                var magOrgId = record.get('magOrgId');
+                return '<a href=\'javascript:OpenOrgScope(' + scopeId + ',' + magOrgId + ');\'>' + '$[l:ssc_work_center.mag_scope_detail]' + '</a>';
+            }
+            
+            function OpenOrgScope(scopeId, magOrgId) {
+                var url = $au('SSC1010_work_center_companies_link').getUrl() + '?scopeId=' + scopeId + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'SSC1010_work_center_comp_win',
+                    url: url,
+                    title: '$[l:ssc_work_center.mag_scope_detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function SSC1010_Detail(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                var scopeId = record.get('scopeId');
+                var magOrgId = record.get('magOrgId');
+                return '<a href=\'javascript:OpenDetail(' + scopeId + ',' + magOrgId + ');\'>' + '$[l:ssc_work_center.bus_scope_detail]' + '</a>';
+            }
+            
+            function OpenDetail(scopeId, magOrgId) {
+                var url = $au('SSC1010_work_center_doc_type_link').getUrl() + '?scopeId=' + scopeId + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'SSC1010_work_center_doc_type_win',
+                    url: url,
+                    title: '$[l:ssc_work_center.bus_scope_detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1010_mag_org_list_ds">
+                 <a:datas dataSource="fndManagingOrganizationList/records"/>
+            </a:dataSet>
+            <a:dataSet id="SSC1010_work_ceneter_busi_scope_ds" autoPageSize="true" autoQuery="true" baseUrl="/ssc/work-center-busi-scope" queryUrl="$[/request/@context_path]/ssc/work-center-busi-scope/query?workCenterId=$[/parameter/@workCenterId]" selectable="true">
+                <a:fields>
+                    <a:field name="scopeId"/>
+                    <a:field name="scopeCode" prompt="ssc_work_center.busi_scope_code" required="true"/>
+                    <a:field name="workCenterId" defaultValue="$[/parameter/@workCenterId]"/>
+                    <a:field name="description" prompt="ssc_work_center.busi_scope_name"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgName" displayField="description" options="SSC1010_mag_org_list_ds" prompt="ssc_work_center.mag_org_name" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="startDate" dataType="date" prompt="ssc_work_center.start_date" required="true" validator="SSC1010_DateValidate"/>
+                    <a:field name="endDate" dataType="date" prompt="ssc_work_center.end_date" validator="SSC1010_DateValidate"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="SSC1010_bizSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form id="SSC1010_work_ceneter_busi_scope_form" column="2" title="ssc_work_center-asgn_bus_scope" width="1000">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:gridButton bind="SSC1010_work_cen_busi_scope_grid" type="add" width="80"/>
+                <a:gridButton bind="SSC1010_work_cen_busi_scope_grid" type="save" width="80"/>
+                <a:gridButton bind="SSC1010_work_cen_busi_scope_grid" type="delete" width="80"/>
+                <a:gridButton bind="SSC1010_work_cen_busi_scope_grid" click="SSC1010_back" text="HAP_BACK" width="80"/>
+            </a:formToolbar>
+            <a:textField name="workCenterCode" bindTarget="SSC1010_work_center_ds" prompt="hec.code" readOnly="true"/>
+            <a:textField name="description" bindTarget="SSC1010_work_center_ds" prompt="ssc_work_center.description" readOnly="true"/>
+        </a:form>
+        <a:grid id="SSC1010_work_cen_busi_scope_grid" bindTarget="SSC1010_work_ceneter_busi_scope_ds" marginHeight="195" navBar="true" width="1010">
+            <a:columns>
+                <a:column name="scopeCode" align="center" editorFunction="SSC1010_codeEditor" width="80"/>
+                <a:column name="description" align="center" editor="SSC1010_bus_textFiled" width="120"/>
+                <a:column name="magOrgName" align="center" editorFunction="SSC1010_MagorgFun" width="80"/>
+                <a:column name="startDate" align="center" editor="SSC1010_bus_datePicker" renderer="Aurora.formatDate" width="85"/>
+                <a:column name="endDate" align="center" editor="SSC1010_bus_datePicker" renderer="Aurora.formatDate" width="85"/>
+                <a:column name="orgScope" align="center" renderer="SSC1010_orgscopeFun" width="110"/>
+                <a:column name="detail " align="center" renderer="SSC1010_Detail"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="SSC1010_bus_textFiled"/>
+                <a:datePicker id="SSC1010_bus_datePicker"/>
+                <a:comboBox id="SSC1010_bus_comboBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

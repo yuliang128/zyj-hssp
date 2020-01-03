@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndDimensionMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndDimension">
+        <result column="DIMENSION_ID" property="dimensionId" jdbcType="DECIMAL"/>
+        <result column="DIMENSION_SEQUENCE" property="dimensionSequence" jdbcType="DECIMAL"/>
+        <result column="DIMENSION_CODE" property="dimensionCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_FLAG" property="systemFlag" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_LEVEL" property="systemLevel" jdbcType="VARCHAR"/>
+        <result column="COMPANY_LEVEL" property="companyLevel" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_CODE_DISPLAY" property="dimensionCodeDisplay" jdbcType="VARCHAR"/>
+        <result column="VALUE_EXIST_FLAG" property="valueExistFlag" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="queryCodeValue" parameterType="com.hand.hap.system.dto.CodeValue"
+            resultType="com.hand.hap.system.dto.CodeValue">
+        SELECT
+        sv.VALUE,
+        sv.MEANING
+        FROM
+        sys_code_value_b sv
+        LEFT OUTER JOIN sys_code_value_tl st ON (
+        sv.code_value_id = st.code_value_id
+        AND st.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),sys_code_b s where s.code = 'SYS_ORGANIZATION_TYPE'
+
+        AND s.code_id = sv.code_id
+        <if test="value != null">
+            and sv.value = #{value}
+        </if>
+    </select>
+
+    <select id="queryForDimensionValue" resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.FndDimension">
+        SELECT
+            fd.dimension_id,
+            fd.dimension_code,
+	        fd.system_level,
+            fdt.description,
+            concat( fd.dimension_code, '-', fdt.description ) dimension_code_display
+        FROM
+            fnd_dimension fd
+            LEFT OUTER JOIN fnd_dimension_tl fdt ON ( fd.dimension_id = fdt.dimension_id AND fdt.lang = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            fd.enabled_flag = 'Y'
+        AND fd.system_level IS NOT NULL
+        AND fd.system_flag != 'Y'
+        ORDER BY
+            dimension_sequence
+    </select>
+
+    <select id="queryForCompanyDimensionValue" resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.FndDimension">
+        SELECT
+        fd.dimension_id,
+        fd.dimension_code,
+        fd.system_level,
+        fdt.description,
+        concat( fd.dimension_code, '-', fdt.description ) dimension_code_display
+        FROM
+        fnd_dimension fd
+        LEFT OUTER JOIN fnd_dimension_tl fdt ON ( fd.dimension_id = fdt.dimension_id AND fdt.lang = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+        fd.enabled_flag = 'Y'
+        AND ( fd.system_level = #{systemLevel} or fd.company_level = #{companyLevel} )
+        AND fd.system_flag != 'Y'
+        ORDER BY
+        dimension_sequence
+    </select>
+    
+    <select id="checkDimExists" parameterType="java.lang.Long" resultType="int">
+        SELECT
+            count( * )
+        FROM
+            fnd_dimension d
+        WHERE
+            d.dimension_id = ( SELECT fd.dimension_id FROM fnd_dimension_value fd WHERE fd.dimension_value_id = #{dimensionValueId} )
+            AND d.company_level = 'Y'
+            AND d.system_level = 'N'
+    </select>
+
+    <select id="queryAll" parameterType="com.hand.hec.fnd.dto.FndDimension" resultMap="BaseResultMap">
+        SELECT
+            A0.DIMENSION_ID,
+            A0.DIMENSION_SEQUENCE,
+            A0.DIMENSION_CODE,
+            A1.DESCRIPTION AS DESCRIPTION,
+            A0.SYSTEM_FLAG,
+            A0.SYSTEM_LEVEL,
+            A0.COMPANY_LEVEL,
+            (
+        SELECT
+            SCVT.MEANING
+        FROM
+            SYS_CODE_VALUE_B SCVB
+            INNER JOIN SYS_CODE_B SCB ON ( SCB.CODE_ID = SCVB.CODE_ID AND SCB.CODE = 'SYS_ORGANIZATION_TYPE' )
+            LEFT OUTER JOIN SYS_CODE_VALUE_TL SCVT ON ( SCVB.CODE_VALUE_ID = SCVT.CODE_VALUE_ID AND SCVT.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+            WHERE SCVB.VALUE = A0.COMPANY_LEVEL ) COMPANY_LEVEL_NAME,
+            A0.ENABLED_FLAG,
+            ( SELECT count( 1 ) FROM fnd_dimension_value f WHERE A0.dimension_id = f.dimension_id ) value_exist_flag
+        FROM
+            fnd_dimension A0
+            INNER JOIN fnd_dimension_TL A1 ON (A0.DIMENSION_ID = A1.DIMENSION_ID
+            AND A1.LANG = #{request.locale,jdbcType=VARCHAR})
+        <where>
+            <if test="dimensionCode!=null">
+               AND  A0.DIMENSION_CODE like concat('%',#{dimensionCode},'%')
+            </if>
+            <if test="description!=null">
+                AND  A1.DESCRIPTION like concat('%',#{description},'%')
+            </if>
+        </where>
+        <trim prefixOverrides="AND" prefix="where"></trim>
+        ORDER BY
+        dimension_Id ASC
+    </select>
+</mapper>

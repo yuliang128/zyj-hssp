@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoTrxClsRefFlowItMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoTrxClsRefFlowIt">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="MO_CSH_TRX_CLASS_ID" property="moCshTrxClassId" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL" />
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="mo_csh_trx_class_code" property="moCshTrxClassCode" jdbcType="VARCHAR" />
+        <result column="set_of_books_name" property="setOfBooksName" jdbcType="VARCHAR" />
+        <result column="description" property="cashFlowItemDesc" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryByTrxClassId" resultMap="BaseResultMap">
+    SELECT
+    crfi.ref_id,
+    crfi.mo_csh_trx_class_id,
+    crfi.cash_flow_item_id,
+    crfi.default_flag,
+    crfi.enabled_flag,
+    cfit.description,
+    tc.mo_csh_trx_class_code,
+    sobt.set_of_books_name
+    FROM
+    csh_mo_trx_cls_ref_flow_it crfi,
+    csh_mo_transaction_class tc,
+    csh_cash_flow_item cfi
+    LEFT JOIN csh_cash_flow_item_tl cfit ON ( cfi.cash_flow_item_id = cfit.cash_flow_item_id AND cfit.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ),
+    gld_set_of_book sob
+    LEFT JOIN gld_set_of_book_tl sobt ON ( sob.set_of_books_id = sobt.set_of_books_id AND sobt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+    WHERE
+    crfi.cash_flow_item_id = cfi.cash_flow_item_id
+    AND crfi.mo_csh_trx_class_id = tc.mo_csh_trx_class_id
+    AND cfi.set_of_books_id = sob.set_of_books_id
+    AND crfi.mo_csh_trx_class_id = #{moCshTrxClassId}
+    </select>
+
+    <select id="checkDftFlowItem" resultType="java.lang.Integer">
+        select count(*)
+        from csh_mo_trx_cls_ref_flow_it c
+        where c.default_flag = 'Y'
+        and exists
+        (select 1
+        from csh_cash_flow_item cv1, csh_cash_flow_item cv2
+        where cv1.cash_flow_item_id = c.cash_flow_item_id
+        and cv2.cash_flow_item_id = #{cashFlowItemId}
+        and cv1.set_of_books_id = cv2.set_of_books_id)
+        and c.mo_csh_trx_class_id = #{moCshTrxClassId}
+        and c.ref_id &lt;&gt; #{refId};
+    </select>
+
+</mapper>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldResponsibilityCenterMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldResponsibilityCenter">
+        <result column="RESPONSIBILITY_CENTER_ID" property="responsibilityCenterId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="RESPONSIBILITY_CENTER_CODE" property="responsibilityCenterCode" jdbcType="VARCHAR"/>
+        <result column="RESPONSIBILITY_CENTER_NAME" property="responsibilityCenterName" jdbcType="VARCHAR"/>
+        <result column="RESP_CENTER_TYPE_CODE" property="respCenterTypeCode" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="SUMMARY_FLAG" property="summaryFlag" jdbcType="VARCHAR"/>
+        <result column="PARENT_RESP_CENTER_ID" property="parentRespCenterId" jdbcType="DECIMAL"/>
+        <result column="SUMMARY_TYPE" property="summaryType" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByAccEntityId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            gsc.acc_entity_id,
+            gsc.responsibility_center_id,
+            gsc.responsibility_center_code,
+            gsc.responsibility_center_name,
+            ( CASE gsc.summary_flag WHEN 'Y' THEN 'SUMMARY' ELSE 'DETAILS' END ) summary_type,
+            gsc.start_date_active,
+            gsc.end_date_active
+        FROM
+            gld_responsibility_center gsc
+        WHERE
+            gsc.acc_entity_id = #{accEntityId}
+    </select>
+
+    <update id="updateByAccEntityIdAndParentRespCenterId" parameterType="com.hand.hec.gld.dto.GldResponsibilityCenter">
+       UPDATE gld_responsibility_center g
+      set g.START_DATE_ACTIVE = #{startDateActive} ,g.END_DATE_ACTIVE = #{endDateActive}
+     WHERE
+	g.PARENT_RESP_CENTER_ID = #{responsibilityCenterId}
+	AND g.ACC_ENTITY_ID = #{accEntityId}
+
+    </update>
+    <!-- Modify Tagin/2019.04.01 获取部门默认成本中心 -->
+    <select id="getDefaultRespCenter" resultMap="BaseResultMap">
+        select
+        grc.responsibility_center_id,
+        grc.responsibility_center_code,
+        grct.responsibility_center_name
+        from
+        gld_responsibility_center grc
+        left outer join gld_responsibility_center_tl grct on
+        grc.responsibility_center_id = grct.responsibility_center_id
+        and grct.lang = #{request.locale, jdbcType=VARCHAR, javaType=java.lang.String}
+        where
+        exists (
+        select
+        'x'
+        from
+        exp_org_unit_ref_acc_org eoao
+        where
+        eoao.unit_id = #{unitId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        and eoao.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        and eoao.enabled_flag = 'Y'
+        and eoao.default_flag = 'Y'
+        and eoao.resp_center_id = grc.responsibility_center_id)
+    </select>
+</mapper>

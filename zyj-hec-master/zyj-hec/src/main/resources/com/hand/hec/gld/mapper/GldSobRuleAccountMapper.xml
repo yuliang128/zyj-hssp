@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldSobRuleAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldSobRuleAccount">
+        <result column="RULE_ACCOUNT_ID" property="ruleAccountId" jdbcType="DECIMAL" />
+        <result column="RULE_ID" property="ruleId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="account_code" property="accountCode" jdbcType="VARCHAR" />
+        <result column="account_name" property="accountName" jdbcType="VARCHAR" />
+        <result column="account_type" property="accountType" jdbcType="VARCHAR" />
+        <result column="account_code_from" property="accountCodeFrom" jdbcType="VARCHAR" />
+        <result column="account_code_to" property="accountCodeTo" jdbcType="VARCHAR" />
+        <result column="rule_group_id" property="ruleGroupId" jdbcType="DECIMAL" />
+        <result column="set_of_book_id" property="setOfBookId" jdbcType="DECIMAL" />
+    </resultMap>
+
+
+    <select id="queryGldSobRuleAccount" resultType="com.hand.hec.gld.dto.GldSobRuleAccount" resultMap="BaseResultMap">
+        SELECT
+        gsra.rule_account_id,
+        gsra.rule_id,
+        gsra.account_id,
+        gsra.enabled_flag,
+        ga.account_code,
+        gatl.description account_name,
+        CONCAT(ga.account_code,'-',ga.description) account_code_name
+        FROM
+        gld_sob_rule_account gsra
+        INNER JOIN gld_account ga ON ga.account_id = gsra.account_id
+        and  gsra.rule_id    = #{ruleId}
+
+
+        INNER JOIN gld_account_tl gatl ON ga.account_id = gatl.account_id
+        AND gatl.lang =  #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+
+        <if test="accountCodeFrom!=null">
+            AND ga.account_code &gt;= #{accountCodeFrom}
+        </if>
+
+        <if test="accountCodeTo!=null">
+            AND ga.account_code &lt;= #{accountCodeTo}
+        </if>
+
+        <if test="accountCode!=null">
+            AND ga.account_code = #{accountCode}
+        </if>
+
+        ORDER BY  ga.account_code
+
+
+    </select>
+
+
+
+    <select id="queryNotRefAccount" parameterType="com.hand.hec.gld.dto.GldSobRuleAccount" resultMap="BaseResultMap">
+        SELECT
+            ga.account_set_id account_set_id,
+            ga.account_id account_id,
+            ga.account_code account_code,
+            ga.account_type account_type,
+            gatl.description account_name
+
+        FROM
+            gld_account ga
+            INNER JOIN gld_account_tl gatl
+                ON ga.account_id = gatl.account_id
+                AND gatl.lang =  #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                AND NOT EXISTS (
+                        SELECT
+                            1
+                        FROM
+                            gld_sob_rule_account bb
+                        WHERE
+                            EXISTS ( SELECT 1 FROM gld_sob_rule a
+                                    WHERE a.rule_group_id = #{ruleGroupId}
+                                      AND a.rule_id = bb.rule_id )
+                                      AND ga.account_id = bb.account_id
+                                      AND bb.enabled_flag = 'Y'
+                    )
+                AND  ga.account_set_id = (  select tt.account_set_id
+                                            from gld_set_of_book tt
+                                            where tt.set_of_books_id = #{setOfBookId}
+                     )
+                and not exists ( select 1
+                                 FROM gld_sob_rule_account gsr
+                                 where gsr.rule_id=#{ruleId}
+                                   and gsr.account_id=ga.account_id
+                     )
+
+                <if test="accountCodeFrom!=null">
+                    AND ga.account_code &gt;= #{accountCodeFrom}
+                </if>
+
+                <if test="accountCodeTo!=null">
+                    AND ga.account_code &lt;= #{accountCodeTo}
+                </if>
+
+                <if test="accountType!=null">
+                    AND ga.account_type = #{accountType}
+                </if>
+
+
+        ORDER BY  ga.account_code
+
+
+    </select>
+
+
+</mapper>

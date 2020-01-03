@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang05@hand-china.com
+    $Date: 2019-02-21 上午10:00:00
+    $Revision: 1.0
+    $Purpose: 授权界面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function CSH1035_closePrivilegeCreateWindow() {
+                $au('CSH1035_csh_bank_account_privilege_window').close();
+                $au('CSH1035_csh_bank_account_privilege_main_result_ds').query();
+            }
+
+            function CSH1035_groupCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1035_accPrivilege_lov';
+                } else {
+                    return '';
+                }
+            }
+
+            //校验日期起始不能大于终止
+
+            function dateValidator(record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_Date = record.get('startDateActive');
+                    var end_Date = record.get('endDateActive');
+                    var startDate = Aurora.formatDate(start_Date);
+                    var endDate = Aurora.formatDate(end_Date);
+                    if (typeof(endDate) != 'undefined' && !Ext.isEmpty(endDate)) {
+                        if (!compareDate(startDate,endDate)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+
+            function CSH1035_accPrivilegeSubmit(ds) {
+                ds.query();
+            }
+
+            function doSave() {
+                var ds = $au('CSH1035_csh_bank_account_privilege_result_ds');
+                var records = ds.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    for (j = i + 1;j < records.length;j++) {
+                        if (records[i].get('company_code') == records[j].get('company_code') && records[i].get('position_code') == records[j].get('position_code')) {
+                            Aurora.showMessage('$[l:prompt]', '$[l:csh_bank_account_auth.message_info]');
+                            return;
+                        }
+                    }
+                }
+                ds.submit();
+            }
+        ]]></script>
+        <!--dataSets-->
+        <a:dataSets>
+            <a:dataSet id="CSH1035_csh_bank_account_privilege_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/bank-account-privilege" queryUrl="$[/request/@context_path]/csh/bank-account-privilege/queryPrivilege?bankAccountId=$[/parameter/@bankAccountId]" selectable="true" submitUrl="$[/request/@context_path]/csh/bank-account-privilege/submit">
+                <a:fields>
+                    <a:field name="privilegeId"/>
+                    <a:field name="groupCode" autoComplete="true"  lovCode="LOV_CSH_BANK_ACCOUNT_PRIVILEGE?accEntityId=$[/parameter/@accEntityId]" required="true" title="payment_groups_selected">
+                        <a:mapping>
+                            <a:map from="groupId" to="groupId"/>
+                            <a:map from="groupCode" to="groupCode"/>
+                            <a:map from="groupName" to="groupName"/>
+                            <a:map from="magOrgName" to="magOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="groupId"/>
+                    <a:field name="groupName"/>
+                    <a:field name="magOrgName"/>
+                    <a:field name="startDateActive" required="true" validator="dateValidator"/>
+                    <a:field name="endDateActive" validator="dateValidator"/>
+                    <a:field name="bankAccountId" defaultValue="$[/parameter/@bankAccountId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1035_accPrivilegeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1035_csh_bank_account_privilege_form" column="3" style="margin-right:8px;" title="csh_bank_account_auth_hct.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1035_csh_bank_account_privilege_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1035_csh_bank_account_privilege_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1035_csh_bank_account_privilege_grid" type="delete" width="80"/>
+                    <!-- <a:toolbarButton click="doSave" text="HAP_SAVE" width="80"/> -->
+                    <a:toolbarButton click="CSH1035_closePrivilegeCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bankName" bindTarget="CSH1035_csh_bank_account_privilege_main_result_ds" prompt="csh_banks.bank_name" readOnly="true"/>
+                <a:textField name="bankAccountName" bindTarget="CSH1035_csh_bank_account_privilege_main_result_ds" prompt="csh_prepayment_write_off.bank_account_name" readOnly="true"/>
+                <a:textField name="bankAccountNum" bindTarget="CSH1035_csh_bank_account_privilege_main_result_ds" prompt="csh_bank_account_auth_detail_hct.bank_account_num" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1035_csh_bank_account_privilege_grid" bindTarget="CSH1035_csh_bank_account_privilege_result_ds" marginHeight="195" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="groupCode" align="center" editorFunction="CSH1035_groupCodeEdit" width="80" prompt="csh_bank_account_privilege.group_code"/>
+                    <a:column name="groupName" align="center" width="150" prompt="csh_bank_account_privilege.group_name"/>
+                    <a:column name="magOrgName" align="center" width="150" prompt="csh_bank_account_privilege.mag_org_name"/>
+                    <a:column name="startDateActive" align="center" editor="CSH1035_accPrivilege_dp" renderer="Aurora.formatDate" width="80" prompt="csh_bank_account_privilege.start_date_active"/>
+                    <a:column name="endDateActive" align="center" editor="CSH1035_accPrivilege_dp" renderer="Aurora.formatDate" width="80" prompt="csh_bank_account_privilege.end_date_active"/>
+                </a:columns>
+                <a:editors>
+                    <a:datePicker id="CSH1035_accPrivilege_dp"/>
+                    <a:lov id="CSH1035_accPrivilege_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

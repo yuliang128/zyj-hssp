@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Description: 核算主体级成本中心-子成本中心定义
+ * Version: 1.0
+ * Author: rui.shi@hand-china.com
+ * Copyright Hand China Co.,Ltd.
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function GLD2030_responsibilityCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'GLD2030_responsibility_center_code_lov';
+                }
+                return '';
+            }
+            
+            function GLD2030_onRespCentershierarchySuccessFun() {
+                $au('GLD2030_resp_centers_hierarchy_ds').query();
+            }
+            
+            function GLD2030_backRespCentersHierarchyFun() {
+                $au('GLD2010_responsibilityCenterDetailWindow').close();
+                GLD2030_respResultSuccessFunc();
+            }
+
+            function GLD2050_periodValidate(record, name, value) {
+                var endPeriodNumber = record.get('endPeriodName');
+                var startPeriodNumber = record.get('startPeriodName');
+                if (typeof(endPeriodNumber) != 'undefined' && endPeriodNumber != ''&& endPeriodNumber != null) {
+                    if (startPeriodNumber > endPeriodNumber) {
+                        return '$[l:fnd_period_error.start_priod_greater]';
+                    }
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+
+            <a:dataSet id="GLD2030_resp_centers_hierarchy_ds" autoQuery="true" fetchAll="false" baseUrl="/gld/resp-center-hierarchy" queryUrl="$[/request/@context_path]/gld/resp-center-hierarchy/query?parentRespCenterId=$[/parameter/@responsibilityCenterId]&amp;accEntityId=$[/parameter/@accEntityId]" selectable="true">
+                <a:fields>
+                    <a:field name="responsibilityCenterCode" lovCode="LOV_GLD_RESPONSIBILITY_CENTER?accEntityId=$[/parameter/@accEntityId]&amp;parentRespCenterId=$[/parameter/@parentRespCenterId]" autoComplete="true" required="true" prompt="gld_responsibility_center.responsibility_center_code" title="gld_responsibility_center.responsibility_center_code">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterId" to="responsibilityCenterId"/>
+                            <a:map from="responsibilityCenterCode" to="responsibilityCenterCode"/>
+                            <a:map from="responsibilityCenterName" to="responsibilityCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="responsibilityCenterId"/>
+                    <a:field name="parentRespCenterId" defaultValue="$[/parameter/@responsibilityCenterId]"/>
+
+<!--
+                    <a:field name="startPeriodName" lovGridHeight="300" lovHeight="450" lovService="gld.GLD2030.gld_responsibility_center_periods_lov?acc_entity_id=$[/parameter/@acc_entity_id]" lovWidth="470" prompt="gld_responsibility_center.START_PERIOD_NAME" required="true" title="FND_RESP_CENTERS_HIERARCHY.START_PERIOD_NAME">
+                        <a:mapping>
+                            <a:map from="internalPeriodNum" to="startPeriodNumber"/>
+                            <a:map from="periodName" to="startPeriodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="endPeriodName" lovGridHeight="300" lovHeight="450" lovService="gld.GLD2030.gld_responsibility_center_periods_lov?acc_entity_id=$[/parameter/@acc_entity_id]" lovWidth="470" prompt="gld_responsibility_center.END_PERIOD_NAME" title="FND_RESP_CENTERS_HIERARCHY.END_PERIOD_NAME">
+                        <a:mapping>
+                            <a:map from="internalPeriodNum" to="endPeriodNumber"/>
+                            <a:map from="periodName" to="endPeriodName"/>
+                        </a:mapping>
+                    </a:field>
+ -->
+
+
+                    <a:field name="startPeriodName" validator="GLD2050_periodValidate" lovCode="LOV_START_PERIOD" required="true" prompt="gld_period_set.start_period_name"  title="gld_sob_resp_center_hierarchy.end_period_name">
+                        <a:mapping>
+                            <a:map from="periodName" to="startPeriodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="startPeriodNumber" validator="GLD2050_periodValidate"/>
+
+                    <a:field name="endPeriodName" validator="GLD2050_periodValidate" lovCode="LOV_START_PERIOD"  prompt="gld_period_set.end_period_name" title="gld_sob_resp_center_hierarchy.end_period_name">
+                        <a:mapping>
+                            <a:map from="periodName" to="endPeriodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="endPeriodNumber" validator="GLD2050_periodValidate"/>
+
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2030_onRespCentershierarchySuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD2030_resp_centers_hierarchy" column="3" labelWidth="120" title="gld_responsibility_center.child_center_def">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD2030_resp_centers_hierarchy_grid" type="add" width="80"/>
+                    <a:gridButton bind="GLD2030_resp_centers_hierarchy_grid" type="save" width="80"/>
+                    <a:gridButton bind="GLD2030_resp_centers_hierarchy_grid" type="delete" width="80"/>
+                    <a:gridButton bind="GLD2030_resp_centers_hierarchy_grid" click="GLD2030_backRespCentersHierarchyFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="responsibilityCenterCode" prompt="gld_responsibility_center.responsibility_center_code" bindTarget="GLD2030_responsibilityCentersResultDs" readOnly="true"/>
+                <a:textField name="responsibilityCenterName" prompt="gld_responsibility_center.responsibility_center_name" bindTarget="GLD2030_responsibilityCentersResultDs" readOnly="true"/>
+                <a:textField name="respCenterTypeCodeDisplay"  prompt="gld_responsibility_center.resp_center_type_code_display" bindTarget="GLD2030_responsibilityCentersResultDs" readOnly="true"/>
+                <a:datePicker name="startDateActive" prompt="gld_responsibility_center.start_date_active" bindTarget="GLD2030_responsibilityCentersResultDs" readOnly="true"/>
+                <a:datePicker name="endDateActive"  prompt="gld_responsibility_center.end_date_active" bindTarget="GLD2030_responsibilityCentersResultDs" readOnly="true"/>
+            </a:form>
+            <a:grid id="GLD2030_resp_centers_hierarchy_grid" bindTarget="GLD2030_resp_centers_hierarchy_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="responsibilityCenterCode" align="center" editor="GLD2030_responsibility_center_code_lov" editorFunction="GLD2030_responsibilityCodeEdit" sortable="true" width="80"/>
+                    <a:column name="responsibilityCenterName" align="left" prompt="gld_responsibility_center.responsibility_center_name" width="200"/>
+                    <a:column name="startPeriodName" align="center" editor="GLD2030_start_period_name_lov" width="80"/>
+                    <a:column name="endPeriodName" align="center" editor="GLD2030_end_period_name_lov" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD2030_responsibility_center_code_lov"/>
+                    <a:lov id="GLD2030_start_period_name_lov"/>
+                    <a:lov id="GLD2030_end_period_name_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

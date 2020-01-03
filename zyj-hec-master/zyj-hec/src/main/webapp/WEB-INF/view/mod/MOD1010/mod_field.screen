@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: 周皓
+    $Date: 2019年6月4日15:44:03
+    $Revision: 1.0
+    $Purpose: 工作中心定义
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc"
+          xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="MOD1010_fieldLovLink" url="$[/request/@context_path]/mod/MOD1010/mod_field_lov.screen"/>
+        <a:link id="MOD1010_fieldCodeLink" url="$[/request/@context_path]/mod/MOD1010/mod_field_code.screen"/>
+        <a:link id="MOD1010_fieldPromptLink" url="$[/request/@context_path]/mod/MOD1010/mod_field_prompt.screen"/>
+        <a:link id="MOD1010_fieldGroupChildLink"
+                url="$[/request/@context_path]/mod/MOD1010/mod_field_group_child.screen"/>
+        <a:link id="MOD1010_fieldConstantLink" url="$[/request/@context_path]/mod/MOD1010/mod_field_constant.screen"/>
+        <a:link id="MOD1010_fieldMasterDataLink"
+                url="$[/request/@context_path]/mod/MOD1010/mod_field_master_data.screen"/>
+        <a:link id="MOD1010_fieldFormulaLink" url="$[/request/@context_path]/mod/MOD1010/mod_field_formula.screen"/>
+        <script><![CDATA[
+        function MOD1010_logicFieldRenderer(value, record, name) {
+            var fieldId = record.get('fieldId');
+            var logicFieldId = record.get('logicFieldId')
+            var logicalType = record.get('logicalType')
+
+            if (fieldId && logicFieldId && logicalType) {
+                return '<a href="javascript:MOD1010_openFieldConfig(' + fieldId + ',\'' + logicalType + '\')">逻辑字段配置</a>';
+            }
+        }
+
+        function MOD1010_openFieldConfig(fieldId, logicalType) {
+            var url = '';
+            var windowId = '';
+            var height = 0;
+
+            switch (logicalType) {
+                case 'LOV':
+                    url = $au('MOD1010_fieldLovLink').getUrl() + '?fieldId=' + fieldId;
+                    windowId = 'MOD1010_fieldLovWindow';
+                    height = 260;
+                    break;
+                case 'CODE':
+                    url = $au('MOD1010_fieldCodeLink').getUrl() + '?fieldId=' + fieldId;
+                    windowId = 'MOD1010_fieldCodeWindow';
+                    break;
+                case 'PROMPT':
+                    url = $au('MOD1010_fieldPromptLink').getUrl() + '?fieldId=' + fieldId;
+                    windowId = 'MOD1010_fieldPromptWindow';
+                    break;
+                case 'GROUP_CHILD':
+                    url = $au('MOD1010_fieldGroupChildLink').getUrl() + '?fieldId=' + fieldId;
+                    windowId = 'MOD1010_fieldGroupChildWindow';
+                    break;
+                case 'CONSTANT':
+                    url = $au('MOD1010_fieldConstantLink').getUrl() + '?fieldId=' + fieldId;
+                    windowId = 'MOD1010_fieldConstantWindow';
+                    break;
+                case 'MASTER_DATA':
+                    url = $au('MOD1010_fieldMasterDataLink').getUrl() + '?fieldId=' + fieldId + '&entityId=$[/parameter/@entityId]';
+                    windowId = 'MOD1010_fieldMasterDataWindow';
+                    break;
+                case 'FORMULA':
+                    url = $au('MOD1010_fieldFormulaLink').getUrl() + '?fieldId=' + fieldId;
+                    windowId = 'MOD1010_fieldFormulaWindow';
+                    break;
+            }
+
+            new Aurora.Window({
+                id: windowId,
+                url: url,
+                width: 620,
+                height: height
+            });
+        }
+
+        function MOD1010_onFieldUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'fieldType') {
+                record.set('logicalTypeName', '')
+                record.set('logicalType', '')
+                record.set('logicFieldName', '')
+                record.set('logicFieldId', '')
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="MOD1010_fieldDataTypeDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/MOD_FIELD_DATA_TYPE" autoQuery="true"/>
+            <a:dataSet id="MOD1010_fieldTypeDs" queryUrl="$[/request/@context_path]/common/auroraCode/MOD_FIELD_TYPE"
+                       autoQuery="true"/>
+            <a:dataSet id="MOD1010_logicalTypeDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/MOD_LOGICAL_TYPE" autoQuery="true"/>
+            <a:dataSet id="MOD1010_fieldDs" baseUrl="/mod/field"
+                       queryUrl="$[/request/@context_path]/mod/field/query?entityId=$[/parameter/@entityId]"
+                       selectable="true"
+                       autoQuery="true">
+                <a:fields>
+                    <a:field name="entityId" defaultValue="$[/parameter/@entityId]"/>
+                    <a:field name="fieldId"/>
+                    <a:field name="fieldName" prompt="字段名" required="true"/>
+                    <a:field name="fieldSeq" prompt="字段顺序" required="true"/>
+                    <a:field name="tableFieldName" prompt="表字段名称"></a:field>
+                    <a:field name="dtoFieldName" prompt="DTO字段名称"/>
+                    <a:field name="fieldDataTypeName" prompt="字段数据类型" options="MOD1010_fieldDataTypeDs"
+                             displayField="meaning" valueField="value" returnField="fieldDataType" required="true"/>
+                    <a:field name="fieldDataType"/>
+                    <a:field name="fieldTypeName" prompt="字段类型" options="MOD1010_fieldTypeDs" displayField="meaning"
+                             valueField="value" returnField="fieldType" required="true"/>
+                    <a:field name="fieldType"/>
+                    <a:field name="logicalTypeName" prompt="逻辑类型" options="MOD1010_logicalTypeDs" displayField="meaning"
+                             valueField="value" returnField="logicalType"/>
+                    <a:field name="logicalType"/>
+                    <a:field name="logicFieldName" prompt="逻辑字段" lovCode="LOV_MOD_FIELD">
+                        <a:mapping>
+                            <a:map from="fieldName" to="logicFieldName"/>
+                            <a:map from="fieldId" to="logicFieldId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="logicFieldId"/>
+                    <a:field name="lazyLoad" prompt="延迟加载" checkedValue="Y" uncheckedValue="N"
+                             defaultValue="N"/>
+                    <a:field name="multiLanguageFlag" prompt="多语言标志" checkedValue="Y" uncheckedValue="N"
+                             defaultValue="N"/>
+                    <a:field name="enabledFlag" prompt="启用" checkedValue="Y" uncheckedValue="N"
+                             defaultValue="Y"/>
+                    <a:field name="pkFlag" prompt="主键" checkedValue="Y" uncheckedValue="N" defaultValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="MOD1010_onFieldUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="模型" marginWidth="23" column="2">
+                <a:label name="entityCode" bindTarget="MOD1010_entityDs" prompt="实体代码"/>
+                <a:label name="entityName" bindTarget="MOD1010_entityDs" prompt="实体名称"/>
+            </a:form>
+            <a:grid bindTarget="MOD1010_fieldDs"
+                    marginHeight="180" marginWidth="23" navBar="true">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="save"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="fieldName" editor="MOD1010_fieldTf" width="150" align="center"/>
+                    <a:column name="fieldSeq" editor="MOD1010_fieldNf" width="80" align="right"/>
+                    <a:column name="tableFieldName" editor="MOD1010_fieldTf" width="150" align="center"/>
+                    <a:column name="dtoFieldName" editor="MOD1010_fieldTf" width="150" align="center"/>
+                    <a:column name="fieldDataTypeName" editor="MOD1010_fieldCb" width="120" align="center"/>
+                    <a:column name="fieldTypeName" editor="MOD1010_fieldCb" width="120" align="center"/>
+                    <a:column name="logicalTypeName" editor="MOD1010_fieldCb" width="120" align="center"/>
+                    <a:column name="logicFieldName" editor="MOD1010_fieldLov" width="150" align="center"/>
+                    <a:column name="logicFieldConfig" renderer="MOD1010_logicFieldRenderer" align="center"
+                              prompt="逻辑字段配置"/>
+                    <a:column name="lazyLoad" editor="MOD1010_fieldCk" width="100"/>
+                    <a:column name="multiLanguageFlag" editor="MOD1010_fieldCk" width="100"/>
+                    <a:column name="pkFlag" editor="MOD1010_fieldCk" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="MOD1010_fieldTf"/>
+                    <a:numberField id="MOD1010_fieldNf"/>
+                    <a:comboBox id="MOD1010_fieldCb"/>
+                    <a:lov id="MOD1010_fieldLov"/>
+                    <a:checkBox id="MOD1010_fieldCk"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

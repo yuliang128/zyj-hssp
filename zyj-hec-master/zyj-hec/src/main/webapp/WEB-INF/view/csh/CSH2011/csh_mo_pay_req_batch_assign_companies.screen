@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH2011_csh_mo_companies_batch_link" url="$[/request/@context_path]/csh/mo-pay-req-asgn-com/batchAssignCom"/>
+        <script><![CDATA[
+            function CSH2011_assignCom() {
+                debugger;
+                var companyRecordsData = $au('CSH2011_batch_asgn_company_ds').getJsonData(true);
+                var typeRecordsData = $au('CSH2011_csh_mo_payment_req_types_result_ds').getJsonData(true);
+                if (companyRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for (var i=0;i<companyRecordsData.length;i++){
+                    companyRecordsData[i]['paymentReqTypeList'] = typeRecordsData;
+                    companyRecordsData[i]['enabledFlag'] = "Y";
+                    // for (var j=0;j<typeRecordsData.length;j++){
+                    //     companyRecordsData[i]['moPaymentReqTypeId'] = typeRecordsData[j]['moPaymentReqTypeId'];
+                    //     companyRecordsData[i]['enabledFlag'] = "Y";
+                    // }
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('CSH2011_csh_mo_companies_batch_link').getUrl(),
+                    para: companyRecordsData,
+                    success: CSH2011_closeAsgnBatchCreateWindow,
+                    scope: this
+                });
+            }
+            
+            function CSH2011_closeAsgnBatchCreateWindow() {
+                $au('CSH2011_csh_mo_pay_req_asgn_com_batch').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH2011_batch_asgn_company_query_ds" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/fnd-managing-organizations/query?magOrgId=$[/parameter/@magOrgId]">
+            </a:dataSet>
+            <a:dataSet id="CSH2011_batch_asgn_company_ds" autoQuery="true" baseUrl="/csh/mo-pay-req-asgn-com" queryUrl="$[/request/@context_path]/csh/mo-pay-req-asgn-com/queryComByTypeId?magOrgId=$[/parameter/@magOrgId]&amp;moPaymentReqTypeId=$[/parameter/@moPaymentReqTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH2011_csh_mo_pay_req_batch_asgn_com_form" column="2" title="csh_mo_payment_req_type.assign_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH2011_assignCom" text="HEC_ASSIGN" width="80"/>
+                    <a:toolbarButton click="CSH2011_closeAsgnBatchCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="CSH2011_batch_asgn_company_query_ds" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH2011_batch_asgn_company_query_ds" prompt="fnd_managing_organization.description" readOnly="true"/>
+
+            </a:form>
+            <a:grid bindTarget="CSH2011_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="80"/>
+                    <a:column name="companyShortName" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-11 下午18:21:42  
+    $Revision: 1.0  
+    $Purpose: 管理组织级费用申请单类型定义-费用对象
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function EXP4020_closeExpenseObjsCreateWindow() {
+            $au('EXP4020_exp_mo_req_ref_hd_obj_window').close();
+        }
+
+
+        function EXP4020_gridCellClick(grid, row, name, record) {
+            if (name == 'defaultMoObjectCode') {
+                debugger;
+                var objCode = record.get('moExpObjTypeCode');
+                if (objCode == null || objCode == '') {
+                    Aurora.showMessage('$[l:PROMPT_MESSAGE]', '$[l:SET_EXP_REQ_REF_OBJ.CHOSE_OBJECTS_TYPE_CODE]');
+                    return;
+                } else {
+                    var MetaData = record.getMeta();
+                    var MetaField = MetaData.getField('defaultMoObjectCode');
+                    if (record.get('expenseObjectMethod') == 'VALUE_LIST') {
+                        MetaField.setLovCode('LOV_OBJECT_VALUE');
+                        MetaField.setLovPara('moExpObjTypeId', record.get('moExpObjTypeId'));
+                    } else if (record.get('expenseObjectMethod') == 'SQL_TEXT') {
+                        MetaField.setLovCode('LOV_OBJECT_SQL_VALUE');
+                        MetaField.setLovPara('sqlQuery', record.get('sqlQuery'));
+                    }
+                }
+            }
+        }
+
+        function EXP4020_objEditorFunction(record, name) {
+            if (record.isNew) {
+                return 'EXP4020_hdObjLov';
+            }
+            return '';
+        }
+
+        function EXP4020_hdObjsSubmit(ds) {
+            ds.query();
+        }
+
+        function EXP4020_hdObjUpdateHandler(dataSet, record, name, value, oldvalue) {
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4020_moReqTypeRefHdObjDs" baseUrl="/exp/mo-req-type-ref-hd-obj" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type-ref-hd-obj/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="moExpObjTypeCode" lovCode="LOV_OBJECT_TYPE"
+                             prompt="exp_mo_expense_object_type.mo_exp_req_type_code">
+                        <a:mapping>
+                            <a:map from="moExpObjTypeId" to="moExpObjTypeId"/>
+                            <a:map from="moExpObjTypeCode" to="moExpObjTypeCode"/>
+                            <a:map from="description" to="moExpObjTypeName"/>
+                            <a:map from="sqlQuery" to="sqlQuery"/>
+                            <a:map from="expenseObjectMethod" to="expenseObjectMethod"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sqlQuery"/>
+                    <a:field name="moExpObjTypeId"/>
+                    <a:field name="layoutPriority" prompt="exp_mo_req_type_ref_hd_obj.layoutPriority" required="true"/>
+                    <a:field name="moExpObjTypeName" prompt="exp_mo_expense_object_type.description"/>
+                    <a:field name="defaultMoObjectCode" lovCode="LOV_OBJECT_VALUE"
+                             prompt="exp_mo_req_type_ref_hd_obj.default_mo_object_code">
+                        <a:mapping>
+                            <a:map from="code" to="defaultMoObjectCode"/>
+                            <a:map from="name" to="defaultMoObjectName"/>
+                            <a:map from="id" to="defaultMoObjectId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultMoObjectId"/>
+                    <a:field name="defaultMoObjectName" prompt="exp_mo_req_type_ref_hd_obj.default_mo_object_name"/>
+                    <a:field name="requiredFlag" prompt="exp_mo_req_type_ref_hd_obj.required_flag" checkedValue="Y"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="exp_mo_req_type_ref_hd_obj.enabled_flag" checkedValue="Y"
+                             defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="moExpReqTypeId" defaultValue="$[/parameter/@moExpReqTypeId]"/>
+                    <a:field name="refId"/>
+                    <a:field name="expenseObjectMethod"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="uppdate" bindTarget="EXP4020_moReqTypesDs" handler="EXP4020_hdObjUpdateHandler"/>
+                    <a:event name="submitsuccess" bindTarget="EXP4020_moReqTypesDs" handler="EXP4020_hdObjsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4020_moReqTypeRefHdObjForm" column="2" title="exp_mo_expense_object_type.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4020_moReqTypeRefHdObjGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4020_moReqTypeRefHdObjGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4020_moReqTypeRefHdObjGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4020_closeExpenseObjsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReqTypeCode" prompt="exp_mo_req_types.mo_exp_req_type_code"
+                             bindTarget="EXP4020_moReqTypesDs" readOnly="true"/>
+                <a:textField name="description" prompt="exp_mo_req_types.description" bindTarget="EXP4020_moReqTypesDs"
+                             readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4020_moReqTypeRefHdObjGrid" bindTarget="EXP4020_moReqTypeRefHdObjDs"
+                    marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="moExpObjTypeCode" align="center" editorFunction="EXP4020_objEditorFunction"
+                              width="120"/>
+                    <a:column name="moExpObjTypeName" width="120"/>
+                    <a:column name="layoutPriority" align="center" editor="EXP4020_hdObjNumberField"
+                              width="120"/>
+                    <a:column name="defaultMoObjectCode" align="center" editor="EXP4020_hdObjLov"
+                              width="120"/>
+                    <a:column name="defaultMoObjectName" width="120"/>
+                    <a:column name="requiredFlag" align="center" editor="EXP4020_hdObjCheckBox"
+                              width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP4020_hdObjCheckBox"
+                              width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP4020_hdObjLov"/>
+                    <a:comboBox id="EXP4020_hdObjComboBox"/>
+                    <a:numberField id="EXP4020_hdObjNumberField"/>
+                    <a:checkBox id="EXP4020_hdObjCheckBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4020_gridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

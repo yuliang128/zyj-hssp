@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldAccEntityRefAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldAccEntityRefAccount">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_CODE" property="accountCode" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_CODE_NAME" property="accountCodeName" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryActNotAsgnAccE" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            ga.ACCOUNT_ID,
+            ga.ACCOUNT_CODE,
+            gat.DESCRIPTION,
+            ga.enabled_flag
+        FROM
+            gld_set_of_book gs,
+            gld_account ga
+            LEFT OUTER JOIN gld_account_tl gat ON (ga.ACCOUNT_ID = gat.ACCOUNT_ID AND gat.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+            ga.ACCOUNT_SET_ID = gs.ACCOUNT_SET_ID
+        AND gs.set_of_books_id = #{setOfBooksId}
+        AND gs.enabled_flag ='Y'
+        AND ga.enabled_flag ='Y'
+        AND NOT EXISTS ( SELECT 1 FROM gld_acc_entity_ref_account aera WHERE aera.ACCOUNT_ID = ga.ACCOUNT_ID AND aera.ACC_ENTITY_ID = #{accEntityId})
+        order by ga.ACCOUNT_CODE
+    </select>
+    
+    <select id="queryAccountBySob" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            gs.set_of_books_id,
+            gav.account_id,
+            gav.account_code,
+            gat.description,
+            gav.account_code || '-' || gav.description account_code_name,
+            gav.enabled_flag
+        FROM
+            gld_set_of_book gs,
+            gld_account gav
+            LEFT OUTER JOIN gld_account_tl gat ON (gav.ACCOUNT_ID = gat.ACCOUNT_ID AND gat.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+            gav.ACCOUNT_SET_ID = gs.account_set_id
+            AND gs.set_of_books_id = #{setOfBooksId}
+            AND gs.enabled_flag = 'Y'
+            AND gav.enabled_flag = 'Y'
+        ORDER BY
+            gav.account_code
+    </select>
+
+</mapper>

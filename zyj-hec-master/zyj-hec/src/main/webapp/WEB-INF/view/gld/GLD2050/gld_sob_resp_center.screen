@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: wuxiuxian
+    $Date: 2018/01/07 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 账套级成本中心定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="GLD2050_sobRespCenterHierarchyLink"
+                url="$[/request/@context_path]/gld/GLD2050/gld_sob_resp_center_hierarchy.screen"/>
+        <a:link id="GLD2050_respCentersAsgnAccEnttityLink"
+                url="$[/request/@context_path]/gld/GLD2050/gld_resp_centers_asgn_acc_enttity.screen"/>
+        <script><![CDATA[
+        function GLD2050_closeRespCenterCreateWindow() {
+            var url = $au('GLD2050_sobRespCentersBookSelectLink').getUrl();
+            window.location.href = url;
+        }
+
+        function GLD2050_respCenterCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'GLD2050_sobRespCentersTfUpper';
+            }
+            return '';
+        }
+
+        function summaryFlagEdit(record, name) {
+            if (record.isNew) {
+                return 'GLD2050_sobRespCentersCb';
+            }
+            return '';
+        }
+
+        function GLD2050_summaryFlagRenderer(value, record, name) {
+
+            if (!record.isNew && value == "N") {
+                return '$[l:hap_no]';
+            } else if (!record.isNew && value == "Y") {
+                return '$[1:hap_yes]';
+            }
+        }
+
+        function GLD2050_setSubResbonsibilitys(value, record, name) {
+
+            var responsibilityId = record.get('responsibilityCenterId');
+            var responsibilityCenterCode = record.get('responsibilityCenterCode') ? record.get('responsibilityCenterCode') : '';
+            var setOfBooksId = record.get('setOfBooksId');
+            if (responsibilityId && record.get('summaryFlag') == 'Y') {
+                return '<a href="javascript:GLD2050_setSubResbonsibilitysInfo(\'' + responsibilityId + '\',\'' + setOfBooksId + '\')">$[l:fnd_resp_center.child_center_def]</a>';
+            }
+
+        }
+
+        function GLD2050_setSubResbonsibilitysInfo(responsibilityId, setOfBooksId) {
+            new Aurora.Window({
+                id: 'GLD2050_sobRespCenterHierarchyWindow',
+                url: $au('GLD2050_sobRespCenterHierarchyLink').getUrl() + '?responsibilityCenterId=' + responsibilityId + '&setOfBooksId=' + setOfBooksId,
+                title: '$[l:fnd_resp_center.child_center_def]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function dateValidator(record, name, value) {
+
+            if (name == "startDateActive" || name == "endDateActive") {
+                var start_date = record.get('startDateActive');
+                var end_date = record.get('endDateActive');
+                if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                    if (!compareDate(start_date, end_date)) {
+                        return '$[l:fnd_resposibility_centers.date_validate]';
+                    }
+                }
+                return true;
+            }
+        }
+
+        function compareDate(start, end) {
+            if (new Date(start) > new Date(end)) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        function GLD2050_asgnAccEnity(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:GLD2050_openAsgnAccEntity(' + record.get('responsibilityCenterId') + ',\'' + (record.get('responsibilityCenterCode') ? record.get('responsibilityCenterCode') : '') + '\',\'' + (record.get('responsibilityCenterName') ? record.get('responsibilityCenterName') : '') + '\',' + record.get('setOfBooksId') + ')">$[l:prompt.accounting_distribution]</>';
+        }
+
+        function GLD2050_openAsgnAccEntity(responsibilityCenterId, responsibilityCenterCode, responsibilityCenterName, setOfBooksId) {
+            new Aurora.Window({
+                id: 'GLD2050_respCentersAsgnAccEnttityWindow',
+                url: $au('GLD2050_respCentersAsgnAccEnttityLink').getUrl() + '?responsibilityCenterId=' + responsibilityCenterId + '&responsibilityCenterCode=' + encodeURIComponent(responsibilityCenterCode) + '&responsibilityCenterName=' + encodeURIComponent(responsibilityCenterName) + '&setOfBooksId=' + setOfBooksId,
+                title: '$[l:prompt.accounting_distribution]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+
+        function GLD2050_beforeDsCreate() {
+            var setOfBooksName = $au('GLD2050_sobRespCentersQueryDs').getAt(0).get('setOfBooksName');
+            if (Ext.isEmpty(setOfBooksName)) {
+                new Aurora.showMessage('$[l:sys_not_null]', '$[l:gld.sob_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function GLD2050_onDsAdd(ds, rd, idx) {
+            var setOfBooksId = $au('GLD2050_sobRespCentersQueryDs').getAt(0).get('setOfBooksId');
+            rd.set('setOfBooksId', setOfBooksId);
+        }
+
+        function GLD2050_sobsDsQuery(ds) {
+            $au('GLD2050_sobsDs').query();
+
+        }
+
+        function GLD2050_onSubmitSuccessResultDs(ds) {
+            ds.query();
+        }
+
+        function GLD2050_onQueryDsUpdate(ds, rd, name, value, old) {
+            if ('setOfBooksName' == name) {
+                $au('GLD2050_sobRespCentersResultDs').query();
+            }
+        }
+
+        function GLD2050_setSetOfBooksCodeName(ds) {
+            var r = ds.getAll();
+            for (var i = 0 ; i < r.length ; i++){
+                r[i].set("setOfBooksName",r[i].get("setOfBooksCode")+"-"+r[i].get("setOfBooksName"))
+            }
+        }
+
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2050_respCenterTypeDs" loadData="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/GLD.RESP_CENTER_TYPE/"/>
+            <a:dataSet id="GLD2050_sobsDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/gld-set-of-book/query?enabledFlag=Y">
+                <a:events>
+                    <a:event name="load" handler="GLD2050_setSetOfBooksCodeName"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GLD2050_sobRespCentersQueryDs">
+                <a:fields>
+                    <a:field name="setOfBooksId" defaultValue="$[/model/@setOfBooksId]"/>
+                    <a:field name="setOfBooksName" defaultValue="$[/model/@setOfBooksName]"
+                             displayField="setOfBooksName"
+                             options="GLD2050_sobsDs"
+                             prompt="gld_sob_resp_center.set_of_books_id" required="true" returnField="setOfBooksId"
+                             valueField="setOfBooksId"/>
+                    <a:field name="responsibilityCenterCode" prompt="gld_sob_resp_center.responsibility_center_code"/>
+                    <a:field name="responsibilityCenterName" prompt="gld_sob_resp_center.responsibility_center_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD2050_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GLD2050_sobRespCentersResultDs" queryDataSet="GLD2050_sobRespCentersQueryDs"
+                       autoPageSize="true" autoQuery="true" fetchAll="false"
+                       selectable="true" baseUrl="/gld-sob-resp-center">
+                <a:fields>
+                    <a:field name="responsibilityCenterCode" prompt="gld_sob_resp_center.responsibility_center_code"
+                             required="true"/>
+                    <a:field name="responsibilityCenterName" dto="com.hand.hec.gld.dto.GldSobRespCenter"
+                             dtoId="responsibilityCenterId" prompt="gld_sob_resp_center.responsibility_center_name"
+                             required="true"/>
+                    <a:field name="respCenterTypeCode"/>
+                    <a:field name="respCenterTypeName" displayField="meaning" options="GLD2050_respCenterTypeDs"
+                             prompt="gld_sob_resp_center.respcenter_type_code" required="true"
+                             returnField="respCenterTypeCode" valueField="value"/>
+                    <a:field name="summaryFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="gld_sob_resp_center.summary_flag"/>
+                    <a:field name="startDateActive" prompt="gld_sob_resp_center.start_date_active" required="true"
+                             validator="dateValidator"/>
+                    <a:field name="endDateActive" validator="dateValidator"
+                             prompt="gld_sob_resp_center.end_date_active"/>
+                    <a:field name="setOfBooksId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2050_onSubmitSuccessResultDs"/>
+                    <a:event name="beforecreate" handler="GLD2050_beforeDsCreate"/>
+                    <a:event name="add" handler="GLD2050_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="GLD2050_sobRespCentersGrid" type="add" width="80"/>
+                <a:gridButton bind="GLD2050_sobRespCentersGrid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="GLD2050_sobRespCentersQueryDs" resultTarget="GLD2050_sobRespCentersResultDs"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="setOfBooksName" bindTarget="GLD2050_sobRespCentersQueryDs">
+                        <a:events>
+                            <a:event name="focus" handler="GLD2050_sobsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+
+                    <a:textField name="responsibilityCenterCode" bindTarget="GLD2050_sobRespCentersQueryDs"
+                                 typeCase="upper"/>
+                    <a:textField name="responsibilityCenterName" bindTarget="GLD2050_sobRespCentersQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="GLD2050_sobRespCentersGrid" bindTarget="GLD2050_sobRespCentersResultDs" marginHeight="115"
+                marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="responsibilityCenterCode" align="center" editorFunction="GLD2050_respCenterCodeEdit"
+                          sortable="true" width="80"/>
+                <a:column name="responsibilityCenterName" align="left" editor="GLD2050_sobRespCentersTf" width="200"/>
+                <a:column name="respCenterTypeName" align="center" editor="GLD2050_sobRespCentersCmb" width="80"/>
+                <a:column name="startDateActive" align="center" editor="GLD2050_sobRespCentersDp"
+                          renderer="Aurora.formatDate" width="80"/>
+                <a:column name="endDateActive" align="center" editor="GLD2050_sobRespCentersDp"
+                          renderer="Aurora.formatDate" width="80"/>
+                <a:column name="summaryFlag" align="center" editorFunction="summaryFlagEdit"
+                          renderer="GLD2050_summaryFlagRenderer" width="80"/>
+                <a:column name="responsibilityCenterId" align="center" renderer="GLD2050_setSubResbonsibilitys"
+                          width="80"/>
+                <a:column name="asignAccEnity" align="center" renderer="GLD2050_asgnAccEnity" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="GLD2050_sobRespCentersTfUpper" typeCase="upper"/>
+                <a:tledit id="GLD2050_sobRespCentersTf"/>
+                <a:comboBox id="GLD2050_sobRespCentersCmb"/>
+                <a:dateTimePicker id="GLD2050_sobRespCentersDp"/>
+                <a:checkBox id="GLD2050_sobRespCentersCb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-5-14 上午11:19:56  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" xmlns:p="uncertain.proc"
+          trace="true">
+    <a:init-procedure>
+        <p:echo/>
+        <s:server-script import="bpm_page.js"/>
+    </a:init-procedure>
+    <a:view>
+        <!-- 提交涉及到工作流等业务表 但表还没迁移 -->
+        <script><![CDATA[
+        function submitsuccessFun() {
+            Aurora.Masker.unmask(Ext.getBody());
+            var ds = $au('docHeaderDs');
+            var docHeaderId = ds.getAt(0).get('docHeaderId');
+            ds.setQueryUrl('$[/request/@context_path]/bpm/tplt001/docHeader/query?docHeaderId=' + docHeaderId);
+            ds.query();
+        }
+
+        function loadHeader() {
+
+        }
+
+        function saveFuntion() {
+            if ($au('docHeaderDs').validate()) {
+                Aurora.Masker.mask(Ext.getBody(), '$[l:hap.refresh_cache]');
+                $au('docHeaderDs').submit();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="docHeaderDs"
+                       baseUrl="/bpm/tplt001"
+                       queryUrl="$[/request/@context_path]/bpm/tplt001/docHeader/query?docHeaderId=$[/parameter/@docHeaderId]"
+                       submitUrl="$[/request/@context_path]/bpm/tplt001/submit?pageId=$[/parameter/@pageId]">
+                <a:fields>
+                    <a:field name="note" required="true" prompt="备注"/>
+                    <a:field name="companyName" defaultValue="$[/model/docHeaderInfo/records/record/@companyName]"
+                             prompt="公司名称"/>
+                    <a:field name="companyId" defaultValue="$[/model/docHeaderInfo/records/record/@companyId]"/>
+                    <a:field name="positionName" autoComplete="true" autoCompleteField="positionName" prompt="岗位"
+                             defaultValue="$[/model/docHeaderInfo/records/@positionName]"
+                             lovCode="LOV_HR_POSITION"
+                             title="选择岗位">
+                        <a:mapping>
+                            <a:map from="positionId" to="positionId"/>
+                            <a:map from="positionCode" to="positionCode"/>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="unitCode" to="unitCode"/>
+                            <a:map from="unitName" to="unitName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId" defaultValue="$[/model/docHeaderInfo/records/@employeeId]"/>
+                    <a:field name="positionId" defaultValue="$[/model/docHeaderInfo/records/@positionId]"/>
+                    <a:field name="unitId" defaultValue="$[/model/docHeaderInfo/records/@unitId]"/>
+                    <a:field name="documentNumber" prompt="单据编号"
+                             defaultValue="$[/model/docHeaderInfo/records/@documentNumber]"
+                             readOnly="true"/>
+                    <a:field name="templateDesc" prompt="模板名称"
+                             defaultValue="$[/model/docHeaderInfo/records/@templateDesc]" readOnly="true"/>
+                    <a:field name="employeeName" prompt="员工"
+                             defaultValue="$[/model/docHeaderInfo/records/@employeeName]" readOnly="true"/>
+                    <a:field name="documentDate" prompt="提单日期"
+                             defaultValue="$[/model/docHeaderInfo/records/@documentDate]" readOnly="true"/>
+                    <a:field name="unitName" defaultValue="$[/model/docHeaderInfo/records/@unitName]" prompt="部门"
+                             readOnly="true"/>
+                    <a:field name="documentStatusName" prompt="单据状态"
+                             defaultValue="$[/model/docHeaderInfo/records/@documentStatusName]"
+                             readOnly="true"/>
+                    <a:field name="pageId" defaultValue="$[/parameter/@pageId]"/>
+                    <a:field name="docHeaderId" defaultValue="$[/parameter/@docHeaderId]"/>
+                    <a:field name="templateId" defaultValue="$[/model/@templateId]"/>
+                    <a:field name="pageGroupId" defaultValue="$[/model/@pageGroupId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="submitsuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="tplt001HeaderDs" bindName="tplt001Headers" bindTarget="docHeaderDs"
+                       baseUrl="/bpm/tplt001/header"
+                       queryUrl="$[/request/@context_path]/bpm/tplt001/header/query?docHeaderId=$[/parameter/@docHeaderId]">
+                <a:fields>
+                    <a:field name="headerId"/>
+                    <a:field name="docHeaderId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="loadHeader"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="tpllt001LineDs" bindName="tplt001Lines" bindTarget="tplt001HeaderDs"
+                       queryDataSet="tplt001HeaderDs"
+                       baseUrl="/bpm/tplt001/line" selectable="true">
+                <a:fields>
+                    <a:field name="lineId"/>
+                    <a:field name="headerId"/>
+                    <a:field name="lineNum" prompt="序号"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="tplt001Form01Id" column="1" title="基本信息" marginWidth="40" style="width:100%">
+                <a:vBox style="width:100%;">
+                    <a:box column="4" style="width:100%">
+                        <a:textField name="documentNumber" id="tplt001TextField03Id" bindTarget="docHeaderDs"/>
+                        <a:lov name="companyName" id="tplt001Lov02Id" bindTarget="docHeaderDs"/>
+                        <a:lov name="positionName" id="tplt001Lov01Id" bindTarget="docHeaderDs"/>
+                        <a:textField name="unitName" id="tplt001TextField02Id" bindTarget="docHeaderDs"/>
+                        <a:textField name="templateDesc" id="tplt001TextField04Id" bindTarget="docHeaderDs"/>
+                        <a:textField name="employeeName" id="tplt001TextField05Id" bindTarget="docHeaderDs"/>
+                        <a:datePicker name="documentDate" id="tplt001DatePicker01Id" bindTarget="docHeaderDs"/>
+                        <a:datePicker name="approveDate" id="tplt001DatePicker02Id" bindTarget="docHeaderDs"/>
+                        <a:textField name="documentStatusName" id="tplt001TextField06Id"
+                                     bindTarget="docHeaderDs"/>
+                    </a:box>
+                    <a:box style="width:100%">
+                        <a:textArea name="note" id="tplt001TextField01Id" bindTarget="docHeaderDs"
+                                    style="min-width:70%;width:calc((100% + 90px) * 0.75 + 150px)"/>
+                    </a:box>
+                </a:vBox>
+            </a:form>
+            <a:hBox id="tplt001HBox04Id" marginWidth="40">
+                <a:button id="tplt001Save01BtnId" click="saveFuntion" text="hap.save"/>
+            </a:hBox>
+            <a:form id="tplt001Form02Id" title="头信息" marginWidth="40"></a:form>
+            <a:grid id="tplt001GridId" autoAdjust="true" bindTarget="tpllt001LineDs" height="200" marginWidth="40"
+                    navBar="true">
+                <a:toolBar>
+                    <a:button id="tplt001AddBtnId" type="add"/>
+                    <a:button id="tplt001DelBtnId" type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="lineNum" id="tplt001ColumnId"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+        Aurora.onReady(function () {
+            if ('$[/parameter/@docHeaderId]') {
+                $au('docHeaderDs').query();
+            } else {
+                var docHeaderDs = $au('docHeaderDs');
+                var headerDs = $au('tplt001HeaderDs');
+                docHeaderDs.create();
+                headerDs.create();
+                //在headerDs的create事件之后增加load事件触发，方便进行header上的参数设置
+                headerDs.fireEvent("load", headerDs);
+            }
+        });
+        ]]></script>
+    </a:view>
+</a:screen>

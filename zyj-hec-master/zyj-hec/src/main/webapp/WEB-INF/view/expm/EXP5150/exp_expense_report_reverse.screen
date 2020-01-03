@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query autoCount="false" fetchAll="false" model="hec_util.gld_currency_vl_lov" rootPath="currency_list"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP5150_reverse_view_report_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="EXP5150_reverse_view_finance_link" url="$[/request/@context_path]/expm/EXP5150/exp_expense_report_reverseFinance.screen"/>
+        <a:link id="EXP5150_reverse_link" url="$[/request/@context_path]/exp/report-header/reverse"/>
+        <a:link id="EXP5150_reverse_periodName_link" url="$[/request/@context_path]/exp/report-header/get-period-name"/>
+        <script><![CDATA[
+        function queryFunction() {
+            $au('EXP5150_reverse_result_ds').query();
+        }
+
+        function resetFunction() {
+            $au('EXP5150_reverse_query_ds').reset();
+        }
+
+        function EXP5150_dateUpdateFunction(dateSet, record, name) {
+            if (name == 'journalDate') {
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP5150_reverse_periodName_link').getUrl(),
+                    para: [{
+                        journalDate: record.get('journalDate')
+                    }],
+                    success: function(resp) {
+                        $au('EXP5150_reverse_date_ds').getAt(0).set('periodName', resp.rows[0].periodName);
+                    },
+                    scope: this
+                });
+            }
+        }
+
+        function EXP5150_reverseFunction() {
+            var params = $au('EXP5150_reverse_result_ds').getJsonData(true);
+            var dateStr = $au('EXP5150_reverse_date_ds').getAt(0).get('journalDate');
+            var periodName = $au('EXP5150_reverse_date_ds').getAt(0).get('periodName');
+            if (!dateStr) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:exp_expense_report_reverse.check2]', null, 250, 100);
+                return;
+            }
+            // if (!periodName) {
+            //     Aurora.showInfoMessage('$[l:prompt]', '$[l:exp_expense_report_reverse.check3]', null, 250, 100);
+            //     return;
+            // }
+            if (params.length < 1) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            // for (var i = 0;i < params.length;i++) {
+            //     params[i]['journalDate'] = dateStr;
+            // }
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('EXP5150_reverse_link').getUrl(),
+                para: [{
+                    journalDate : dateStr,
+                    periodName  : periodName,
+                    details : params
+                }],
+                success: function() {
+                    $au('EXP5150_reverse_result_ds').query();
+                },
+                scope: this
+            });
+        }
+
+        function EXP5150_numberRenderer(value, record, name) {
+            var id = record.get('expReportHeaderId');
+            return '<a href="javascript:EXP5150_numberWindow(' + id + ');">' + value + '</a>';
+        }
+
+        function EXP5150_numberWindow(id) {
+            new Aurora.Window({
+                title: '',
+                id: 'exp_report_view_main_screen',
+                url: $au('EXP5150_reverse_view_report_link').getUrl() + '?expReportHeaderId=' + id,
+                fullScreen: true
+            });
+        }
+
+        // function EXP5150_financeRenderer(value, record, name) {
+        // var id = record.get('expReportHeaderId');
+        // return '<a href="javascript:EXP5150_financeWindow(' + id + ');">$[l:exp_expense_report_reverse.financetab}</a>';
+        // }
+
+        // function　EXP5150_financeWindow(id) {
+        // new Aurora.Window({
+        // title: '$[l:exp_expense_report_reverse.financetab]',
+        // id: 'EXP5150_reverse_view_finance_window',
+        // url: $au('EXP5150_reverse_view_finance_link').getUrl() + '?expReportHeaderId=' + id,
+        // fullScreen: false,
+        // width:1020,
+        // side:'right'
+        // });
+        // }
+        function EXP5150_formatMoney(value, record, name) {
+            return '<div style="font-weight:bold;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5150_currency_ds" loadData="true" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/gld-currency/query"/>
+            <a:dataSet id="EXP5150_reverse_query_ds">
+                <a:fields>
+                    <a:field name="moExpReportTypeName" autoComplete="true" autoCompleteField="moExpReportTypeName" lovHeight="500" lovCode="EXP_MO_REPORT_TYPE_COMPANY_LOV" lovWidth="530" placeHolder="exp_report_header.exp_report_type_id" title="exp_report_header.expense_report_type_code">
+                        <a:mapping>
+                            <a:map from="moExpReportTypeId" to="moExpReportTypeId"/>
+                            <a:map from="moExpReportTypeName" to="moExpReportTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpReportTypeId"/>
+                    <a:field name="employeeName" autoComplete="true" autoCompleteField="name" lovGridHeight="320" lovHeight="440" lovCode="LOV_EXP_EMPLOYEE" lovWidth="500" placeHolder="exp_report_header.employee_name" title="exp_employee.query">
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId"/>
+                    <a:field name="expReportNumber" placeHolder="exp_report_header.exp_report_number"/>
+                    <a:field name="currencyName" displayField="currencyName" options="EXP5150_currency_ds" placeHolder="exp_report_header.payment_currency_code" returnField="paymentCurrencyCode" valueField="currency_code"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="reportDateFrom" placeHolder="exp_expense_report_audit.report_date_f"/>
+                    <a:field name="reportDateTo" placeHolder="exp_expense_report_audit.report_date_t"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5150_reverse_date_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="journalDate" prompt="exp_report_header.reversed_date" required="true"/>
+                    <a:field name="periodName" prompt="exp_report_header.period_name" readOnly="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5150_dateUpdateFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5150_reverse_result_ds" autoPageSize="true" queryUrl="$[/request/@context_path]/exp/report-header/reverse-query" queryDataSet="EXP5150_reverse_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="expReportNumber" prompt="exp_report_header.exp_report_number"/>
+                    <a:field name="moExpReportTypeName" prompt="exp_report_header.exp_report_type_id"/>
+                    <a:field name="employeeName" prompt="exp_report_header.employee_name"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_report_header.payment_currency_name"/>
+                    <a:field name="reportAmount" prompt="exp_report_header.report_amount"/>
+                    <a:field name="reportDate" prompt="exp_report_header.report_date"/>
+                    <a:field name="reportStatusName" prompt="exp_report_header.report_status"/>
+                    <a:field name="businessAmount" prompt="exp_report_header.business_amount"/>
+                    <a:field name="description" prompt="exp_report_header.description"/>
+                    <a:field name="reverseFinance" prompt=""/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5150_reverseFinance_ds" queryDataSet="EXP5150_reverse_result_ds" autoQuery="true" bindName="finance_line" bindTarget="EXP5150_reverse_result_ds"  baseUrl="/exp/report-account"  queryUrl="$[/request/@context_path]/exp/report-account/auditAccountQuery">
+                <a:fields>
+                    <a:field name="accEntityName" prompt="exp_report_account.acc_entity_name"/>
+                    <a:field name="respCenterName" prompt="exp_report_account.responsibility_center_id"/>
+                    <a:field name="accountCode" prompt="exp_report_account.account_code"/>
+                    <a:field name="accountName" prompt="exp_report_account.account_name"/>
+                    <a:field name="periodName" prompt="exp_report_account.period_name"/>
+                    <a:field name="enteredAmountDr" prompt="exp_report_account.entered_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="exp_report_account.entered_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="exp_report_account.functional_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="exp_report_account.functional_amount_cr"/>
+                    <a:field name="description" prompt="exp_report_account.description"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="EXP5150_reverseFunction" text="prompt.reverse" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm id="EXP5150_reverse_form" bindTarget="EXP5150_reverse_query_ds" marginWidth="35" resultTarget="EXP5150_reverse_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="expReportNumber" bindTarget="EXP5150_reverse_query_ds"/>
+                    <a:lov name="moExpReportTypeName" bindTarget="EXP5150_reverse_query_ds"/>
+                    <a:lov name="employeeName" bindTarget="EXP5150_reverse_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="currencyName" bindTarget="EXP5150_reverse_query_ds"/>
+                    <a:datePicker name="reportDateFrom" bindTarget="EXP5150_reverse_query_ds"/>
+                    <a:datePicker name="reportDateTo" bindTarget="EXP5150_reverse_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form id="EXP5150_reverse_date_form" column="2" marginWidth="3" showmargin="false" title="exp_report_header.reversed_date">
+            <a:datePicker name="journalDate" bindTarget="EXP5150_reverse_date_ds"/>
+            <a:textField name="periodName" bindTarget="EXP5150_reverse_date_ds"/>
+        </a:form>
+        <a:grid id="exp5150grid1" bindTarget="EXP5150_reverse_result_ds" marginHeight="500" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="expReportNumber" align="center" renderer="EXP5150_numberRenderer" width="150"/>
+                <a:column name="moExpReportTypeName" align="center" width="200"/>
+                <a:column name="employeeName" align="center" width="120"/>
+                <a:column name="paymentCurrencyName" align="center" width="100"/>
+                <a:column name="businessAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                <a:column name="reportDate" align="center" width="120"/>
+                <a:column name="reportStatusName" align="center" width="120"/>
+                <a:column name="description" width="200"/>
+                <!-- <a:column name="reverseFinance" align="center" renderer="EXP5150_financeRenderer" width="120"/> -->
+            </a:columns>
+        </a:grid>
+        <a:form marginWidth="3" padding="0" showmargin="false" title="exp_pre_post_ro.fina_info">
+            <!-- <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="back_Function" text="HAP_BACK" width="80"/>
+                </a:formToolbar> -->
+            <a:grid id="EXP5150_reverseFinance_grid" autoAdjustHeight="true" bindTarget="EXP5150_reverseFinance_ds" marginHeight="150" marginWidth="3" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="accEntityName" align="center" width="200"/>
+                    <a:column name="respCenterName" align="center" width="200"/>
+                    <a:column name="periodName" align="center" width="100"/>
+                    <a:column name="accountCode" align="center" width="150"/>
+                    <a:column name="accountName" align="center" width="200"/>
+                    <a:column name="enteredAmountDr" align="right" renderer="EXP5150_formatMoney" width="130"/>
+                    <a:column name="enteredAmountCr" align="right" renderer="EXP5150_formatMoney" width="130"/>
+                    <a:column name="functionalAmountDr" align="right" renderer="EXP5150_formatMoney" width="130"/>
+                    <a:column name="functionalAmountCr" align="right" renderer="EXP5150_formatMoney" width="130"/>
+                    <a:column name="description" width="250"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+    </a:view>
+</a:screen>

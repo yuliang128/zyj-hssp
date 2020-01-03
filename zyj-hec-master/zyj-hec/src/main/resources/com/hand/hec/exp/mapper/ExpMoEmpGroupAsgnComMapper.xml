@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoEmpGroupAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoEmpGroupAsgnCom">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="MO_EMP_GROUP_ID" property="moEmpGroupId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR" />
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="queryMoEmpGroupAsgnCom" resultType="long" parameterType="com.hand.hec.exp.dto.ExpMoEmpGroupAsgnCom">
+        select count(*) from exp_mo_emp_group_asgn_com where MO_EMP_GROUP_ID = #{moEmpGroupId} and COMPANY_ID = #{companyId}
+    </select>
+    <select id="queryAllCompanyInformation" resultMap="BaseResultMap" parameterType="com.hand.hec.exp.dto.ExpMoEmpGroupAsgnCom">
+        SELECT DISTINCT
+        fnd.COMPANY_ID,
+        fnd.COMPANY_CODE,
+        fndt.COMPANY_SHORT_NAME
+        FROM
+        fnd_company fnd
+        LEFT JOIN fnd_company_tl fndt ON ( fnd.COMPANY_ID = fndt.company_id AND fndt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+        fnd.mag_org_id = #{magOrgId}
+        AND fnd.start_date_active &lt;= sysdate( ) AND ( fnd.end_date_active &gt;= sysdate( )
+        OR fnd.end_date_active IS NULL
+        )
+        <if test = "moEmpGroupId != null">
+            AND NOT EXISTS ( SELECT 1 FROM exp_mo_emp_group_asgn_com emeo WHERE emeo.company_id = fnd.company_id AND emeo.mo_emp_group_id = #{moEmpGroupId} )
+        </if>
+        order by fnd.COMPANY_CODE
+    </select>
+
+
+</mapper>

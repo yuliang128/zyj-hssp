@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: guiyuting
+    $Date: 2019-02-21 下午3:59:19
+    $Revision: 1.0  
+    $Purpose: 核算主体级客户主数据定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2515_ord_system_customer_ae_assign_batch_link" url="$[/request/@context_path]/fnd/FND2515/ord_system_customer_batch_assign_acc_entity.screen"/>
+        <a:link id="FND2515_ord_system_customer_ref_ae_link" url="$[/request/@context_path]/fnd/FND2515/ord_system_customer_ref_ae.screen"/>
+        <a:link id="FND2515_ord_customer_accounts_link" url="$[/request/@context_path]/fnd/FND2515/ord_customer_account.screen"/>
+        <a:link id="FND2515_ord_customer_tax_link" url="$[/request/@context_path]/fnd/FND2515/ord_customer_tax.screen"/>
+        <script><![CDATA[
+            function FND2515_queryCustomer() {
+                $au('FND2515_ord_system_customer_result_ds').query();
+            }
+            
+            function FND2515_cusTypeEdit(record, name) {
+                if (record.isNew) {
+                    return 'FND2515_sysCustomer_cmb';
+                } else {
+                    return '';
+                }
+            }
+            
+            function FND2515_cusCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'FND2515_sysCustomer_tf';
+                } else {
+                    return '';
+                }
+            }
+            
+            //批量分配
+            
+            function FND2515_batchAssignAccountEntity() {
+                var lineDs = $au('FND2515_ord_system_customer_result_ds');
+                var lineData = lineDs.getJsonData(true);
+                if (lineData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+            
+                var record = lineDs.getAll();
+                var currentRecord = lineDs.getAt(record.length - 1);
+                if (currentRecord.isNew) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.data_check_failure]', null, 250, 100);
+                    return;
+                }
+            
+                new Aurora.Window({
+                    id: 'FND2515_ord_system_customer_ae_assign_batch',
+                    url: $au('FND2515_ord_system_customer_ae_assign_batch_link').getUrl() + '?customerId=' + '$[/parameter/@customerId]',
+                    title: '$[l:fnd_sys_vender.batch_disp_account_entity]',
+                    side: 'right',
+                    width: 1020
+                }).on('close',function(){
+                    $au('FND2515_ord_system_customer_result_ds').query();
+                });
+            
+            }
+            
+            //分配核算主体-跳转
+            
+            function FND2515_assignAccEntity(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:FND2515_openAssignAe(' + record.get('customerId') + ')">$[l:gld_accounting_entities.acc_entity_name]</>';
+            }
+            
+            function FND2515_openAssignAe(id) {
+                new Aurora.Window({
+                    id: 'FND2515_ord_system_customer_ref_ae_window',
+                    url: $au('FND2515_ord_system_customer_ref_ae_link').getUrl() + '?customerId=' + id,
+                    title: '$[l:gld_accounting_entities.acc_entity_name]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //银行账号-跳转
+            
+            function FND2515_assignAccount(value, record, name) {
+                var customerId = record.get('customerId');
+                if (customerId) {
+                    return '<a href="javascript:FND2515_assignAccountInfo(' + customerId + ')">$[l:csh_payment.bank_account_code]</a>';
+                }
+            }
+            
+            function FND2515_assignAccountInfo(customerId) {
+                new Aurora.Window({
+                    id: 'FND2515_ord_customer_accounts_window',
+                    url: $au('FND2515_ord_customer_accounts_link').getUrl() + '?customerId=' + customerId,
+                    title: '$[l:csh_payment.bank_account_code]',
+                    fullScreen: true
+                });
+            }
+            
+            //税务信息-跳转
+            
+            function FND2515_assignTax(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:FND2515_assignTaxInfo(' + record.get('customerId') + ')">$[l:ord_customer_tax.title]</>';
+            }
+            
+            function FND2515_assignTaxInfo(id) {
+                new Aurora.Window({
+                    id: 'FND2515_ord_customer_tax_window',
+                    url: $au('FND2515_ord_customer_tax_link').getUrl() + '?customerId=' + id,
+                    title: '$[l:ord_customer_tax.title]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //客户代码校验
+            
+            function FND2515_customerCodeValidator(record, name, value) {
+            
+                var allRecords = $au('FND2515_ord_system_customer_result_ds').getAll();
+                for (var i = 0;i < allRecords.length;i++) {
+                    var r = allRecords[i];
+                    if (r != record) {
+                        if (r.get('customerCode') == value) {
+                            return '$[l:customer_code_duplicate]';
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            function FND2515_sysCustomerSubmit() {
+                $au('FND2515_ord_system_customer_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2515_customerType_ds">
+                <a:datas dataSource="aeCustomerTypeList/records"/>
+            </a:dataSet>
+            <a:dataSet id="FND2515_ord_system_customer_query_ds">
+                <a:fields>
+                    <a:field name="customerTypeName" displayField="customerTypeName" options="FND2515_customerType_ds" returnField="customerTypeId" valueField="customerTypeId"/>
+                    <a:field name="customerCode"/>
+                    <a:field name="description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2515_ord_system_customer_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/ord/system-customer" queryUrl="$[/request/@context_path]/ord/system-customer/ordSysQuery" submitUrl="$[/request/@context_path]/ord/system-customer/submitOrdSysCustomer" queryDataSet="FND2515_ord_system_customer_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="customerId"/>
+                    <!--修改description为customer_type_name, 解决下拉框无值的问题    Y.duan 2017-8-24 20:27:59-->
+                    <a:field name="customerTypeName" displayField="customerTypeName" options="FND2515_customerType_ds" prompt="ord_customer_type.customer_type_code" required="true" valueField="customerTypeId">
+                        <a:mapping>
+                            <a:map from="customerTypeCode" to="customerTypeCode"/>
+                            <a:map from="customerTypeId" to="customerTypeId"/>
+                            <a:map from="customerTypeName" to="customerTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="customerTypeId"/>
+                    <a:field name="customerCode" required="true" validator="FND2515_customerCodeValidator"/>
+                    <a:field name="description" prompt="ord_customer_description" required="true" dto="com.hand.hec.fnd.dto.OrdSystemCustomer" dtoId="customerId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2515_sysCustomerSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton id="add_btn" bind="FND2515_ord_system_customer_grid" type="add" width="80"/>
+                <a:gridButton id="save_btn" bind="FND2515_ord_system_customer_grid" type="save" width="80"/>
+                <a:toolbarButton click="FND2515_batchAssignAccountEntity" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND2515_ord_system_customer_query_ds" resultTarget="FND2515_ord_system_customer_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="customerTypeName" bindTarget="FND2515_ord_system_customer_query_ds" prompt="ord_customer_type.customer_type_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND2515_queryCustomer"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="customerCode" bindTarget="FND2515_ord_system_customer_query_ds" prompt="ord_system_customer.customer_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND2515_queryCustomer"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND2515_ord_system_customer_query_ds" prompt="ord_customer_description">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND2515_queryCustomer"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND2515_ord_system_customer_grid" bindTarget="FND2515_ord_system_customer_result_ds" marginHeight="115" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="customerTypeName" align="center" editorFunction="FND2515_cusTypeEdit" prompt="ord_customer_type.customer_type_code" width="120"/>
+                <a:column name="customerCode" align="center" editorFunction="FND2515_cusCodeEdit" prompt="ord_system_customer.customer_code" width="120"/>
+                <a:column name="description" align="left" editor="FND2515_sysCustomer_tld" prompt="ord_customer_description" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="FND2515_sysCustomer_ckb" prompt="fnd_tax_type_code.enabled_flag" width="100"/>
+                <a:column name="asgnAccEntity" align="center" prompt="" renderer="FND2515_assignAccEntity" width="100"/>
+                <a:column name="asgnBank" align="center" prompt="" renderer="FND2515_assignAccount" width="100"/>
+                <a:column name="asgnTax" align="center" prompt="" renderer="FND2515_assignTax" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="FND2515_sysCustomer_tf"/>
+                <a:tledit id="FND2515_sysCustomer_tld"/>
+                <a:checkBox id="FND2515_sysCustomer_ckb"/>
+                <a:comboBox id="FND2515_sysCustomer_cmb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

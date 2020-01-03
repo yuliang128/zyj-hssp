@@ -1,0 +1,557 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <!--<a:init-procedure>-->
+        <!--<a:model-query defaultWhereClause="v.reqPageElementCode = &apos;TRAVEL_STAY_LINES&apos;" model="expm.EXP4010.exp_requisition_line_dimension_fields_query" rootPath="travel_stay_line_dimensions"/>-->
+        <!--<a:model-query defaultWhereClause="v.reqPageElementCode = &apos;TRAVEL_STAY_LINES&apos;" model="expm.EXP4010.exp_requisition_line_object_fields_query" rootPath="travel_stay_line_objects"/>-->
+        <!--<a:model-query defaultWhereClause="erpe.reqPageElementCode = &apos;TRAVEL_STAY_LINES&apos;" model="expm.EXP4010.exp_requisition_line_description_query" rootPath="travel_stay_lines_description"/>-->
+    <!--</a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP4010_travelstayLineExtendLink" url="$[/request/@context_path]/expm/EXP4010/exp_requisition_maintain_travel_stay_lines_extend.screen"/>
+        <script><![CDATA[
+            function EXP4010_travel_stayGetNextLineNumber() {
+                var nextLineNumber = 10;
+                var allPmtRecords = $au('EXP4010_exp_requisition_travel_stay_line_ds').getAll();
+                Ext.each(allPmtRecords, function(allPmtRecord) {
+                    if (allPmtRecord.get('lineNumber') >= nextLineNumber) {
+                        nextLineNumber = allPmtRecord.get('lineNumber') + 10;
+                    }
+                }, this);
+                return nextLineNumber;
+            }
+            
+            function EXP4010_travelStayLineAdd() {
+                var selectedRecords = $au('EXP4010_exp_requisition_travel_stay_line_ds').getSelected();
+                if (selectedRecords && selectedRecords.length) {
+                    Ext.each(selectedRecords, function(selectedRecord) {
+                        var data = {};
+                        for (var field in $au('EXP4010_exp_requisition_travel_stay_line_ds').fields) {
+                            data[field] = selectedRecord.get(field);
+                        }
+                        data['expRequisitionHeaderId'] = null;
+                        data['lineNumber'] = EXP4010_travel_stayGetNextLineNumber();
+                        $au('EXP4010_exp_requisition_travel_stay_line_ds').create(data);
+                    });
+                } else {
+                    var data = {};
+                    var headerRecord = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+                    data['lineNumber'] = EXP4010_travel_stayGetNextLineNumber();
+                    data['expRequisitionHeaderId'] = headerRecord.get('expRequisitionHeaderId');
+                    data['companyName'] = headerRecord.get('companyName');
+                    data['companyId'] = headerRecord.get('companyId');
+                    data['accEntityName'] = headerRecord.get('accEntityName');
+                    data['accEntityId'] = headerRecord.get('accEntityId');
+                    data['unitName'] = headerRecord.get('unitName');
+                    data['unitId'] = headerRecord.get('unitId');
+                    data['positionName'] = headerRecord.get('positionName');
+                    data['positionId'] = headerRecord.get('positionId');
+                    data['employeeName'] = headerRecord.get('employeeName');
+                    data['employeeId'] = headerRecord.get('employeeId');
+                    data['respCenterName'] = headerRecord.get('respCenterName');
+                    data['respCenterId'] = headerRecord.get('respCenterId');
+                    data['primaryQuantity'] = 1;
+                    data['businessCurrencyName'] = headerRecord.get('paymentCurrencyName');
+                    data['businessCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+                    data['biz2payExchangeRateTypeName'] = headerRecord.get('pay2funExchangeRateTypeName');
+                    data['biz2payExchangeRateType'] = headerRecord.get('pay2funExchangeRateType');
+                    data['biz2payExchangeRate'] = 1;
+                    data['paymentCurrencyName'] = headerRecord.get('paymentCurrencyName');
+                    data['paymentCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+                    data['pay2funExchangeRateTypeName'] = headerRecord.get('pay2funExchangeRateTypeName');
+                    data['pay2funExchangeRateType'] = headerRecord.get('pay2funExchangeRateType');
+                    data['pay2funExchangeRate'] = headerRecord.get('pay2funExchangeRate');
+                    data['managementCurrencyName'] = headerRecord.get('managementCurrencyName');
+                    data['managementCurrencyCode'] = headerRecord.get('managementCurrencyCode');
+                    data['pay2magExchangeRateTypeName'] = headerRecord.get('pay2magExchangeRateTypeName');
+                    data['pay2magExchangeRate'] = headerRecord.get('pay2magExchangeRate');
+                    data['periodName'] = headerRecord.get('periodName');
+                    data['bgtEntityId'] = headerRecord.get('bgtEntityId');
+                    data['bgtCenterId'] = headerRecord.get('bgtCenterId');
+                    // Modified by lcy  2018/5/7 9:50:21 新增行的时候默认带出报销类型
+                    var expense_type_default_ds = $au('EXP4010_travel_stay_expense_type_default_ds').getAt(0);
+                    if (expense_type_default_ds) {
+                        data['moExpenseTypeId'] = expense_type_default_ds.get('moExpenseTypeId');
+                        data['moExpenseTypeName'] = expense_type_default_ds.get('moExpenseTypeName');
+                    }
+                    $au('EXP4010_exp_requisition_travel_stay_line_ds').create(data);
+                }
+            }
+            
+            function EXP4010_onTravelLineUpdateFun(ds, record, name, value, oldValue) {
+                var hecUtil = new HecUtil();
+                if (name == 'companyId') {
+                    //公司变更清除部门、岗位、员工
+                    record.set('unitName', '');
+                    record.set('unitId', '');
+                    record.set('positionName', '');
+                    record.set('positionId', '');
+                    //公司变更清除地点和地点类型  Y.duan  2017-8-14 20:59:14
+                    // record.set('placeId', '');
+                    // record.set('placeName', '');
+                    // record.set('place_type_id', '');
+                    // record.set('place_type_name', '');
+                } else if (name == 'accEntityId') {
+                    //核算实体变更清除责任中心
+                    record.set('respCenterName', '');
+                    record.set('respCenterId', '');
+                } else if (name == 'moExpenseTypeName') {
+                    //报销类型变更清除申请项目
+                    record.set('moReqItemName', '');
+                    record.set('moReqItemId', '');
+                } else if (name == 'primaryQuantity') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                    record.set('requisitionFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                } else if (name == 'businessPrice') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentPrice', hecUtil.calExchangeAmount(record.get('businessPrice'), record.get('biz2payExchangeRate'), record.get('paymentCurrencyPrecision')));
+                } else if (name == 'paymentPrice') {
+                    record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementPrice', hecUtil.calExchangeAmount(record.get('paymentPrice'), record.get('pay2magExchangeRate'), record.get('managementCurrencyPrecision')));
+                } else if (name == 'managementPrice') {
+                    record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                } else if (name == 'paymentAmount') {
+                    record.set('requisitionFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                }
+                // else if (name == 'placeName') {
+                // record.set('place_type_id', '');
+                // record.set('place_type_name', '');
+                // }
+                //数据变更获取费用政策
+                if (name == 'accEntityId' || name == 'companyId' || name == 'employeeId' || name == 'moReqItemId' || name == 'placeId' || name == 'businessCurrencyCode' || name == 'positionId' || name == 'transportationName') {
+                    EXP4010_onTravelStayLinePolicyInit(record);
+                }
+            }
+            
+            function EXP4010_onTravelLineCellClickFun(grid, row, name, record) {
+                if (name == 'unitName') {
+                    record.getField('unitName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'positionName') {
+                    record.getField('positionName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'employeeName') {
+                    record.getField('employeeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'accEntityName') {
+                    record.getField('accEntityName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCenterName') {
+                    record.getField('respCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                    record.getField('respCenterName').setLovPara('summaryFlag', 'N');
+                }
+                // else if (name == 'placeName') {
+                // record.getField('placeName').setLovPara('companyId', record.get('companyId'));
+                // }
+                else if (name == 'moExpenseTypeName') {
+                    $au('EXP4010_travel_stay_expense_type_ds').setQueryParameter('moExpReqTypeId', '$[/model/header_info/record/@moExpReqTypeId]');
+                    $au('EXP4010_travel_stay_expense_type_ds').setQueryParameter('moExpenseTypeId', 'TRAVEL_STAY_LINES');
+                    $au('EXP4010_travel_stay_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP4010_travel_stay_expense_type_ds').query();
+                } else if (name == 'moReqItemName') {
+                    /*Modified by Arthur.Chen Date:2017-09-20 19:42:31
+                     1.动态获取mo_req_item_name字段的options
+                     */
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('moExpReqTypeId', '$[/model/header_info/record/@moExpReqTypeId]');
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('moExpenseTypeId', record.get('moExpenseTypeId'));
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('moExpenseTypeId', 'TRAVEL_STAY_LINES');
+                    $au('EXP4010_travel_stay_item_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP4010_travel_stay_item_ds').query();
+                } else if (name == 'businessCurrencyName') {
+                    // Modify Tagin/2018.04.02 增加业务币种-支付币种获取汇率逻辑
+                    var dataSet = $au('EXP4010_currency_ds');
+                    dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                    dataSet.setQueryParameter('toCurrency', record.get('paymentCurrencyCode'));
+                    dataSet.query();
+                } else if (name == 'peerPeopleName') {
+                    record.getField('peerPeopleName').setLovPara('companyId', record.get('companyId'));
+                }
+                if (/dimension/.test(name)) { // 设置维度查询条件【Tips：若涉及多维度则需要判断维度对应的级别，不同级别对应的组织架构不同】
+                    var id = '';
+                    var fieldName = name.replace('name', 'level');
+                    var level = record.get(fieldName);
+                    if (level == 'BUDGET') {
+                        id = record.get('bgtEntityId');
+                    } else if (level == 'ACCOUNTING') {
+                        id = record.get('accEntityId');
+                    } else if (level == 'MANAGEMENT') {
+                        id = '$[/session/@companyId]';
+                    }
+                    record.getField(name).setLovPara('companyId', id);
+                }
+            }
+            
+            // function EXP4010_onTravelLineLoadFun(dataSet) {
+                // var records = dataSet.getAll();
+            // }
+            
+            function EXP4010_onTravelStayLinePolicyInit(record) {
+                var headerRecord = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+                Aurora.request({
+                    url: $au('EXP4010_get_policy_info_link').getUrl(),
+                    para: {
+                        companyId: record.get('companyId'),
+                        employeeId: record.get('employeeId'),
+                        accEntityId: record.get('accEntityId'),
+                        placeId: record.get('placeId'),
+                        placeTypeId: record.get('placeTypeId'),
+                        positionId: record.get('positionId'),
+                        unitId: record.get('unitId'),
+                        vehicleCode: record.get('transportation'),
+                        requisitionDate: headerRecord.get('requisitionDate'),
+                        docCategory: 'EXP_REQ',
+                        docTypeId: headerRecord.get('moExpReqTypeId'),
+                        moExpenseTypeId: record.get('moExpenseTypeId'),
+                        moReqItemId: record.get('moReqItemId')
+                    },
+                    success: function(resp) {
+                        if (resp && resp.result) {
+                            var policyData = resp.result;
+                            if (policyData.count == 1) {
+                                if (policyData.defaultFlag == 'Y' && record.isNew) {
+                                    //默认标志，自动带出金额
+                                    var hecUtil = new HecUtil();
+                                    var expenseStandard = policyData.expenseStandard;
+                                    //自动倒算当前业务币种对应的金额，计算方式为：
+                                    //管理币种金额  * (1 / (付款币种 -》 管理币种汇率)) =》 付款币种金额
+                                    //付款币种金额  * (1 / (业务币种 -》 付款币种汇率)) =》 业务币种金额
+                                    var paymentExpenseStandard = hecUtil.calExchangeAmount(expenseStandard, 1 / record.get('pay2magExchangeRate'), record.get('paymentCurrencyPrecision'));
+                                    var businessExpenseStandard = hecUtil.calExchangeAmount(paymentExpenseStandard, 1 / record.get('biz2payExchangeRate'), record.get('businessCurrencyPrecision'));
+                                    record.set('businessPrice', businessExpenseStandard);
+                                }
+                                //设置管理币种的标准、上下限信息、是否可修改、是否可提交信息
+                                record.set('upperLimit', policyData.upperLimit);
+                                record.set('lowerLimit', policyData.lowerLimit);
+                                record.set('expenseStandard', policyData.expenseStandard);
+                                record.set('changeableFlag', policyData.changeableFlag);
+                                record.set('commitFlag', policyData.commitFlag);
+                            } else {
+                                //没有读取到则清空数据add by duanjian2017.12.21
+                                //record.set('businessPrice', '');
+                                record.set('upperLimit', '');
+                                record.set('lowerLimit', '');
+                                record.set('expenseStandard', '');
+                                record.set('changeableFlag', '');
+                                record.set('commitFlag', '');
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function EXP4010_travelBizPriceEditorFun(record, name) {
+                if (name == 'businessPrice') {
+                    if (record.get('changeableFlag') == 'N') {
+                        return '';
+                    } else {
+                        var precision = record.get('businessCurrencyPrecision');
+                        if (!precision) {
+                            return 'EXP4010_travel_stay_nf_2';
+                        } else {
+                            return 'EXP4010_travel_stay_nf_' + precision;
+                        }
+                    }
+                }
+            }
+            
+            
+            function EXP4010_travel_stayDateValidator(record, name, value) {
+                //modify lcy 2018/4/19 update时日期格式转换
+                var dateFrom = Aurora.formatDate(record.get('accommodationDateFrom'));
+                var dateTo = Aurora.formatDate(record.get('accommodationDateTo'));
+                if (dateFrom && dateTo) {
+                    if (dateFrom >= dateTo) {
+                        return '$[l:accommodation_date_not_later_ending_date]';
+                    }
+                    //计算入住天数
+                    var days = Math.ceil((new Date(record.get('accommodationDateTo')).getTime() - new Date(record.get('accommodationDateFrom')).getTime()) / (1000 * 60 * 60 * 24));
+                    record.set('accommodationDays', days);
+                }
+                return true;
+            }
+            
+            function EXP4010_travelStayLineBeforeSubmit() {
+                var standardLineDs = $au('EXP4010_exp_requisition_travel_stay_line_ds');
+                if (!standardLineDs.validate()) {
+                    return false;
+                } else {
+                    var records = standardLineDs.getAll();
+                    for (var i = 0;i < records.length;i++) {
+                        var expObjDatas = [];
+                        for (field in standardLineDs.fields) {
+                            if (/^#/.test(field)) {
+                                //id字段
+                                var expObjTypeId = field.replace(/^#/, '');
+                                var idValue = records[i].get(field);
+                                var nameValue = records[i].get('^' + field);
+                                var expObjData = {
+                                    moExpObjTypeId: expObjTypeId,
+                                    moExpenseObjectId: idValue,
+                                    moExpenseObjectName: nameValue
+                                };
+                                expObjDatas.push(expObjData);
+                            }
+                        }
+                        records[i]['data']['expenseObjectLines'] = expObjDatas;
+                    }
+                }
+            }
+            
+            $au('EXP4010_exp_requisition_header_ds')['on']('beforesubmit', EXP4010_travelStayLineBeforeSubmit);
+            
+            function EXP4010_travel_stayMoreRenderer(value, record, name) {
+                var content = ">>";
+                return '<a href="javascript:EXP4010_travel_stayMoreWindow()"> ' + content + '</a>';
+            }
+            
+            function EXP4010_travel_stayMoreWindow() {
+                new Aurora.Window({
+                    id: 'EXP4010_travel_stay_line_extend_window',
+                    url: $au('EXP4010_travelstayLineExtendLink').getUrl() + '?moExpReqTypeId=$[/model/header_info/record/@moExpReqTypeId]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_travel_stay_place_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_policy_place_types_vl_lov"/>
+            <a:dataSet id="EXP4010_travel_stay_expense_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_util.exp_req_mo_expense_types_vl_lov"/>
+            <a:dataSet id="EXP4010_travel_stay_item_ds" fetchAll="true" loadData="true" model="hec_util.exp_util.exp_req_mo_expense_items_vl_lov"/>
+            <a:dataSet id="EXP4010_travel_stay_expense_type_default_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/autocrud/expm.EXP4010.exp_req_mo_expense_types_query/query?reqPageElementCode=TRAVEL_STAY_LINES&amp;moExpReqTypeId=$[/model/header_info/record/@moExpReqTypeId]"/>
+            <a:dataSet id="EXP4010_exp_requisition_travel_stay_line_ds" autoQuery="true" bindName="travel_stay_lines" bindTarget="EXP4010_exp_requisition_header_ds" queryDataSet="EXP4010_exp_requisition_header_ds" queryUrl="$[/request/@context_path]/expm/EXP4010/exp_requisition_travel_line_query.svc?expRequisitionHeaderId=$[/model/header_info/record/@expRequisitionHeaderId]&amp;reqPageElementCode=TRAVEL_STAY_LINES&amp;_ban_remind=Y" selectable="true" submitUrl="$[/request/@context_path]/autocrud/db.exp_requisition_pkg.delete_exp_requisition_lines/batch_update">
+                <a:fields>
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="expRequisitionLineId"/>
+                    <a:field name="lineNumber" prompt="hap_line_number"/>
+                    <a:field name="more" prompt="hap_more"/>
+                    <a:field name="reqPageElementCode" defaultValue="TRAVEL_STAY_LINES"/>
+                    <a:field name="description" prompt="exp_requisition_headers.description"/>
+                    <a:field name="companyName" lovCode="LOV_BGT6200_COMPANY" prompt="acp_acp_requisition_hds.company_id" required="true">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="unitName" lovCode="EXP_ORG_UNIT_VL_LOV" prompt="acp_acp_requisition_hds.unit_id" required="true">
+                        <a:mapping>
+                            <!--添加默认核算主体，默认责任中心，默认预算主体，默认预算中心映射   Y.duan 2017-8-31 19:37:31-->
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="defaultAccEntityId" to="accEntityId"/>
+                            <a:map from="defaultResCenterId" to="respCenterId"/>
+                            <a:map from="defaultBgtEntityId" to="bgtEntityId"/>
+                            <a:map from="defaultBgtCenterId" to="bgtCenterId"/>
+                            <a:map from="defaultAccEntityDisplay" to="accEntityName"/>
+                            <a:map from="defaultResCentersDisplay" to="respCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId"/>
+                    <a:field name="positionName" lovCode="EXP_ORG_POSITION_VL_LOV" prompt="acp_acp_requisition_hds.position_id">
+                        <a:mapping>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionId"/>
+                    <a:field name="employeeName"  lovCode="EXP_EMPLOYEES_POSITION_LOV"  prompt="acp_acp_requisition_hds.employee_id" required="true">
+                        <!--增加岗位ID和岗位描述的映射    Y.duan   2017-8-31 20:48:45-->
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId"/>
+                    <a:field name="accEntityName" lovCode="LOV_ACCOUNTING_ENEITY_BY_COM" prompt="csh_offer_format.acc_entity" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="respCenterName" lovCode="GLD_RESPONSIBILITY_CENTER_VL_LOV" prompt="acp_invoice_lines.responsibility_center_id" required="true">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterId"/>
+                    <a:field name="moExpenseTypeName" displayField="moExpenseTypeName" options="EXP4010_travel_stay_expense_type_ds" prompt="con_payment_schedules.expense_type_id" required="true" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moReqItemName" displayField="moReqItemName" options="EXP4010_travel_stay_item_ds" prompt="con_payment_schedules.req_item_id" required="true" tipField="tip">
+                        <a:mapping>
+                            <a:map from="moReqItemName" to="moReqItemName"/>
+                            <a:map from="moReqItemId" to="moReqItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtCenterId"/>
+                    <!--  <a:field name="place_type_name" displayField="place_type_name" options="EXP4010_travel_stay_place_type_ds" prompt="EXP_EXPENSE_POLICIES.PLACE_TYPE_ID" returnField="place_type_id" valueField="place_type_id"/>
+                    <a:field name="place_type_id"/> -->
+                    <a:field name="placeName" lovCode="EXP_POLICY_PLACES_AND_TYPES_VL_LOV" prompt="exp_report_lines.city" required="true" title="exp_policy_place.choose">
+                        <a:mapping>
+                            <a:map from="placeName" to="placeName"/>
+                            <a:map from="placeId" to="placeId"/>
+                            <!--  <a:map from="place_type_name" to="place_type_name"/>
+                            <a:map from="place_type_id" to="place_type_id"/> -->
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="placeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <!--   <a:field name="date_from" prompt="日期从" required="true" validator="EXP4010_travelDateValidator"/>
+                    <a:field name="date_to" prompt="日期到" required="true" validator="EXP4010_travelDateValidator"/> -->
+                    <a:field name="businessCurrencyName" displayField="currencyName" options="EXP4010_currency_ds" prompt="business_currency_name" required="true">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="businessCurrencyCode"/>
+                            <a:map from="precision" to="businessCurrencyPrecision"/>
+                            <!-- Modify Tagin/2018.04.02 增加业务币种-支付币种汇率计算 -->
+                            <a:map from="exchangeRate" to="biz2payExchangeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="businessCurrencyCode"/>
+                    <a:field name="businessPrice" prompt="business_price" required="true" validator="EXP4010_policyValidator"/>
+                    <a:field name="biz2payExchangeTypeName" prompt="biz2pay_exchange_type_name"/>
+                    <a:field name="biz2payExchangeType"/>
+                    <a:field name="biz2payExchangeRate" prompt="biz2pay_exchange_rate"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_report_headers.payment_currency_name"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="pay2funExchangeTypeName" prompt="pay2fun_exchange_type_name"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate" prompt="pay2fun_exchange_rate"/>
+                    <a:field name="paymentPrice" prompt="payment_price"/>
+                    <a:field name="managementCurrencyName" prompt="exp_report_headers.currency_code"/>
+                    <a:field name="managementCurrencyCode"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="pay2mag_exchange_type_name"/>
+                    <a:field name="pay2magExchangeType"/>
+                    <a:field name="pay2magExchangeRate" prompt="pay2mag_exchange_rate"/>
+                    <a:field name="managementPrice" prompt="management_price"/>
+                    <a:field name="businessAmount" prompt="business_amount"/>
+                    <a:field name="primaryQuantity" prompt="acp_invoice_lines.quantity"/>
+                    <a:field name="paymentAmount" prompt="payment_amount"/>
+                    <a:field name="managementAmount" prompt="management_amount"/>
+                    <a:field name="periodName" prompt="bgt_check_logs.period_name"/>
+                    <a:field name="requisitionFunctionalAmount" prompt="bgt_budget_reserves.functional_amount"/>
+                    <a:field name="accommodationDateFrom" prompt="exp_requisition_travel_lines.accommodation_date_from" required="true" validator="EXP4010_travel_stayDateValidator"/>
+                    <a:field name="accommodationDateTo" prompt="exp_requisition_travel_lines.accommodation_date_to" required="true" validator="EXP4010_travel_stayDateValidator"/>
+                    <a:field name="accommodationDays"/>
+                    <a:field name="monopolizeFlag" checkedValue="Y" defaultValue="N" prompt="exp_requisition_travel_lines.monopolize_flag" uncheckedValue="N"/>
+                    <a:field name="monopolizePlatformName" prompt="exp_requisition_travel_lines.monopolize_platform"/>
+                    <a:field name="monopolizePlatform"/>
+                    <a:placeHolder id="EXP4010_travel_stayLineDimensionFields"/>
+                    <a:placeHolder id="EXP4010_travel_stayLineObjectFields"/>
+                </a:fields>
+                <a:events>
+                    <!-- <a:event name="load" handler="EXP4010_onTravelLineLoadFun"/> -->
+                    <a:event name="update" handler="EXP4010_onTravelLineUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="0" showmargin="0" style="margin-top:10px;" title="$[/model/travel_stay_lines_description/record/@lineDescription]">
+            <a:grid id="EXP4010_travel_stay_lines_grid" autoAdjustHeight="true" bindTarget="EXP4010_exp_requisition_travel_stay_line_ds" marginWidth="0" navBar="true" showRowNumber="false" width="600">
+                <a:toolBar>
+                    <a:button click="EXP4010_travelStayLineAdd" type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="more" align="center" renderer="EXP4010_travel_stayMoreRenderer" width="30"/>
+                    <a:column name="lineNumber" align="center" width="50"/>
+                    <a:column name="description" align="left" editor="EXP4010_travel_stay_ta" width="200"/>
+                    <a:column name="moExpenseTypeName" align="center" editor="EXP4010_travel_stay_cb" width="130"/>
+                    <a:column name="moReqItemName" align="center" editor="EXP4010_travel_stay_cb" width="130"/>
+                    <!--   <a:column name="companyName" editor="EXP4010_travel_stay_lov" width="130"/>
+                    <a:column name="positionName" editor="EXP4010_travel_stay_lov" width="130"/> -->
+                    <!-- <a:column name="place_type_name" width="130"/> -->
+                    <a:column name="placeName" align="center" editor="EXP4010_travel_stay_lov" width="130"/>
+                    <a:column name="accommodationDateFrom" align="center" editor="EXP4010_travel_stay_dp" renderer="Aurora.formatDate" width="130"/>
+                    <a:column name="accommodationDateTo" align="center" editor="EXP4010_travel_stay_dp" renderer="Aurora.formatDate" width="130"/>
+                    <!-- <a:column name="date_from" editor="EXP4010_travel_stay_dp" renderer="Aurora.formatDate" width="130"/>
+                    <a:column name="date_to" editor="EXP4010_travel_stay_dp" renderer="Aurora.formatDate" width="130"/>
+                    <a:column name="businessCurrencyName" editor="EXP4010_travel_stay_cb" width="100"/> -->
+                    <a:column name="monopolizeFlag" align="center" editor="EXP4010_travel_stay_ck" width="80"/>
+                    <!-- modify lcy 2018/4/24  预留统购平台字段 -->
+                    <!--   <a:column name="monopolize_platform_name" align="center" editor="EXP4010_ticket_cb" width="100"/> -->
+                    <a:column name="businessPrice" align="right" editorFunction="EXP4010_travelBizPriceEditorFun" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="primaryQuantity" align="center" editor="EXP4010_travel_stay_nf_0" width="100"/>
+                    <a:column name="businessAmount" align="right" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="requisitionFunctionalAmount" align="right" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="employeeName" align="center" editor="EXP4010_travel_stay_lov" width="100"/>
+                    <a:column name="unitName" align="center" editor="EXP4010_travel_stay_lov" width="130"/>
+                    <a:column name="accEntityName" align="center" editor="EXP4010_travel_stay_lov" width="130"/>
+                    <a:column name="respCenterName" align="center" editor="EXP4010_travel_stay_lov" width="130"/>
+                    <a:column name="periodName" align="center" width="130"/>
+                    <a:column name="budgetItemName" align="center" prompt="exp_req_item.budget_item"/>
+                    <a:placeHolder id="EXP4010_travel_stayLineDimensionColumns"/>
+                    <a:placeHolder id="EXP4010_travel_stayLineObjectColumns"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4010_onTravelLineCellClickFun"/>
+                </a:events>
+                <a:editors>
+                    <a:numberField id="EXP4010_travel_stay_nf"/>
+                    <a:textField id="EXP4010_travel_stay_tf"/>
+                    <a:textArea id="EXP4010_travel_stay_ta"/>
+                    <a:lov id="EXP4010_travel_stay_lov"/>
+                    <a:comboBox id="EXP4010_travel_stay_cb"/>
+                    <a:datePicker id="EXP4010_travel_stay_dp"/>
+                    <a:numberField id="EXP4010_travel_stay_nf_0" allowDecimals="false" allowNegative="false"/>
+                    <a:numberField id="EXP4010_travel_stay_nf_1" allowDecimals="true" allowNegative="false"/>
+                    <a:numberField id="EXP4010_travel_stay_nf_2" allowDecimals="true" allowNegative="false"/>
+                    <a:numberField id="EXP4010_travel_stay_nf_3" allowDecimals="true" allowNegative="false"/>
+                    <a:checkBox id="EXP4010_travel_stay_ck"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP4010_travel_stayLineDimensionFields">
+            <p:loop source="/model/travelStayLineDimensions">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@defaultDimValueName]" lovCode="FND_DIMENSION_VALUE_VL_LOV?dimensionId=$[@dimensionId]&amp;companyLevel=$[@companyLevel]" prompt="$[@dimensionName]" required="true" title="$[@dimensionName]">
+                        <a:mapping>
+                            <a:map from="dimensionValueName" to="$[@displayField]"/>
+                            <a:map from="dimensionValueId" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@defaultDimValueId]"/>
+                    <a:field name="$[@levelField]" defaultValue="$[@companyLevel]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_travel_stayLineDimensionColumns">
+            <p:loop source="/model/travelStayLineDimensions">
+                <c:process-config>
+                    <a:column name="$[@displayField]" align="center" editor="EXP4010_travel_stay_lov" prompt="$[@dimensionName]" width="120"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_travel_stayLineObjectFields">
+            <p:loop source="/model/travelStayLineObjects">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@dftMoExpenseObjectName]" lovService="hec_util.exp_mo_expense_object_value_vl_lov?moExpObjTypeId=$[@moExpObjTypeId]" prompt="$[@moExpObjTypeName]" required="$[@requiredFlag]" title="$[@moExpObjTypeName]">
+                        <a:mapping>
+                            <a:map from="name" to="$[@displayField]"/>
+                            <a:map from="id" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@dftMoExpenseObjectId]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_travel_stayLineObjectColumns">
+            <p:loop source="/model/travelStayLineObjects">
+                <p:switch test="@expenseObjectMethod">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:column name="$[@displayField]" align="center" editor="EXP4010_travel_stay_tf" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:column name="$[@displayField]" align="center" editor="EXP4010_travel_stay_lov" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

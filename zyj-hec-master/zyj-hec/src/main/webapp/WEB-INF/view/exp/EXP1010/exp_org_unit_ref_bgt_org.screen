@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: ZHOUTONG  
+    $Date: 2017-4-19 下午03:53:57  
+    $Revision: 1.0  
+    $Purpose: 预算组织分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function EXP1010_expOrgUnitAssignBgtSaveFun() {
+                if (!$au('EXP1010_exp_org_unit_assign_bgt_ds').validate()) {
+                    return;
+                }
+                var records = $au('EXP1010_exp_org_unit_assign_bgt_ds').getAll();
+                var num = 0;
+                for(var i = 0;i<records.length;i++){
+                    if(records[i].get('defaultFlag') == 'Y'){
+                        num +=1 ;
+                    }
+                }
+                if(num >1){
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:gld_acc_entity_ref_be.single_default]', null, 300, 150);
+                    return;
+                }
+                else if(num == 0){
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_enabled_flag_bgt_entity]', null, 300, 150);
+                    return;
+                }
+                $au('EXP1010_exp_org_unit_assign_bgt_ds').submit();
+            }
+            
+            function EXP1010_expOrgUnitAssignBgtBackFun() {
+                $au('EXP1010_exp_org_unit_ref_bgt_orgs_window').close();
+                $au('EXP1010_exp_org_unit_result_ds').query();
+            }
+            
+            function EXP1010_onOrgUnitAsgnBgtSubmitSuccessFun() {
+                $au('EXP1010_exp_org_unit_assign_bgt_ds').query();
+            }
+            
+            function EXP1010_expAssigBgtGridCellClickFun(grid, row, name, record) {
+                var bgtEntityId = record.get('bgtEntityId');
+                var bgtOrgId = record.get('bgtOrgId');
+                if (name == 'bgtCenterName') {
+                    if (!bgtEntityId) {
+                        Aurora.showMessage("$[l:prompt]", "$[l:please_choice_bgt_entity_first]");
+                    } else {
+                        var centersField = record.getMeta().getField('bgtCenterName');
+                        centersField.setLovPara('bgtEntityId', bgtEntityId);
+                        centersField.setLovPara('bgtOrgId', bgtOrgId);
+                    }
+                }
+            }
+            
+            function EXP1010_onOrgUnitAsgnBgtUpdateFun(dataSet, record, name, value, oldvalue) {
+                if (name == 'bgtEntityName') {
+                    record.set('bgtCenterName', '');
+                    record.set('bgtCenterId', '');
+                }
+                if (name == 'defaultFlag') {
+                    if (value == 'Y') {
+                        var enabled_flag = record.get('enabledFlag');
+                        if (enabled_flag == 'N') {
+                            record.set('defaultFlag', 'N');
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:exp1010_default_flag_required]', null, 300, 150);
+                            return;
+                        }
+                    }
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1010_exp_org_units_bgt_info" autoQuery="true" baseUrl="/exp/org-unit" queryUrl="$[/request/@context_path]/exp/org-unit/query?unitId=$[/parameter/@unitId]">
+                <a:fields>
+                    <a:field name="unitId" readOnly="true"/>
+                    <a:field name="unitCode"  readOnly="true" prompt="exp_org_units.unit_code"/>
+                    <a:field name="description"  readOnly="true" prompt="exp_org_unit.org_unit_description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1010_exp_org_unit_assign_bgt_ds" autoPageSize="true" autoQuery="true" bindName="insert_ds" bindTarget="EXP1010_exp_org_units_bgt_info" baseUrl="/exp/org-unit-ref-bgt-org" queryUrl="$[/request/@context_path]/exp/org-unit-ref-bgt-org/query?unitId=$[/parameter/@unitId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="unitId" defaultValue="$[/parameter/@unitId]"/>
+                    <a:field name="bgtEntityName" autoComplete="true" lovGridHeight="320" lovHeight="450" lovCode="LOV_UNIT_BTG_ENTITY?companyId=$[/session/@companyId]" lovWidth="500" required="true" title="exp_org_unit.choice_bgt_entity_display" prompt="bgt_entity.entity_name">
+                        <a:mapping>
+                            <a:map from="description" to="bgtEntityName"/>
+                            <a:map from="bgtEntityId" to="bgtEntityId"/>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="bgtCenterName" autoComplete="true" lovGridHeight="320" lovHeight="450" lovCode="LOV_DEFAULT_BGT_CENTER" lovWidth="500" required="true" title="exp_org_unit.choice_bgt_center_display" prompt="bgt_center.description">
+                        <a:mapping>
+                            <a:map from="description" to="bgtCenterName"/>
+                            <a:map from="centerId" to="bgtCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="travel_plan_type.default_flag"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1010_onOrgUnitAsgnBgtUpdateFun"/>
+                    <a:event name="submitsuccess" handler="EXP1010_onOrgUnitAsgnBgtSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1010_exp_org_unit_asgn_acc_form" column="2" title="exp_org_unit.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1010_exp_org_unit_assign_bgt_grid" type="add" width="80"/>
+                    <a:toolbarButton click="EXP1010_expOrgUnitAssignBgtSaveFun" text="hap_save" width="80"/>
+                    <a:toolbarButton click="EXP1010_expOrgUnitAssignBgtBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="unitCode" bindTarget="EXP1010_exp_org_units_bgt_info"/>
+                <a:textField name="description" bindTarget="EXP1010_exp_org_units_bgt_info"/>
+            </a:form>
+            <a:grid id="EXP1010_exp_org_unit_assign_bgt_grid" bindTarget="EXP1010_exp_org_unit_assign_bgt_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="bgtEntityName" align="left" editor="EXP1010_assign_bgt_lov" width="200"/>
+                    <a:column name="bgtCenterName" align="left" editor="EXP1010_assign_bgt_lov" width="200"/>
+                    <a:column name="defaultFlag" align="center" editor="EXP1010_assign_bgt_cb"  width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP1010_assign_bgt_cb"  width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1010_assign_bgt_lov"/>
+                    <a:checkBox id="EXP1010_assign_bgt_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP1010_expAssigBgtGridCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

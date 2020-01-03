@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="csh_payment_transaction_detail_link_6" url="$[/request/@context_path]/csh/public/csh_payment_transaction_detail.screen"/>
+        <script><![CDATA[
+            function paymentdetail(value, record, name) {
+                url = /*csh_payment_transaction_detail.screen*/
+                $au('csh_payment_transaction_detail_link_6').getUrl() + '?transactionHeaderId=' + record.get('transactionHeaderId');
+                return '<a href="javascript:expRepWriteOffOpenWindow(\'' + url + '\')">' + value + '</a>';
+            }
+            
+            function expRepWriteOffOpenWindow(url) {
+                new Aurora.Window({
+                    id: 'csh_payment_transaction_detail_window',
+                    url: url,
+                    fullScreen: true,
+                    title: '$[l:prompt.payment_transaction_detail]'
+                });
+            }
+            
+            function expRepCshPayCloseFun() {
+                $au('exp_report_query_csh_payment_rep_readonly_screen').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="acp_req_info" autoQuery="true" model="acp.ACP3100.acp_requisition_hds_query" queryUrl="$[/request/@context_path]/acp/requisition-hd/queryByHeadId?requisitionHdsId=$[/parameter/@requisitionHdsId]"/>
+            <a:dataSet id="csh_trx_result" autoQuery="true" model="acp.ACP5035.acp_requistion_csh_trx_query" pageSize="15" queryUrl="$[/request/@context_path]/acp/requisition-hd/queryCshTrx?requisitionHdsId=$[/parameter/@requisitionHdsId]"/>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="acp_req_info_form" column="4" title="exp_report_finance_csh_payment_query.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="expRepCshPayCloseFun" text="prompt.return" width="80"/>
+                </a:formToolbar>
+                <a:textField name="requisitionNumber" bindTarget="acp_req_info" prompt="exp_requisition_header.requisition_number" readOnly="true"/>
+                <a:textField name="requisitionDate" bindTarget="acp_req_info" prompt="exp_requisition_header.requisition_date" readOnly="true"/>
+                <a:textField name="employeeName" bindTarget="acp_req_info" prompt="acp_req_det_reado.employee_id" readOnly="true"/>
+                <a:textField name="amount" bindTarget="acp_req_info" prompt="csh_repayment_register_hd.amount" readOnly="true"/>
+            </a:form>
+            <a:grid id="exp_rep_csh_pay_head_grid" bindTarget="csh_trx_result" marginHeight="181" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="transactionNum" width="120" align="left" prompt="csh_transaction_headers.transaction_num" renderer="paymentdetail"/>
+                    <a:column name="transactionDate" width="80" align="center" prompt="csh_transaction_header.transaction_date"/>
+                    <a:column name="currencyCode" width="80" align="center" prompt="csh_transaction_line.currency_code"/>
+                    <a:column name="transactionAmount" width="100" align="right" prompt="csh_transaction_line.transaction_amount"/>
+                    <a:column name="bankAccountCode" width="80" align="center" prompt="csh_transaction_line.partner_bank_account"/>
+                    <a:column name="bankAccountName" width="120" align="left" prompt="csh_transaction_line.bank_account_name"/>
+                    <a:column name="payeeCategoryName" width="120" align="left" prompt="csh_transaction_line.partner_category"/>
+                    <a:column name="payeename" width="120" align="left" prompt="csh_transaction_line.partner_id"/>
+                    <a:column name="documentNum" width="120" align="left" prompt="csh_transaction_line.document_num"/>
+                    <a:column name="agentEmployeeName" width="120" align="left" prompt="csh_transaction_line.agent_employee_id"/>
+                    <a:column name="paymentEmployeeName" width="120" align="left" prompt="csh_transaction_line.created_by"/>
+                    <a:column name="returnedFlagName" width="80" align="center" prompt="prompt.returned"/>
+                    <a:column name="reversedFlagName" width="80" align="center" prompt="prompt.reversed"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+        <!--   <script purpose="auto_resize"><![CDATA[
+            function expRepCshPayInitSize() {
+                //页面宽度、高度
+                var vw = $A.getViewportWidth();
+                //留白宽度
+                var marginWidth = 0 ;
+                //自适应宽度
+                var autoWidth = vw - marginWidth;
+                //Form内部宽度，-2border
+                var formInnerWidth = autoWidth - 2;
+                //设置组件的自适应宽度
+                Ext.get('exp_rep_csh_pay_head_form').setWidth(autoWidth + 4);
+                $au('exp_rep_csh_pay_head_grid').setWidth(autoWidth);
+            }
+            //Ext.fly(window).on('resize', expRepCshPayInitSize);
+            expRepCshPayInitSize();
+        ]]></script> -->
+    </a:view>
+</a:screen>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function BPM102_savePageLayoutButton() {
+            $au('BPM102_pageLayoutButtonResultDs').submit();
+        }
+
+        function BPM102_doPageLayoutButtonBack() {
+            $au('BPM102_pageLayoutButtonScreen').close();
+        }
+
+        function BPM102_onPageLayoutButtonAdd(ds, record, index) {
+            record.getField('buttonCode').setRequired(true);
+            record.getField('buttonDesc').setRequired(true);
+            record.getField('buttonTypeDesc').setRequired(true);
+        }
+
+        function BPM102_pageLayoutButtonEditorFun(record, name) {
+            if (record.get('templateFlag') == 'N') {
+                if (name == 'buttonCode') {
+                    return 'BPM102_layoutBtnTf';
+                } else if (name == 'buttonDesc') {
+                    return 'BPM102_layoutBtnTf';
+                } else if (name == 'buttonTypeDesc') {
+                    return 'BPM102_layoutBtnCb';
+                }
+            } else {
+                return '';
+            }
+        }
+
+        function BPM102_onPageLayoutButtonUpdate(dataSet, record, name, value, oldValue) {
+            if (name == 'buttonType') {
+                record.set('text', record.get('buttonTypeDesc'));
+            }
+        }
+
+        function BPM102_onPageLayoutButtonAdd(ds, record, index) {
+            //record.set('buttonSequence', lineNum * 10);
+            var lineNum = 0;
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('buttonSequence') > lineNum) {
+                    lineNum = records[i].get('buttonSequence');
+                }
+            }
+            record.set('buttonSequence', (Math.floor(lineNum / 10) + 1) * 10);
+        }
+
+        function BPM102_onPageLayoutButtonLoad(ds) {
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('templateFlag') == 'Y') {
+                    records[i].getField('buttonTypeDesc').setRequired(false);
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_btnOperationTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.BUTTON_OPERATOR_TYPE/"/>
+            <a:dataSet id="BPM102_buttonTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.BUTTON_TYPE/"/>
+            <a:dataSet id="BPM102_pageLayoutButtonResultDs" autoQuery="true"
+                       pageSize="20"
+                       baseUrl="/bpm/pageLayoutButton"
+                       queryUrl="$[/request/@context_path]/bpm/pageLayoutButton/queryByLayout?layoutId=$[/parameter/@layoutId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="buttonId"/>
+                    <a:field name="layoutId" defaultValue="$[/parameter/@layoutId]"/>
+                    <a:field name="buttonSequence" required="true" prompt="bpm_page_layout_button.button_sequence"/>
+                    <a:field name="buttonCode" required="true" typeCase="upper"
+                             prompt="bpm_page_layout_button.button_code"/>
+                    <a:field name="buttonDesc" prompt="bpm_page_layout_button.button_desc"/>
+                    <a:field name="operationTypeDesc" displayfield="description" options="BPM102_btnOperationTypeDs"
+                             prompt="bpm_page_layout_button.operation_type" required="true" returnField="operationType"
+                             valueField="value"/>
+                    <a:field name="operationType"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"
+                             prompt="bpm_page_layout_button.template_flag"/>
+                    <a:field name="id"/>
+                    <a:field name="buttonTypeDesc" displayfield="meaning" options="BPM102_buttonTypeDs"
+                             prompt="bpm_page_layout_button.type" required="true" returnField="buttonType"
+                             valueField="value"/>
+                    <a:field name="buttonType"/>
+                    <a:field name="text" prompt="bpm_page_layout_button.text"/>
+                    <a:field name="click"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_page_layout_button.disabled"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_page_layout_button.hidden"/>
+                    <a:field name="style"/>
+                    <a:field name="btnstyle"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BPM102_onPageLayoutButtonUpdate"/>
+                    <a:event name="add" handler="BPM102_onPageLayoutButtonAdd"/>
+                    <a:event name="load" handler="BPM102_onPageLayoutButtonLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" column="3" title="bpm_page_layout_button" style="width:100%">
+                <!--<a:label name="groupTypeDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_type"/>-->
+                <!--<a:label name="groupCode" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_code"/>-->
+                <!--<a:label name="groupDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_desc"/>-->
+                <a:label name="pageTypeDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_type"/>
+                <a:label name="pageCode" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_code"/>
+                <a:label name="pageDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_desc"/>
+                <a:label name="layoutTypeDesc" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_type"/>
+                <a:label name="layoutCode" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_code"/>
+                <a:label name="layoutDesc" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_desc"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_savePageLayoutButton" text="hap.save"/>
+                <a:button click="BPM102_doPageLayoutButtonBack" text="hap.back"/>
+            </a:hBox>
+            <a:grid bindTarget="BPM102_pageLayoutButtonResultDs" height="350" marginHeight="230" marginWidth="40"
+                    navBar="true" width="1000">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="buttonSequence" align="center" editor="BPM102_layoutBtnNf" width="80"/>
+                    <a:column name="buttonCode" align="center"
+                              editorFunction="BPM102_pageLayoutButtonEditorFun" width="120"/>
+                    <a:column name="buttonTypeDesc" align="center"
+                              editorFunction="BPM102_pageLayoutButtonEditorFun" width="120"/>
+                    <a:column name="text" align="center" editor="BPM102_layoutBtnTf" width="120"/>
+                    <a:column name="buttonDesc" align="center"
+                              editorFunction="BPM102_pageLayoutButtonEditorFun" width="200"/>
+                    <a:column name="operationTypeDesc" align="center" editor="grid_cb" width="80"/>
+                    <a:column name="templateFlag" align="center" width="80"/>
+                    <a:column name="hidden" align="center" editor="BPM102_layoutBtnCk" width="80"/>
+                    <a:column name="disabled" align="center" editor="BPM102_layoutBtnCk" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BPM102_layoutBtnTf"/>
+                    <a:numberField id="BPM102_layoutBtnNf" allowDecimals="false"/>
+                    <a:checkBox id="BPM102_layoutBtnCk"/>
+                    <a:comboBox id="BPM102_layoutBtnCb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

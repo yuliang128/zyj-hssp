@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Description: 付款核算主体配置
+ * Version: 1.0
+ * Author: rui.shi@hand-china.com
+ * Copyright Hand China Co.,Ltd.
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <!--<a:model-query fetchAll="true" model="hec_util.get_company_default_mag_org" rootPath="CSH1200_defaultMagList"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH1200_csh_payment_entity_rules_mag_org_select_link" url="$[/request/@context_path]/modules/csh/CSH1200/csh_payment_entity_rule_mag_org_select.screen"/>
+        <script><![CDATA[
+            function CSH1200_closeEntityRulesCreateWindow() {
+                var url = $au('CSH1200_csh_payment_entity_rules_mag_org_select_link').getUrl();
+                window.location.href = url;
+            }
+            
+            function CSH1200_gridcellclick(grid, row, name, record) {
+                if (name == 'accEntityName') {
+                    var magOrgId = $au('CSH1200_csh_payment_entity_rules_query_ds').getCurrentRecord().get('magOrgId');
+                    record.getMeta().getField('accEntityName').setLovPara('magOrgId', magOrgId);
+                } else if (name == 'companyName') {
+                    magOrgId = $au('CSH1200_csh_payment_entity_rules_query_ds').getCurrentRecord().get('magOrgId');
+                    record.getMeta().getField('companyName').setLovPara('magOrgId', magOrgId);
+                } else if (name == 'documentTypeDesc') {
+                    var documentCategory = record.get('documentCategory');
+                    var companyName = record.get('companyName');
+                    if (typeof(documentCategory) == 'undefined' || Ext.isEmpty(documentCategory)) {
+                        //若未选择业务类型，单据类型字段不可编辑，并给予提示'请选择业务类型'
+                        record.getMeta().getField('documentTypeDesc').setReadOnly(true);
+                        Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_business_type]');
+                        return;
+                    } else {
+                        //若选择了业务类型，单据类型字段可编辑
+                        record.getMeta().getField('documentTypeDesc').setReadOnly(false);
+                        if (documentCategory == 'EXP_REPORT') {
+                            //费用报销单
+                            //record.getMeta().getField('documentTypeDesc').setLovService('csh.CSH1200.csh_payment_entity_report_type_lov');
+                            record.getField('documentTypeDesc').setLovCode('LOV_CSH_PAYMENT_ENTITY_REPORT_TYPE_CHOOSE');
+                            record.getField('documentTypeDesc').setLovPara('magOrgId', record.get('magOrgId'));
+                            record.getField('documentTypeDesc').setMapping([{
+                                from: 'typeId',
+                                to: 'documentTypeId'
+                            }, {
+                                from: 'typeCode',
+                                to: 'documentTypeCode'
+                            }, {
+                                from: 'typeName',
+                                to: 'documentTypeDesc'
+                            }]);
+                        } else if (documentCategory == 'PAYMENT_REQUISITION') {
+                            //借款申请单
+                            // record.getMeta().getField('documentTypeDesc').setLovService('csh.CSH1200.csh_payment_entity_payment_req_type_lov');
+                            record.getMeta().getField('documentTypeDesc').setLovCode('LOV_CSH_PAYMENT_ENTITY_PAYMENT_REQ_TYPE_CHOOSE');
+                            record.getMeta().getField('documentTypeDesc').setLovPara('magOrgId', record.get('magOrgId'));
+                            record.getMeta().getField('documentTypeDesc').setMapping([{
+                                from: 'typeId',
+                                to: 'documentTypeId'
+                            }, {
+                                from: 'typeCode',
+                                to: 'documentTypeCode'
+                            }, {
+                                from: 'typeName',
+                                to: 'documentTypeDesc'
+                            }]);
+                        } else if (documentCategory == 'ACP_REQUISITION') {
+                            //付款申请单
+                            //record.getMeta().getField('documentTypeDesc').setLovService('csh.CSH1200.acp_mo_pay_req_types_lov');
+                            record.getMeta().getField('documentTypeDesc').setLovCode('LOV_ACP_MO_PAY_REQ_TYPES_CHOOSE');
+                            record.getMeta().getField('documentTypeDesc').setLovPara('magOrgId', record.get('magOrgId'));
+                            record.getMeta().getField('documentTypeDesc').setMapping([{
+                                from: 'typeId',
+                                to: 'documentTypeId'
+                            }, {
+                                from: 'typeCode',
+                                to: 'documentTypeCode'
+                            }, {
+                                from: 'typeName',
+                                to: 'documentTypeDesc'
+                            }]);
+                        }
+            
+                        //如果管理公司为空，则单据类型只限制当前管理组织,若不为空，则进一步限制当前分配公司
+                        if (typeof(companyName) == 'undefined' || Ext.isEmpty(companyName)) {
+                            record.getMeta().getField('documentTypeDesc').setLovPara('companyId', '');
+                        } else {
+                            record.getMeta().getField('documentTypeDesc').setLovPara('companyId', record.get('companyId'));
+                        }
+                    }
+                } else if (name == 'paymentMethodDesc') {
+                    var companyName = record.get('companyName');
+                    record.getMeta().getField('paymentMethodDesc').setLovPara('magOrgId', record.get('magOrgId'));
+                    //如果管理公司为空，则付款方式只限制当前管理组织,若不为空，则进一步限制当前分配公司
+                    if (typeof(companyName) == 'undefined' || Ext.isEmpty(companyName)) {
+                        record.getMeta().getField('paymentMethodDesc').setLovPara('companyId', '');
+                    } else {
+                        record.getMeta().getField('paymentMethodDesc').setLovPara('companyId', record.get('companyId'));
+                    }
+                }
+            }
+            
+            function CSH1200_formFocus() {
+                var magOrgId = $au('CSH1200_csh_payment_entity_rules_query_ds').getCurrentRecord().get('magOrgId');
+                $au('CSH1200_csh_payment_entity_rules_query_ds').getCurrentRecord().getMeta().getField('accEntityName').setLovPara('magOrgId', magOrgId);
+            }
+            
+            function CSH1200_update(dataSet, record, name, value, oldvalue) {
+                if (name == 'documentCategoryDesc') {
+                    record.set('documentTypeId', '');
+                    record.set('documentTypeCode', '');
+                    record.set('documentTypeDesc', '');
+                }
+            }
+            
+            function CSH1200_Submit(ds) {
+                ds.query();
+            }
+            
+            function CSH1200_add(ds) {
+                var magOrgId = $au('CSH1200_csh_payment_entity_rules_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function CSH1200_focus() {
+                $au('CSH1200_csh_payment_entity_rules_magOrgList_ds').query();
+            }
+            
+            function CSH1200_QueryUpdate(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('CSH1200_csh_payment_entity_rules_result_ds').query();
+                }
+            }
+            
+            function CSH1200_BeforeCreate() {
+                if (Ext.isEmpty($au('CSH1200_csh_payment_entity_rules_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="CSH1200_csh_payment_entity_rules_magOrgList_ds" autoQuery="true" fetchAll="true" loadData="true" model="hec_util.fnd_util.fnd_mag_organizations_form_query"/>-->
+            <!--修改业务类型comobox绑定的系统代码   Y.duan  2017-8-16 15:29:55-->
+            <!--<a:dataSet id="CSH1200_documentCategory_ds" loadData="true" lookupCode="CSH_PAYMENT_DOCUMENT_CATEGORY"/>-->
+            <!--<a:dataSet id="CSH1200_payeeCategory_ds" loadData="true" lookupCode="PAYMENT_OBJECT"/>-->
+
+            <a:dataSet id="CSH1200_csh_payment_entity_rules_magOrgList_ds">
+                <a:datas dataSource="fndManagingOrganizationList/records"/>
+            </a:dataSet>
+
+            <a:dataSet id="CSH1200_documentCategory_ds">
+                <a:datas dataSource="cshPaymentDocumentCategoryList/records"/>
+            </a:dataSet>
+
+            <a:dataSet id="CSH1200_payeeCategory_ds">
+                <a:datas dataSource="paymentObjectList/records"/>
+            </a:dataSet>
+
+
+            <a:dataSet id="CSH1200_csh_payment_entity_rules_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/defaultMagOrg/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1200_csh_payment_entity_rules_magOrgList_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMagOrg/records/record/@magOrgId]"/>
+                    <a:field name="documentCategoryDesc" displayField="meaning" options="CSH1200_documentCategory_ds" returnField="documentCategory" valueField="value"/>
+                    <a:field name="documentCategory"/>
+                    <a:field name="priority" placeHolder="csh_payment_entity_rule.priority"/>
+
+
+                    <a:field name="accEntityName" lovCode="LOV_CSH_PAYMENT_ENTITY_CHOOSE"    title="csh_payment_entity_rule.acc_entity_id">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+
+
+                    <a:field name="accEntityId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1200_QueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+
+            <a:dataSet id="CSH1200_csh_payment_entity_rules_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-entity-rule" queryDataSet="CSH1200_csh_payment_entity_rules_query_ds"  selectable="true" >
+                <a:fields>
+                    <a:field name="entityRuleId"/>
+
+                    <a:field name="documentCategory"/>
+                    <a:field name="documentCategoryDesc" displayField="meaning" options="CSH1200_documentCategory_ds" prompt="csh_payment_entity_rule.business_type" required="true" returnField="documentCategory" valueField="value"/>
+
+                    <a:field name="priority" required="true"/>
+
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" lovCode="LOV_CSH_PAYMENT_ENTITY_CHOOSE"   required="true"  title="csh_payment_entity_rule.acc_entity_id">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" lovCode="LOV_FND_COMPANY_CHOOSE"    title="csh_payment_entity_rule.company_id">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+
+
+                    <a:field name="documentTypeId"/>
+                    <a:field name="documentTypeDesc" lovGridHeight="330" lovHeight="460" lovWidth="490" lovlabelWidth="250" title="csh_payment_entity_rule.document_type_id">
+                        <a:mapping>
+                            <a:map from="typeId" to="documentTypeId"/>
+                            <a:map from="typeCode" to="documentTypeCode"/>
+                            <a:map from="typeName" to="documentTypeDesc"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodDesc" lovCode="LOV_CSH_PAYMENT_ENTITY_PAYMENT_METHOD_CHOOSE"   required="true"  title="csh_payment_method.payment_method_id">
+                        <a:mapping>
+                            <a:map from="paymentMethodId" to="paymentMethodId"/>
+                            <a:map from="paymentMethodCode" to="paymentMethodCode"/>
+                            <a:map from="description" to="paymentMethodDesc"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="CSH1200_payeeCategory_ds" returnField="payeeCategory" valueField="value"/>
+
+                    <a:field name="magOrgId" prompt="exp_mo_req_type.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1200_update"/>
+                    <a:event name="submitsuccess" handler="CSH1200_Submit"/>
+                    <a:event name="add" handler="CSH1200_add"/>
+                    <a:event name="beforecreate" handler="CSH1200_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1200_csh_payment_entity_rules_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1200_csh_payment_entity_rules_grid" type="save" width="80"/>
+                <a:gridButton bind="CSH1200_csh_payment_entity_rules_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1200_csh_payment_entity_rules_query_ds" resultTarget="CSH1200_csh_payment_entity_rules_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgDisplay" bindTarget="CSH1200_csh_payment_entity_rules_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1200_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="documentCategoryDesc" bindTarget="CSH1200_csh_payment_entity_rules_query_ds" prompt="csh_payment_entity_rule.business_type"/>
+                    <a:lov name="accEntityName" bindTarget="CSH1200_csh_payment_entity_rules_query_ds" prompt="csh_payment_entity_rule.acc_entity_id">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1200_formFocus"/>
+                        </a:events>
+                    </a:lov>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:numberField name="priority" bindTarget="CSH1200_csh_payment_entity_rules_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1200_csh_payment_entity_rules_grid" bindTarget="CSH1200_csh_payment_entity_rules_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="documentCategoryDesc" align="center" editor="CSH1200_comboBox" prompt="csh_payment_entity_rule.business_type" width="120"/>
+                <a:column name="priority" align="center" editor="CSH1200_numberField" prompt="csh_payment_entity_rule.priority" width="80"/>
+                <a:column name="accEntityName" editor="CSH1200_lov" prompt="csh_payment_entity_rule.acc_entity_id" width="200"/>
+                <a:column name="companyName" editor="CSH1200_lov" prompt="csh_payment_entity_rule.company_id" width="200"/>
+                <a:column name="documentTypeDesc" editor="CSH1200_lov" prompt="csh_payment_entity_rule.document_type_id" width="200"/>
+                <a:column name="paymentMethodDesc" editor="CSH1200_lov" prompt="csh_payment_entity_rule.payment_method_id" width="200"/>
+                <a:column name="payeeCategoryName" editor="CSH1200_comboBox" prompt="csh_payment_entity_rule.payee_category" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="CSH1200_comboBox"/>
+                <a:numberField id="CSH1200_numberField"/>
+                <a:lov id="CSH1200_lov"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="CSH1200_gridcellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

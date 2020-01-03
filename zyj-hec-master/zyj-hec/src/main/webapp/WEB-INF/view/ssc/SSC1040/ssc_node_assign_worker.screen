@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhangbo
+    $Date: 2019-03-20 160:22:06
+    $Revision: 1.0  
+    $Purpose: 共享业务流程定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="SSC1040_editLink" url="$[/request/@context_path]/ssc/SSC1040/ssc_node_assign_rule_node_list.screen"/>
+        <script><![CDATA[
+            function SSC1040_gridEditor(rd, name) {
+                if (name == 'workflowCode') {
+                    if (rd.isNew) {
+                        return 'SSC1040_gridTf';
+                    }
+                    return '';
+                }
+            }
+            
+            function SSC1040_asgnCom(value, rd, name) {
+                var workflowId = rd.get('workflowId');
+                var docCategory = rd.get('docCategory');
+                if (!rd.isNew) {
+                    return '<a href="javascript:SSC1040_openAsgnComWin(' + workflowId + ',\'' + docCategory + '\')">$[l:ssc_workflow.node]</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function SSC1040_openAsgnComWin(workflowId, docCategory) {
+                var url = $au('SSC1040_editLink').getUrl() + '?workflowId=' + workflowId + '&docCategory=' + docCategory;
+                new Aurora.Window({
+                    id: 'SSC1040_editWin',
+                    url: url,
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="WFL2070_wfl_workflow_category_ds" loadData="true" lookupCode="WFL_WORKFLOW_CATEGORY"/>-->
+            <a:dataSet id="WFL2070_wfl_workflow_category_ds" autoQuery="true" fetchAll="true"
+                                                queryUrl="$[/request/@context_path]/common/auroraCode/wfl_workflow_category/"/>
+            <a:dataSet id="ssc_workflow_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="workflowCode"/>
+                    <a:field name="description"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="WFL2070_wfl_workflow_category_ds" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="ssc_workflow_result_ds" autoQuery="true" baseUrl="/ssc/workflow" queryDataSet="ssc_workflow_query_ds" queryUrl="$[/request/@context_path]/ssc/workflow/querySscWorkflow" >
+                <a:fields>
+                    <a:field name="workflowId" prompt="ssc_workflow.workflow_id"/>
+                    <a:field name="workflowCode" prompt="ssc_workflow.workflow_code" required="true" typeCase="upper"/>
+                    <a:field name="description" prompt="ssc_workflow.description" required="true"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docCategory_name" displayField="meaning" options="WFL2070_wfl_workflow_category_ds" prompt="ssc_workflow.doc_category" required="true" returnField="docCategory" valueField="value"/>
+                    <a:field name="pageId" prompt="ssc_workflow.page_id"/>
+                    <a:field name="page" lovGridHeight="320" lovHeight="450" lovService="sys.sys_service" lovWidth="500" prompt="ssc_workflow.page" required="true" title="PAGE_SELECT">
+                        <a:mapping>
+                            <a:map from="serviceId" to="pageId"/>
+                            <a:map from="serviceName" to="page"/>
+                            <a:map from="title" to="pageTitle"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="pageTitle" prompt="ssc_workflow.page_title"/>
+                    <a:field name="finishProcedureId" prompt="ssc_workflow.finish_procedure_id"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <!--
+        <a:screenTopToolbar>
+            <a:gridButton bind="SSC1040_grid" text="HAP_ADD" type="add" width="80"/>
+            <a:gridButton bind="SSC1040_grid" text="HAP_SAVE" type="save" width="80"/>
+        </a:screenTopToolbar>
+        -->
+        <a:queryForm bindTarget="ssc_workflow_query_ds" resultTarget="ssc_workflow_result_ds" style="border:none; width:100%;">
+            <a:formToolBar>
+                <a:textField name="workflowCode" bindTarget="ssc_workflow_query_ds" prompt="ssc_workflow.workflow_code"/>
+                <a:textField name="description" bindTarget="ssc_workflow_query_ds" prompt="ssc_workflow.description"/>
+                <a:comboBox name="docCategoryName" bindTarget="ssc_workflow_query_ds" prompt="ssc_workflow.doc_category"/>
+            </a:formToolBar>
+            <a:formBody/>
+        </a:queryForm>
+        <a:grid id="SSC1040_grid" bindTarget="ssc_workflow_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="workflowCode" align="center" width="120"/>
+                <a:column name="description" align="left" width="200"/>
+                <a:column name="docCategoryName" align="center" width="120" prompt="ssc_workflow.doc_category"/>
+                <a:column name="page" align="center" width="200"/>
+                <a:column name="pageTitle" align="left" width="120"/>
+                <!--
+				<a:column name="finish_procedure" align="center" editor="SSC1040_gridCbb" width="120"/>
+ 				-->
+                <a:column name="enabledFlag" align="center" width="80"/>
+                <a:column name="asgnCom" align="center" renderer="SSC1040_asgnCom" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="SSC1040_gridTf"/>
+                <a:comboBox id="SSC1040_gridCbb"/>
+                <a:lov id="SSC1040_gridLov"/>
+                <a:checkBox id="SSC1040_gridCb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

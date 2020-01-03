@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-27 15:45
+    $Revision: 1.0
+    $Purpose: 管理组织级费用政策地点类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1310_exp_policy_place_types_mag_org_select_link" url="$[/request/@context_path]/expm/EXP1310/exp_policy_place_types_mag_org_select.screen"/>
+        <a:link id="EXP1310_exp_policy_place_asgn_com_link" url="$[/request/@context_path]/expm/EXP1310/exp_policy_place_asgn_com.screen"/>
+        <div/>
+        <script><![CDATA[
+            function EXP1310_closePlaceTypesCreateWindow() {
+                var url = $au('EXP1310_exp_policy_place_types_mag_org_select_link').getUrl();
+                window.location.href = url;
+            }
+
+            function EXP1310_placeTypeCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'EXP1310_textField_upper';
+                }
+                return '';
+            }
+
+
+            //分配明细-跳转
+
+            function EXP1310_asgnDetails(value, record, name) {
+                if (!record.isNew) {
+                    var magOrgId = $au('EXP1310_exp_policy_place_types_query_ds').getCurrentRecord().get('magOrgId');
+                    var url = $au('EXP1310_exp_policy_place_asgn_com_link').getUrl() + '?placeTypeId=' + record.get('placeTypeId') + '&magOrgId=' + magOrgId;
+                    return '<a href="javascript:EXP1310_view_doc_company(\'' + url + '\')">' + '$[l:exp_policy_place_type.assign_detail]' + '</a>';
+                }
+            }
+
+            function EXP1310_view_doc_company(url) {
+                new Aurora.Window({
+                    id: 'EXP1310_exp_policy_place_asgn_com',
+                    url: url,
+                    title: '$[l:budget_item.design_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+            function EXP1310_submit(ds) {
+                ds.query();
+            }
+
+            function EXP1310_add(ds) {
+                var magOrgId = $au('EXP1310_exp_policy_place_types_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            function EXP1310_focus(){
+                $au('EXP1310_place_types_magOrgList_ds').query();
+            }
+            function EXP1310_update(ds,record,name,value){
+                if(name=='magOrgId'){
+                    $au('EXP1310_exp_policy_place_types_result_ds').query();
+                }
+            }
+            function EXP1310_BeforeCreate(){
+                 if (Ext.isEmpty($au('EXP1310_exp_policy_place_types_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            //add lcy 2017/12/25 10:13:40 保存前检验管理组织是否为空
+                function EXP1310_beforeSubmit(){
+                 if (Ext.isEmpty($au('EXP1310_exp_policy_place_types_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1310_place_types_magOrgList_ds" autoQuery="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP1310_exp_policy_place_types_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgCodeName"  defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP1310_place_types_magOrgList_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="placeTypeCode"  prompt="exp_policy_place_type.place_type_code"/>
+                    <a:field name="description" prompt="exp_policy_place_type.description_id"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1310_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1310_exp_policy_place_types_result_ds" autoQuery="true"  queryDataSet="EXP1310_exp_policy_place_types_query_ds" queryUrl="$[/request/@context_path]/exp/policy-place-type/query" selectable="true" submitUrl="$[/request/@context_path]/exp/policy-place-type/submit">
+                <a:fields>
+                    <a:field name="placeTypeId"/>
+                    <a:field name="placeTypeCode" required="true" prompt="exp_policy_place_type.place_type_code"/>
+                    <a:field name="description" prompt="exp_policy_place_type.description_id" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="magOrgId" prompt="EXP_MO_REQ_TYPES.magOrgId" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1310_submit"/>
+                    <a:event name="add" handler="EXP1310_add"/>
+                    <a:event name="beforecreate" handler="EXP1310_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP1310_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1310_policy_place_types_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1310_policy_place_types_grid" type="save" width="80"/>
+                <a:gridButton bind="EXP1310_policy_place_types_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm id="exp_policy_place_head_form" bindTarget="EXP1310_exp_policy_place_types_query_ds" resultTarget="EXP1310_exp_policy_place_types_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:label name="separator"/>
+                    <a:comboBox name="magOrgCodeName" bindTarget="EXP1310_exp_policy_place_types_query_ds"  width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1310_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="placeTypeCode" typeCase="upper"/>
+                    <a:textField name="description" />
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1310_policy_place_types_grid" bindTarget="EXP1310_exp_policy_place_types_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="placeTypeCode" align="center" editorFunction="EXP1310_placeTypeCodeEdit" width="120"/>
+                <a:column name="description" editor="EXP1310_tledit"  width="200"/>
+                <a:column name="enabledFlag" editor="EXP1310_checkBox" prompt="exp_policy_place_type.enabled_flag" width="80"/>
+                <a:column name="asgnDetails" align="center" renderer="EXP1310_asgnDetails" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP1310_textField_upper" typeCase="upper"/>
+                <a:tledit id="EXP1310_tledit"/>
+                <a:checkBox id="EXP1310_checkBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

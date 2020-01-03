@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshTransactionLineMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshTransactionLine">
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE_TYPE" property="exchangeRateType" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE" property="exchangeRate" jdbcType="DECIMAL"/>
+        <result column="BANK_ACCOUNT_ID" property="bankAccountId" jdbcType="DECIMAL"/>
+        <result column="DOCUMENT_NUM" property="documentNum" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_BANK_ACCOUNT_ID" property="payeeBankAccountId" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="HANDLING_CHARGE" property="handlingCharge" jdbcType="DECIMAL"/>
+        <result column="INTEREST" property="interest" jdbcType="DECIMAL"/>
+        <result column="AGENT_EMPLOYEE_ID" property="agentEmployeeId" jdbcType="DECIMAL"/>
+        <result column="TRANS_IN_OUT_TYPE" property="transInOutType" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_CATEGORY" property="documentCategory" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_TYPE_ID" property="documentTypeId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="TRANSACTION_LINE_ID" property="transactionLineId" jdbcType="DECIMAL"/>
+        <result column="TRANSACTION_HEADER_ID" property="transactionHeaderId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="TRANSACTION_AMOUNT" property="transactionAmount" jdbcType="DECIMAL"/>
+        <result column="PAYEE_CATEGORY_NAME" property="payeeCategoryName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="AGENT_EMPLOYEE_NAME" property="agentEmployeeName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_EMPLOYEE_NAME" property="paymentEmployeeName" jdbcType="VARCHAR"/>
+        <result column="RETURNED_FLAG_NAME" property="returnedFlagName" jdbcType="VARCHAR"/>
+        <result column="REVERSED_FLAG_NAME" property="reversedFlagName" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_NUM" property="transactionNum" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_DATE" property="transactionDate" jdbcType="DATE"/>
+    </resultMap>
+
+    <!-- 根据预付款现金事务获取已还金额【Tips：此处为未被反冲的还款】 -->
+    <select id="totalRepayAmount" resultType="java.math.BigDecimal" parameterType="java.lang.Long">
+        SELECT
+        CASE
+        WHEN
+        sum( ctlx.transaction_amount ) IS NULL THEN
+        0 ELSE sum( ctlx.transaction_amount )
+        END AS total_repay_amount
+        FROM
+        csh_transaction_header cth,
+        csh_transaction_line ctl,
+        csh_transaction_header cthx,
+        csh_transaction_line ctlx
+        WHERE
+        ctl.transaction_line_id = ctl.transaction_line_id
+        AND ctl.transaction_header_id = cth.transaction_header_id
+        AND cthx.source_header_id = #{transactionHeaderId,jdbcType=DECIMAL,javaType=java.lang.Long}
+        AND cthx.transaction_header_id = ctlx.transaction_header_id
+        AND cthx.reversed_flag = 'N'
+    </select>
+
+    <!-- 根据现金事务头获取现金事务行 -->
+    <select id="queryTrxLine" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        select ctl.* from csh_transaction_line ctl where ctl.transaction_header_id = #{transactionHeaderId}
+    </select>
+    <!-- 获取付款现金事务是否存在已核销记录 -->
+    <select id="totalPreCount" resultType="java.lang.Long" parameterType="java.lang.Long">
+        select
+        count(1)
+        from
+        csh_transaction_header cth,
+        csh_transaction_line ctl
+        where
+        cth.transaction_header_id = ctl.transaction_header_id
+        and cth.write_off_flag <![CDATA[<>]]> 'N'
+        and exists (
+        select
+        1
+        from
+        csh_write_off cwo
+        where
+        cwo.source_csh_trx_line_id = ctl.transaction_line_id
+        and cwo.write_off_type = 'PAYMENT_PREPAYMENT'
+        and exists (
+        select
+        1
+        from
+        csh_transaction_line ctlx
+        where
+        ctlx.transaction_line_id = cwo.csh_transaction_line_id
+        and ctlx.transaction_header_id = #{transactionHeaderId}))
+    </select>
+
+    <select id="queryByReqHdsId" resultMap="BaseResultMap">
+        SELECT
+	h.transaction_header_id,
+	h.transaction_num,
+	DATE_FORMAT( h.transaction_date, '%Y-%m-%d' ) AS transaction_date,
+	l.currency_code,
+	(
+	SELECT
+		gct.CURRENCY_NAME
+	FROM
+		gld_currency gc,
+		gld_currency_tl gct
+	WHERE
+		gc.CURRENCY_ID = gct.currency_id
+		AND gct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+		AND gc.currency_code = l.CURRENCY_CODE
+	) AS currency_name,
+	l.transaction_amount,
+	l.payee_category,
+	 l.bank_account_id as bankAccountId,
+                    (select cbat.BANK_ACCOUNT_NAME from csh_bank_account cba left join csh_bank_account_tl cbat on cba.BANK_ACCOUNT_ID = cbat.BANK_ACCOUNT_ID and cbat.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+where cba.BANK_ACCOUNT_ID = l.payee_bank_account_id) AS bankAccountName,
+                    (select cba.BANK_ACCOUNT_NUM from csh_bank_account cba
+where cba.BANK_ACCOUNT_ID = l.payee_bank_account_id) AS bankAccountCode,
+	(
+	SELECT
+		cvt.meaning
+	FROM
+		sys_code_b cb
+		LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+		LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+	WHERE
+		cb.`code` = 'PAYMENT_OBJECT'
+		AND cvb.`value` = l.payee_category
+		AND cvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	) AS payee_category_name,
+	l.payee_id,
+CASE
+
+		WHEN l.payee_category = 'EMPLOYEE' THEN
+		( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = l.payee_id )
+		WHEN l.payee_category = 'VENDER' THEN
+		(
+		SELECT
+			vv.description
+		FROM
+			pur_system_vender vv
+			LEFT OUTER JOIN pur_system_vender_tl psvt ON ( vv.vender_id = psvt.vender_id AND psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+		WHERE
+			vv.vender_id = l.payee_id
+		)
+		WHEN l.payee_category = 'CUSTOMER' THEN
+		(
+		SELECT
+			osct.description
+		FROM
+			ord_system_customer cv
+			LEFT OUTER JOIN ord_system_customer_tl osct ON ( cv.customer_id = osct.customer_id AND osct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+		WHERE
+			cv.customer_id = l.payee_id
+		)
+	END payee_name,
+	l.agent_employee_id,
+	( SELECT NAME FROM exp_employee WHERE employee_id = l.agent_employee_id ) AS agent_employee_name,
+	( SELECT NAME FROM exp_employee ee, sys_user su WHERE ee.EMPLOYEE_ID = su.EMPLOYEE_ID AND su.USER_ID = h.CREATED_BY ) AS payment_employee_name,
+	h.returned_flag,
+	(
+	SELECT
+		cvt.meaning
+	FROM
+		sys_code_b cb
+		LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+		LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+	WHERE
+		cb.`code` = 'CSH_RETURN_SELECT'
+		AND cvb.`value` = h.returned_flag
+		AND cvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	) AS returned_flag_name,
+	h.reversed_flag,
+	(
+	SELECT
+		cvt.meaning
+	FROM
+		sys_code_b cb
+		LEFT JOIN sys_code_value_b cvb ON cb.code_id = cvb.code_id
+		LEFT JOIN sys_code_value_tl cvt ON cvb.code_value_id = cvt.code_value_id
+	WHERE
+		cb.`code` = 'CSH_REVERSE_SELECT'
+		AND cvb.`value` = h.reversed_flag
+		AND cvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	) AS reversed_flag_name,
+	h.description
+FROM
+	csh_transaction_header h,
+	csh_transaction_line l,
+	(
+	SELECT
+		refs.csh_transaction_line_id
+	FROM
+		acp_requisition_hd hds,
+		acp_requisition_ln lns,
+		acp_requisition_ref refs
+	WHERE
+		hds.requisition_hds_id = #{requisitionHdsId}
+		AND hds.requisition_hds_id = lns.requisition_hds_id
+		AND lns.requisition_lns_id = refs.requisition_lns_id
+	) write_off
+WHERE
+	h.transaction_header_id = l.transaction_header_id
+	AND l.transaction_line_id = write_off.csh_transaction_line_id
+ORDER BY
+	h.transaction_num DESC
+    </select>
+</mapper>

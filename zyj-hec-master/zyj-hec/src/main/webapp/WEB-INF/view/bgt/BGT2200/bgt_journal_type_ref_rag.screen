@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/11 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-指定范围-员工TAB
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT2200_journal_tp_range_ets_link" url="$[/request/@context_path]/bgt/BGT2200/bgt_journal_tp_range_ets.screen"/>
+        <script><![CDATA[
+            function BGT2200_back() {
+                $au("BGT2200_view_doc_rags_window").close();
+            }
+            
+            
+            function BGT2200_jour_t_ref_rags_ds_addEvent(ds, record, index) {
+                var bgtJournalTypeId = '$[/parameter/@bgtJournalTypeId]';
+                record.set("bgtJournalTypeId", bgtJournalTypeId);
+            }
+            
+            function BGT2200_gridEditorFunctionRags(record, name) {
+                if (record.isNew) {
+                    return 'BGT2200_grid_rags_lov';
+                }
+                return '';
+            }
+            
+            function BGT2200_journal_ref_entities(value, record, name) {
+                if (!record.isNew) {
+                    var bgtOrgId = '$[/parameter/@bgtOrgId]';
+                    var url = $au('BGT2200_journal_tp_range_ets_link').getUrl() + '?rangeId=' + record.get('rangeId') + '&bgtOrgId=' + bgtOrgId + '&employeeId=' + record.get('employeeId');
+                    return '<a href="javascript:BGT2200_view_doc_ref_entities(\'' + url + '\')">' + '$[l:bgt_entities.bgt_entity_name]' + '</a>';
+                }
+            }
+            
+            function BGT2200_view_doc_ref_entities(url) {
+                new Aurora.Window({
+                    id: 'bgt2200_journal_tp_range_ets_window',
+                    url: url,
+                    title: '$[l:bgt_entities.bgt_entity_name]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_journal_type_code_ds" autoQuery="true"  baseUrl="/bgt/journal-type" queryUrl="$[/request/@context_path]/bgt/journal-type/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]">
+                <a:fields>
+                    <a:field name="bgtJournalTypeCode" prompt="bgt_budget_item_type.budget_item_type_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_budget_item_type.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2200_journal_type_ref_rags_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/journal-type-ref-rag" queryUrl="$[/request/@context_path]/bgt/journal-type-ref-rag/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="employeeCode" autoComplete="true" autoCompleteField="employeeCode" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="EXP_EMPLOYEE_LOV" lovWidth="540" prompt="exp_employee.employee_code" required="true" title="exp_employee.employee_code">
+                        <a:mapping>
+                            <a:map from="employeeId" to="employeeId"/>
+                            <a:map from="employeeCode" to="employeeCode"/>
+                            <a:map from="name" to="employeeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeName" readOnly="true" prompt="employee.name"/>
+                    <a:field name="bgtJournalTypeId"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="bgt_center.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="BGT2200_jour_t_ref_rags_ds_addEvent"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" row="1" title="bgt_journal_type_specified_range" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2200_bgt_journal_type_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT2200_bgt_journal_type_grid" type="save" width="80"/>
+                    <a:gridButton bind="BGT2200_bgt_journal_type_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="BGT2200_back" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bgtJournalTypeCode" bindTarget="BGT2200_journal_type_code_ds"/>
+                <a:textField name="description" bindTarget="BGT2200_journal_type_code_ds"/>
+            </a:form>
+            <a:grid id="BGT2200_bgt_journal_type_grid" bindTarget="BGT2200_journal_type_ref_rags_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="employeeCode" align="center" editorFunction="BGT2200_gridEditorFunctionRags" width="80"/>
+                    <a:column name="employeeName" align="left" editor="BGT2200_grid_rags_tf"  width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="BGT2200_grid_rags_ck" width="80"/>
+                    <a:column name="createEntities" align="center" renderer="BGT2200_journal_ref_entities" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT2200_grid_rags_lov"/>
+                    <a:checkBox id="BGT2200_grid_rags_ck"/>
+                    <a:textField id="BGT2200_grid_rags_tf"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscWorkflowNodeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscWorkflowNode">
+        <result column="NODE_ID" property="nodeId" jdbcType="DECIMAL" />
+        <result column="WORKFLOW_ID" property="workflowId" jdbcType="DECIMAL" />
+        <result column="NODE_SEQUENCE" property="nodeSequence" jdbcType="DECIMAL" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="PROCESS_PAGE_ID" property="processPageId" jdbcType="DECIMAL" />
+        <result column="VIEW_PAGE_ID" property="viewPageId" jdbcType="DECIMAL" />
+        <result column="TIME_CONTROL_FLAG" property="timeControlFlag" jdbcType="VARCHAR" />
+        <result column="TIME_LIMIT" property="timeLimit" jdbcType="DECIMAL" />
+        <result column="AUTO_DISPATCH_FLAG" property="autoDispatchFlag" jdbcType="VARCHAR" />
+        <result column="CAN_HOLD_FLAG" property="canHoldFlag" jdbcType="VARCHAR" />
+        <result column="CAN_RETURN_FLAG" property="canReturnFlag" jdbcType="VARCHAR" />
+        <result column="MANUAL_DISPATCH_FLAG" property="manualDispatchFlag" jdbcType="VARCHAR" />
+        <result column="FIXED_FLAG" property="fixedFlag" jdbcType="VARCHAR" />
+        <result column="NODE_TYPE" property="nodeType" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="querySscWorkflowNode" resultMap="BaseResultMap">
+        SELECT
+	t1.*
+FROM
+	(
+		SELECT
+			n.node_id,
+			n.workflow_id,
+			n.node_sequence,
+			nt.DESCRIPTION,
+			n.process_page_id,
+			(
+				SELECT
+					ss.SERVICE_DESCRIPTION
+				FROM
+					wfl_workflow_page_tl ss
+				WHERE
+					ss.record_id = n.process_page_id
+				AND ss.LANG =#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) process_page,
+			(
+				SELECT
+					ss.SERVICE_DESCRIPTION
+				FROM
+					wfl_workflow_page_tl ss
+				WHERE
+					ss.record_id = n.view_page_id
+				AND ss.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) view_page,
+			n.view_page_id,
+			n.fixed_flag,
+			n.node_type,
+			(
+				SELECT
+					vt.DESCRIPTION
+				FROM
+					sys_code_b sc,
+					sys_code_value_b v,
+					sys_code_value_tl vt
+				WHERE
+					sc. CODE = 'SSC_WORKFLOW_NODE_TYPE'
+				AND sc.code_id = v.code_id
+				AND v.VALUE = n.node_type
+				AND v.CODE_VALUE_ID = vt.CODE_VALUE_ID
+				AND vt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) AS node_type_name,
+			n.time_control_flag,
+			n.time_limit,
+			n.auto_dispatch_flag,
+			n.can_hold_flag,
+			n.can_return_flag,
+			n.manual_dispatch_flag,
+			n.enabled_flag,
+			concat(
+				n.node_sequence,
+				'-',
+				nt.DESCRIPTION
+			) node_desc
+		FROM
+			ssc_workflow_node n,
+			ssc_workflow_node_tl nt
+		WHERE
+			n.NODE_ID = nt.NODE_ID
+		AND nt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	) t1
+        where  1=1
+        <if test="workflowId!=null">
+            and t1.workflow_Id = #{workflowId}
+        </if>
+        <if test="nodeId!=null">
+            AND t1.node_Id = #{nodeId}
+        </if>
+ORDER BY
+	T1.node_sequence
+    </select>
+
+    <select id="getAllNextNode" resultMap="BaseResultMap">
+		select *
+          from ssc_workflow_node n
+         where n.workflow_id = #{workflowId}
+           and n.enabled_flag = 'Y'
+           and n.node_sequence &gt; #{currentNodeSequence}
+      order by n.node_sequence
+	</select>
+    <select id="getAllPreNode" resultMap="BaseResultMap">
+		select *
+		from ssc_workflow_node n
+		where n.workflow_id = #{workflowId}
+		  and n.enabled_flag = 'Y'
+		  and n.node_sequence &lt; #{currentNodeSequence}
+		order by n.node_sequence desc
+	</select>
+
+</mapper>

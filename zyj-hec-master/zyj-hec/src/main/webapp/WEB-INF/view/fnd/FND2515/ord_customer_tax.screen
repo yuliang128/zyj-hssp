@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-2 上午11:37:29  
+    $Revision: 1.0  
+    $Purpose: 客户税务信息
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2515_ord_customer_tax_ref_ae_link" url="$[/request/@context_path]/fnd/FND2515/ord_customer_tax_ref_ae.screen"/>
+        <script><![CDATA[
+            function FND2515_closeCustomerTaxCreateWindow() {
+                $au('FND2515_ord_customer_tax_window').close();
+            }
+            
+            function FND2515_customerTaxSubmit(ds) {
+                ds.query();
+            }
+            
+            //分配核算主体-跳转
+            
+            function FND2515_accountsAssignAe(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:FND2410_openAccountAssignAE(' + record.get('customerId') + ',\'' + record.get('taxId') + '\')">$[l:hec_assign]</>';
+            }
+            
+            function FND2410_openAccountAssignAE(venderId, taxId) {
+                new Aurora.Window({
+                    id: 'FND2515_ord_customer_tax_ref_ae_window',
+                    url: $au('FND2515_ord_customer_tax_ref_ae_link').getUrl() + '?customerId=' + venderId + '&taxId=' + taxId,
+                    title: '$[l:hec_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2515_taxpayerType_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/TYPE_OF_TAXPAYER/"/>
+            <a:dataSet id="FND2515_ord_customer_tax_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/ord/customer-tax" queryUrl="$[/request/@context_path]/ord/customer-tax/query?customerId=$[/parameter/@customerId]" selectable="false">
+                <a:fields>
+                    <a:field name="taxId"/>
+                    <a:field name="taxpayerType"/>
+                    <a:field name="taxpayerTypeName" prompt="gld_acc_entity_tax.taxpayer_type" displayField="meaning" options="FND2515_taxpayerType_ds" required="true" returnField="taxpayerType" valueField="value"/>
+                    <a:field name="address" prompt="gld_acc_entity_tax.address"/>
+                    <a:field name="taxpayerBank" prompt="gld_acc_entity_tax.taxpayer_bank"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="customerId" defaultValue="$[/parameter/@customerId]"/>
+                    <a:field name="taxPayerBank" prompt="gld_acc_entity_tax.taxpayer_number"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2515_customerTaxSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2515_ord_customer_tax_form" column="2" marginWidth="10" title="ord_system_customer.asgn_customer_tax">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2515_ord_customer_tax_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2515_ord_customer_tax_grid" type="save" width="80"/>
+                    <a:toolbarButton click="FND2515_closeCustomerTaxCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="customerCode" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.customer_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2515_ord_customer_tax_grid" bindTarget="FND2515_ord_customer_tax_ds" marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="taxpayerTypeName" align="center" editor="FND2515_customerTax_cmb"  width="80"/>
+                    <a:column name="taxpayerNumber" align="center" editor="FND2515_customerTax_tf"  width="80"/>
+                    <a:column name="address" editor="FND2515_customerTax_tf" width="150"/>
+                    <a:column name="taxpayerBank" editor="FND2515_customerTax_tf"  width="150"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2515_customerTax_cb" prompt="hap_enabled_flag" width="80"/>
+                    <a:column name="asgnAccEntity" align="center" prompt="" renderer="FND2515_accountsAssignAe" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="FND2515_customerTax_cmb"/>
+                    <a:textField id="FND2515_customerTax_tf"/>
+                    <a:checkBox id="FND2515_customerTax_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

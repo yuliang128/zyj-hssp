@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function BGT2010_closeAsgnBatchCreateWindow() {
+                $au('BGT2010_budget_assign_company_batch_window').close();
+            }
+            
+            function BGT2010_assignCom() {
+                var resultDs = $au('BGT2010_batch_asgn_company_result_ds');
+                var datas = $au('BGT2010_batch_asgn_company_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    var record = resultDs.create();
+                    record.set('companyId',datas[i]['companyId']);
+                }
+
+                resultDs.submit();
+            }
+            
+            function BGT2010_closeAssignPage(res) {
+                $au('BGT2010_budget_assign_company_batch_window').close();
+                $au('bgt_budget_item_asgn_com_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2010_batch_asgn_company_ds" autoPageSize="true" autoQuery="true" baseUrl="/fnd-company"  pageSize="50" queryUrl="$[/request/@context_path]/fnd-company/bgtItemAssignCompany?magOrgId=$[/parameter/@magOrgId]&amp;assignMoId=$[/parameter/@assignMoId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2010_batch_asgn_company_result_ds" autoQuery="false" baseUrl="/bgt/budget-item-asgn-com" pageSize="50" selectable="true">
+                <a:fields>
+                    <a:field name="assignComId"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="companyCode"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="fnd_company.company_short_name" readOnly="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_center.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT2010_closeAssignPage"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="prompt.batch_disp_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="BGT2010_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="BGT2010_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="bgt_budget_item_asgn_com_header" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="bgt_budget_item_asgn_com_header" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="BGT2010_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" prompt="fnd_company.company_code" width="160"/>
+                    <a:column name="companyShortName" prompt="fnd_company.company_short_name" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

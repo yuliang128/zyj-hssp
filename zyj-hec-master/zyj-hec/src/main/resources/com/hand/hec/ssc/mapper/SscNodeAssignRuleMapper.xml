@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscNodeAssignRuleMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscNodeAssignRule">
+        <result column="RECORD_ID" property="recordId" jdbcType="DECIMAL" />
+        <result column="WORKER_ASSIGN_ID" property="workerAssignId" jdbcType="DECIMAL" />
+        <result column="WFL_BUSINESS_RULE_ID" property="wflBusinessRuleId" jdbcType="DECIMAL" />
+        <result column="START_DATE" property="startDate" jdbcType="DATE" />
+        <result column="END_DATE" property="endDate" jdbcType="DATE" />
+
+        <result column="BUSINESS_RULE_NAME" property="businessRuleName" jdbcType="VARCHAR"/>
+        <result column="BUSINESS_RULE_CODE" property="businessRuleCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="querySscNodeAssignRule" resultMap="BaseResultMap">
+        SELECT
+	r.record_id,
+	r.worker_assign_id,
+	r.wfl_business_rule_id,
+	(
+		SELECT
+			w.business_rule_code
+		FROM
+			wfl_business_rule w
+		WHERE
+			w.business_rule_id = r.wfl_business_rule_id
+	) business_rule_code,
+	(
+		SELECT
+			wt.DESCRIPTION
+		FROM
+			wfl_business_rule w,
+			wfl_business_rule_tl wt
+		WHERE
+			w.business_rule_id = r.wfl_business_rule_id
+		AND wt.BUSINESS_RULE_ID = w.BUSINESS_RULE_ID
+		AND wt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	) BUSINESS_RULE_NAME,
+	r.start_date,
+	r.end_date
+FROM
+	ssc_node_assign_rule r
+where r.worker_assign_id = #{workerAssignId}
+ORDER BY
+	r.record_id
+    </select>
+    <select id="queryValidateNodeWorkerRule" resultMap="BaseResultMap">
+		select *
+		  from ssc_node_assign_rules r
+		 where r.worker_assign_id = #{workerAssignId}
+		   and r.start_date &lt;= #{currentDate}
+		   and (r.end_date &gt;= #{currentDate} or r.end_date is null)
+	</select>
+
+
+</mapper>

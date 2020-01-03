@@ -1,0 +1,1336 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshWriteOffMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshWriteOff">
+        <result column="WRITE_OFF_ID" property="writeOffId" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_TYPE" property="writeOffType" jdbcType="VARCHAR"/>
+        <result column="CSH_TRANSACTION_LINE_ID" property="cshTransactionLineId" jdbcType="DECIMAL"/>
+        <result column="CSH_WRITE_OFF_AMOUNT" property="cshWriteOffAmount" jdbcType="DECIMAL"/>
+        <result column="DOCUMENT_SOURCE" property="documentSource" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_HEADER_ID" property="documentHeaderId" jdbcType="DECIMAL"/>
+        <result column="DOCUMENT_LINE_ID" property="documentLineId" jdbcType="DECIMAL"/>
+        <result column="DOCUMENT_WRITE_OFF_AMOUNT" property="documentWriteOffAmount" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_DATE" property="writeOffDate" jdbcType="DATE"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="SOURCE_CSH_TRX_LINE_ID" property="sourceCshTrxLineId" jdbcType="DECIMAL"/>
+        <result column="SOURCE_WRITE_OFF_AMOUNT" property="sourceWriteOffAmount" jdbcType="DECIMAL"/>
+        <result column="GLD_INTERFACE_FLAG" property="gldInterfaceFlag" jdbcType="VARCHAR"/>
+
+        <result column="TRANSACTION_HEADER_ID" property="transactionHeaderId" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_HEADER_ID" property="requisitionHeaderId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="TRANSACTION_NUM" property="transactionNum" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_DATE" property="transactionDate" jdbcType="DATE"/>
+        <result column="TRANSACTION_AMOUNT" property="transactionAmount" jdbcType="DECIMAL"/>
+        <result column="UNWRITE_OFF_AMOUNT" property="unWriteOffAmount" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_TYPE_NAME" property="writeOffTypeName" jdbcType="VARCHAR"/>
+        <result column="REQUISITION_NUMBER" property="requisitionNumber" jdbcType="VARCHAR"/>
+        <result column="REQUISITION_TYPE_NAME" property="requisitionTypeName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY_NAME" property="payeeCategoryName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="DUE_AMOUNT" property="dueAmount" jdbcType="DECIMAL"/>
+        <result column="CAN_AMOUNT" property="canAmount" jdbcType="DECIMAL"/>
+        <result column="CONTRACT_NUMBER" property="contractNumber" jdbcType="VARCHAR"/>
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <sql id="writeOffTypeName">
+        (SELECT
+             scv.meaning
+         FROM
+             sys_code_b sc,
+             sys_code_value_b scv
+         WHERE
+             sc.code = 'CSH_WRITE_OFF_TYPE'
+           AND sc.code_id = scv.code_id
+           AND scv.value = 'PREPAYMENT_EXPENSE_REPORT'
+        )  write_off_type_name
+    </sql>
+
+    <sql id="amount">
+        (SELECT
+            IFNULL( SUM( cwo.document_write_off_amount ), 0 )
+        FROM
+            csh_write_off cwo
+        WHERE
+            cwo.document_source = 'EXPENSE_REPORT'
+            AND cwo.document_header_id = erps.exp_report_header_id
+            AND cwo.document_line_id = erps.payment_schedule_line_id
+        ) amount
+    </sql>
+
+    <!-- 报销单核销借款-单据信息查询 -->
+    <select id="docQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        erh.exp_report_number as requisition_number,
+        date_format( erh.report_date, '%Y-%m-%d' ) write_off_date,
+        (
+        select
+        scvt.description
+        from
+        sys_code_b scb,
+        sys_code_value_b scvb,
+        sys_code_value_tl scvt
+        where
+        scb.code = 'PAYMENT_OBJECT'
+        and scb.code_id = scvb.code_id
+        and scvb.code_value_id = scvt.code_value_id
+        and scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and scvb. VALUE = erps.payee_category ) payee_category_name,
+        case
+        erps.payee_category
+        when 'EMPLOYEE' then (
+        select
+        ee.name
+        from
+        exp_employee ee
+        where
+        ee.employee_id = erps.payee_id )
+        when 'VENDER' then (
+        select
+        psvt.description
+        from
+        pur_system_vender_tl psvt
+        where psvt.vender_id = erps.payee_id
+        and psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        when 'CUSTOMER' then (
+        select
+        osct.description
+        from
+        ord_system_customer_tl osct
+        where
+        osct.customer_id = erps.payee_id
+        and osct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        end payee_name,
+        erps.due_amount,
+        erps.due_amount - (
+        select
+        case
+        when sum(cwo.csh_write_off_amount) is null then 0
+        when sum(cwo.csh_write_off_amount) is not null then sum(cwo.csh_write_off_amount)
+        end
+        from
+        csh_write_off cwo
+        where
+        cwo.document_header_id = erps.exp_report_header_id
+        and cwo.document_line_id = erps.payment_schedule_line_id
+        and cwo.document_source = 'EXPENSE_REPORT' ) can_amount,
+        '' contract_number,
+        null line_number
+        from
+        exp_report_header erh,
+        exp_report_pmt_schedule erps
+        left join con_document_flow cdf on
+        erps.exp_report_header_id = cdf.source_document_id
+        and erps.payment_schedule_line_id = cdf.source_document_line_id
+        and cdf.source_document_type = 'EXP_REPORT_PMT_SCHEDULES'
+        where
+        erps.payment_schedule_line_id =
+        #{paymentScheduleLineId}
+        and erps.exp_report_header_id = erh.exp_report_header_id
+    </select>
+    <!-- 报销单未核销记录 -->
+    <select id="unWriteQuery" resultMap="BaseResultMap">
+        select
+        tbl.*
+        from
+        (
+        select
+        v.transaction_header_id,
+        v.transaction_line_id as csh_transaction_line_id,
+        v.requisition_header_id,
+        v.exp_report_header_id as document_header_id,
+        v.payment_schedule_line_id as document_line_id,
+        v.acc_entity_id,
+        v.transaction_num,
+        date_format( v.transaction_date, '%Y-%m-%d' ) as transaction_date,
+        v.transaction_amount,
+        v.unwrite_off_amount,
+        v.write_off_type,
+        case
+        v.write_off_type
+        when 'PAYMENT_PREPAYMENT' then '预付款核销报销单'
+        when 'ACP_PREPAYMENT' then '付款申请核销报销单'
+        end write_off_type_name,
+        case
+        v.write_off_type
+        when 'PAYMENT_PREPAYMENT' then (
+        select
+        cprh.requisition_number
+        from
+        csh_payment_requisition_hd cprh
+        where
+        cprh.payment_requisition_header_id = v.requisition_header_id )
+        when 'ACP_PREPAYMENT' then (
+        select
+        arh.requisition_number
+        from
+        acp_requisition_hd arh
+        where
+        arh.requisition_hds_id = v.requisition_header_id )
+        end requisition_number,
+        case
+        v.write_off_type
+        when 'PAYMENT_PREPAYMENT' then (
+        select
+        cptt.description
+        from
+        csh_payment_requisition_hd cprh,
+        csh_mo_payment_req_type_tl cptt
+        where
+        cprh.payment_requisition_header_id = v.requisition_header_id
+        and cprh.payment_req_type_id = cptt.mo_payment_req_type_id
+        and cptt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        )
+        when 'ACP_REQUISITION' then (
+        select amtt.description
+        from
+        acp_requisition_hd arh,
+        acp_mo_pay_req_type_tl amtt
+        where
+        arh.requisition_hds_id = v.requisition_header_id
+        and arh.mo_pay_req_type_id = amtt.mo_pay_req_type_id
+        and amtt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        end requisition_type_name
+        from
+        (
+        select
+        cth.transaction_header_id,
+        ctl.transaction_line_id,
+        erps.payment_schedule_line_id,
+        erps.exp_report_header_id,
+        cth.acc_entity_id,
+        cth.transaction_num,
+        cth.transaction_date,
+        ctl.transaction_amount,
+        ctl.transaction_amount - (
+        select
+        case
+        when sum(cwo.csh_write_off_amount) > 0 then sum(cwo.csh_write_off_amount)
+        else 0
+        end
+        from
+        csh_write_off cwo
+        where
+        cwo.csh_transaction_line_id = ctl.transaction_line_id
+        and cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT' ) - (
+        select
+        case
+        when sum(ctlx.transaction_amount) > 0 then sum(ctlx.transaction_amount)
+        else 0
+        end
+        from
+        csh_transaction_header cthx,
+        csh_transaction_line ctlx
+        where
+        cthx.source_header_id = cth.transaction_header_id
+        and cthx.transaction_header_id = ctlx.transaction_header_id
+        and cthx.reversed_flag = 'N' ) unwrite_off_amount,
+        (
+        select
+        cwox.document_header_id
+        from
+        csh_write_off cwox,
+        csh_transaction_line ctlx
+        where
+        ctlx.transaction_header_id = cth.source_payment_header_id
+        and ctlx.transaction_line_id = cwox.csh_transaction_line_id
+        and cwox.document_header_id is not null
+        limit 1 ) requisition_header_id,
+        (
+        select
+        cwox.write_off_type
+        from
+        csh_write_off cwox,
+        csh_transaction_line ctlx
+        where
+        ctlx.transaction_header_id = cth.source_payment_header_id
+        and ctlx.transaction_line_id = cwox.csh_transaction_line_id
+        and cwox.document_header_id is not null
+        limit 1 ) write_off_type
+        from
+        csh_transaction_header cth,
+        csh_transaction_line ctl,
+        exp_report_pmt_schedule erps
+        where
+        erps.payment_schedule_line_id =
+        #{paymentScheduleLineId}
+        and erps.payee_category = ctl.payee_category
+        and erps.acc_entity_id = ctl.acc_entity_id
+        and erps.payee_id = ctl.payee_id
+        and erps.payment_currency_code = ctl.currency_code
+        and ctl.transaction_header_id = cth.transaction_header_id
+        and cth.returned_flag in ( 'Y',
+        'N' )
+        and cth.reversed_flag = 'N'
+        and cth.company_id =
+        #{companyId}
+        and cth.write_off_flag in ( 'N',
+        'Y' )
+        and cth.enabled_write_off_flag = 'Y'
+        and cth.posted_flag = 'Y'
+        and cth.transaction_type = 'PREPAYMENT' ) v
+        where
+        v.unwrite_off_amount > 0 ) tbl
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="requisitionNumber != null and requisitionNumber != ''">
+                and tbl.requisition_number = #{requisitionNumber,jdbcType=VARCHAR,javaType=java.lang.String}
+            </if>
+            <if test="dateFrom != null and dateFrom != ''">
+                and tbl.transaction_date &gt;= #{dateFrom,jdbcType=VARCHAR,javaType=java.lang.String}
+            </if>
+            <if test="dateTo != null and dateTo != ''">
+                and tbl.transaction_date &lt;= #{dateTo,jdbcType=VARCHAR,javaType=java.lang.String}
+            </if>
+        </trim>
+    </select>
+    <!-- 报销单已核销记录 -->
+    <select id="writeQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select
+        v.*,
+        case
+        v.write_off_type
+        when 'PAYMENT_PREPAYMENT' then '预付款核销报销单'
+        when 'ACP_PREPAYMENT' then '付款申请核销报销单'
+        end write_off_type_name,
+        case
+        v.write_off_type
+        when 'PAYMENT_PREPAYMENT' then (
+        select
+        cprh.requisition_number
+        from
+        csh_payment_requisition_hd cprh
+        where
+        cprh.payment_requisition_header_id = v.requisition_header_id )
+        when 'ACP_PREPAYMENT' then (
+        select
+        arh.requisition_number
+        from
+        acp_requisition_hd arh
+        where
+        arh.requisition_hds_id = v.requisition_header_id )
+        end requisition_number,
+        case
+        v.write_off_type
+        when 'PAYMENT_PREPAYMENT' then (
+        select
+        cptt.description
+        from
+        csh_payment_requisition_hd cprh,
+        csh_mo_payment_req_type_tl cptt
+        where
+        cprh.payment_requisition_header_id = v.requisition_header_id
+        and cprh.payment_req_type_id = cptt.mo_payment_req_type_id
+        and cptt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        )
+        when 'ACP_REQUISITION' then (
+        select amtt.description
+        from
+        acp_requisition_hd arh,
+        acp_mo_pay_req_type_tl amtt
+        where
+        arh.requisition_hds_id = v.requisition_header_id
+        and arh.mo_pay_req_type_id = amtt.mo_pay_req_type_id
+        and amtt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        end requisition_type_name
+        from
+        (
+        select
+        cwo.write_off_id,
+        ctl.transaction_line_id as csh_transaction_line_id,
+        cth.transaction_header_id,
+        cwo.document_header_id,
+        cwo.document_line_id,
+        date_format( cwo.write_off_date, '%Y-%m-%d' ) as write_off_date,
+        cwo.period_name,
+        cwo.csh_write_off_amount,
+        ctl.transaction_amount,
+        cth.transaction_num,
+        (
+        select
+        cwox.document_header_id
+        from
+        csh_write_off cwox,
+        csh_transaction_line ctlx
+        where
+        ctlx.transaction_header_id = cth.source_payment_header_id
+        and ctlx.transaction_line_id = cwox.csh_transaction_line_id
+        and cwox.document_header_id is not null
+        limit 1 ) requisition_header_id,
+        (
+        select
+        cwox.write_off_type
+        from
+        csh_write_off cwox,
+        csh_transaction_line ctlx
+        where
+        ctlx.transaction_header_id = cth.source_payment_header_id
+        and ctlx.transaction_line_id = cwox.csh_transaction_line_id
+        and cwox.document_header_id is not null
+        limit 1 ) write_off_type
+        from
+        exp_report_pmt_schedule erps,
+        csh_write_off cwo,
+        csh_transaction_header cth,
+        csh_transaction_line ctl
+        where
+        erps.payment_schedule_line_id =
+        #{paymentScheduleLineId}
+        and erps.exp_report_header_id = cwo.document_header_id
+        and erps.payment_schedule_line_id = cwo.document_line_id
+        and cwo.document_source = 'EXPENSE_REPORT'
+        and cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+        and cwo.csh_transaction_line_id = ctl.transaction_line_id
+        and ctl.transaction_header_id = cth.transaction_header_id ) v
+    </select>
+    <!-- 获取单据核销总金额 -->
+    <select id="totalDocAmount" resultType="java.math.BigDecimal">
+        SELECT
+        CASE
+        WHEN
+        sum( cwo.document_write_off_amount ) IS NULL THEN
+        0 ELSE sum( cwo.document_write_off_amount )
+        END AS total_write_amount
+        FROM
+        csh_write_off cwo
+        WHERE
+        cwo.document_header_id = #{documentHeaderId,jdbcType=DECIMAL,javaType=java.lang.Long}
+        AND cwo.document_source = #{documentSource,jdbcType=VARCHAR,javaType=java.lang.String}
+    </select>
+    <!-- 获取核销总金额 -->
+    <select id="totalWriteAmount" resultType="java.math.BigDecimal">
+        SELECT
+        CASE
+        WHEN
+        sum( cwo.csh_write_off_amount ) IS NULL THEN
+        0 ELSE sum( cwo.csh_write_off_amount )
+        END AS total_write_date
+        FROM
+        csh_write_off cwo
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="documentHeaderId != null and documentSource != null">
+                AND cwo.document_header_id = #{documentHeaderId,jdbcType=DECIMAL,javaType=java.lang.Long}
+                AND cwo.document_source = #{documentSource,jdbcType=VARCHAR,javaType=java.lang.String}
+                <if test="documentLineId != null">
+                    AND cwo.document_line_id = #{documentLineId,jdbcType=DECIMAL,javaType=java.lang.Long}
+                </if>
+            </if>
+            <if test="transactionLineId !=null and transactionType == 'PAYMENT'.toString() ">
+                AND cwo.csh_transaction_line_id = #{transactionLineId,jdbcType=DECIMAL,javaType=java.lang.Long}
+            </if>
+            <if test="transactionLineId !=null and transactionType == 'PREPAYMENT'.toString() ">
+                AND cwo.csh_transaction_line_id = #{transactionLineId,jdbcType=DECIMAL,javaType=java.lang.Long}
+                AND cwo.source_csh_trx_line_id is null
+            </if>
+            <if test="transactionLineId != null and writeOffType != null">
+                AND cwo.csh_transaction_line_id = #{transactionLineId,jdbcType=DECIMAL,javaType=java.lang.Long}
+                AND cwo.write_off_type = #{writeOffType, jdbcType=VARCHAR, javaType=java.lang.String}
+            </if>
+            <if test="documentLineId != null and transactionLineId != null and transactionType == null and writeOffType == null">
+                AND cwo.document_line_id = #{documentLineId}
+                AND cwo.csh_transaction_line_id = #{transactionLineId}
+            </if>
+        </trim>
+    </select>
+    <!-- 最大核销日期 -->
+    <select id="maxWriteDate" resultType="java.sql.Timestamp">
+        SELECT
+        CASE
+        WHEN
+        max( cwo.write_off_date ) IS NULL THEN
+        sysdate( ) ELSE max( cwo.write_off_date )
+        END AS max_write_date
+        FROM
+        csh_write_off cwo
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="documentHeaderId != null and documentSource != null">
+                AND cwo.document_header_id = #{documentHeaderId,jdbcType=DECIMAL,javaType=java.lang.Long}
+                AND cwo.document_source = #{documentSource,jdbcType=VARCHAR,javaType=java.lang.String}
+            </if>
+            <if test="transactionLineId != null">
+                AND cwo.csh_transaction_line_id = #{transactionLineId,jdbcType=DECIMAL,javaType=java.lang.Long}
+            </if>
+        </trim>
+    </select>
+
+    <select id="queryPrePayDetail" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        v.transaction_header_id transactionHeaderId,
+        v.transaction_line_id cshTransactionLineId,
+        v.exp_report_header_id documentHeaderId,
+        v.acc_entity_id accEntityId,
+        v.payment_schedule_line_id documentLineId,
+        v.document_id documentId,
+        v.write_off_type writeOffType,
+        v.write_off_type_name writeOffTypeName,
+        v.mo_csh_trx_class_id moCshTrxClassId,
+        v.mo_csh_trx_class_code moCshTrxClassCode,
+        v.mo_csh_trx_class_name moCshTrxClassName,
+        v.transaction_date transactionDate,
+        v.exp_report_number requisitionNumber,
+        v.due_amount dueAmount,
+        v.audit_date auditDate,
+        IFNULL(v.due_amount - v.amount, 0) unwriteOffAmount
+        FROM
+        (
+        SELECT
+        cth.transaction_header_id,
+        ctl.transaction_line_id,
+        erh.exp_report_header_id,
+        erps.acc_entity_id,
+        erps.payment_schedule_line_id,
+        erps.payment_schedule_line_id document_id,
+        'PREPAYMENT_EXPENSE_REPORT' write_off_type,
+        <include refid="writeOffTypeName"/>,
+        cmcv.mo_csh_trx_class_id,
+        cmcv.mo_csh_trx_class_code,
+        cmcv.description mo_csh_trx_class_name,
+        date_format( cth.transaction_date,'%Y-%m-%d') transaction_date,
+        erh.exp_report_number,
+        erps.due_amount,
+        date_format( erh.audit_date,'%Y-%m-%d') audit_date,
+        <include refid="amount"/>
+        FROM
+        csh_transaction_header cth left outer join csh_mo_transaction_class cmcv on(cth.mo_csh_trx_class_id =
+        cmcv.mo_csh_trx_class_id),
+        csh_transaction_line ctl,
+        exp_report_pmt_schedule erps,
+        exp_report_header erh
+        WHERE
+        cth.transaction_header_id = ctl.transaction_header_id
+        AND ctl.payee_category = erps.payee_category
+        AND ctl.payee_id = erps.payee_id
+        AND ctl.currency_code = erps.payment_currency_code
+        AND erps.company_id = #{request.companyId}
+        AND erps.exp_report_header_id = erh.exp_report_header_id
+        AND erh.reversed_flag = 'N'
+        AND erh.audit_flag = 'Y'
+        AND erh.write_off_status != 'C'
+        ) v
+        where
+        v.due_amount - v.amount &gt; 0
+        <if test="transactionHeaderId != null">
+            AND v.transaction_header_id = #{transactionHeaderId}
+        </if>
+        ORDER BY
+        v.exp_report_number
+    </select>
+
+
+    <select id="getCshWriteOffInfo" resultMap="BaseResultMap">
+        select w.*,
+              (select ctl.transaction_header_id
+                 from csh_transaction_line ctl
+                where ctl.transaction_line_id = w.csh_transaction_line_id) csh_trx_header_id
+         from csh_write_off w
+        where w.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+          and w.document_source = 'EXPENSE_REPORT'
+          and w.document_header_id = #{expReportHeaderId}
+    </select>
+
+    <select id="getWriteOffHistory" parameterType="java.lang.Long" resultType="java.util.Map">
+        SELECT
+            v.write_off_date writeOffDate,
+            v.period_name periodName,
+            v.write_off_type writeOffType,
+            v.exp_report_number expReportNumber,
+            v.exp_report_header_id expReportHeaderId,
+            v.transaction_num transactionNum,
+            v.transactionClass,
+            v.transaction_header_id transactionHeaderId,
+            v.csh_write_off_amount cshWriteOffAmount,
+            v.source_header_id sourceHeaderId,
+            v.requisition_number requisitionNumber,
+            v.payment_requisition_header_id paymentRequisitionHeaderId,
+            v.line_number lineNumber,
+            v.contract_number contractNumber,
+            v.contract_header_id contractHeaderId
+        FROM
+            (
+        SELECT
+            date_format( cwo.write_off_date, '%Y-%m-%d' ) write_off_date,
+            (SELECT
+                    gp.period_name
+            FROM
+                    gld_period gp,
+                    gld_period_set gps
+            WHERE
+                    1 = 1
+                    AND gp.adjustment_flag = 'N'
+                    AND gps.period_set_id = gp.period_set_id
+                    AND gps.period_set_code = (
+                            SELECT
+                                    sob.period_set_code
+                            FROM
+                                    gld_set_of_book sob,
+                                    gld_accounting_entity ae,
+                                    gld_acc_entity_ref_sob accSob
+                            WHERE
+                                    ae.acc_entity_id = ( SELECT ae.acc_entity_id
+                                                                             FROM fnd_company_ref_acc_entity ae
+                                                                             WHERE ae.company_id = #{request.companyId} AND ae.enabled_flag = 'Y' AND ae.default_flag = 'Y' )
+                            AND accSob.acc_entity_id = ae.acc_entity_id
+                            AND accSob.DEFAULT_FLAG = 'Y'
+                            AND accSob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+                    )
+                    AND cwo.write_off_date BETWEEN gp.start_date AND gp.end_date
+            ) period_name,
+            (SELECT
+                     scv.meaning
+             FROM
+                     sys_code_b sc,
+                     sys_code_value_b scv
+             WHERE
+                     sc.code = 'CSH_WRITE_OFF_TYPE'
+                 AND sc.code_id = scv.code_id
+                 AND scv.value = cwo.write_off_type
+            ) write_off_type,
+            erh.exp_report_number,
+            erps.exp_report_header_id,
+            case when cwo.write_off_type = 'PAYMENT_PREPAYMENT' then (
+                    SELECT
+                        cth.transaction_num
+                    FROM
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        cth.transaction_header_id = ctl.transaction_header_id
+                        AND ctl.transaction_line_id = cwo.source_csh_trx_line_id
+                        AND cth.transaction_type = 'PREPAYMENT'
+                 )
+                 when cwo.write_off_type = 'PAYMENT_RESERVATION_FUND' then(
+                    SELECT
+                        cth.transaction_num
+                    FROM
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        cth.transaction_header_id = ctl.transaction_header_id
+                        AND ctl.transaction_line_id = cwo.source_csh_trx_line_id
+                        AND cth.transaction_type = 'RESERVATION_FUND'
+                 )
+                 when cwo.write_off_type = 'PAYMENT_DEPOSIT' then(
+                    SELECT
+                        cth.transaction_num
+                    FROM
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        cth.transaction_header_id = ctl.transaction_header_id
+                        AND ctl.transaction_line_id = cwo.source_csh_trx_line_id
+                        AND cth.transaction_type = 'DEPOSIT'
+                 )
+                 else null
+            end transaction_num,
+            cmcv.description transactionClass,
+            case when cwo.write_off_type = 'PAYMENT_PREPAYMENT' then (
+                    SELECT
+                        cth.transaction_header_id
+                    FROM
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        cth.transaction_header_id = ctl.transaction_header_id
+                        AND ctl.transaction_line_id = cwo.source_csh_trx_line_id
+                        AND cth.transaction_type = 'PREPAYMENT'
+                 )
+                 when cwo.write_off_type = 'PAYMENT_RESERVATION_FUND' then(
+                    SELECT
+                        cth.transaction_header_id
+                    FROM
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        cth.transaction_header_id = ctl.transaction_header_id
+                        AND ctl.transaction_line_id = cwo.source_csh_trx_line_id
+                        AND cth.transaction_type = 'RESERVATION_FUND'
+                )
+                when cwo.write_off_type = 'PAYMENT_DEPOSIT' then(
+                    SELECT
+                        cth.transaction_header_id
+                    FROM
+                        csh_transaction_header cth,
+                        csh_transaction_line ctl
+                    WHERE
+                        cth.transaction_header_id = ctl.transaction_header_id
+                        AND ctl.transaction_line_id = cwo.source_csh_trx_line_id
+                        AND cth.transaction_type = 'DEPOSIT'
+                )
+                else null
+            end transaction_header_id,
+            cwo.csh_write_off_amount,
+            cth.source_header_id,
+            cprh.requisition_number,
+            cprh.payment_requisition_header_id,
+            cps.line_number line_number,
+            cch.contract_number,
+            ccsl.contract_header_id
+        FROM
+            csh_write_off cwo LEFT OUTER JOIN csh_payment_requisition_ref cprr ON (cwo.write_off_id = cprr.write_off_id)
+            LEFT OUTER JOIN csh_payment_requisition_ln cprl on(cprr.payment_requisition_line_id = cprl.payment_requisition_line_id)
+            LEFT OUTER JOIN csh_payment_requisition_hd cprh on(cprl.payment_requisition_header_id = cprh.payment_requisition_header_id)
+            LEFT OUTER JOIN exp_report_pmt_schedule erps on(cwo.document_line_id = erps.payment_schedule_line_id)
+            LEFT OUTER JOIN exp_report_header erh on(erps.exp_report_header_id = erh.exp_report_header_id)
+            LEFT OUTER JOIN csh_transaction_line ctlx on(cwo.source_csh_trx_line_id = ctlx.transaction_line_id)
+            LEFT OUTER JOIN csh_transaction_header cthx on(ctlx.transaction_header_id = cthx.transaction_header_id and cthx.transaction_type = 'PREPAYMENT')
+            LEFT OUTER JOIN csh_mo_transaction_class cmcv on(cthx.mo_csh_trx_class_id = cmcv.mo_csh_trx_class_id)
+            LEFT OUTER JOIN con_cash_trx_pmt_schedule_ln ccsl on(cwo.write_off_id = ccsl.write_off_id)
+            LEFT OUTER JOIN con_payment_schedule cps on(ccsl.payment_schedule_line_id = cps.payment_schedule_line_id)
+            LEFT OUTER JOIN con_contract_header cch on(ccsl.contract_header_id = cch.contract_header_id),
+            csh_transaction_header cth,
+            csh_transaction_line ctl
+        WHERE
+            cwo.csh_transaction_line_id = ctl.transaction_line_id
+            AND ctl.transaction_header_id = cth.transaction_header_id
+            AND cth.transaction_header_id = #{transactionHeaderId}
+        UNION
+        SELECT
+            date_format( cth.transaction_date, '%Y-%m-%d' ) write_off_date,
+            (SELECT
+                    gp.period_name
+             FROM
+                    gld_period gp,
+                    gld_period_set gps
+             WHERE
+                    1 = 1
+                    AND gp.adjustment_flag = 'N'
+                    AND gps.period_set_id = gp.period_set_id
+                    AND gps.period_set_code = (
+                            SELECT
+                                    sob.period_set_code
+                            FROM
+                                    gld_set_of_book sob,
+                                    gld_accounting_entity ae,
+                                    gld_acc_entity_ref_sob accSob
+                            WHERE
+                                    ae.acc_entity_id = ( SELECT ae.acc_entity_id
+                                                         FROM fnd_company_ref_acc_entity ae
+                                                         WHERE ae.company_id = #{request.companyId} AND ae.enabled_flag = 'Y' AND ae.default_flag = 'Y' )
+                            AND accSob.acc_entity_id = ae.acc_entity_id
+                            AND accSob.DEFAULT_FLAG = 'Y'
+                            AND accSob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+                    )
+               AND cth.transaction_date BETWEEN gp.start_date AND gp.end_date
+            ) period_name,
+            (SELECT
+                     scv.meaning
+             FROM
+                     sys_code_b sc,
+                     sys_code_value_b scv
+             WHERE
+                     sc.code = 'CSH_WRITE_OFF_TYPE'
+                 AND sc.code_id = scv.code_id
+                 AND scv.value = 'CSH_RETURN'
+            ) write_off_type,
+            NULL exp_report_number,
+            NULL exp_report_header_id,
+            cth.transaction_num,
+            NULL transaction_class,
+            cth.transaction_header_id,
+            - ctl.transaction_amount,
+            cth.source_header_id,
+            NULL requisition_number,
+            NULL payment_requisition_header_id,
+            NULL line_number,
+            NULL contract_number,
+            NULL contract_header_id
+        FROM
+            csh_transaction_line ctl,
+            csh_transaction_header cth,
+            csh_transaction_header cth1
+        WHERE
+            ctl.transaction_header_id = cth.transaction_header_id
+            AND cth.source_header_id = cth1.transaction_header_id
+            AND cth.returned_flag = 'R'
+            AND ( cth.reversed_flag = 'W' OR IFNULL( cth.reversed_flag, 'N' ) = 'N' )
+            AND cth1.transaction_type = 'PREPAYMENT'
+            AND cth1.transaction_header_id = #{transactionHeaderId}
+        UNION
+        SELECT
+            date_format( cth.transaction_date, '%Y-%m-%d' ) write_off_date,
+            (SELECT
+                    gp.period_name
+            FROM
+                    gld_period gp,
+                    gld_period_set gps
+            WHERE
+                    1 = 1
+                    AND gp.adjustment_flag = 'N'
+                    AND gps.period_set_id = gp.period_set_id
+                    AND gps.period_set_code = (
+                            SELECT
+                                    sob.period_set_code
+                            FROM
+                                    gld_set_of_book sob,
+                                    gld_accounting_entity ae,
+                                    gld_acc_entity_ref_sob accSob
+                            WHERE
+                                    ae.acc_entity_id = ( SELECT ae.acc_entity_id
+                                                         FROM fnd_company_ref_acc_entity ae
+                                                         WHERE ae.company_id = #{request.companyId} AND ae.enabled_flag = 'Y' AND ae.default_flag = 'Y' )
+                            AND accSob.acc_entity_id = ae.acc_entity_id
+                            AND accSob.DEFAULT_FLAG = 'Y'
+                            AND accSob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+                    )
+               AND cth.transaction_date BETWEEN gp.start_date AND gp.end_date
+            ) period_name,
+            (SELECT
+                     scv.meaning
+             FROM
+                     sys_code_b sc,
+                     sys_code_value_b scv
+             WHERE
+                     sc.code = 'CSH_WRITE_OFF_TYPE'
+                 AND sc.code_id = scv.code_id
+                 AND scv.value = 'CSH_RETURN'
+            ) write_off_type,
+            NULL exp_report_number,
+            NULL exp_report_header_id,
+            cth.transaction_num,
+            NULL transaction_class,
+            cth.transaction_header_id transaction_id,
+            - ctl.transaction_amount,
+            cth.source_header_id,
+            NULL requisition_number,
+            NULL payment_requisition_header_id,
+            NULL line_number,
+            NULL contract_number,
+            NULL contract_header_id
+        FROM
+            csh_transaction_line ctl,
+            csh_transaction_header cth,
+            csh_transaction_header cth1,
+            csh_transaction_header cth2
+        WHERE
+            ctl.transaction_header_id = cth.transaction_header_id
+            AND cth.source_header_id = cth1.transaction_header_id
+            AND cth1.source_header_id = cth2.transaction_header_id
+            AND cth.returned_flag = 'R'
+            AND cth.reversed_flag = 'R'
+            AND cth2.transaction_type = 'PREPAYMENT'
+            AND cth2.transaction_header_id = #{transactionHeaderId}
+        ) v
+    </select>
+
+    <select id="queryFinance" parameterType="java.lang.Long" resultType="java.util.Map">
+        SELECT
+            v.*
+        FROM
+            (
+        SELECT
+            ctl.transaction_header_id transactionHeaderId,
+            cwo.csh_transaction_line_id cshTransactionLineId,
+            cwo.write_off_id writeOffId,
+            gaev.acc_entity_code accEntityCode,
+            gaev.acc_entity_name accEntityName,
+            grcv.responsibility_center_code responsibilityCenterCode,
+            grcv.responsibility_center_name responsibilityCenterName,
+            cwoa.period_name periodName,
+            gav.account_code accountCode,
+            gav.description accountName,
+            cwoa.entered_amount_dr enteredAmountDr,
+            cwoa.entered_amount_cr enteredAmountCr,
+            cwoa.functional_amount_dr functionalAmountDr,
+            cwoa.functional_amount_cr functionalAmountCr,
+            cwoa.description
+         FROM
+            csh_write_off cwo,
+            csh_transaction_line ctl,
+            csh_write_off_account cwoa LEFT OUTER JOIN gld_account gav on(cwoa.account_id = gav.account_id)
+            LEFT OUTER JOIN gld_accounting_entity gaev on(cwoa.acc_entity_id = gaev.acc_entity_id)
+            LEFT OUTER JOIN gld_responsibility_center grcv on(cwoa.resp_center_id = grcv.responsibility_center_id)
+        WHERE
+            cwo.csh_transaction_line_id = ctl.transaction_line_id
+            AND ctl.transaction_header_id = #{transactionHeaderId}
+            AND cwo.write_off_id = cwoa.write_off_id
+            ) v
+        ORDER BY
+            v.enteredAmountDr
+    </select>
+    <select id="submitCshWriteOffCheck" resultType="string">
+        select (case when count(1) = 0 then 'N' else 'Y' end)
+      from (select (ctl.transaction_amount -
+                   (select (case when sum(cwo.csh_write_off_amount) is null then 0 else sum(cwo.csh_write_off_amount) end)
+                       from csh_write_off cwo
+                      where cwo.csh_transaction_line_id =
+                            ctl.transaction_line_id
+                            and
+                            cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT') -
+                   (select (case when sum(ctlx.transaction_amount) is null then 0 else sum(ctlx.transaction_amount) end)
+                       from csh_transaction_header cthx,
+                            csh_transaction_line   ctlx
+                      where cthx.source_header_id = cth.transaction_header_id
+                            and cthx.transaction_header_id =
+                            ctlx.transaction_header_id
+                            and (case when cthx.reversed_flag is null then 'N' else cthx.reversed_flag end)
+                                     = 'N')) unwrite_off_amount,
+                   cth.transaction_header_id,
+                   ctl.transaction_line_id
+              from csh_transaction_header cth,
+                   csh_transaction_line   ctl
+             where ctl.transaction_header_id = cth.transaction_header_id
+                   and cth.returned_flag in ('Y',
+                                             'N')
+                   and cth.reversed_flag = 'N'
+                   and cth.company_id = #{companyId}
+                   and cth.write_off_flag in ('N',
+                                              'Y')
+                   and cth.enabled_write_off_flag = 'Y'
+                   and cth.posted_flag = 'Y'
+                   and cth.transaction_type = 'PREPAYMENT'
+                   and exists
+             (select 1
+                      from csh_transaction_header      h,
+                           csh_transaction_line        l,
+                           csh_payment_requisition_ref cprr,
+                           csh_payment_requisition_ln  cprl,
+                           csh_payment_requisition_hd  cprh
+                     where cprr.csh_transaction_line_id = l.transaction_line_id
+                           and cprr.payment_requisition_line_id =
+                           cprl.payment_requisition_line_id
+                           and cprl.payment_requisition_header_id =
+                           cprh.payment_requisition_header_id
+                           and cprh.payee_category = #{payeeCategory}
+                           and cprh.payee_id = #{payeeId}
+                           and cprh.company_id = #{companyId}
+                           and cprh.acc_entity_id = #{accEntityId}
+                           and
+                           l.transaction_header_id = h.source_payment_header_id
+                           and
+                           cth.transaction_header_id = h.transaction_header_id)) v
+     where v.unwrite_off_amount > 0;
+    </select>
+    <select id="getCshUnWriteOffAmt" resultType="decimal">
+        select sum(l.transaction_amount -
+                   (select (case when sum(cwo.document_write_off_amount) is null then 0 else sum(cwo.document_write_off_amount) end)
+                      from csh_write_off cwo
+                     where cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+                           and
+                           cwo.csh_transaction_line_id = l.transaction_line_id
+                           and cwo.source_csh_trx_line_id is null) -
+                   (select (case when sum(ctl2.transaction_amount) is null then 0 else sum(ctl2.transaction_amount) end)
+                      from csh_transaction_header cth1,
+                           csh_transaction_line   ctl1,
+                           csh_transaction_header cth2,
+                           csh_transaction_line   ctl2
+                     where ctl1.transaction_line_id = l.transaction_line_id
+                           and ctl1.transaction_header_id =
+                           cth1.transaction_header_id
+                           and
+                           cth2.source_header_id = cth1.transaction_header_id
+                           and cth2.transaction_header_id =
+                           ctl2.transaction_header_id
+                           and (case when cth2.reversed_flag is null then 'N' else cth2.reversed_flag end)
+                                  = 'N')) csh_unwrite_off_amt
+          from csh_transaction_header  h,
+               csh_transaction_line    l,
+               exp_report_pmt_schedule p
+         where h.transaction_type = 'PREPAYMENT'
+               and h.transaction_header_id = l.transaction_header_id
+               and h.returned_flag != 'C'
+               and (case when h.reversed_flag is null then 'N' else h.reversed_flag end) = 'N'
+               and h.write_off_flag != 'C'
+               and h.enabled_write_off_flag = 'Y'
+               and p.payee_category = l.payee_category
+               and p.payee_id = l.payee_id
+               and p.payment_currency_code = l.currency_code
+               and p.acc_entity_id = h.acc_entity_id
+               and p.exp_report_header_id = #{expReportHeaderId}
+               and
+               p.due_amount - ((select (case when sum(w.document_write_off_amount) is null then 0 else sum(w.document_write_off_amount) end)
+                                 from csh_write_off w
+                                where w.document_source = 'EXPENSE_REPORT'
+                                  and w.document_header_id = p.exp_report_header_id
+                                  and w.document_line_id = (case when p.payment_schedule_line_id is null then w.document_line_id else p.payment_schedule_line_id end))) > 0
+    </select>
+
+    <select id="getRepPmtTotWriteOffAmt" resultType="decimal">
+       select (case when sum(w.document_write_off_amount) is null then 0 else sum(w.document_write_off_amount) end)
+                                 from csh_write_off w
+                                where w.document_source = 'EXPENSE_REPORT'
+                                  and w.document_header_id = #{expReportHeaderId}
+                                  and w.document_line_id = (case when #{paymentScheduleLineId} is null then w.document_line_id else #{paymentScheduleLineId} end)
+    </select>
+
+    <select id="getPaidAmountByAcpReq" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+        SELECT
+            ( CASE WHEN sum( cwo.csh_write_off_amount ) IS NULL THEN 0 ELSE sum( cwo.csh_write_off_amount ) END ) paid_amount
+        FROM
+            csh_write_off cwo
+        WHERE
+            cwo.document_line_id = #{documentLineId}
+            AND cwo.write_off_type = 'PAYMENT_EXPENSE_REPORT'
+    </select>
+
+    <!-- Modify Tagin/2019.05.07 根据借款单现金事务获取 -->
+    <select id="getWriteOffByAcpRef" resultMap="BaseResultMap">
+        select
+        cwo.write_off_id,
+        cwo.write_off_type,
+        cwo.csh_transaction_line_id,
+        cwo.csh_write_off_amount,
+        cwo.document_source,
+        cwo.document_header_id,
+        cwo.document_line_id,
+        cwo.document_write_off_amount,
+        cwo.write_off_date,
+        cwo.period_name,
+        cwo.source_csh_trx_line_id,
+        cwo.source_write_off_amount,
+        cwo.gld_interface_flag
+        from
+        csh_write_off cwo
+        where
+        exists (
+        select
+        1
+        from
+        acp_requisition_ref arr
+        where
+        arr.requisition_lns_id = #{requisitionLnsId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and arr.csh_transaction_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and arr.write_off_id = cwo.write_off_id)
+    </select>
+
+    <select id="getDocumentHeaderId" resultMap="BaseResultMap">
+        select distinct wo.write_off_type,
+                (case wo.write_off_type when 'ACP_PAYMENT' then wo.write_off_id  when 'ACP_PREPAYMENT' then wo.write_off_id else wo.document_header_id end) as document_header_id
+               from csh_write_off        wo,
+                    csh_transaction_line l
+               where wo.csh_transaction_line_id =
+                     l.transaction_line_id
+               and wo.document_source is not null
+               and l.transaction_header_id = #{transactionHeaderId}
+    </select>
+
+    <select id="getCshWriteOffByTransaction" resultType="com.hand.hec.csh.dto.CshWriteOff">
+         select wo.write_off_type as writeOffType,
+                wo.write_off_id as writeOffId
+          from csh_write_off         wo,
+               csh_transaction_line  l
+         where wo.csh_transaction_line_id = l.transaction_line_id
+               and l.transaction_header_id = #{transactionHeaderId}
+            limit 1
+    </select>
+
+    <select id="queryCshWriteOffHistory" resultType="java.util.Map">
+        SELECT
+                    wo.write_off_id as writeOffId,
+                    date_format(wo.write_off_date, '%Y-%m-%d') AS writeOffDate,
+                    wo.period_name as periodName,
+                    wo.write_off_type as writeOffType,
+                    (SELECT scv.meaning FROM sys_code_b sc, sys_code_value_b scv WHERE sc.code = 'CSH_WRITE_OFF_TYPE' AND sc.code_id = scv.code_id AND scv.value = wo.write_off_type) AS writeOffTypeName,
+                    null AS expReportNumber,
+                    null AS expReportHeaderId,
+                    h.transaction_num as transactionNum,
+                    null AS paymentRequisitionNumber,
+                    null AS paymentRequisitionHeaderId,
+                    null AS acpPayRequisitionNumber,
+                    null AS acpPayRequisitionHeaderId,
+                    wo.csh_write_off_amount as cshWriteOffAmount,
+                    (select ch.returned_flag
+			          from csh_transaction_line   cl,
+			               csh_transaction_header ch
+			         where cl.transaction_header_id = ch.transaction_header_id
+			               and cl.transaction_line_id = wo.source_csh_trx_line_id) as returnedFlag
+                FROM
+                    csh_write_off wo,
+                    csh_transaction_line l,
+                    csh_transaction_header h
+                WHERE
+                    wo.csh_transaction_line_id = l.transaction_line_id AND
+                    l.transaction_header_id    = h.transaction_header_id AND
+                    l.transaction_header_id    = #{transactionHeaderId}
+    </select>
+
+    <!-- Modify Tagin/2019.05.28 报销单支付反冲核销记录查询 -->
+    <select id="queryRptWriteForReverse" resultMap="BaseResultMap">
+        select *
+        from csh_write_off cwo
+        where cwo.write_off_type = 'PAYMENT_EXPENSE_REPORT'
+        and ((cwo.csh_transaction_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL} and 'N' = #{returnFlag, javaType=java.lang.String, jdbcType=VARCHAR} and
+        cwo.source_csh_trx_line_id is null) or
+        (cwo.source_csh_trx_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL} and 'R' = #{returnFlag, javaType=java.lang.String, jdbcType=VARCHAR}))
+    </select>
+    <!-- Modify Tagin/2019.05.28 借款申请单支付反冲核销记录查询 -->
+    <select id="queryPayWriteForReverse" resultMap="BaseResultMap">
+        select
+        cwo.*
+        from
+        csh_write_off cwo
+        where
+        cwo.write_off_type = 'PAYMENT_PREPAYMENT'
+        and ((cwo.csh_transaction_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and 'N' = #{returnFlag, javaType=java.lang.String, jdbcType=VARCHAR}
+        and exists (
+        select 1
+        from
+        csh_transaction_header cth,
+        csh_transaction_line ctl
+        where
+        ctl.transaction_line_id = cwo.source_csh_trx_line_id
+        and ctl.transaction_header_id = cth.transaction_header_id
+        and cth.source_payment_header_id = #{transactionHeaderId, javaType=java.lang.Long, jdbcType=DECIMAL}))
+        or (cwo.csh_transaction_line_id = (
+        select ctlx.transaction_line_id
+        from
+        csh_transaction_line ctlx,
+        csh_transaction_header cthx
+        where
+        ctlx.transaction_header_id = cthx.transaction_header_id
+        and cthx.transaction_header_id = #{sourceHeaderId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and 'R' = #{returnFlag, javaType=java.lang.String, jdbcType=VARCHAR}
+        and exists (
+        select 1
+        from
+        csh_transaction_header cthm,
+        csh_transaction_line ctlm
+        where
+        ctlm.transaction_line_id = cwo.source_csh_trx_line_id
+        and ctlm.transaction_header_id = cthm.transaction_header_id
+        and cthm.source_payment_header_id = #{transactionHeaderId, javaType=java.lang.Long, jdbcType=DECIMAL}))))
+    </select>
+    <!-- Modify Tagin/2019.05.28 付款申请单支付反冲核销记录查询 -->
+    <select id="queryAcpWriteForReverse" resultMap="BaseResultMap">
+        select
+        cwo.*
+        from
+        csh_write_off cwo
+        where
+        cwo.csh_transaction_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and cwo.write_off_type in ('ACP_PAYMENT',
+        'ACP_PREPAYMENT',
+        'PREPAYMENT_ACP_REQUISITION')
+        and 'N' = #{returnFlag, javaType=java.lang.String, jdbcType=VARCHAR}
+    </select>
+    <!-- Modify Tagin/2019.05.29 根据类型获取核销记录 -->
+    <select id="getWriteByType" resultMap="BaseResultMap">
+        select cwo.*
+        from csh_write_off cwo
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="writeOffType != null and writeOffType != ''">
+                and cwo.write_off_type = #{writeOffType, javaType=java.lang.String, jdbcType=VARCHAR}
+            </if>
+            <if test="documentSource != null and documentSource !=''">
+                and cwo.document_source = #{documentSource, javaType=java.lang.String, jdbcType=VARCHAR}
+            </if>
+            <if test="transactionLineId != null and transactionLineId != ''">
+                and cwo.csh_transaction_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL}
+            </if>
+            <if test="sourceTrxLineId != null and sourceTrxLineId != ''">
+                and cwo.source_csh_trx_line_id = #{sourceTrxLineId, javaType=java.lang.Long, jdbcType=DECIMAL}
+            </if>
+        </trim>
+    </select>
+
+    <select id="queryPrePayWriteForReverse" resultMap="BaseResultMap">
+            SELECT
+                v.transaction_header_id,
+                v.csh_transaction_line_id,
+                v.transaction_amount transactionAmount,
+                v.transaction_id,
+                v.source_header_id ,
+                v.write_off_id,
+                v.write_off_date,
+                v.period_name,
+                v.write_off_type_name,
+                v.exp_report_number expReportNumber,
+                v.write_off_type,
+                v.document_source,
+                v.document_write_off_amount,
+                v.document_header_id,
+                v.document_line_id,
+                v.transaction_num,
+                v.transaction_class_name,
+                v.csh_write_off_amount
+            FROM
+            (SELECT
+                date_format( cwo.write_off_date, '%Y-%m-%d' ) write_off_date,
+            (SELECT
+                    gp.period_name
+            FROM
+                    gld_period gp,
+                    gld_period_set gps
+            WHERE
+                    1 = 1
+                    AND gp.adjustment_flag = 'N'
+                    AND gps.period_set_id = gp.period_set_id
+                    AND gps.period_set_code = (
+                            SELECT
+                                    sob.period_set_code
+                            FROM
+                                    gld_set_of_book sob,
+                                    gld_accounting_entity ae,
+                                    gld_acc_entity_ref_sob accSob
+                            WHERE
+                            ae.acc_entity_id = ( SELECT ae.acc_entity_id
+                                             FROM fnd_company_ref_acc_entity ae
+                                             WHERE ae.company_id =  #{request.companyId}
+                                             AND ae.enabled_flag = 'Y' AND ae.default_flag = 'Y')
+                            AND accSob.acc_entity_id = ae.acc_entity_id
+                            AND accSob.DEFAULT_FLAG = 'Y'
+                            AND accSob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+                    )
+                    AND cwo.write_off_date BETWEEN gp.start_date AND gp.end_date
+            ) period_name,
+            (SELECT
+                     scv.meaning
+             FROM
+                     sys_code_b sc,
+                     sys_code_value_b scv
+             WHERE
+                     sc.code = 'CSH_WRITE_OFF_TYPE'
+                 AND sc.code_id = scv.code_id
+                 AND scv.value = cwo.write_off_type
+            ) write_off_type_name,
+            (SELECT
+                erh.exp_report_number
+            FROM
+                exp_report_header erh,
+                exp_report_pmt_schedule erps
+            WHERE
+                erps.payment_schedule_line_id = cwo.document_line_id AND
+                erps.exp_report_header_id     = erh.exp_report_header_id
+            ) exp_report_number,
+            (SELECT
+                erps.exp_report_header_id
+            FROM
+                exp_report_pmt_schedule erps
+            WHERE
+                erps.payment_schedule_line_id = cwo.document_line_id
+            ) exp_report_id,
+            (case when cwo.write_off_type = 'PAYMENT_PREPAYMENT' then
+            (SELECT
+                cth.transaction_num
+            FROM
+                csh_transaction_header cth,
+                csh_transaction_line ctl
+            WHERE
+                cth.transaction_header_id = ctl.transaction_header_id AND
+                ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                cth.transaction_type      = 'PREPAYMENT'
+            )
+            when cwo.write_off_type = 'PAYMENT_RESERVATION_FUND' then
+            (SELECT
+                cth.transaction_num
+            FROM
+                csh_transaction_header cth,
+                csh_transaction_line ctl
+            WHERE
+                cth.transaction_header_id = ctl.transaction_header_id AND
+                ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                cth.transaction_type      = 'RESERVATION_FUND'
+            )
+            when cwo.write_off_type = 'PAYMENT_DEPOSIT' then
+            (SELECT
+                cth.transaction_num
+            FROM
+                csh_transaction_header cth,
+                csh_transaction_line ctl
+            WHERE
+                cth.transaction_header_id = ctl.transaction_header_id AND
+                ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                cth.transaction_type      = 'DEPOSIT'
+            )
+            else NULL end) transaction_num,
+            (SELECT
+                mtct.description
+            FROM
+                csh_mo_transaction_class mtc
+                left join csh_mo_transaction_class_tl mtct
+                on mtc.mo_csh_trx_class_id = mtct.mo_csh_trx_class_id
+                and mtct.lang = #{request.locale}
+            WHERE
+                mtct.mo_csh_trx_class_id =
+                (SELECT
+                    cth.mo_csh_trx_class_id
+                FROM
+                    csh_transaction_header cth,
+                    csh_transaction_line ctl
+                WHERE
+                    cth.transaction_header_id = ctl.transaction_header_id AND
+                    ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                    cth.transaction_type      = 'PREPAYMENT'
+                )
+            ) transaction_class_name,
+            (case when cwo.write_off_type = 'PAYMENT_PREPAYMENT' then
+            (SELECT
+                cth.transaction_header_id
+            FROM
+                csh_transaction_header cth,
+                csh_transaction_line ctl
+            WHERE
+                cth.transaction_header_id = ctl.transaction_header_id AND
+                ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                cth.transaction_type      = 'PREPAYMENT'
+            )
+            when cwo.write_off_type = 'PAYMENT_RESERVATION_FUND' then
+            (SELECT
+                cth.transaction_header_id
+            FROM
+                csh_transaction_header cth,
+                csh_transaction_line ctl
+            WHERE
+                cth.transaction_header_id = ctl.transaction_header_id AND
+                ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                cth.transaction_type      = 'RESERVATION_FUND'
+            )
+            when cwo.write_off_type = 'PAYMENT_DEPOSIT' then
+            (SELECT
+                cth.transaction_header_id
+            FROM
+                csh_transaction_header cth,
+                csh_transaction_line ctl
+            WHERE
+                cth.transaction_header_id = ctl.transaction_header_id AND
+                ctl.transaction_line_id   = cwo.source_csh_trx_line_id AND
+                cth.transaction_type      = 'DEPOSIT'
+            )
+            else NULL end) transaction_id,
+            cwo.csh_write_off_amount,
+            cwo.write_off_id,
+            cwo.document_header_id,
+            cwo.document_line_id,
+            cwo.write_off_type,
+            cwo.document_source,
+            cwo.document_write_off_amount,
+            ctl.transaction_header_id,
+            cwo.csh_transaction_line_id,
+            ctl.transaction_amount,
+            cth.source_header_id
+        FROM
+            csh_write_off cwo,
+            csh_transaction_line ctl,
+            csh_transaction_header cth
+        WHERE
+            ctl.transaction_line_id   = cwo.csh_transaction_line_id AND
+            ctl.transaction_header_id = cth.transaction_header_id
+        ) v
+        where v.transaction_header_id = #{transactionHeaderId}
+    </select>
+
+    <!-- 获取报销单已核销金额 -->
+    <select id="totalOthersDocAmount" resultType="java.math.BigDecimal">
+        SELECT
+        CASE
+        WHEN
+        sum( c.document_write_off_amount ) IS NULL THEN
+        0 ELSE sum( c.document_write_off_amount )
+        END AS total_write_amount
+        FROM
+        csh_write_off c,
+        csh_write_off s
+        where c.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+        and c.document_source = 'EXPENSE_REPORT'
+        and c.csh_transaction_line_id = s.csh_transaction_line_id
+        and c.document_header_id = s.document_header_id
+        and c.document_line_id = s.document_line_id
+        and s.write_off_id = #{writeOffId}
+        and c.write_off_id &lt;&gt; #{writeOffId}
+    </select>
+</mapper>

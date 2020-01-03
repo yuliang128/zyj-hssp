@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1051_trx_cls_assign_company_batch_svc_link" url="$[/request/@context_path]/csh/mo-trx-cls-asgn-com/submit"/>
+        <script><![CDATA[
+            function CSH1051_closeAsgnBatchCreateWindow() {
+                $au('CSH1051_csh_mo_trx_cls_batch_asgn_com').close();
+            }
+            
+            function CSH1051_assignCom() {
+                var datas = $au('CSH1051_batch_asgn_company_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    datas[i]['moCshTrxClassId'] = '$[/parameter/@moCshTrxClassId]';
+                    datas[i]['enabledFlag'] = 'Y';
+                    datas[i]['__status'] = 'add';
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('CSH1051_trx_cls_assign_company_batch_svc_link').getUrl(),
+                    para: datas,
+                    success: CSH1051_closeAssignPage,
+                    scope: this
+                });
+            }
+            
+            function CSH1051_closeAssignPage(res) {
+                //Aurora.showInfoMessage('$[l:PROMPT]', '$[l:FND_DIMENSION_VALUES.OPR_SUC]', null, 250, 100);
+                $au('CSH1051_csh_mo_trx_cls_batch_asgn_com').close();					
+                $au('CSH1051_csh_mo_trx_cls_asgn_com_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1051_batch_asgn_company_ds" autoPageSize="true" autoQuery="true"  pageSize="50" queryUrl="$[/request/@context_path]/csh/mo-trx-cls-asgn-com/queryComByTrxClassId?magOrgId=$[/parameter/@magOrgId]&amp;moCshTrxClassId=$[/parameter/@moCshTrxClassId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_companies.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_companies_vl.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1051_batch_asgn_company_form" column="2" title="fnd_sys_venders.batch_disp_company" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH1051_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="CSH1051_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moCshTrxClassCode" bindTarget="CSH1051_csh_mo_transaction_classes_result_ds" prompt="csh_mo_transaction_classes.mo_csh_trx_class_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1051_csh_mo_transaction_classes_result_ds" prompt="csh_mo_transaction_classes.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="CSH1051_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="150"/>
+                    <a:column name="companyShortName" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

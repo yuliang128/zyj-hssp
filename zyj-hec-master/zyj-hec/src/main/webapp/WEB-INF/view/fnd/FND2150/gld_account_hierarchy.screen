@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: weikun.wang21888c $
+    $Date: 2019/2/27  $
+    $Revision: 1.2 $
+    $Purpose: “科目层次定义”模块的页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="gld_account_hierarchy_details_link" url="$[/request/@context_path]/fnd/FND2150/gld_account_hierarchy_details.screen"/>
+        <script><![CDATA[
+            function queryAccountHierarchy() {
+                $au('account_hierarchy_result_ds').query();
+            }
+            
+            
+            function datasetUpdate(ds, record, name, value) {
+            
+                var account_set_code = record.getMeta().getField('accountSetCode');
+                var account_set_name = record.getMeta().getField('accountSetName');
+            
+                var account_code_from = record.getMeta().getField('accountcodefrom');
+                var account_name_from = record.getMeta().getField('accountNameFrom');
+            
+                var account_code_to = record.getMeta().getField('accountCodeTo');
+                var account_name_to = record.getMeta().getField('accountNameTo');
+            
+            
+                if (name == 'currencyCode') {
+                    var field = record.getMeta().getField('accountSetId');
+                    field.setLovPara('currency_code_frn', record.get('currencyCode'));
+                }
+            
+                if (name == 'accountSetId') {
+                    record.set('accountIdFrom', null);
+                    record.set('accountIdTo', null);
+                    record.set('accountCodeFrom', null);
+                    record.set('accountNameFrom', null);
+                    record.set('accountCodeTo', null);
+                    record.set('accountNameTo', null);
+            
+                    var from_field = record.getMeta().getField('accountCodeFrom');
+                    from_field.setLovPara('accountSetId', record.get('accountSetId'));
+            
+                    var to_field = record.getMeta().getField('accountCodeTo');
+                    to_field.setLovPara('accountSetId', record.get('accountSetId'));
+                }
+            
+                if (name == 'accountIdFrom') {
+            
+                    var from_id_value = record.get('accountIdFrom');
+                    var to_field = record.getMeta().getField('accountCodeTo');
+                    if (from_id_value == null || from_id_value == '') {
+                        from_id_value = null;
+                    }
+                    to_field.setLovPara('accountIdFrom', from_id_value);
+                }
+            
+                if (name == 'accountIdTo') {
+            
+            
+                    var to_id_value = record.get('accountIdTo');
+                    var from_field = record.getMeta().getField('accountCodeFrom');
+                    if (to_id_value == null || to_id_value == '') {
+                        to_id_value = null;
+                    }
+                    from_field.setLovPara('accountIdTo', to_id_value);
+                }
+            
+            }
+            
+            function detailRenderer(value, record, name) {
+                if (record.get('summaryFlag')=='N'){
+                    return '';
+                }
+                if (!record.isNew) {
+                    var account_set_id = record.get('accountSetId');
+                    var url = /*gld_account_hierarchy_details.screen*/
+                    $au('gld_account_hierarchy_details_link').getUrl() + '?accountSetId=' + account_set_id + '&accountId=' + value;
+                    var windowId = "handleWindow";
+                    return "<a href=\"javascript:editDetail('" + windowId + "','" + url + "')\">$[l:gld_account.sub_account]</a>";
+                }
+                return '';
+            }
+            
+            function editDetail(windowId, urlString) {
+                new Aurora.Window({
+                    id: windowId,
+                    url: urlString,
+                    title: '$[l:gld_account.sub_account]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="account_hierarchy_query_ds" baseUrl="/gld/account">
+                <a:fields>
+                    <a:field name="accountSetId"/>
+                    <a:field name="accountSetCode" lovGridHeight="300" lovHeight="430" lovCode="GLD_ACCOUNT_SET_LOV" prompt="gld_account_set.account_code" lovWidth="500" required="true" title="gld_account_set.obj_query">
+                        <a:mapping>
+                            <a:map from="accountSetId" to="accountSetId"/>
+                            <a:map from="accountSetCode" to="accountSetCode"/>
+                            <a:map from="accountSetName" to="accountSetName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountSetName" placeHolder="GLD_ACCOUNT_SETS.ACCOUNT_SET_DESC" readonly="true"/>
+                    <a:field name="accountCodeFrom" lovGridHeight="300" lovHeight="440"  lovCode="GLD_HIERARCHY_ACCOUNT_LOV" lovWidth="490" prompt="gld_account_set.account_code_from" title="gld_account_set.account_code_from">
+                        <a:mapping>
+                            <a:map from="accountId" to="accountIdFrom"/>
+                            <a:map from="accountCode" to="accountCodeFrom"/>
+                            <a:map from="accountDescription" to="accountNameFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountNameFrom" placeHolder="fnd_calendar.description" readonly="true"/>
+                    <a:field name="accountCodeTo" lovGridHeight="300" lovHeight="460" lovCode="GLD_HIERARCHY_ACCOUNT_LOV" lovWidth="490" prompt="gld_account_set.account_code_to" title="gld_account_set.account_code_to">
+                        <a:mapping>
+                            <a:map from="accountId" to="accountIdTo"/>
+                            <a:map from="accountCode" to="accountCodeTo"/>
+                            <a:map from="accountDescription" to="accountNameTo"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountNameTo" placeHolder="fnd_calendar.description" readonly="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="datasetUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <!--pageSize="14" -->
+            <a:dataSet id="account_hierarchy_result_ds" autoCount="true" fetchAll="false" baseUrl="/gld/account" queryDataSet="account_hierarchy_query_ds" queryUrl="$[/request/@context_path]/gld/account/query?order_field=account_code">
+                <a:fields>
+                    <a:field name="accountCodeFrom"></a:field>
+                    <a:field name="accountCodeTo"></a:field>
+                    <a:field name="accountId"></a:field>
+                    <a:field name="accountCode"></a:field>
+                    <a:field name="description"></a:field>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <!-- <a:form column="2" title="SYS_PROMPT.QUERY_TITLE" width="600">
+                <a:lov name="account_set_code" bindTarget="account_hierarchy_query_ds">
+                    <a:events>
+                        <a:event name="enterdown" handler="queryAccountHierarchy"/>
+                    </a:events>
+                </a:lov>
+                <a:textField name="account_set_name" bindTarget="account_hierarchy_query_ds"/>
+                <a:lov name="account_code_from" bindTarget="account_hierarchy_query_ds">
+                    <a:events>
+                        <a:event name="enterdown" handler="queryAccountHierarchy"/>
+                    </a:events>
+                </a:lov>
+                <a:textField name="account_name_from" bindTarget="account_hierarchy_query_ds"/>
+                <a:lov name="account_code_to" bindTarget="account_hierarchy_query_ds">
+                    <a:events>
+                        <a:event name="enterdown" handler="queryAccountHierarchy"/>
+                    </a:events>
+                </a:lov>
+                <a:textField name="account_name_to" bindTarget="account_hierarchy_query_ds"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="queryAccountHierarchy" text="HAP_QUERY"/>
+                <a:button click="resetAccountHierarchy" text="HAP_RESET"/>
+            </a:hBox> -->
+        <span>
+            <a:queryForm bindTarget="account_hierarchy_query_ds" resultTarget="account_hierarchy_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:lov name="accountSetCode" bindTarget="account_hierarchy_query_ds"/>
+                    <a:lov name="accountCodeFrom" bindTarget="account_hierarchy_query_ds"/>
+                    <a:lov name="accountCodeTo" bindTarget="account_hierarchy_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="3">
+                    <a:textField name="accountSetName" bindTarget="account_hierarchy_query_ds" width="200"/>
+                    <a:textField name="accountNameFrom" bindTarget="account_hierarchy_query_ds" width="200"/>
+                    <a:textField name="accountNameTo" bindTarget="account_hierarchy_query_ds" width="200"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="grid" bindTarget="account_hierarchy_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="accountCode" prompt="gld_account.account_code" sortable="true" width="200"/>
+                <a:column name="description" prompt="gld_account.account_description" width="400"/>
+                <a:column name="accountId"  align="center" renderer="detailRenderer" sortable="true" width="100"/>
+            </a:columns>
+        </a:grid>
+        <!-- <script purpose="auto_resize"><![CDATA[
+            function FND2150_InitSize() {
+                //描述宽度
+                var labelWidth = 75;
+                //标签宽度,5 = 3padding + 2border-spacing
+                var tagWidth = 150 + 5;
+                //页面宽度、高度
+                var vw = $A.getViewportWidth();
+                var vh = $A.getViewportHeight();
+                //留白宽度
+                var marginWidth = 35 ;
+                //自适应宽度
+                var autoWidth = vw - marginWidth;
+                //Form内部宽度，-2border
+                var formInnerWidth = autoWidth - 2;
+                //所占列数
+                var colSpan = 4;
+                //设置组件的自适应宽度
+                $au('grid').setWidth(autoWidth);
+                //设置TextArea的自适应宽度,别问我最后那个6是哪里来的，试出来的
+            }
+            //Ext.fly(window).on('resize', FND2150_InitSize);
+            FND2150_InitSize();
+		]]></script> -->
+    </a:view>
+</a:screen>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/04 01:49:49 $
+    $Revision: 1.2 $
+    $Purpose: 预算期间定义 - 创建期间
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function BGT1070_CloseWindow() {
+                $au('bgt_period_create_window').close();
+            }
+            
+            function BGT1070_PeriodCreate() {
+                $au('BGT1070_check_period_exists_ds').on('load', BGT1070_AfterExitsQuery);
+                $au('BGT1070_check_period_exists_ds').query();
+            }
+            
+            function BGT1070_AfterExitsQuery() {
+                debugger;
+                if ($au('BGT1070_check_period_exists_ds').getCurrentRecord().get('total') == 1) {
+                    Aurora.showConfirm('$[l:prompt]', '$[l:period_already_exists]', function(cmp) {
+                        $au('BGT1070_check_period_used_ds').on('load', BGT1070_AfterUsedQuery);
+                        $au('BGT1070_check_period_used_ds').query();
+                        cmp.close();
+                    }, null, null, 100);
+                } else {
+                    $au('BGT1070_check_period_used_ds').on('load', BGT1070_AfterUsedQuery);
+                    $au('BGT1070_check_period_used_ds').query();
+                }
+            }
+            
+            function BGT1070_AfterUsedQuery() {
+                if ($au('BGT1070_check_period_used_ds').getCurrentRecord().get('total') == 1) {
+                    $au('BGT1070_period_create_ds').submit();
+                } else {
+                    $au('BGT1070_period_create_ds').submit();
+                }
+            }
+            
+            function BGT1070_OnPeriodCreateSuccess() {
+                BGT1070_CloseWindow();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1070_period_create_ds" submitUrl="$[/request/@context_path]/bgt/period/submitByYear">
+                <a:fields>
+                    <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+                    <a:field name="yearFrom" required="true"/>
+                    <a:field name="yearTo" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT1070_OnPeriodCreateSuccess"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT1070_period_sets_ds" autoQuery="true" baseUrl="/bgt/period-set" queryUrl="$[/request/@context_path]/bgt/period-set/query?periodSetId=$[/parameter/@periodSetId]">
+                <a:fields>
+                    <a:field name="periodSetId" readOnly="true"/>
+                    <a:field name="periodSetCode" prompt="bgt_period.bgt_period_code" readOnly="true"/>
+                    <a:field name="periodSetName" prompt="bgt_period.bgt_period_desc" readOnly="true"/>
+                    <a:field name="totalPeriodNum" prompt="bgt_period_set.total_period_num" readOnly="true"/>
+                    <a:field name="periodAdditionalFlagDesc"  prompt="gld_period_set.period_additional_flag" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT1070_check_period_exists_ds" autoCreate="true" queryUrl="$[/request/@context_path]/bgt/period/checkPeriodExist?periodSetId=$[/parameter/@periodSetId]" queryDataSet="BGT1070_period_create_ds">
+                <a:fields>
+                    <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT1070_check_period_used_ds" autoCreate="true" queryUrl="$[/request/@context_path]/bgt/period/checkPeriodUsed?periodSetId=$[/parameter/@periodSetId]" queryDataSet="BGT1070_period_create_ds">
+                <a:fields>
+                    <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_period_set.bgt_period_sets_query" width="715">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="BGT1070_PeriodCreate" text="hap_create" width="80"/>
+                    <a:button click="BGT1070_CloseWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="periodSetCode" bindTarget="BGT1070_period_sets_ds"/>
+                <a:textField name="periodSetName" bindTarget="BGT1070_period_sets_ds"/>
+                <a:textField name="totalPeriodNum" bindTarget="BGT1070_period_sets_ds"/>
+                <a:textField name="periodAdditionalFlagDesc" bindTarget="BGT1070_period_sets_ds"/>
+                <a:numberField name="yearFrom" allowDecimals="false" allowNegative="false" bindTarget="BGT1070_period_create_ds" prompt="gld_period_create.year_from"/>
+                <a:numberField name="yearTo" allowDecimals="false" allowNegative="false" bindTarget="BGT1070_period_create_ds" prompt="gld_period_create_year_to"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

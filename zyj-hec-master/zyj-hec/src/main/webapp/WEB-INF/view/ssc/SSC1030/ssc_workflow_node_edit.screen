@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-18 16:22:06
+    $Revision: 1.0  
+    $Purpose: 共享业务流程定义-维护-编辑
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function updateWorkflow_node() {
+                $au('ssc_workflow_node_edit_form_ds').submit();
+            }
+            
+            function backtoWorkflowList_node() {
+                $au('ssc_workflow_nodes_ds').query();
+                $au('wfl_workflow_node_edit_window').close();
+            }
+            
+            function SSC1030_node_edit_update(ds, record, name, value) {
+                var timeControlFlag = record.get('timeControlFlag');
+                if (timeControlFlag == 'Y') {
+                    record.getField('timeLimit').setReadOnly(false);
+                    record.getField('timeLimit').setRequired(true);
+                } else {
+                    record.getField('timeLimit').setRequired(false);
+                    record.set('timeLimit','');
+                    record.getField('timeLimit').setReadOnly(true);
+                }
+            }
+            
+            function SSC1030_node_edit_load() {
+                var record = $au('ssc_workflow_node_edit_form_ds').getAt(0);
+                var timeControlFlag = record.get('timeControlFlag');
+                if (timeControlFlag == 'Y') {
+                    record.getField('timeLimit').setReadOnly(false);
+                    record.getField('timeLimit').setRequired(true);
+                } else {
+                    record.getField('timeLimit').setRequired(false);
+                    record.set('timeLimit', '');
+                    record.getField('timeLimit').setReadOnly(true);
+                }
+            }
+            
+            function SSC_ProcessPageFocus() {
+                var record = $au('ssc_workflow_node_edit_form_ds').getAt(0);
+                record.getMeta().getField('processPage').setLovPara('docCategory', '$[/parameter/@docCategory]');
+                record.getMeta().getField('viewPage').setLovPara('docCategory', '$[/parameter/@docCategory]');
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ssc_workflow_node_edit_form_ds" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/workflow-node/query?workflowId=$[/parameter/@workflowId]&amp;nodeId=$[/parameter/@nodeId]" selectable="true" selectionModel="multiple" submitUrl="$[/request/@context_path]/ssc/workflow-node/batchSubmit">
+                <a:fields>
+                    <a:field name="nodeId"/>
+                    <a:field name="workflowId" defaultValue="$[/parameter/@workflowId]"/>
+                    <a:field name="nodeSequence" prompt="ssc_workflow_node.node_sequence" required="true"/>
+                    <a:field name="description" prompt="ssc_workflow_node.description" required="true"/>
+
+                    <a:field name="processPage" lovCode="LOV_SSC_WFL_PAGE" prompt="ssc_workflow_node.process_page">
+                        <a:mapping>
+                            <a:map from="pageId" to="processPageId"/>
+                            <a:map from="pageName" to="processPage"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="processPageId"/>
+
+                    <a:field name="viewPage" lovCode="LOV_SSC_WFL_PAGE" prompt="ssc_workflow_node.view_page">
+                        <a:mapping>
+                            <a:map from="pageId" to="viewPageId"/>
+                            <a:map from="pageName" to="viewPage"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="viewPageId"/>
+
+                    <a:field name="fixedFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.fixed_flag" uncheckedValue="N"/>
+                    <a:field name="nodeType" prompt="ssc_workflow_node.node_type"/>
+                    <a:field name="nodeTypeName" displayField="meaning" options="ssc_workflow_node_type_ds" prompt="ssc_workflow_node.node_type" required="true" returnField="nodeType" valueField="value"/>
+                    <a:field name="timeControlFlag" checkedValue="Y" defaultValue="N" prompt="ssc_workflow_node.time_control_flag" uncheckedValue="N"/>
+                    <a:field name="timeLimit" prompt="ssc_workflow_node.time_limit"/>
+                    <a:field name="autoDispatchFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.auto_dispatch_flag" uncheckedValue="N"/>
+                    <a:field name="canHoldFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.can_hold_flag" uncheckedValue="N"/>
+                    <a:field name="canReturnFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.can_return_flag" uncheckedValue="N"/>
+                    <a:field name="manualDispatchFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.manual_dispatch_flag" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="SSC1030_node_edit_load"/>
+                    <a:event name="update" handler="SSC1030_node_edit_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ssc_node_asgn_work_centers_ds" autoQuery="true" bindName="centers" bindTarget="ssc_workflow_node_edit_form_ds" queryUrl="$[/request/@context_path]/ssc/node-asgn-work-center/query?nodeId=$[/parameter/@nodeId]" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="recordId"/>
+                    <a:field name="nodeId" defaultValue="$[/parameter/@nodeId]"/>
+                    <a:field name="workCenterId"/>
+                    <a:field name="workCenterCode" lovCode="LOV_SSC_WORK_CENTER" lovWidth="500" prompt="sscnodeasgnworkcenter.workcentercode" required="true">
+                        <a:mapping>
+                            <a:map from="workCenterId" to="workCenterId"/>
+                            <a:map from="workCenterCode" to="workCenterCode"/>
+                            <a:map from="description" to="workCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="workCenterName" prompt="ssc_node_asgn_work_center.work_center_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="ssc_workflow_node_actions_ds" autoQuery="true" bindName="nodeActions" bindTarget="ssc_workflow_node_edit_form_ds"  queryUrl="$[/request/@context_path]/ssc/workflow-node-action/query?nodeId=$[/parameter/@nodeId]" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="recordId"/>
+                    <a:field name="nodeId" defaultValue="$[/parameter/@nodeId]"/>
+                    <a:field name="actionId"/>
+                    <a:field name="actionName" displayField="description" options="ssc_workflow_actions_ds" prompt="ssc_workflow_node_action.action_name" required="true" returnField="actionId" valueField="actionId"/>
+                    <a:field name="backNodeId"/>
+                    <a:field name="backNodeDesc" displayField="description" options="ssc_workflow_nodes_ds" prompt="ssc_workflow_node_action.back_node_desc" returnField="backNodeId" valueField="nodeId"/>
+                    <a:field name="procedureId"/>
+                    <a:field name="nodeProcedure" displayField="procedureName" options="ssc_workflow_procs_ds" prompt="ssc_workflow_node_action.node_procedure" returnField="procedureId" valueField="procedureId">
+					</a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="ssc_workflow_node_procs_ds" autoQuery="true" bindName="nodeProcs" bindTarget="ssc_workflow_node_edit_form_ds" queryUrl="$[/request/@context_path]/ssc/workflow-node-proc/query?nodeId=$[/parameter/@nodeId]" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="recordId"/>
+                    <a:field name="nodeId" defaultValue="$[/parameter/@nodeId]"/>
+                    <a:field name="procedureId"/>
+                    <a:field name="nodeProcedure" displayField="procedureName" options="ssc_workflow_procs_ds" prompt="ssc_workflow_node_proc.node_procedure" returnField="procedureId" valueField="procedureId">
+                        <a:mapping>
+                            <a:map from="procedureContent" to="procedureContent"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="procedureContent" prompt="ssc_workflow_proc.procedure_content"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="ssc_wfl_workflow_edit_node_form" column="4" labelWidth="120" title="ssc_workflow.node_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="updateWorkflow_node" text="hap.save" width="80"/>
+                    <a:toolbarButton click="backtoWorkflowList_node" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:numberField name="nodeSequence" allowDecimals="false" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:textField name="description" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:comboBox name="nodeTypeName" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:lov name="processPage" bindTarget="ssc_workflow_node_edit_form_ds">
+                    <a:events>
+                        <a:event name="focus" handler="SSC_ProcessPageFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="viewPage" bindTarget="ssc_workflow_node_edit_form_ds">
+                    <a:events>
+                        <a:event name="focus" handler="SSC_ProcessPageFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:checkBox name="timeControlFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:numberField name="timeLimit" allowDecimals="false" allowNegative="false" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:checkBox name="autoDispatchFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:checkBox name="canHoldFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:checkBox name="canReturnFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:checkBox name="manualDispatchFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:checkBox name="fixedFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+                <a:checkBox name="enabledFlag" bindTarget="ssc_workflow_node_edit_form_ds"/>
+            </a:form>
+            <a:tabPanel id="wfl_workflow_node_edit_tab" marginHeight="310" marginWidth="0" minHeight="50" padding="0">
+                <a:tabs>
+                    <a:tab bindTarget="ssc_node_asgn_work_centers_ds" padding="0" prompt="ssc_workflow_node.assign" width="120">
+                        <a:grid id="ssc_node_asgn_work_centers_grid_ds" bindTarget="ssc_node_asgn_work_centers_ds" marginHeight="350" marginWidth="3" minHeight="50" navBar="true">
+                            <a:toolBar>
+                                <a:button type="add"/>
+                                <a:button type="delete"/>
+                            </a:toolBar>
+                            <a:columns>
+                                <a:column name="workCenterCode" align="center" editor="work_center_edit_tab_lov" width="100"/>
+                                <a:column name="workCenterName" width="200"/>
+                                <a:column name="enabledFlag" align="center" editor="work_center_check_box" width="100"/>
+                            </a:columns>
+                            <a:editors>
+                                <a:lov id="work_center_edit_tab_lov"/>
+                                <a:checkBox id="work_center_check_box"/>
+                            </a:editors>
+                        </a:grid>
+                    </a:tab>
+                    <a:tab bindTarget="ssc_workflow_node_actions_ds" padding="0" prompt="ssc_workflow_node.node_action" width="120">
+                        <a:grid id="ssc_workflow_node_actions_grid_ds" bindTarget="ssc_workflow_node_actions_ds" marginHeight="350" marginWidth="3" minHeight="50" navBar="true">
+                            <a:toolBar>
+                                <a:button type="add"/>
+                                <a:button type="delete"/>
+                            </a:toolBar>
+                            <a:columns>
+                                <a:column name="actionName" align="center" editor="ssc_workflow_node_actions_tab_com" width="100"/>
+                                <a:column name="backNodeDesc" editor="ssc_workflow_node_actions_tab_com" width="100"/>
+                                <a:column name="nodeProcedure" editor="ssc_workflow_node_actions_tab_com" width="100"/>
+                            </a:columns>
+                            <a:editors>
+                                <a:comboBox id="ssc_workflow_node_actions_tab_com"/>
+                                <a:lov id="ssc_workflow_node_actions_lov"/>
+                                <a:checkBox id="ssc_workflow_node_actions_check_box"/>
+                            </a:editors>
+                        </a:grid>
+                    </a:tab>
+                    <a:tab bindTarget="ssc_workflow_node_procs_ds" padding="0" prompt="ssc_workflow_node.node_procedure" width="120">
+                        <a:grid id="ssc_workflow_node_procs_grid_ds" bindTarget="ssc_workflow_node_procs_ds" marginHeight="350" marginWidth="3" minHeight="50" navBar="true">
+                            <a:toolBar>
+                                <a:button type="add"/>
+                                <a:button type="delete"/>
+                            </a:toolBar>
+                            <a:columns>
+                                <a:column name="nodeProcedure" editor="ssc_workflow_node_procs_cb" width="200"/>
+                                <a:column name="procedureContent" align="center" width="200"/>
+                                <a:column name="enabledFlag" align="center" editor="ssc_workflow_node_procs_box" width="100"/>
+                            </a:columns>
+                            <a:editors>
+                                <a:comboBox id="ssc_workflow_node_procs_cb"/>
+                                <a:checkBox id="ssc_workflow_node_procs_box"/>
+                            </a:editors>
+                        </a:grid>
+                    </a:tab>
+                </a:tabs>
+            </a:tabPanel>
+        </a:screenBody>
+    </a:view>
+</a:screen>

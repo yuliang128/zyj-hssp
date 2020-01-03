@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/08 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-管理组织
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT2200_bgt_journal_type_asgn_com_link" url="$[/request/@context_path]/bgt/BGT2200/bgt_jour_t_ref_company.screen"/>
+        <script><![CDATA[
+            function BGT2200_back() {
+                $au("BGT2200_view_doc_mo_window").close();
+            }
+            
+            function BGT2200_gridEditorFunction(record, name) {
+                if (record.isNew) {
+                    return 'BGT2200_jour_t_ref_user_groups_lov';
+                }
+                return '';
+            }
+            
+            function BGT2200_journal_ref_companies(value, record, name) {
+                if (!record.isNew) {
+                    var url = $au('BGT2200_bgt_journal_type_asgn_com_link').getUrl() + '?assignMoId=' + record.get('assignMoId') + '&magOrgId=' + record.get('magOrgId') + '&bgtJournalTypeId=' + record.get('bgtJournalTypeId');
+                    return '<a href="javascript:BGT2200_view_doc_ref_company(\'' + url + '\')">' + '$[l:budget_item.assign_company]' + '</a>';
+                }
+            }
+            
+            function BGT2200_view_doc_ref_company(url) {
+                new Aurora.Window({
+                    id: 'bgt2200_period_asgn_com_window',
+                    url: url,
+                    title: '$[l:budget_item.assign_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_journal_type_mo_ds" autoQuery="true"  baseUrl="/bgt/journal-type" queryUrl="$[/request/@context_path]/bgt/journal-type/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]">
+                <a:fields>
+                    <a:field name="bgtJournalTypeCode" prompt="bgt_budget_item_type.budget_item_type_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_budget_item_type.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2200_journal_type_asgn_mo_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/journal-type-asgn-mo" queryUrl="$[/request/@context_path]/bgt/journal-type-asgn-mo/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="magOrgName" autoComplete="true" autoCompleteField="magOrgName" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="LOV_BGT6200_MAG_ORG?bgtOrgId=$[/parameter/@bgtOrgId]" lovWidth="540" prompt="bgt_budget_item_mapping.mag_org_name" required="true" title="csh_payment_method_asgn_mo.managing_org">
+                        <a:mapping>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="magOrgName" to="magOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtJournalTypeId" defaultValue="$[/parameter/@bgtJournalTypeId]"/>
+                    <a:field name="magOrgCode"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="bgt_budget_item_type.enabled_flag"/>
+                    <a:field name="assignMoId"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="bgtOrgId" defaultValue="$[/parameter/@bgtOrgId]}"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" row="1" title="bgt_journal_type.mag_org" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2200_journal_type_asgn_mo_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT2200_journal_type_asgn_mo_grid" type="save" width="80"/>
+                    <a:gridButton bind="BGT2200_journal_type_asgn_mo_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="BGT2200_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bgtJournalTypeCode" bindTarget="BGT2200_journal_type_mo_ds"/>
+                <a:textField name="description" bindTarget="BGT2200_journal_type_mo_ds"/>
+            </a:form>
+            <a:grid id="BGT2200_journal_type_asgn_mo_grid" bindTarget="BGT2200_journal_type_asgn_mo_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="magOrgName" align="left" editorFunction="BGT2200_gridEditorFunction" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="BGT2200_grid_mo_ck" width="80"/>
+                    <a:column name="createCompany" align="center" renderer="BGT2200_journal_ref_companies" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT2200_jour_t_ref_user_groups_lov"/>
+                    <a:checkBox id="BGT2200_grid_mo_ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

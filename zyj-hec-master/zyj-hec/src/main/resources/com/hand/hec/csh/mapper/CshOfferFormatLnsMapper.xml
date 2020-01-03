@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshOfferFormatLnsMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshOfferFormatLns">
+        <result column="FORMAT_LNS_ID" property="formatLnsId" jdbcType="DECIMAL" />
+        <result column="FORMAT_HDS_ID" property="formatHdsId" jdbcType="DECIMAL" />
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL" />
+        <result column="COLUMN_DESC" property="columnDesc" jdbcType="VARCHAR" />
+        <result column="COLUMN_NAME" property="columnName" jdbcType="VARCHAR" />
+        <result column="COLUMN_SQL_TEXT" property="columnSqlText" jdbcType="VARCHAR" />
+        <result column="COLUMN_FORMAT" property="columnFormat" jdbcType="VARCHAR" />
+        <result column="GROUP_FLAG" property="groupFlag" jdbcType="VARCHAR" />
+        <result column="OFFER_COLUMN_NAME" property="offerColumnName" jdbcType="VARCHAR" />
+        <result column="OFFER_VALUE_TYPE" property="offerValueType" jdbcType="VARCHAR" />
+        <result column="SPLICE_TYPE" property="spliceType" jdbcType="VARCHAR" />
+        <result column="SPLICE_VALUE" property="spliceValue" jdbcType="VARCHAR" />
+
+        <!--<result column="COLUMN_FORMAT_DESC" property="columnFormatDesc" jdbcType="VARCHAR"/>-->
+        <result column="COLUMN_NAME_DESC" property="columnNameDesc" jdbcType="VARCHAR"/>
+        <result column="FIXED_MAX" property="fixedMax" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryCshOfferFormatLns" resultMap="BaseResultMap">
+        SELECT
+	t.format_lns_id,
+	t.format_hds_id,
+	t.line_number,
+	t.offer_column_name,
+	t.offer_value_type,
+	CASE t.offer_value_type
+WHEN 'FIXED' THEN
+	''
+WHEN 'VALUE' THEN
+	t.column_name
+END AS column_name_desc,
+ t.column_name,
+ t.column_desc,
+ t.column_sql_text,
+ t.column_format,
+ t.group_flag,
+ t.splice_type,
+ t.splice_value,
+(select max(cast(tt.ss as UNSIGNED INTEGER))  from (SELECT
+	CASE cofl.OFFER_VALUE_TYPE
+WHEN "FIXED" THEN
+	SUBSTR(cofl.COLUMN_NAME, 7)
+END as ss
+FROM
+	csh_offer_format_lns cofl)tt) as fixed_max
+FROM
+	csh_offer_format_lns t
+where
+t.format_hds_id = #{formatHdsId}
+ORDER BY
+	t.line_number
+    </select>
+
+    <select id="querycolumnNameMax" resultType="Long">
+        SELECT
+        max(
+        cast(tt.ss AS UNSIGNED INTEGER)
+        )
+        FROM
+        (
+        SELECT
+        CASE cofl.OFFER_VALUE_TYPE
+        WHEN "FIXED" THEN
+        SUBSTR(cofl.COLUMN_NAME, 7)
+        END AS ss
+        FROM
+        csh_offer_format_lns cofl
+        ) tt
+    </select>
+    
+    <update id="updateColumnFormat" >
+UPDATE csh_offer_format_lns
+SET COLUMN_FORMAT = null
+WHERE
+	FORMAT_LNS_ID = #{formatLnsId}
+    </update>
+
+</mapper>

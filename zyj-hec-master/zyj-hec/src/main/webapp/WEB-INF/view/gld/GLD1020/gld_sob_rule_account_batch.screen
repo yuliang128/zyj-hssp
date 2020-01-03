@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong
+    $Date: 2017/04/10 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 会计规则明细-科目批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="GLD1020_gl_interface_assign_acc_batch_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rules_batch_assign_account.svc"/>
+        <script><![CDATA[
+            function GLD1020_batchAccountsBack() {
+                $au('GLD1020_gld_sob_rule_accounts_batch_window').close();
+                $au('GLD1020_rule_accounts_result_ds').query();
+            }
+            
+            function GLD1020_batchAccountsQuery() {
+                $au('GLD1020_rule_batch_assign_account_result_ds').query();
+            }
+            
+            function GLD1020_batchAssignAccount() {
+                var records = $au('GLD1020_rule_batch_assign_account_result_ds').getSelected();
+                if (records.length <= 0) {
+                    $A.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                    return;
+                }
+                var data = [];
+
+                for (var i = 0;i < records.length;i++) {
+                    var detailData = {
+                        accountId: records[i].get('accountId'),
+                        ruleId: '$[/parameter/@ruleId]',
+                        enabledFlag: 'Y',
+                        __status:'add'
+                    };
+                    data.push(detailData);
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('GLD1020_rule_batch_assign_account_result_ds').submiturl,
+                    para: data,
+                    success: function() {
+            
+                        $au('GLD1020_gld_sob_rule_accounts_batch_window').close();
+                        $au('GLD1020_rule_accounts_result_ds').query();
+                    }
+                });
+            }
+            
+            function GLD1020_batchAssignAccountQuery() {
+                $au('GLD1020_rule_batch_assign_account_result_ds').query();
+            }
+
+
+        function batch_rule_details_account_query_UpdateFun(dataSet, record, name, value, oldValue) {
+            if (name == 'accountCodeNameFrom' || name == 'accountCodeNameTo') {
+                $au('GLD1020_rule_batch_assign_account_result_ds').query();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD1020_accountType_ds" autoQuery="true" fetchAll="true"  queryUrl="$[/request/@context_path]/common/auroraCode/ACCOUNT_TYPE/"/>
+            <a:dataSet id="GLD1020_rule_batch_assign_account_query_ds">
+                <a:fields>
+
+                    <a:field name="accountCodeFrom"/>
+                    <a:field name="accountCodeNameFrom" lovCode="LOV_GLD_ACCOUNT_RANGE?setOfBookId=$[/parameter/@setOfBookId]"   title="gld_account_entry.account_code_from"  prompt="gld_account_set.account_code_from">
+                        <a:mapping>
+                            <a:map from="accountCodeName" to="accountCodeNameFrom"/>
+                            <a:map from="accountCode" to="accountCodeFrom"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="accountCodeTo"/>
+                    <a:field name="accountCodeNameTo" lovCode="LOV_GLD_ACCOUNT_RANGE?setOfBookId=$[/parameter/@setOfBookId]"   title="gld_account_entry.account_code_to" prompt="gld_account_set.account_code_to">
+                        <a:mapping>
+                            <a:map from="accountCodeName" to="accountCodeNameTo"/>
+                            <a:map from="accountCode" to="accountCodeTo"/>
+                        </a:mapping>
+                    </a:field>
+
+
+                    <a:field name="accountType"/>
+                    <a:field name="accountTypeName" displayField="meaning" options="GLD1020_accountType_ds" prompt="gld_account.account_type" returnField="accountType" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="batch_rule_details_account_query_UpdateFun"/>
+                </a:events>
+            </a:dataSet>
+
+<!--            <a:dataSet id="GLD1020_rule_batch_assign_account_result_ds" autoPageSize="true" autoQuery="true" model="gld.GLD1020.gld_account_assign_batch" queryDataSet="GLD1020_rule_batch_assign_account_query_ds" queryUrl="$[/request/@context_path]/autocrud/gld.GLD1020.gld_account_assign_batch/query?set_of_books_id=$[/parameter/@set_of_books_id]&amp;rule_id=$[/parameter/@rule_id]&amp;rule_group_id=$[/parameter/@rule_group_id]" selectable="true"/>
+         -->
+
+            <a:dataSet id="GLD1020_rule_batch_assign_account_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/sob-rule-account" queryDataSet="GLD1020_rule_batch_assign_account_query_ds" queryUrl="$[/request/@context_path]/gld/sob-rule-account//query-not-ref-account?setOfBookId=$[/parameter/@setOfBookId]&amp;ruleId=$[/parameter/@ruleId]&amp;ruleGroupId=$[/parameter/@ruleGroupId]" selectable="true">
+                <a:fields>
+                    <a:field name="ruleAccountId"/>
+
+                    <a:field name="accountCode" lovCode="LOV_GLD_SOB_RULE_REF_ACCOUNT?ruleGroupId=$[/parameter/@ruleGroupId]"  required="true" prompt="gld_accounts.account_code" title="gld_sob_rule_account.account_choose">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+
+
+                    <a:field name="accountName" required="true" prompt="gld_accounts.account_description"/>
+                    <a:field name="accountId"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD1020_onRuleAccountsSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD1020_rule_batch_assign_account_result_form" column="2" title="gld.rule_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="GLD1020_batchAssignAccountQuery" text="hap_query" width="80"/>
+                    <a:gridButton click="GLD1020_batchAssignAccount" text="hec_assign" width="80"/>
+                    <a:gridButton click="GLD1020_batchAccountsBack" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="GLD1020_gld_sob_rules_result_ds" prompt="gld_sob_rule_group.rule_code" readOnly="true"/>
+                <a:textField name="ruleName" bindTarget="GLD1020_gld_sob_rules_result_ds" prompt="gld_sob_rule_group.rule_name" readOnly="true"/>
+                <a:lov name="accountCodeNameFrom" bindTarget="GLD1020_rule_batch_assign_account_query_ds"/>
+                <a:lov name="accountCodeNameTo" bindTarget="GLD1020_rule_batch_assign_account_query_ds"/>
+                <a:comboBox name="accountTypeName" bindTarget="GLD1020_rule_batch_assign_account_query_ds"/>
+            </a:form>
+            <a:grid id="GLD1020_rule_batch_assign_account_grid" bindTarget="GLD1020_rule_batch_assign_account_result_ds" marginHeight="255" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" prompt="gld_accounts.account_code" width="80"/>
+                    <a:column name="accountName" align="left" prompt="gld_accounts.account_description" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

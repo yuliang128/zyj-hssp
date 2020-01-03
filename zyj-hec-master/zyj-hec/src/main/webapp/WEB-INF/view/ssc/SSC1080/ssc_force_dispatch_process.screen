@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-27 上午10:52:16
+    $Revision: 1.0  
+    $Purpose: 指定派工
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="SSC1080_forceDispatchProcess_link" url="$[/request/@context_path]/ssc/task-dispatch-record/doDispatch"/>
+        <div/>
+        <script><![CDATA[
+            function SSC1080_doDispatchConfirmFunc() {
+                var records = $au('SSC1080_forceReturnResult_ds').getJsonData(true);
+                if (records.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:ssc1080_force_dispatch_onlyone_record]');
+                    SSC1080_doDispatchBackFunc();
+                    return;
+                }
+                var employee = $au('SSC1080_forceDispatchResult_ds').getSelected();
+                if (employee.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    $au('SSC1080_forceDispatchResult_ds').query();
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    records[i]['employeeId'] = employee[0].get('employeeId');
+                    records[i]['workTeamId'] = employee[0].get('workTeamId');
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('SSC1080_forceDispatchProcess_link').getUrl(),
+                    para: records,
+                    success: function() {
+                        $au('SSC1080_forceReturnResult_ds').query();
+                        SSC1080_doDispatchBackFunc();
+                    }
+                });
+            }
+            
+            function SSC1080_doDispatchQueryFunc() {
+                $au('SSC1080_forceDispatchResult_ds').query();
+            }
+            
+            function SSC1080_doDispatchBackFunc() {
+                $au('SSC1080_doDispatchProcess_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1080_forceDispatchQuery_ds"/>
+            <a:dataSet id="SSC1080_forceDispatchResult_ds" autoPageSize="true" autoQuery="true" queryDataSet="SSC1080_forceDispatchQuery_ds" queryUrl="$[/request/@context_path]/ssc/work-team/queryEmpOfUserOnTeam?workCenterId=$[/parameter/@workCenterId]" selectable="true" selectionModel="single"/>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="100" title="exp_employee_assign.employee_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="SSC1080_doDispatchQueryFunc" text="hap_query" width="80"/>
+                    <a:button click="SSC1080_doDispatchConfirmFunc" text="hap.ok" width="80"/>
+                    <a:button click="SSC1080_doDispatchBackFunc" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="employeeCode" bindTarget="SSC1080_forceDispatchQuery_ds"/>
+                <a:textField name="workEmployeeName" bindTarget="SSC1080_forceDispatchQuery_ds"/>
+                <a:textField name="workTeamName" bindTarget="SSC1080_forceDispatchQuery_ds"/>
+            </a:form>
+            <a:grid bindTarget="SSC1080_forceDispatchResult_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="employeeCode" align="center" width="100"/>
+                    <a:column name="workEmployeeName" align="center" width="100"/>
+                    <a:column name="workTeamName" width="180"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

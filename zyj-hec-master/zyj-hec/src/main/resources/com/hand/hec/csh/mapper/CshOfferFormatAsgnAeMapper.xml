@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshOfferFormatAsgnAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshOfferFormatAsgnAe">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="FORMAT_HDS_ID" property="formatHdsId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+<select id="queryCshOfferFormatAsgnAe" resultMap="BaseResultMap">
+SELECT
+	t.assign_id,
+	t.format_hds_id,
+	t.acc_entity_id,
+	gae.acc_entity_code,
+	gaet.acc_entity_name
+FROM
+	csh_offer_format_asgn_ae t,
+	gld_accounting_entity gae,
+	gld_accounting_entity_tl gaet
+WHERE
+	t.acc_entity_id = gae.acc_entity_id
+and gaet.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+and gaet.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+and t.format_hds_id = #{formatHdsId}
+ORDER BY
+	gae.acc_entity_code
+</select>
+
+<select id="selectCshOfferFormatAsgnAe" resultMap="BaseResultMap">
+    Select gae.acc_entity_id, gae.acc_entity_code, gaet.acc_entity_name
+  From gld_accounting_entity gae,gld_accounting_entity_tl gaet, fnd_company_ref_acc_entity fcae
+ Where gae.acc_entity_id = fcae.acc_entity_id
+   And fcae.enabled_flag = 'Y'
+	 and gaet.ACC_ENTITY_ID = gae.ACC_ENTITY_ID
+	 and fcae.company_id=#{request.companyId,jdbcType=BIGINT,javaType=java.lang.Long}
+	 and gaet.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+   And (
+		#{formatHdsId} IS NULL OR
+		(
+		Not Exists
+        (Select 1
+            From csh_offer_format_asgn_ae cpae
+           Where cpae.acc_entity_id = gae.acc_entity_id
+             And cpae.format_hds_id = #{formatHdsId})))
+ Order By gae.acc_entity_code
+</select>
+
+</mapper>

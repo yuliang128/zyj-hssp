@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: yangqin3066 $
+    $Date: 2011/03/21 $
+    $Revision: 1.1 $
+    $Purpose: 预算项决定规则
+    
+    $Author: penglei $
+    $Date: 2018/05/28 $
+    $Revision: 1.1 $
+    $Purpose: 逻辑细节调整（全部）
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <!--<a:init-procedure>-->
+        <!--<a:model-query fetchAll="true" model="hec_util.get_mag_org_default_bgt_org" rootPath="BGT6200_defaultBgtOrgOfMagOrg"/>-->
+    <!--</a:init-procedure>-->
+    <a:view>
+        <a:link id="BGT6200_organizations_select_link" url="$[/request/@context_path]/modules/bgt/BGT6200/bgt_budget_item_mapping_org_select.screen"/>
+        <script><![CDATA[
+        	//设置字段的编辑器
+            function BGT6200_editorFunc_lov(record, name) {
+                ////// 1.0 未录入管理组织不启用管理公司
+                if (name == 'companyShortName' && (record.get('magOrgId') != undefined && record.get('magOrgId') != '')) {
+                    return 'BGT6200_lov';
+                    // 2.0 未录入管理公司不启用单据类型
+                } else if (name == 'documentTypeName'&& (record.get('magOrgId') != undefined && record.get('magOrgId') != '')) {
+                    return 'BGT6200_lov';
+                    // 3.0 未录入管理公司不启用部门、岗位、员工
+                } else if ((name == 'unitName' || name == 'positionName' || name == 'employeeName') && (record.get('companyId') != undefined && record.get('companyId') != '')) {
+                    return 'BGT6200_lov';
+                    // 4.0 未录入管理公司不启用单据类型
+                } else if (name == 'businessTypeName' && (record.get('magOrgId') != undefined && record.get('magOrgId') != '')) {
+                    return 'BGT6200_lov';
+                    // 5.0 未录入费用类型不启用申请/费用项目、采购申请/采购订单
+                } else if (name == 'paramValue1Name' && (record.get('businessTypeId') != undefined && record.get('businessTypeId') != '')) {
+                    return 'BGT6200_lov';
+                } else if (name == 'paramValue2Name' && (record.get('paramValue1Id') != undefined && record.get('paramValue1Id') != '') && (record.get('purchaseObject') != undefined && record.get('purchaseObject') != '')) {
+                    return 'BGT6200_lov';
+                	// 6.0 未录入管理组织，不启用核算主体；未录入公司，取管理组织关联帐套的对应的核算主体；录入了公司，取公司关联的核算主体
+                } else if (name == 'accEntityName' && (record.get('magOrgId') != undefined && record.get('magOrgId') != '')) {
+                    return 'BGT6200_lov';
+                    // 7.0 未录入核算实体不启用责任中心；未维护核算主体，取管理组织关联帐套下启用的明细的成本中心；维护了核算主体，取核算主体下启用的明细的成本中心
+                } else if (name == 'respCnterName' && (record.get('magOrgId') != undefined && record.get('magOrgId') != '')) {
+                    return 'BGT6200_lov';
+                }
+                return '';
+            }
+            
+            //触发点击事件
+            function BGT6200_cellclick(grid, row, name, record) {
+                // 设置预算组织查询参数
+                if (name == 'budgetItemName'){
+                    record.getMeta().getField(name).setLovPara('bgtOrgId', record.get('bgtOrgId'));
+                	// 设置申请/管理组织查询参数
+                }else if (name == 'magOrgName') {
+                    record.getMeta().getField(name).setLovPara('bgtOrgId', record.get('bgtOrgId'));
+                	// 1.0 设置管理公司查询参数
+                } else if (name == 'companyShortName') {
+                    record.getMeta().getField(name).setLovPara('magOrgId', record.get('magOrgId'));
+                    // 2.0 设置部门查询参数
+                } else if (name == 'unitName') {
+                    record.getMeta().getField(name).setLovPara('companyId', record.get('companyId'));
+                    // 3.0 设置岗位查询参数
+                } else if (name == 'positionName') {
+                    record.getMeta().getField(name).setLovPara('companyId', record.get('companyId'));
+                    // 4.0 设置员工查询参数
+                } else if (name == 'employeeName') {
+                    record.getMeta().getField(name).setLovPara('companyId', record.get('companyId'));
+                    // 5.0 设置核算主体、责任中心查询参数
+                } else if (name == 'accEntityName') {
+                    record.getMeta().getField(name).setLovPara('magOrgId', record.get('magOrgId'));
+                    record.getMeta().getField(name).setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCnterName') {
+                    record.getMeta().getField(name).setLovPara('magOrgId', record.get('magOrgId'));
+                    record.getMeta().getField(name).setLovPara('accEntityId', record.get('accEntityId'));
+                    // 6.0 设置单据类型查询参数
+                } else if (name == 'documentTypeName') {
+                    record.getMeta().getField(name).setLovPara('businessCategory', record.get('businessCategory'));
+                    record.getMeta().getField(name).setLovPara('magOrgId', record.get('magOrgId'));
+                    record.getMeta().getField(name).setLovPara('companyId', record.get('companyId'));
+                    // 7.0 设置报销类型查询参数
+                } else if (name == 'businessTypeName') {
+                    record.getMeta().getField(name).setLovPara('businessCategory', record.get('businessCategory'));
+                    record.getMeta().getField(name).setLovPara('magOrgId', record.get('magOrgId'));
+                    record.getMeta().getField(name).setLovPara('documentTypeId', record.get('documentTypeId'));
+                    // 8.0 设置申请/报销项目查询参数、采购申请/采购订单
+                } else if (name == 'paramValue1Name') {
+                    record.getMeta().getField(name).setLovPara('businessCategory', record.get('businessCategory'));
+                    record.getMeta().getField(name).setLovPara('businessTypeId', record.get('businessTypeId'));
+                	// 8.0 设置采购申请/采购订单明细值
+                } else if (name == 'paramValue2Name') {
+                    record.getMeta().getField(name).setLovPara('businessCategory', record.get('businessCategory'));
+                    record.getMeta().getField(name).setLovPara('purchaseObject', record.get('purchaseObject'));
+                    record.getMeta().getField(name).setLovPara('paramValue1Id', record.get('paramValue1Id'));
+                }
+            }
+            
+            //提交成功后触发查询
+            function BGT6200_submit(dataSet, datas, res) {
+                $au('bgt_budget_item_mapping_result_ds').query();
+                alert(1);
+            }
+            
+            //创建前计算行号
+            function BGT6200_beforeDsCreate() {
+                var bgtOrgName = $au('bgt_budget_item_mapping_query_ds').getAt(0).get('bgtOrgName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            //新增事件
+            function BGT6200_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('bgt_budget_item_mapping_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+            }
+            
+            //修改事件
+            function BGT6200_updateLine(ds, record, name, value){
+                //业务类型
+                if (name == 'businessCategory') {
+                    //单据类型
+                    record.set('documentTypeId', null);
+                    record.set('documentTypeName', '');
+                    //业务类型
+                    record.set('businessTypeId', null);
+                    record.set('businessTypeName', '');
+                    //参数1
+                    record.set('purchaseObject', '');
+                    record.set('paramValue1Id', null);
+                    record.set('paramValue1Name', '');
+                    //参数2
+                    record.set('paramValue2Id', null);
+                    record.set('paramValue2Name', '');
+                //管理组织
+                } else if (name == 'magOrgId') {
+                    //管理公司
+                    record.set('companyId', null);
+                    record.set('companyShortName', '');
+                    //单据类型
+                    record.set('documentTypeId', null);
+                    record.set('documentTypeName', '');
+                    //业务类型
+                    record.set('businessTypeId', null);
+                    record.set('businessTypeName', '');
+                    //参数1
+                    record.set('purchaseObject', '');
+                    record.set('paramValue1Id', null);
+                    record.set('paramValue1Name', '');
+                    //参数2
+                    record.set('paramValue2Id', null);
+                    record.set('paramValue2Name', '');
+                    //部门
+                    record.set('unitId', null);
+                    record.set('unitName', '');
+                    //岗位
+                    record.set('positionId', null);
+                    record.set('positionName', '');
+                    //员工
+                    record.set('employeeId', null);
+                    record.set('employeeName', '');
+                    //核算主体
+                    record.set('accEntityId', null);
+                    record.set('accEntityName', '');
+                    //成本中心
+                    record.set('respCenterId', null);
+                    record.set('respCnterName', '');
+                //管理公司
+                } else if (name == 'companyId') {
+                    //单据类型
+                    record.set('documentTypeId', null);
+                    record.set('documentTypeName', '');
+                    //业务类型
+                    record.set('businessTypeId', null);
+                    record.set('businessTypeName', '');
+                    //参数1
+                    record.set('purchaseObject', '');
+                    record.set('paramValue1Id', null);
+                    record.set('paramValue1Name', '');
+                    //参数2
+                    record.set('paramValue2Id', null);
+                    record.set('paramValue2Name', '');
+                    //部门
+                    record.set('unitId', null);
+                    record.set('unitName', '');
+                    //岗位
+                    record.set('positionId', null);
+                    record.set('positionName', '');
+                    //员工
+                    record.set('employeeId', null);
+                    record.set('employeeName', '');
+                    //核算主体
+                    record.set('accEntityId', null);
+                    record.set('accEntityName', '');
+                    //成本中心
+                    record.set('respCenterId', null);
+                    record.set('respCnterName', '');
+                //单据类型
+                } else if (name == 'documentTypeId') {
+                    //业务类型
+                    record.set('businessTypeId', null);
+                    record.set('businessTypeName', '');
+                    //参数1
+                    record.set('purchaseObject', '');
+                    record.set('paramValue1Id', null);
+                    record.set('paramValue1Name', '');
+                    //参数2
+                    record.set('paramValue2Id', null);
+                    record.set('paramValue2Name', '');
+                //业务类型
+                } else if (name == 'businessTypeId') {
+                    //参数1
+                    record.set('purchaseObject', '');
+                    record.set('paramValue1Id', null);
+                    record.set('paramValue1Name', '');
+                    //参数2
+                    record.set('paramValue2Id', null);
+                    record.set('paramValue2Name', '');
+                //参数1
+                } else if (name == 'paramValue1Id') {
+                    //参数2
+                    record.set('paramValue2Id', null);
+                    record.set('paramValue2Name', '');
+                //部门
+                } else if (name == 'unitId') {
+                    //岗位
+                    record.set('positionId', null);
+                    record.set('positionName', '');
+                    //员工
+                    record.set('employeeId', null);
+                    record.set('employeeName', '');
+                //岗位
+                } else if (name == 'positionId') {
+                    //员工
+                    record.set('employeeId', null);
+                    record.set('employeeName', '');
+                //核算主体
+                } else if (name == 'accEntityId') {
+                    //成本中心
+                    record.set('respCenterId', null);
+                    record.set('respCnterName', '');
+                }
+            }
+            
+            //查询
+            function BGT6200_bgtOrgsDsQuery() {
+                $au('BGT6200_bgtOrgsDs').query();
+            }
+            
+            //查询条件的update
+            function BGT6200_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgId' == name) {
+                    $au('bgt_budget_item_mapping_result_ds').getField('budgetItemName').setLovPara('bgtOrgId', value);
+                    $au('bgt_budget_item_mapping_result_ds').getField('magOrgName').setLovPara('bgtOrgId', value);
+                    $au('bgt_budget_item_mapping_result_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT6200_bgtOrgsDs" fetchAll="true" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/bgt/organization/bgtOrgOption"/>
+            <a:dataSet id="business_category_ds" fetchAll="true" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_RELATED_BUSINESS_TYPE/"/>
+            <a:dataSet id="payee_category_ds" fetchAll="true" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT/"/>
+            <a:dataSet id="bgt_budget_item_mapping_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT6200_bgtOrgsDs" prompt="bgt_budget_items.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                    <a:field name="businessCategoryName" displayField="description" options="business_category_ds" placeHolder="bgt_budget_item_mapping.business_type" returnField="businessCategory" valueField="value"/>
+                    <a:field name="expItemCode" prompt="bgt_budget_item_mapping.expense_item_code"/>
+                    <a:field name="paramValue1Name" prompt="sys_notify.param1"/>
+                    <a:field name="paramValue2Name" prompt="sys_notify.param2"/>
+                    <a:field name="budgetItemName" prompt="bgt_budget_item_mapping.budget_item_description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT6200_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_budget_item_mapping_result_ds"  autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/budget-item-mapping/query" submitUrl="$[/request/@context_path]/bgt/budget-item-mapping/submit" queryDataSet="bgt_budget_item_mapping_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="mappingId"/>
+                    <a:field name="bgtOrgId" required="true"/>
+                    <a:field name="businessCategoryName" displayField="description" options="business_category_ds" prompt="bgt_budget_item_mapping.business_type" required="true" returnField="businessCategory" valueField="value"/>
+                    <a:field name="priority" prompt="bgt_budget_item_mapping.priority" required="true"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="budgetItemName" autoComplete="true" autoCompleteField="budget_item_code" lovCode="LOV_BGT6200_BGT_ORG_ITEM" prompt="bgt_budget_item_mapping.budget_item_description" title="exp_req_item.budget_item" required="true" >
+                        <a:mapping>
+                            <a:map from="budgetItemId" to="budgetItemId"/>
+                            <a:map from="description" to="budgetItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgName" autoComplete="false" lovCode="LOV_BGT6200_MAG_ORG"  prompt="bgt_budget_item_mapping.mag_org_name" required="true"  title="bgt_budget_item_mapping.mag_org_name">
+                        <a:mapping>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                            <a:map from="magOrgName" to="magOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyShortName" autoComplete="true" autoCompleteField="company_code_name" lovCode="LOV_BGT6200_COMPANY" prompt="fnd_company.company_name" title="fnd_company.company_name">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="documentTypeId"/>
+                    <a:field name="documentTypeName" autoComplete="true" autoCompleteField="document_type_code_name" lovService="bgt.BGT6200.exp_mo_document_type_lov" prompt="hap.doc_type" title="hap.doc_type" >
+                        <a:mapping>
+                            <a:map from="documentTypeId" to="documentTypeId"/>
+                            <a:map from="documentTypeName" to="documentTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="businessTypeId"/>
+                    <a:field name="businessTypeName" autoComplete="true" autoCompleteField="business_type_code_name" required="true" lovService="bgt.BGT6200.exp_mo_BUSINESS_TYPE_lov" prompt="bgt_budget_item_mapping.business_type"  title="bgt_budget_item_mapping.business_type">
+                        <a:mapping>
+                            <a:map from="businessTypeId" to="businessTypeId"/>
+                            <a:map from="businessTypeName" to="businessTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="paramValue1Id"/>
+                    <a:field name="purchaseObject"/>
+                    <a:field name="paramValue1Name" autoComplete="true" autoCompleteField="param_value1_code_name" required="true" lovService="bgt.BGT6200.exp_mo_param_value1_lov" prompt="sys_notify.param1" title="sys_notify.param1"  >
+                        <a:mapping>
+                            <a:map from="paramValue1Name" to="paramValue1Name"/>
+                            <a:map from="purchaseObject" to="purchaseObject"/>
+                            <a:map from="paramValue1Id" to="paramValue1Id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="purItemId"/>
+                    <a:field name="paramValue2Name" autoComplete="true" autoCompleteField="param_value2_code_name" lovService="bgt.BGT6200.exp_mo_param_value2_lov" prompt="sys_notify.param2"  title="sys_notify.param2">
+                        <a:mapping>
+                            <a:map from="paramValue2Name" to="paramValue2Name"/>
+                            <a:map from="paramValue2Id" to="paramValue2Id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId"/>
+                    <a:field name="unitName" autoComplete="true" autoCompleteField="unit_code" lovCode="LOV_BGT6200_UNIT" prompt="bgt_budget_item_mapping.unit_name" title="bgt_budget_item_mapping.unit_name" >
+                        <a:mapping>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="unitName" to="unitName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionId"/>
+                    <a:field name="positionName" autoComplete="true" autoCompleteField="position_code" lovCode="LOV_ORG_POSITION" prompt="bgt_budget_item_mapping.position"  title="bgt_budget_item_mapping.position">
+                        <a:mapping>
+                            <a:map from="positionId" to="positionId"/>
+                            <a:map from="positionName" to="positionName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeName" autoComplete="true" autoCompleteField="employee_code_name" lovCode="LOV_EXP_EMPLOYEE" prompt="bgt_budget_item_mapping.employee_name" title="bgt_budget_item_mapping.employee_name" >
+                        <a:mapping>
+                            <a:map from="employeeId" to="employeeId"/>
+                            <a:map from="employeeName" to="employeeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" autoComplete="true" autoCompleteField="acc_entity_code_name" lovCode="LOV_ACCOUNTING_ENTITIES" prompt="bgt_budget_item_mapping.accounting_entity"  title="bgt_budget_item_mapping.accounting_entity">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterId"/>
+                    <a:field name="respCnterName" autoComplete="true" autoCompleteField="resp_center_code_name" lovCode="GLD_RESPONSIBILITY_CENTER" prompt="exp_org_unit.responsibility_center" title="exp_org_unit.responsibility_center" >
+                        <a:mapping>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                            <a:map from="responsibilityCenterName" to="respCnterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryName" displayField="description" options="payee_category_ds" prompt="bgt_budget_item_mapping.payee_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_budget_item_type.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT6200_submit"/>
+                    <a:event name="beforecreate" handler="BGT6200_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT6200_onDsAdd"/>
+                    <a:event name="update" handler="BGT6200_updateLine"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="BGT6200_grid" type="add" width="80"/>
+                <a:gridButton bind="BGT6200_grid" type="save" width="80"/>
+                <a:gridButton bind="BGT6200_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="bgt_budget_item_mapping_query_ds" resultTarget="bgt_budget_item_mapping_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:comboBox name="bgtOrgName" bindTarget="bgt_budget_item_mapping_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT6200_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <!--  <a:textField name="exp_item_code" bindtarget="bgt_budget_item_mapping_query_ds"/> -->
+                    <a:textField name="budgetItemName" bindtarget="bgt_budget_item_mapping_query_ds"/>
+                    <a:textField name="paramValue1Name" bindtarget="bgt_budget_item_mapping_query_ds"/>
+                    <a:textField name="paramValue2Name" bindtarget="bgt_budget_item_mapping_query_ds"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:comboBox name="businessCategoryName" bindtarget="bgt_budget_item_mapping_query_ds" placeHolder="bgt_budget_item_mapping.business_type"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT6200_grid" bindTarget="bgt_budget_item_mapping_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="businessCategoryName"  align="center" editor="BGT6200_comboBox" width="150"/>
+                <a:column name="priority" align="center" editor="BGT6200_numberField" width="90"/>
+                <a:column name="budgetItemName" align="center" editor="BGT6200_lov" width="150"/>
+                <a:column name="magOrgName" align="center" editor="BGT6200_lov" width="150"/>
+                <a:column name="companyShortName" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="documentTypeName" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="businessTypeName" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="paramValue1Name" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="paramValue2Name" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="unitName" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="positionName" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="employeeName" align="center" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="accEntityName" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="respCnterName" editorFunction="BGT6200_editorFunc_lov" width="150"/>
+                <a:column name="payeeCategoryName" align="center" editor="BGT6200_comboBox" width="150"/>
+                <a:column name="enabledFlag" align="center" editor="BGT6200_checkBox" width="150"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="BGT6200_lov"/>
+                <a:comboBox id="BGT6200_comboBox"/>
+                <a:numberField id="BGT6200_numberField" allowDecimals="false" allowNegative="false"/>
+                <a:checkBox id="BGT6200_checkBox"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="BGT6200_cellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

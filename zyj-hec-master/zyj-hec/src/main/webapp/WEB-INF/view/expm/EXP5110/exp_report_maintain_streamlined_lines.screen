@@ -1,0 +1,725 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/03/06 9:47:59 $
+    $Revision: 1.0
+    $Purpose: 精简行
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+   <!-- <a:init-procedure>
+        <a:model-query defaultWhereClause="v.reportPageElementCode = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_line_dimension_fields_query" rootPath="streamlined_line_dimensions"/>
+        <a:model-query defaultWhereClause="v.reportPageElementCode = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_line_object_fields_query" rootPath="streamlinedLineObjects"/>
+        <a:model-query defaultWhereClause="v.reportPageElementCode = &apos;STREAMLINED&apos; " model="hec_util.exp_util.exp_rep_ele_invoice_flag" rootPath="streamlined_line_element"/>
+        <a:model-query defaultWhereClause="erpe.reportPageElementCode = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_lineDescription_query" rootPath="streamlined_lineDescription"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP5110_exp_report_maintain_streamlined_lines_extend_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_maintain_streamlined_lines_extend.screen"/>
+        <script><![CDATA[
+            function EXP5110_streamlinedGetNextLineNumber() {
+                var nextLineNumber = 10;
+                var allPmtRecords = $au('EXP5110_exp_report_streamlined_line_ds').getAll();
+                Ext.each(allPmtRecords, function(allPmtRecord) {
+                    if (allPmtRecord.get('lineNumber') >= nextLineNumber) {
+                        nextLineNumber = allPmtRecord.get('lineNumber') + 10;
+                    }
+                }, this);
+            
+                return nextLineNumber;
+            }
+            
+            function EXP5110_streamlinedLineAdd(reqDatas) {
+                if (reqDatas && reqDatas.length && reqDatas.length != 0) {
+                    var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                    //从申请单创建
+                    Ext.each(reqDatas, function(reqData) {
+                        var data = {};
+                        for (var fieldName in reqDatas['fields']) {
+                            data[fieldName] = reqData[fieldName];
+                        }
+            
+                        data['reportPageElementCode'] = 'STREAMLINED';
+                        data['expReportHeaderId'] = headerRecord.get('expReportHeaderId');
+                        data['lineNumber'] = EXP5110_streamlinedGetNextLineNumber();
+                        $au('EXP5110_exp_report_streamlined_line_ds').create(data);
+                    }, this);
+                } else {
+                    var selectedRecords = $au('EXP5110_exp_report_streamlined_line_ds').getSelected();
+                    if (selectedRecords && selectedRecords.length) {
+                        Ext.each(selectedRecords, function(selectedRecord) {
+                            var data = {};
+                            for (var field in $au('EXP5110_exp_report_streamlined_line_ds').fields) {
+                                data[field] = selectedRecord.get(field);
+                            }
+                            data['expReportLineId'] = null;
+                            data['lineNumber'] = EXP5110_streamlinedGetNextLineNumber();
+                            $au('EXP5110_exp_report_streamlined_line_ds').create(data);
+                        });
+                    } else {
+                        var data = {};
+                        var lineDs = $au('EXP5110_exp_report_streamlined_line_ds');
+                        headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                        data['reportPageElementCode'] = 'STREAMLINED';
+                        data['lineNumber'] = EXP5110_streamlinedGetNextLineNumber();
+                        data['expReportHeaderId'] = headerRecord.get('expReportHeaderId');
+                        data['companyName'] = headerRecord.get('companyName');
+                        data['companyId'] = headerRecord.get('companyId');
+                        data['accEntityName'] = headerRecord.get('accEntityName');
+                        data['accEntityId'] = headerRecord.get('accEntityId');
+                        data['unitName'] = headerRecord.get('unitName');
+                        data['unitId'] = headerRecord.get('unitId');
+                        data['positionName'] = headerRecord.get('positionName');
+                        data['positionId'] = headerRecord.get('positionId');
+                        data['employeeName'] = headerRecord.get('employeeName');
+                        data['employeeId'] = headerRecord.get('employeeId');
+                        data['respCenterName'] = headerRecord.get('respCenterName');
+                        data['respCenterId'] = headerRecord.get('respCenterId');
+                        data['primaryQuantity'] = 1;
+                        data['businessCurrencyName'] = headerRecord.get('paymentCurrencyName');
+                        data['businessCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+                        data['businessCurrencyPrecision'] = headerRecord.get('paymentCurrencyPrecision');
+                        data['biz2payExchangeTypeName'] = null;
+                        data['biz2payExchangeType'] = null;
+                        data['biz2payExchangeRate'] = 1;
+                        data['paymentCurrencyName'] = headerRecord.get('paymentCurrencyName');
+                        data['paymentCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+                        data['paymentCurrencyPrecision'] = headerRecord.get('paymentCurrencyPrecision');
+                        data['pay2funExchangeTypeName'] = headerRecord.get('pay2funExchangeTypeName');
+                        data['pay2funExchangeType'] = headerRecord.get('pay2funExchangeType');
+                        data['pay2funExchangeRate'] = headerRecord.get('pay2funExchangeRate');
+                        data['managementCurrencyName'] = headerRecord.get('managementCurrencyName');
+                        data['managementCurrencyCode'] = headerRecord.get('managementCurrencyCode');
+                        data['managementCurrencyPrecision'] = headerRecord.get('managementCurrencyPrecision');
+                        data['pay2magExchangeTypeName'] = headerRecord.get('pay2magExchangeTypeName');
+                        data['pay2magExchangeType'] = headerRecord.get('pay2magExchangeType');
+                        data['pay2magExchangeRate'] = headerRecord.get('pay2magExchangeRate');
+                        data['accEntityId'] = headerRecord.get('accEntityId');
+                        data['accEntityName'] = headerRecord.get('accEntityName');
+                        data['respCenterId'] = headerRecord.get('respCenterId');
+                        data['respCenterName'] = headerRecord.get('respCenterName');
+                        data['bgtEntityId'] = headerRecord.get('bgtEntityId');
+                        data['bgtEntityName'] = headerRecord.get('bgtEntityName');
+                        data['bgtCenterId'] = headerRecord.get('bgtCenterId');
+                        data['bgtCenterName'] = headerRecord.get('bgtCenterName');
+                        data['periodName'] = headerRecord.get('periodName');
+                        for (var i = 1;i <= 20;i++) {
+                            data['dimension' + i + 'Id'] = lineDs.fields['dimension' + i + 'Id'] ? lineDs.fields['dimension' + i + 'Id'].pro.defaultvalue : '';
+                            data['dimension' + i + 'Name'] = lineDs.fields['dimension' + i + 'Name'] ? lineDs.fields['dimension' + i + 'Name'].pro.defaultvalue : '';
+                        }
+            
+                        //新增行的时候将默认报销类型自动带出
+                        //modified by ll 2018/11/22
+                        //begin
+                        var expense_type_default_ds = $au('EXP5110_streamlined_expense_type_default_ds').getAt(0);
+                        data['moExpenseTypeId'] = expense_type_default_ds == undefined ? '' : expense_type_default_ds.get('moExpenseTypeId');
+                        data['moExpenseTypeName'] = expense_type_default_ds == undefined ? '' : expense_type_default_ds.get('moExpenseTypeName');
+                        //end
+                        $au('EXP5110_exp_report_streamlined_line_ds').create(data);
+                    }
+                }
+            }
+            
+            function EXP5110_standardLineCopy() {
+                var selectedRecords = $au('EXP5110_exp_report_streamlined_line_ds').getSelected();
+                if (selectedRecords && selectedRecords.length) {
+                    Ext.each(selectedRecords, function(selectedRecord) {
+                        var data = {};
+                        for (var field in $au('EXP5110_exp_report_streamlined_line_ds').fields) {
+                            data[field] = selectedRecord.get(field);
+                        }
+                        data['expReportLineId'] = null;
+                        data['lineNumber'] = EXP5110_streamlinedGetNextLineNumber();
+                        $au('EXP5110_exp_report_streamlined_line_ds').create(data);
+                    });
+                } else {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:select_record]', null, 300, 100);
+                }
+            }
+            
+            function EXPT5110_onStreamlinedLineUpdateFun(ds, record, name, value, oldValue) {
+                var hecUtil = new HecUtil();
+                if (name == 'companyId') {
+                    //公司变更清除部门、岗位、员工
+                    record.set('unitName', '');
+                    record.set('unitId', '');
+                    record.set('positionName', '');
+                    record.set('positionId', '');
+                    //添加公司变更清除地点和地点类型   Y.duan 2017-8-14 17:12:09
+                    record.set('placeTypeName', '');
+                    record.set('placeTypeId', '');
+                    record.set('placeId', '');
+                    record.set('placeName', '');
+                } else if (name == 'accEntityId') {
+                    //核算实体边更清除责任中心
+                    record.set('respCenterName', '');
+                    record.set('respCenterId', '');
+                } else if (name == 'primaryQuantity') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentAmount', hecUtil.calAmount(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementAmount', hecUtil.calAmount(mul(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('pay2magExchangeRate')), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(mul(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('primaryQuantity')), record.get('pay2magExchangeRate')), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision'));
+                } else if (name == 'businessPrice') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentPrice', hecUtil.calExchangeAmount(record.get('businessPrice'), record.get('biz2payExchangeRate'), record.get('paymentCurrencyPrecision')));
+                    record.set('paymentAmount', hecUtil.calAmount(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementPrice', hecUtil.calExchangeAmount(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('pay2magExchangeRate'), record.get('managementCurrencyPrecision')));
+                    record.set('managementAmount', hecUtil.calAmount(mul(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('pay2magExchangeRate')), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(mul(mul(record.get('businessPrice'), record.get('biz2payExchangeRate')), record.get('primaryQuantity')), record.get('pay2magExchangeRate')), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision'));
+                } else if (name == 'pay2funExchangeRate') {
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('businessAmount') * record.get('biz2payExchangeRate'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                    // } else if (name == 'businessPrice' || name == 'primaryQuantity') {
+                    // record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    // record.set('paymentPrice', hecUtil.calExchangeAmount(record.get('businessPrice'), record.get('biz2payExchangeRate'), record.get('paymentCurrencyPrecision')));
+                    // } else if (name == 'paymentPrice') {
+                    // record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    // record.set('managementPrice', hecUtil.calExchangeAmount(record.get('paymentPrice'), record.get('pay2magExchangeRate'), record.get('managementCurrencyPrecision')));
+                    // } else if (name == 'managementPrice') {
+                    // record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                    // } else if (name == 'paymentAmount') {
+                    // record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                } else if (name == 'moExpenseTypeId') {
+                    record.set('moExpenseItemName', '');
+                    record.set('moExpenseItemId', '');
+                }
+            
+                //数据变更获取费用政策
+                if (name == 'companyId' || name == 'employeeId' || name == 'moExpenseItemId' || name == 'placeTypeId' || name == 'placeId' || name == 'businessCurrencyCode' || name == 'positionId') {
+                    // 调用头页面元素的JS,动态获取并处理当前行费用政策相关数据,在行数据更新、新增的时候触发。
+                    EXP5110_onLinePolicyInit(record, name);
+                }
+            
+                //ADD CHQ 更新头上总金额
+                if (name == 'businessAmount') {
+                    EXP5110_onStreamlinedLineRemoveFun();
+                }
+            }
+            
+            // function EXPT5110_onStreamlinedLoadFun(dataSet) {
+            // var records = dataSet.getAll();
+            // }
+            
+            function EXP5110_streamlinedBizPriceEditorFun(record, name) {
+                if (name == 'businessPrice') {
+                    if (record.get('changeableFlag') == 'N') {
+                        return '';
+                    } else {
+                        var precision = record.get('businessCurrencyPrecision');
+                        if (!precision) {
+                            return 'EXP5110_streamlined_nf_2';
+                        } else {
+                            return 'EXP5110_streamlined_nf_' + precision;
+                        }
+                    }
+                }
+            }
+            
+            function EXP5110_streamlinedDateValidator(record, name, value) {
+                if (record.get('dateFrom') && record.get('dateTo')) {
+                    if (record.get('dateFrom') > record.get('dateTo')) {
+                        return '$[l:start_date_not_later_ending_date]';
+                    }
+                }
+            
+                return true;
+            }
+            
+            function EXP5110_streamlinedLineBeforeSubmit() {
+                var streamlinedLineDs = $au('EXP5110_exp_report_streamlined_line_ds');
+                if (!streamlinedLineDs.validate()) {
+                    return false;
+                } else {
+                    var records = streamlinedLineDs.getAll();
+                    for (var i = 0;i < records.length;i++) {
+                        var expObjDatas = [];
+                        for (field in streamlinedLineDs.fields) {
+                            if (/^#/.test(field)) {
+                                //id字段
+                                var expObjTypeId = field.replace(/^#/, '');
+                                var idValue = records[i].get(field);
+                                var nameValue = records[i].get('^' + field);
+                                var expObjData = {
+                                    moExpObjTypeId: expObjTypeId,
+                                    moExpenseObjectId: idValue,
+                                    moExpenseObjectName: nameValue
+                                };
+                                expObjDatas.push(expObjData);
+                            }
+                        }
+                        records[i]['data']['expenseObjectLines'] = expObjDatas;
+                    }
+                }
+            }
+            
+            function EXP5110_streamlinedCreateFromReq() {
+                //add lcy 2018/5/29 22:33:34 怎加是否为统购标识
+                var monopolizeFlag = 'N';
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_create_from_req_link').getUrl() + '?moExpReportTypeId=$[/model/headerInfo/record/@moExpReportTypeId]&reportPageElementCode=STREAMLINED&paymentCurrencyCode=' + $au('EXP5110_exp_report_header_ds').getAt(0).get('paymentCurrencyCode') + '&monopolizeFlag=' + monopolizeFlag,
+                    id: 'EXP5110_exp_report_maintain_create_from_req_window',
+                    title: 'exp_report_create.fromreq',
+                    fullScreen: true
+                });
+            }
+            
+            
+            function EXP5110_streamlinedLineInvoiceInfoRenderer(value, record, name) {
+                return '<a href="javascript:EXP5110_openInvoiceDetailWindow(\'' + (record.get('vatInvoiceId') ? record.get('vatInvoiceId') : '') + '\',\'' + (record.get('vatInvoiceLineId') ? record.get('vatInvoiceLineId') : '') + '\')">$[l:invoice_news]</a>';
+            }
+            
+            function EXP5110_invoiceItemValidator(record, name, value) {
+                if (record.get('vatInvoiceLineId') && !value) {
+                    return '';
+                }
+                return true;
+            }
+            
+            function EXP5110_invoiceUsedeValidator(record, name, value) {
+                if (record.get('vatInvoiceLineId') && !value) {
+                    return '';
+                }
+                return true;
+            }
+            
+            function EXP5110_streamlinedEditRenderer(value, record, name) {
+                var content = ">>";
+                return '<a href="javascript:EXP5110_openStreamlinedEditWindow();">' + content + '</a>';
+            }
+            
+            function EXP5110_openStreamlinedEditWindow() {
+                new Aurora.Window({
+                    title: 'conventional_expense_line_detail',
+                    id: 'EXP5110_exp_report_maintain_streamlined_lines_extend_window',
+                    url: $au('EXP5110_exp_report_maintain_streamlined_lines_extend_link').getUrl() + '?moExpReportTypeId=$[/model/headerInfo/record/@moExpReportTypeId]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function EXP5110_onStreamlinedLineCellClickFun(grid, row, name, record) {
+                if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_streamlined_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP5110_streamlined_expense_type_ds').query();
+                } else if (name == 'moExpenseItemName') {
+                    /*Modified by Arthur.Chen Date:2017-09-20 19:42:31
+                     1.动态获取moExpenseItemName字段的options
+                     */
+                    $au('EXP5110_streamlined_items_ds').setQueryParameter('moExpenseTypeId', record.get('moExpenseTypeId'));
+                    $au('EXP5110_streamlined_items_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP5110_streamlined_items_ds').setQueryParameter('moExpReportTypeId', '$[/model/headerInfo/record/@moExpReportTypeId]');
+                    $au('EXP5110_streamlined_items_ds').setQueryParameter('pageElementCode', 'STREAMLINED');
+                    $au('EXP5110_streamlined_items_ds').query();
+                }
+                if (/dimension/.test(name)) { // 设置维度查询条件【Tips：若涉及多维度则需要判断维度对应的级别，不同级别对应的组织架构不同】
+                    var id = '';
+                    var fieldName = name.replace('name', 'level');
+                    var level = record.get(fieldName);
+                    if (level == 'BUDGET') {
+                        id = record.get('bgtEntityId');
+                    } else if (level == 'ACCOUNTING') {
+                        id = record.get('accEntityId');
+                    } else if (level == 'MANAGEMENT') {
+                        id = '$[/session/@companyId]';
+                    }
+                    record.getField(name).setLovPara('companyId', id);
+                }
+            }
+            
+            //重新计算头上总金额
+            
+            function EXP5110_onStreamlinedLineRemoveFun() {
+                var lineDs = $au('EXP5110_exp_report_streamlined_line_ds').getAll();
+                var lineTotalAmount = 0;
+                for (var i = 0;i < lineDs.length;i++) {
+                    lineTotalAmount = plus(lineDs[i].get('businessAmount'), lineTotalAmount);
+                }
+                $au('EXP5110_exp_report_header_ds').getAt(0).set('repTotalAmount', lineTotalAmount);
+            }
+            
+            function EXP5110_streamlinedTaxEditorFunc(record, name) {
+                //var invoiceType = EXP5110_getInvoiceType(record.get('invoiceCode'));
+                var invoiceType = record.get('invoiceType');
+                var totalRefCount = !record.get('totalRefCount') ? 0 : record.get('totalRefCount');
+                if ((name == 'taxAmount' || name == 'splittedTaxAmount') && record.get('totalRefCount') <= 1) {
+                    //增值税专用发票，必须填写税额\拆分税额
+                    if (invoiceType == 'VAT_SPECIAL') {
+                        return 'EXP5110_streamlined_nf_2';
+                    } else {
+                        return '';
+                    }
+                } else if (name == 'invoiceCode' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_lov';
+                } else if (name == 'invoiceNumber' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_tf';
+                } else if (name == 'invoiceDate' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_dp';
+                } else if (name == 'invoiceAmount' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_nf_2';
+                } else if (name == 'invoiceItemName' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_lov';
+                } else if (name == 'invoiceUsedeName' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_lov';
+                } else if (name == 'taxTypeName' && totalRefCount <= 1 && invoiceType == 'VAT_SPECIAL') {
+                    return 'EXP5110_streamlined_cb';
+                } else if (name == 'invoiceTypeName' && totalRefCount <= 1) {
+                    return 'EXP5110_streamlined_cb';
+                }
+                return '';
+            }
+            
+            function EXP5110_streamlinedLineInvoiceInfoRenderer(value, record, name) {
+                var totalRefCount = !record.get('totalRefCount') ? 0 : record.get('totalRefCount');
+                var recordIndex = $au('EXP5110_exp_report_streamlined_line_ds').indexOf(record);
+                if (totalRefCount <= 1) {
+                    return '<a href="javascript:EXP5110_openMoreStreamlinedInvoiceWindow(\'' + (record.get('invoiceId') ? record.get('invoiceId') : '') + '\',\'' + (record.get('invoiceLineId') ? record.get('invoiceLineId') : '') + '\',\'' + (record.get('invoiceCode') ? record.get('invoiceCode') : '') + '\',\'' + (record.get('invoiceNumber') ? record.get('invoiceNumber') : '') + '\',\'' + Aurora.formatDateTime((record.get('invoiceDate') ? record.get('invoiceDate') : '')) + '\',\'' + (record.get('invoiceAmount') ? record.get('invoiceAmount') : '') + '\')">$[l:more_invoice]</a> / <a href="javascript:EXP5110_cancelLineRefInvoice(\'' + recordIndex + '\');">$[1:cancel_invoice]</a>';
+                } else {
+                    // var content = '发票拆分明细';
+                    // return '<a href="javascript:EXP5110_openStandardMoreWindowForInvoice(\'' + record.get('expReportLineId') + '\')">' + content + '</a>';
+                    return '<a href="javascript:EXP5110_openMoreStreamlinedInvoiceWindow(\'' + (record.get('invoiceId') ? record.get('invoiceId') : '') + '\',\'' + (record.get('invoiceLineId') ? record.get('invoiceLineId') : '') + '\',\'' + (record.get('invoiceCode') ? record.get('invoiceCode') : '') + '\',\'' + (record.get('invoiceNumber') ? record.get('invoiceNumber') : '') + '\',\'' + Aurora.formatDateTime((record.get('invoiceDate') ? record.get('invoiceDate') : '')) + '\',\'' + (record.get('invoiceAmount') ? record.get('invoiceAmount') : '') + '\')">$[l:more_invoice]</a> / <a href="javascript:EXP5110_cancelLineRefInvoice(\'' + recordIndex + '\');">$[1:cancel_invoice]</a>';
+                }
+            }
+            
+            function EXP5110_openMoreStreamlinedInvoiceWindow() {
+                var record = $au('EXP5110_exp_report_streamlined_line_ds').getCurrentRecord();
+                //打开更多发票窗口之前，需要将当前行的发票关联关系清除
+                if (record.get('invoiceTypeName') || record.get('invoiceType') || record.get('invoiceCode') || record.get('invoiceNumber') || record.get('invoiceCode') || record.get('invoiceDate') || record.get('invoiceAmount') || record.get('taxAmount') || record.get('invoiceItemName') || record.get('invoiceItemId') || record.get('invoiceUsedeName') || record.get('invoiceUsedeId') || record.get('splittedTaxAmount') || record.get('taxTypeName') || record.get('taxTypeId') || record.get('taxTypeRate')) {
+                    Aurora.showErrorMessage('错误', '请先清除当前行上的发票关联关系再关联更多发票!');
+                    return;
+                }
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_more_invoice_standard_link').getUrl() + '?ds_id=EXP5110_standard_more_invoice_ds&line_ds_id=EXP5110_exp_report_streamlined_line_ds',
+                    id: 'EXP5110_exp_report_maintain_more_invoice_standard_window',
+                    title: 'more_invoice',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP5110_streamlinedLineInitVatColumn() {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                if (headerRecord.get('vatInvoiceFlag') != 'Y') {
+                    //专票只影响发票项目和发票金额
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceInfo');
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceCode');
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceNumber');
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceDate');
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceAmount');
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('taxAmount');
+                    $au('EXP5110_streamlined_lines_grid').hideColumn('splittedTaxAmount');
+                    //$au('EXP5110_streamlined_lines_grid').hideColumn('taxTypeName');
+                    //$au('EXP5110_streamlined_lines_grid').hideColumn('invoiceItemName');
+                    //$au('EXP5110_streamlined_lines_grid').hideColumn('invoiceUsedeName');
+                } else {
+                    // Modify Tagin/2018.01.22 增加判断 若页面元素中更多标识为Y则启用更多关联链接
+                    if ('$[/model/streamlined_line_element/record/@invoice_flag]' == 'N') {
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceInfo');
+                    }
+                }
+            }
+            
+            function EXP5110_streamlinedLineOnHeaderUpdate(ds, record, name, value, oldValue) {
+                if (name == 'vatInvoiceFlag') {
+                    if (value == 'Y') {
+                        //专票只影响发票项目和发票金额
+                        // Modify Tagin/2018.01.22 增加判断 若页面元素中更多标识为Y则启用更多关联链接
+                        if ('$[/model/streamlined_line_element/record/@invoiceFlag]' == 'N') {
+                            $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceInfo');
+                        } else {
+                            $au('EXP5110_streamlined_lines_grid').showColumn('invoiceInfo');
+                        }
+                        $au('EXP5110_streamlined_lines_grid').showColumn('invoiceTypeName');
+                        $au('EXP5110_streamlined_lines_grid').showColumn('invoiceCode');
+                        $au('EXP5110_streamlined_lines_grid').showColumn('invoiceNumber');
+                        $au('EXP5110_streamlined_lines_grid').showColumn('invoiceDate');
+                        $au('EXP5110_streamlined_lines_grid').showColumn('invoiceAmount');
+                        $au('EXP5110_streamlined_lines_grid').showColumn('taxAmount');
+                        $au('EXP5110_streamlined_lines_grid').showColumn('splittedTaxAmount');
+                        //$au('EXP5110_streamlined_lines_grid').showColumn('taxTypeName');
+                        //$au('EXP5110_streamlined_lines_grid').showColumn('invoiceItemName');
+                        //$au('EXP5110_streamlined_lines_grid').showColumn('invoiceUsedeName');
+                    } else {
+                        //专票只影响发票项目和发票金额
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceInfo');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceTypeName');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceCode');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceNumber');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceDate');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('invoiceAmount');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('taxAmount');
+                        $au('EXP5110_streamlined_lines_grid').hideColumn('splittedTaxAmount');
+                        //$au('EXP5110_streamlined_lines_grid').hideColumn('taxTypeName');
+                        //$au('EXP5110_streamlined_lines_grid').hideColumn('invoiceItemName');
+                        //$au('EXP5110_streamlined_lines_grid').hideColumn('invoiceUsedeName');
+                    }
+                }
+            }
+            
+            $au('EXP5110_exp_report_header_ds')['on']('beforesubmit', EXP5110_streamlinedLineBeforeSubmit);
+            
+            Aurora.onReady(EXP5110_streamlinedLineInitVatColumn);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_streamlined_place_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_policy_place_types_vl_lov"/>
+            <a:dataSet id="EXP5110_streamlined_invoiceType_ds" fetchAll="true" lookupCode="VAT_invoiceType"/>
+            <a:dataSet id="EXP5110_streamlined_expense_type_default_ds" autoQuery="true" fetchAll="true" model="expm.EXP5110.exp_rep_mo_expense_types" queryUrl="$[/request/@context_path]/autocrud/expm.EXP5110.exp_rep_mo_expense_types/query?pageElementCode=STREAMLINED&amp;moExpReportTypeId=$[/model/headerInfo/record/@moExpReportTypeId]"/>
+            <a:dataSet id="EXP5110_streamlined_expense_type_ds" autoQuery="true" fetchAll="true" model="hec_util.exp_util.exp_rep_mo_expense_types_vl_lov" queryUrl="$[/request/@context_path]/autocrud/hec_util.exp_util.exp_rep_mo_expense_types_vl_lov/query?pageElementCode=STREAMLINED&amp;moExpReportTypeId=$[/model/headerInfo/record/@moExpReportTypeId]"/>
+            <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31
+           1.修改moExpenseItemName字段的编辑器为combobox模式，设置item的option的ds
+              -->
+            <a:dataSet id="EXP5110_streamlined_items_ds" loadData="true" model="hec_util.exp_util.exp_rep_mo_expense_items_vl_lov"/>
+            <a:dataSet id="EXP5110_exp_report_streamlined_line_ds" autoQuery="true" bindName="streamlined_lines" bindTarget="EXP5110_exp_report_header_ds" prompt="exp_report.conventional_expense_line" queryDataSet="EXP5110_exp_report_header_ds" queryUrl="$[/request/@context_path]/expm/EXP5110/exp_report_streamlined_line_query.svc?expReportHeaderId=$[/model/header_infp/record/@expReportHeaderId]&amp;reportPageElementCode=STREAMLINED&amp;_banRemind=Y" selectable="true" submitUrl="$[/request/@context_path]/autocrud/db.exp_report_pkg.delete_exp_report_lines/batch_update">
+                <a:fields>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="expReportLineId"/>
+                    <a:field name="lineNumber" prompt="acp_acp_req_create.line_number" readOnly="true" required="true"/>
+                    <a:field name="reportPageElementCode" required="true"/>
+                    <a:field name="description" prompt="acp_invoice_header.description"/>
+                    <a:field name="companyName" lovCode="FND_COMPANY_LOV" prompt="bgt_journal_header.company_id" required="true">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId" required="true"/>
+                    <a:field name="accEntityName" lovCode="GLD_ACCOUNTING_ENTITY_VL_LOV" prompt="gld_accounting_entity.acc_entity_name" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId" required="true"/>
+                    <a:field name="unitName" lovCode="EXP_ORG_UNIT_VL_LOV" prompt="bgt_journal_balance.unit_id" required="true">
+                        <!--添加默认核算主体，默认责任中心，默认预算主体，默认预算中心映射   Y.duan 2017-8-31 19:37:31-->
+                        <a:mapping>
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="defaultAccEntityId" to="accEntityId"/>
+                            <a:map from="defaultResCenterId" to="respCenterId"/>
+                            <a:map from="defaultBgtEntityId" to="bgtEntityId"/>
+                            <a:map from="defaultBgtCenterId" to="bgtCenterId"/>
+                            <a:map from="defaultAccEntityDisplay" to="accEntityName"/>
+                            <a:map from="defaultResCentersDisplay" to="respCenterName"/>
+
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId" required="true"/>
+                    <a:field name="positionName" lovCode="EXP_ORG_POSITION_VL_LOV" prompt="acp_requisition.position" required="true">
+                        <a:mapping>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionId" required="true"/>
+                    <a:field name="employeeName" lovCode="EXP_EMPLOYEE_VL_LOV" prompt="bgt_budget_item_mapping.employee_id" required="true">
+                        <!--增加岗位ID和岗位描述的映射    Y.duan   2017-8-31 20:48:45-->
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId" required="true"/>
+                    <a:field name="respCenterName" lovCode="GLD_RESPONSIBILITY_CENTER_VL_LOV" prompt="exp_org_unit.responsibility_center" required="true">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterId" required="true"/>
+                    <a:field name="bgtEntityId" required="true"/>
+                    <a:field name="bgtCenterId" required="true"/>
+                    <a:field name="placeTypeName" prompt="exp_report_line.place_type_id" readOnly="true"/>
+                    <a:field name="placeTypeId"/>
+                    <!--重新指定地点查询的lovCode 地点类型直接自动带出   Y.duan 2017-8-14 17:13:08-->
+                    <a:field name="placeName" lovCode="EXP_POLICY_PLACES_AND_TYPES_VL_LOV" prompt="exp_report_line.place_id">
+                        <a:mapping>
+                            <a:map from="placeName" to="placeName"/>
+                            <a:map from="placeId" to="placeId"/>
+                            <a:map from="placeTypeId" to="placeTypeId"/>
+                            <a:map from="placeTypeName" to="placeTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="placeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="dateFrom" prompt="bgt_period.start_date" required="true" validator="EXP5110_streamlinedDateValidator"/>
+                    <a:field name="dateTo" prompt="bgt_period.end_date" required="true" validator="EXP5110_streamlinedDateValidator"/>
+                    <a:field name="periodName" lovCode="BGT_PERIODS_LOV" prompt="bgt_budget_reserve.period_name">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeName" displayField="moExpenseTypeName" options="EXP5110_streamlined_expense_type_ds" prompt="exp_expense_type.expense_type_id" required="true" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeId" prompt="exp_expense_type.expense_type_id" required="true"/>
+                    <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31
+          			 1.修改moExpenseItemName字段的编辑器为combobox模式,修改item的options为EXP5110_streamlined_items_ds
+             		 -->
+                    <a:field name="moExpenseItemName" displayField="moExpenseItemName" options="EXP5110_streamlined_items_ds" prompt="exp_expense_item.expense_item_id" required="true" returnField="moExpenseItemId" tipField="tip" valueField="moExpenseItemId"/>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="primaryQuantity" prompt="business_amount" required="true"/>
+                    <a:field name="businessCurrencyName" displayField="currency_name" options="EXP5110_currency_ds" prompt="business_currency_name" required="true" returnField="businessCurrencyPrecision" valueField="precision"/>
+                    <a:field name="businessCurrencyCode" required="true"/>
+                    <a:field name="biz2payExchangeTypeName" readOnly="true"/>
+                    <a:field name="biz2payExchangeRate" readOnly="true" required="true"/>
+                    <a:field name="businessPrice" prompt="business_price" required="true" validator="EXP5110_policyValidator"/>
+                    <a:field name="businessAmount" prompt="business_amount" readOnly="true" required="true"/>
+                    <a:field name="paymentCurrencyName" readOnly="true" required="true"/>
+                    <a:field name="paymentCurrencyCode" readOnly="true" required="true"/>
+                    <a:field name="pay2funExchangeTypeName" readOnly="true"/>
+                    <a:field name="pay2funExchangeRate" readOnly="true" required="true"/>
+                    <a:field name="paymentPrice" prompt="payment_price" readOnly="true" required="true"/>
+                    <a:field name="paymentAmount" prompt="payment_amount" readOnly="true" required="true"/>
+                    <a:field name="managementCurrencyName" readOnly="true" required="true"/>
+                    <a:field name="managementCurrencyCode" readOnly="true" required="true"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="pay2mag_exchange_type_name" readOnly="true"/>
+                    <a:field name="pay2magExchangeRate" prompt="pay2mag_exchange_rate" readOnly="true" required="true"/>
+                    <a:field name="managementPrice" prompt="management_price" readOnly="true" required="true"/>
+                    <a:field name="managementAmount" prompt="management_amount" readOnly="true" required="true"/>
+                    <a:field name="reportFunctionalAmount" prompt="bgt_check_logs.functional_amount" readOnly="true" required="true"/>
+                    <a:field name="invoiceTypeName" displayField="code_value_name" options="EXP5110_streamlined_invoiceType_ds" prompt="vat_invoice.invoice_type_name" returnField="invoiceType" valueField="code_value"/>
+                    <a:field name="invoiceType"/>
+                    <a:field name="invoiceId"/>
+                    <a:field name="invoiceLineId"/>
+                    <a:field name="invoiceInfo" prompt="acp_invoice_headers.invoice_news"/>
+                    <a:field name="invoiceCode" fetchRemote="false" prompt="vat_invoices.invoice_code"/>
+                    <a:field name="invoiceNumber" prompt="vat_invoice.invoice_number"/>
+                    <a:field name="invoiceDate" prompt="vat_invoices.invoice_date"/>
+                    <a:field name="invoiceAmount" prompt="invoice_amount" validator="EXP5110_standardInvoiceValidator"/>
+                    <a:field name="taxAmount" prompt="total_invoice_tax" validator="EXP5110_standardInvoiceValidator"/>
+                    <a:field name="invoiceItemName" lovCode="VAT_INVOICE_ITEM_VL_LOV" prompt="exp_report.invoice_item" validator="EXP5110_invoiceItemValidator">
+                        <a:mapping>
+                            <a:map from="invoiceItemName" to="invoiceItemName"/>
+                            <a:map from="invoiceItemId" to="invoiceItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="invoiceItemId"/>
+                    <a:field name="invoiceUsedeName" lovCode="VAT_INVOICE_USEDE_VL_LOV" prompt="exp_report.invoice_usede" validator="EXP5110_invoiceUsedeValidator">
+                        <a:mapping>
+                            <a:map from="invoiceUsedeName" to="invoiceUsedeName"/>
+                            <a:map from="invoiceUsedeId" to="invoiceUsedeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="invoiceUsedeId"/>
+                    <a:field name="splittedTaxAmount" alidator="EXP5110_standardInvoiceValidator" prompt="split_tax"/>
+                    <a:field name="taxTypeName" displayField="taxTypeName" options="EXP5110_standard_tax_rate_type_ds" prompt="vat_invoice_line.tax_type_name">
+                        <a:mapping>
+                            <a:map from="taxTypeId" to="taxTypeId"/>
+                            <a:map from="taxTypeRate" to="taxTypeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="taxTypeId"/>
+                    <a:field name="taxTypeRate"/>
+                    <a:field name="more" prompt="hap_more"/>
+                    <a:placeHolder id="EXP5110_streamlinedLineDimensionFields"/>
+                    <a:placeHolder id="EXP5110_streamlinedLineObjectFields"/>
+                </a:fields>
+                <a:events>
+                    <!-- <a:event name="load" handler="EXPT5110_onStreamlinedLoadFun"/> -->
+                    <a:event name="update" handler="EXPT5110_onStreamlinedLineUpdateFun"/>
+                    <a:event name="remove" handler="EXP5110_onStreamlinedLineRemoveFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form marginWidth="0" padding="0" showmargin="0" style="margin-top:10px;" title="$[/model/streamlined_lineDescription/record/@lineDescription]">
+            <a:grid id="EXP5110_streamlined_lines_grid" autoAdjust="true" autoAdjustHeight="true" bindTarget="EXP5110_exp_report_streamlined_line_ds" height="600" marginWidth="35" navBar="true" showRowNumber="false">
+                <a:toolBar>
+                    <a:placeHolder id="EXP5110_streamlinedLineAddBtnPlace"/>
+                    <a:placeHolder id="EXP5110_streamlinedLineFromReqBtnPlace"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="more" align="center" renderer="EXP5110_streamlinedEditRenderer" width="35"/>
+                    <a:column name="lineNumber" align="center" editor="EXP5110_streamlined_nf_0" prompt="acp_acp_req_create.line_number" width="30"/>
+                    <a:column name="description" editor="EXP5110_streamlined_ta" prompt="exp_report_headers.description" width="200"/>
+                    <a:column name="moExpenseTypeName" align="center" editor="EXP5110_streamlined_cb" prompt="exp_expense_type.expense_type_id" width="80"/>
+                    <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31
+          			 1.修改moExpenseItemName字段的编辑器为combobox模式
+             		 -->
+                    <a:column name="moExpenseItemName" align="center" editor="EXP5110_streamlined_cb" prompt="exp_expense_item.expense_item_id" width="80"/>
+                    <a:column name="dateFrom" align="center" editor="EXP5110_streamlined_dp" prompt="bgt_period.start_date" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="dateTo" align="center" editor="EXP5110_streamlined_dp" prompt="bgt_period.end_date" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="businessPrice" align="right" editorFunction="EXP5110_streamlinedBizPriceEditorFun" prompt="business_price" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="primaryQuantity" align="right" editor="EXP5110_streamlined_nf_0" prompt="business_amount" width="100"/>
+                    <a:column name="businessAmount" align="right" prompt="business_amount" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="invoiceInfo" prompt="acp_invoice_headers.invoice_news" align="center" renderer="EXP5110_streamlinedLineInvoiceInfoRenderer" width="125"/>
+                    <a:column name="invoiceTypeName" prompt="vat_invoice.invoice_type_name" align="center" editorFunction="EXP5110_streamlinedTaxEditorFunc" width="100"/>
+                    <a:column name="invoiceCode" prompt="vat_invoices.invoice_code" align="center" editorFunction="EXP5110_streamlinedTaxEditorFunc" width="100"/>
+                    <a:column name="invoiceNumber" prompt="vat_invoice.invoice_number" align="center" editorFunction="EXP5110_streamlinedTaxEditorFunc" width="80"/>
+                    <a:column name="invoiceDate" prompt="vat_invoices.invoice_date"  align="center" editorFunction="EXP5110_streamlinedTaxEditorFunc" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="invoiceAmount" prompt="invoice_amount" align="right" editorFunction="EXP5110_streamlinedTaxEditorFunc" renderer="Aurora.formatMoney"/>
+                    <a:column name="taxTypeName" prompt="vat_invoice_line.tax_type_name" align="center" editorFunction="EXP5110_streamlinedTaxEditorFunc"/>
+                    <a:column name="taxAmount" prompt="total_invoice_tax"  align="right" editorFunction="EXP5110_streamlinedTaxEditorFunc" renderer="Aurora.formatMoney"/>
+                    <a:column name="splittedTaxAmount" prompt="split_tax" align="right" editorFunction="EXP5110_streamlinedTaxEditorFunc" renderer="Aurora.formatMoney"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP5110_onStreamlinedLineCellClickFun"/>
+                </a:events>
+                <a:editors>
+                    <a:numberField id="EXP5110_streamlined_nf"/>
+                    <a:textField id="EXP5110_streamlined_tf"/>
+                    <a:textArea id="EXP5110_streamlined_ta"/>
+                    <a:lov id="EXP5110_streamlined_lov"/>
+                    <a:comboBox id="EXP5110_streamlined_cb"/>
+                    <a:dateTimePicker id="EXP5110_streamlined_dp"/>
+                    <a:numberField id="EXP5110_streamlined_nf_0" allowDecimals="false" allowNegative="false"/>
+                    <a:numberField id="EXP5110_streamlined_nf_1" allowDecimals="true" decimalPrecision="1"/>
+                    <a:numberField id="EXP5110_streamlined_nf_2" allowDecimals="true" decimalPrecision="2"/>
+                    <a:numberField id="EXP5110_streamlined_nf_3" allowDecimals="true" decimalPrecision="3"/>
+                    <a:numberField id="EXP5110_streamlined_nf_4" allowDecimals="true" decimalPrecision="4"/>
+                    <a:numberField id="EXP5110_streamlined_nf_5" allowDecimals="true" decimalPrecision="5"/>
+                    <a:numberField id="EXP5110_streamlined_nf_6" allowDecimals="true" decimalPrecision="6"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_streamlinedLineDimensionFields">
+            <p:loop source="/model/streamlined_line_dimensions">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@defaultDimValueName]" lovCode="FND_DIMENSION_VALUE_VL_LOV?dimensionId=$[@dimensionId]&amp;companyLevel=$[@companyLevel]" prompt="$[@dimensionName]" required="true" title="$[@dimensionName]">
+                        <a:mapping>
+                            <a:map from="dimensionValueName" to="$[@displayField]"/>
+                            <a:map from="dimensionValueId" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@defaultDimValueId]"/>
+                    <a:field name="$[@levelField]" defaultValue="$[@companyLevel]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_streamlinedLineObjectFields">
+            <p:loop source="/model/streamlinedLineObjects">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@dftMoExpenseObjectName]" lovCode="hec_util.exp_mo_expense_object_value_vl_lov?moExpObjTypeId=$[@moExpObjTypeId]" prompt="$[@moExObjTypeName]" required="$[@requiredFlag]" title="$[@moExObjTypeName]">
+                        <a:mapping>
+                            <a:map from="name" to="$[@displayField]"/>
+                            <a:map from="id" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@dftMoExpenseObjectId]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_streamlinedLineAddBtnPlace">
+            <p:switch test="/model/headerInfo/record/@reqRequiredFlag">
+                <p:case value="Y">
+                    <c:process-config>
+                        <a:button click="EXP5110_standardLineCopy" icon="$[/request/@context_path]/images/hap/copy-1.png" skin="custom" text="FND_CALENDAR.COPY"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="*">
+                    <c:process-config>
+                        <a:button click="EXP5110_streamlinedLineAdd" type="add"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_streamlinedLineFromReqBtnPlace">
+            <p:switch test="/model/headerInfo/record/@relation_method_code">
+                <p:case value="LINE">
+                    <c:process-config>
+                        <a:button click="EXP5110_streamlinedCreateFromReq" icon="$[/request/@context_path]/resources/image/images/aurora/hap/source-doc.png" skin="custom" text="EXP_REPORT_CREATE.FROMREQ"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.sys.mapper.SysParameterMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.sys.dto.SysParameter">
+        <result column="PARAMETER_ID" property="parameterId" jdbcType="DECIMAL"/>
+        <result column="PARAMETER_CODE" property="parameterCode" jdbcType="VARCHAR"/>
+        <result column="PARAMETER_TYPE" property="parameterType" jdbcType="VARCHAR"/>
+        <result column="LOV_ID" property="lovId" jdbcType="DECIMAL"/>
+        <result column="LOV_CODE" property="lovCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="USER_CHANGEABLE_FLAG" property="userChangeableFlag" jdbcType="VARCHAR"/>
+        <result column="USER_VISIBLE_FLAG" property="userVisibleFlag" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_ENABLED_FLAG" property="systemEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="ROLE_ENABLED_FLAG" property="roleEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="USER_ENABLED_FLAG" property="userEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="COMPANY_ENABLED_FLAG" property="companyEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ENABLED_FLAG" property="accEntityEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ENABLED_FLAG" property="magOrgEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="SET_OF_BOOKS_ENABLED_FLAG" property="setOfBooksEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="BGT_ORG_ENABLED_FLAG" property="bgtOrgEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="PARAMETER_NAME" property="parameterName" jdbcType="VARCHAR"/>
+        <result column="ENCRYPT_VALUE_FLAG" property="encryptValueFlag" jdbcType="VARCHAR"/>
+        <result column="APP_ENABLED_FLAG" property="appEnabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <resultMap id="BaseResultExt" type="com.hand.hap.sys.dto.SysParameter" extends="BaseResultMap">
+        <result column="PARAMETER_VALUE_ID" property="parameterValueId" jdbcType="DECIMAL"/>
+        <result column="LEVEL_ID" property="levelId" jdbcType="DECIMAL"/>
+        <result column="LEVEL_VALUE" property="levelValue" jdbcType="DECIMAL"/>
+        <result column="PARAMETER_VALUE" property="parameterValue" jdbcType="VARCHAR"/>
+        <result column="VALUE_CODE" property="valueCode" jdbcType="VARCHAR"/>
+        <result column="VALUE_NAME" property="valueName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryAll" parameterType="com.hand.hap.sys.dto.SysParameter" resultMap="BaseResultMap">
+        select p.PARAMETER_ID,
+        p.PARAMETER_CODE,
+        pt.PARAMETER_NAME,
+        p.PARAMETER_TYPE,
+        pt.description,
+        p.user_changeable_flag,
+        p.user_visible_flag,
+        p.system_enabled_flag,
+        p.role_enabled_flag,
+        p.user_enabled_flag,
+        p.company_enabled_flag,
+        p.lov_id,
+        l.code LOV_CODE,
+        p.start_date_active,
+        p.end_date_active,
+        p.encrypt_value_flag,
+        p.app_enabled_flag,
+        p.acc_entity_enabled_flag,
+        p.mag_org_enabled_flag,
+        p.set_of_books_enabled_flag,
+        p.bgt_org_enabled_flag
+        from sys_parameter p inner join sys_parameter_tl pt on p.PARAMETER_ID = pt.PARAMETER_ID
+        left join sys_lov l on l.lov_id = p.lov_id
+        where pt.LANG = #{request.locale,jdbcType=VARCHAR}
+        <if test="parameterId!=null">
+            AND p.parameterId = #{parameterId}
+        </if>
+        <if test="parameterCode!=null">
+            AND p.parameter_code LIKE concat('%', concat(#{parameterCode,jdbcType=VARCHAR}, '%'))
+        </if>
+        <if test="parameterName!=null">
+            AND p.parameter_name LIKE concat('%', concat(#{parameterName,jdbcType=VARCHAR}, '%'))
+        </if>
+    </select>
+
+    <select id="queryParameterValue" parameterType="com.hand.hap.sys.dto.SysParameterValue"
+            resultMap="BaseResultExt">
+        SELECT
+        P.PARAMETER_ID,
+        P.PARAMETER_CODE,
+        PT.PARAMETER_NAME,
+        P.PARAMETER_TYPE,
+        PT.DESCRIPTION,
+        P.USER_CHANGEABLE_FLAG,
+        P.USER_VISIBLE_FLAG,
+        P.SYSTEM_ENABLED_FLAG,
+        P.ROLE_ENABLED_FLAG,
+        P.USER_ENABLED_FLAG,
+        P.COMPANY_ENABLED_FLAG,
+        P.LOV_ID,
+        L.CODE LOV_CODE,
+        P.START_DATE_ACTIVE,
+        P.END_DATE_ACTIVE,
+        P.ENCRYPT_VALUE_FLAG,
+        P.APP_ENABLED_FLAG,
+        P.ACC_ENTITY_ENABLED_FLAG,
+        P.MAG_ORG_ENABLED_FLAG,
+        P.SET_OF_BOOKS_ENABLED_FLAG,
+        P.BGT_ORG_ENABLED_FLAG,
+        ( SELECT SPV.PARAMETER_VALUE_ID FROM SYS_PARAMETER_VALUE SPV WHERE SPV.PARAMETER_ID = P.PARAMETER_ID AND
+        SPV.LEVEL_ID =
+        #{levelId} AND SPV.LEVEL_VALUE = #{levelValue} ) PARAMETER_VALUE_ID,
+        ( SELECT SPV.LEVEL_ID FROM SYS_PARAMETER_VALUE SPV WHERE SPV.PARAMETER_ID = P.PARAMETER_ID AND SPV.LEVEL_ID =
+        #{levelId} AND SPV.LEVEL_VALUE = #{levelValue} ) LEVEL_ID,
+        ( SELECT SPV.LEVEL_VALUE FROM SYS_PARAMETER_VALUE SPV WHERE SPV.PARAMETER_ID = P.PARAMETER_ID AND SPV.LEVEL_ID =
+        #{levelId} AND SPV.LEVEL_VALUE = #{levelValue} ) LEVEL_VALUE,
+        ( SELECT SPV.PARAMETER_VALUE FROM SYS_PARAMETER_VALUE SPV WHERE SPV.PARAMETER_ID = P.PARAMETER_ID AND
+        SPV.LEVEL_ID = #{levelId} AND SPV.LEVEL_VALUE = #{levelValue} ) PARAMETER_VALUE,
+        ( SELECT SPV.VALUE_CODE FROM SYS_PARAMETER_VALUE SPV WHERE SPV.PARAMETER_ID = P.PARAMETER_ID AND SPV.LEVEL_ID =
+        #{levelId} AND SPV.LEVEL_VALUE = #{levelValue} ) VALUE_CODE,
+        ( SELECT SPV.VALUE_NAME FROM SYS_PARAMETER_VALUE SPV WHERE SPV.PARAMETER_ID = P.PARAMETER_ID AND SPV.LEVEL_ID =
+        #{levelId} AND SPV.LEVEL_VALUE = #{levelValue} ) VALUE_NAME
+        FROM
+        SYS_PARAMETER P
+        INNER JOIN SYS_PARAMETER_TL PT ON P.PARAMETER_ID = PT.PARAMETER_ID
+        LEFT JOIN SYS_LOV L ON L.LOV_ID = P.LOV_ID
+        WHERE
+        PT.LANG = #{request.locale}
+        AND P.START_DATE_ACTIVE &lt;= CURRENT_TIMESTAMP
+        AND (P.END_DATE_ACTIVE &gt;= CURRENT_TIMESTAMP OR P.END_DATE_ACTIVE IS NULL)
+        <if test="levelId == 101">
+            AND P.SYSTEM_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 102">
+            AND P.ROLE_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 103">
+            AND P.USER_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 104">
+            AND P.COMPANY_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 105">
+            AND P.ACC_ENTITY_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 106">
+            AND P.MAG_ORG_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 107">
+            AND P.SET_OF_BOOKS_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="levelId == 108">
+            AND P.BGT_ORG_ENABLED_FLAG = 'Y'
+        </if>
+        <if test="parameterCode != null">
+            AND P.PARAMETER_CODE LIKE concat('%', concat(#{parameterCode}, '%'))
+        </if>
+        <if test="description != null">
+            AND PT.DESCRIPTION LIKE concat('%', concat(#{description}, '%'))
+        </if>
+    </select>
+
+
+    <select id="queryParamValueByCode" resultMap="BaseResultExt">
+        select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 103 and t1.level_value = #{userId})
+             and t1.parameter_value is not null
+             and t2.user_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 102 and t1.level_value = #{roleId})
+             and t1.parameter_value is not null
+             and t2.role_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 104 and t1.level_value = #{companyId})
+             and t1.parameter_value is not null
+             and t2.company_enabled_flag is not null
+             and t2.company_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 105 and t1.level_value = #{accEntityId})
+             and t1.parameter_value is not null
+             and t2.acc_entity_enabled_flag is not null
+             and t2.acc_entity_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 106 and t1.level_value = #{magOrgId})
+             and t1.parameter_value is not null
+             and t2.mag_org_enabled_flag  is not null
+             and t2.mag_org_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 107 and t1.level_value = #{setOfBooksId})
+             and t1.parameter_value is not null
+             and t2.set_of_books_enabled_flag is not null
+             and t2.set_of_books_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 108 and t1.level_value = #{bgtOrgId})
+             and t1.parameter_value is not null
+             and t2.bgt_org_enabled_flag is not null
+             and t2.bgt_org_enabled_flag = 'Y'
+      union all
+      select t1.parameter_value,
+             t2.encrypt_value_flag
+        from sys_parameter_value t1 LEFT JOIN
+             sys_parameter       t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = #{parameterCode}
+             and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+             and (t2.end_date_active is NULL or
+                     t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+             and (t1.level_id = 101 and t1.level_value = 1)
+             and t1.parameter_value is not null
+             and t2.system_enabled_flag = 'Y'
+    </select>
+</mapper>

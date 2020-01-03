@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.acp.mapper.AcpRequisitionLnMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.acp.dto.AcpRequisitionLn">
+        <result column="REQUISITION_LNS_ID" property="requisitionLnsId" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_HDS_ID" property="requisitionHdsId" jdbcType="DECIMAL"/>
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="MO_CSH_TRX_CLASS_ID" property="moCshTrxClassId" jdbcType="DECIMAL"/>
+        <result column="MO_CSH_TRX_CLASS_NAME" property="moCshTrxClassName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_STATUS" property="paymentStatus" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_COMPLETED_DATE" property="paymentCompletedDate" jdbcType="DATE"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL"/>
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_PAYMENT_DATE" property="requisitionPaymentDate" jdbcType="DATE"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_CODE" property="bankLocationCode" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_NAME" property="bankLocationName" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_CODE" property="provinceCode" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_NAME" property="provinceName" jdbcType="VARCHAR"/>
+        <result column="CITY_CODE" property="cityCode" jdbcType="VARCHAR"/>
+        <result column="CITY_NAME" property="cityName" jdbcType="VARCHAR"/>
+        <result column="HEADER_DESCRIPTION" property="headerDescription" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="PAYEE_TYPE_ID" property="payeeTypeId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="RESP_CENTER_ID" property="respCenterId" jdbcType="DECIMAL"/>
+        <result column="CSH_TRANSACTION_TYPE_CODE" property="cshTransactionTypeCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByHeader" resultMap="BaseResultMap">
+        SELECT
+            arl.requisition_lns_id,
+            arl.requisition_hds_id,
+            arl.line_number,
+            arl.company_id,
+            ( SELECT fcl.COMPANY_SHORT_NAME FROM fnd_company_tl fcl WHERE fcl.company_id = arl.company_id AND fcl.lang = #{request.locale,jdbcType=VARCHAR} ) AS company_name,
+            arl.acc_entity_id,
+            ( SELECT et.ACC_ENTITY_NAME FROM gld_accounting_entity_tl et WHERE et.ACC_ENTITY_ID = arl.ACC_ENTITY_ID AND et.lang = #{request.locale,jdbcType=VARCHAR} ) AS acc_entity_name,
+            arl.mo_csh_trx_class_id,
+            ( SELECT cml.DESCRIPTION FROM csh_mo_transaction_class_tl cml WHERE cml.MO_CSH_TRX_CLASS_ID = arl.mo_csh_trx_class_id AND cml.LANG = #{request.locale,jdbcType=VARCHAR} ) mo_csh_trx_class_name,
+            arl.payee_category,
+            ( SELECT meaning FROM sys_code_v sc WHERE sc.CODE = 'PAYMENT_OBJECT' AND sc.VALUE = arl.payee_category ) payee_category_name,
+            arl.payee_id,
+            (
+        CASE
+
+            WHEN arl.payee_category = 'EMPLOYEE' THEN
+            ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = arl.payee_id )
+            WHEN arl.payee_category = 'VENDER' THEN
+            (
+            SELECT
+                psvt.description
+            FROM
+                pur_system_vender psv
+                LEFT JOIN pur_system_vender_tl psvt ON ( psv.vender_id = psvt.vender_id AND psvt.lang = #{request.locale,jdbcType=VARCHAR} )
+            WHERE
+                psv.vender_id = arl.payee_id
+            )
+            WHEN arl.payee_category = 'CUSTOMER' THEN
+            (
+            SELECT
+                osct.description
+            FROM
+                ord_system_customer osc
+                LEFT JOIN ord_system_customer_tl osct ON ( osc.customer_id = osct.customer_id AND osct.lang = #{request.locale,jdbcType=VARCHAR} )
+            WHERE
+                osc.customer_id = arl.payee_id
+            )
+        END
+            ) AS payee_name,
+            arl.amount,
+            arl.description,
+            arl.payment_status,
+            arl.payment_completed_date,
+            arl.payment_method_id,
+            ( SELECT cl.DESCRIPTION FROM csh_payment_method_tl cl WHERE cl.PAYMENT_METHOD_ID = arl.PAYMENT_METHOD_ID AND cl.LANG = #{request.locale,jdbcType=VARCHAR} ) PAYMENT_METHOD_NAME,
+            arl.payment_usede_id,
+            ( SELECT pul.DESCRIPTION FROM csh_mo_payment_used_tl pul WHERE pul.PAYMENT_USEDE_ID = arl.PAYMENT_USEDE_ID AND pul.LANG = #{request.locale,jdbcType=VARCHAR} ) PAYMENT_USEDE_NAME,
+            arl.cash_flow_item_id,
+            ( SELECT ccl.DESCRIPTION FROM csh_cash_flow_item_tl ccl WHERE ccl.CASH_FLOW_ITEM_ID = arl.CASH_FLOW_ITEM_ID AND ccl.LANG = #{request.locale,jdbcType=VARCHAR} ) cash_flow_item_name,
+            arl.requisition_payment_date,
+            arl.account_name,
+            arl.account_number,
+            arl.bank_code,
+            arl.bank_name,
+            arl.bank_location_code,
+            arl.bank_location_name,
+            arl.province_code,
+            arl.province_name,
+            arl.city_code,
+            arl.city_name
+        FROM
+            acp_requisition_ln arl
+        WHERE
+            arl.REQUISITION_HDS_ID = #{requisitionHdsId}
+
+        ORDER BY
+            arl.requisition_hds_id,
+            arl.line_number
+    </select>
+
+    <update id="updateStatusByHeaderId" parameterType="com.hand.hec.acp.dto.AcpRequisitionLn">
+          update acp_requisition_ln arl
+           set arl.payment_status   = #{paymentStatus},
+               arl.last_updated_by  = #{request.userId},
+               arl.last_update_date = CURRENT_TIMESTAMP
+         where arl.requisition_hds_id = #{requisitionHdsId}
+    </update>
+
+    <select id="getTotalAmount" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+        SELECT
+            (
+        CASE
+
+            WHEN ( SELECT sum( arl.AMOUNT ) ) IS NULL THEN
+            0 ELSE ( SELECT sum( arl.amount ) )
+        END
+            ) total_amount
+        FROM
+            acp_requisition_ln arl
+        WHERE
+        arl.requisition_hds_id = #{requisitionHdsId}
+    </select>
+
+    <update id="deleteByHeaderId" parameterType="java.lang.Long">
+        delete from acp_requisition_ln
+        where requisition_hds_id = #{requisitionHdsId}
+    </update>
+
+    <select id="queryForCreateAccount" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            cprh.requisition_hds_id,
+            cprl.requisition_lns_id,
+            cprh.description header_description,
+            cprh.currency_code,
+            v.payee_type_id,
+            cprl.company_id,
+            cprl.acc_entity_id,
+            ( SELECT fc.mag_org_id FROM fnd_company fc WHERE fc.company_id = cprl.company_id ) mag_org_id,
+            (
+        SELECT
+            sob.SET_OF_BOOKS_ID
+        FROM
+            gld_accounting_entity ae,
+            gld_set_of_book sob,
+            gld_acc_entity_ref_sob gaesob
+        WHERE
+            ae.acc_entity_id = gaesob.acc_entity_id
+            AND sob.set_of_books_id = gaesob.set_of_books_id
+            AND gaesob.DEFAULT_FLAG = 'Y'
+            AND ae.ACC_ENTITY_ID = cprl.acc_entity_id
+            ) set_of_books_id,
+            cprh.position_id,
+            (
+        SELECT
+            ao.resp_center_id
+        FROM
+            exp_org_unit_ref_acc_org ao
+        WHERE
+            ao.unit_id = cprh.unit_id
+            AND ao.acc_entity_id = cprl.acc_entity_id
+            AND ao.enabled_flag = 'Y'
+            AND ao.default_flag = 'Y'
+            ) resp_center_id,
+            cprl.payee_category,
+            cprl.payee_id,
+            cprl.mo_csh_trx_class_id,
+            ( SELECT cmtc.mo_csh_trx_class_code FROM csh_mo_transaction_class cmtc WHERE cmtc.mo_csh_trx_class_id = cprl.mo_csh_trx_class_id ) mo_csh_trx_class_code,
+            ( SELECT t.csh_transaction_type_code FROM csh_mo_transaction_class t WHERE t.mo_csh_trx_class_id = cprl.mo_csh_trx_class_id ) csh_transaction_type_code,
+            cprl.amount
+        FROM
+            acp_requisition_hd cprh
+            LEFT OUTER JOIN acp_requisition_ln cprl ON ( cprh.requisition_hds_id = cprl.requisition_hds_id )
+            LEFT JOIN (
+        SELECT
+            ee.EMPLOYEE_ID payee_id,
+            ee.EMPLOYEE_TYPE_ID payee_type_id,
+            'EMPLOYEE' payee_category
+        FROM
+            exp_employee ee UNION ALL
+        SELECT
+            psv.VENDER_ID payee_id,
+            psv.VENDER_TYPE_ID payee_type_id,
+            'VENDER' payee_category
+        FROM
+            pur_system_vender psv UNION ALL
+        SELECT
+            osc.CUSTOMER_ID payee_id,
+            osc.CUSTOMER_TYPE_ID payee_type_id,
+            'CUSTOMER' payee_category
+        FROM
+            ord_system_customer osc
+            ) v ON v.payee_category = cprl.PAYEE_CATEGORY
+            AND v.payee_id = cprl.PAYEE_ID
+        WHERE
+            cprh.requisition_hds_id = #{requisitionHdsId}
+    </select>
+
+    <select id="getDocId" resultType="long">
+        select arl.requisition_hds_id
+            from csh_transaction_line ctl,
+                 acp_requisition_ref  arr,
+                 acp_requisition_ln   arl
+           where ctl.transaction_header_id = #{transactionHeaderId}
+                 and ctl.transaction_line_id = arr.csh_transaction_line_id
+                 and arr.requisition_lns_id = arl.requisition_lns_id
+                 limit 1
+    </select>
+
+
+</mapper>

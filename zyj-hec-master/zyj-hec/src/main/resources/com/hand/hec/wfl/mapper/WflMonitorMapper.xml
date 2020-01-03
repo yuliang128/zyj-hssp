@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflMonitorMapper">
+    <resultMap id="instanceMap" type="java.util.Map">
+        <result column="instance_id" property="instanceId"/>
+        <result column="doc_number" property="docNumber"/>
+        <result column="doc_category" property="docCategory"/>
+        <result column="doc_category_name" property="docCategoryName"/>
+        <result column="status" property="status"/>
+        <result column="status_name" property="statusName"/>
+        <result column="created_by_name" property="createdByName"/>
+    </resultMap>
+    <resultMap id="approveInfoMap" type="java.util.Map">
+        <result column="approve_date" property="approveDate"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="approver_name" property="approverName"/>
+        <result column="task_name" property="taskName"/>
+        <result column="action_name" property="actionName"/>
+        <result column="comment_text" property="commentText"/>
+    </resultMap>
+    <select id="selectWflInstance" resultMap="instanceMap">
+        select
+        wi.instance_id,
+        wi.doc_number,
+        wi.doc_category,
+        scvt1.DESCRIPTION as doc_category_name,
+        wi.status,
+        scvt2.DESCRIPTION as status_name,
+        su.description as created_by_name
+
+
+        from wfl_instance wi
+
+        left join sys_user su
+        on wi.CREATED_BY = su.user_id
+
+        left join sys_code sc1
+        on sc1.code = 'FND_DOC_CATEGORY'
+        left join sys_code_value_b scv1
+        on sc1.code_id = scv1.code_id
+        and scv1.value = wi.doc_category
+        left join sys_code_value_tl scvt1
+        on scv1.code_value_id = scvt1.CODE_VALUE_ID
+        and scvt1.lang = #{request.locale}
+
+        left join sys_code sc2
+        on sc2.code = 'WFL_INSTANCE_STATUS'
+        left join sys_code_value_b scv2
+        on sc2.code_id = scv2.code_id
+        and scv2.value = wi.status
+        left join sys_code_value_tl scvt2
+        on scv2.code_value_id = scvt2.CODE_VALUE_ID
+        and scvt2.lang = #{request.locale}
+
+        left join wfl_process p
+        on wi.process_id = p.process_id
+        left join wfl_process_tl pt
+        on p.process_id = pt.process_id
+        and pt.lang = #{request.locale}
+
+        <where>
+            <if test="param.docNumber != null">
+                and wi.doc_number like #{param.docNumber}
+            </if>
+            <if test="param.docCategory != null">
+                and wi.doc_category = #{param.docCategory}
+            </if>
+            <if test="param.createdByName != null">
+                and su.description like #{param.createdByName}
+            </if>
+            <if test="param.status != null">
+                and wi.status = #{param.status}
+            </if>
+            <if test="param.approverName != null">
+                EXISTS (
+                SELECT
+                1
+                FROM
+                wfl_ins_task_recipient r2
+                LEFT JOIN sys_user su2 ON r2.approver_id = su2.user_id
+                where su2.description LIKE #{approverName}
+                AND r2.instance_id = wi.instance_id
+                )
+            </if>
+            <if test="param.processId != null">
+                and wi.process_id = #{param.processId}
+            </if>
+            <if test="param.creationDateFrom != null">
+                and wi.creation_date &gt;= #{param.creationDateFrom}
+            </if>
+            <if test="param.creationDateTo != null">
+                and wi.creation_date &lt;= #{param.creationDateFrom}
+            </if>
+        </where>
+
+        order by wi.instance_id
+    </select>
+    <select id="selectWflApproveInfo" resultMap="approveInfoMap">
+select
+	r.approve_date,
+	r.approver_id,
+	su.description as approver_name,
+	wtt.task_name,
+	wpa.action_name,
+	r.comment_text
+FROM
+	wfl_approve_record r
+	left join sys_user su
+	on r.approver_id = su.user_id
+	left join wfl_ins_task wit
+	on r.INS_TASK_ID = wit.INS_TASK_ID
+	left join wfl_task wt
+	on wit.TASK_ID = wit.TASK_ID
+	left join wfl_task_tl wtt
+	on wt.TASK_ID = wtt.TASK_ID
+	and wtt.lang = #{request.locale}
+	left join wfl_process_action_tl wpa
+	on r.ACTION_ID = wpa.action_id
+	and wpa.lang = #{request.locale}
+WHERE
+	r.instance_id = #{instanceId}
+order by r.record_id
+    </select>
+</mapper>

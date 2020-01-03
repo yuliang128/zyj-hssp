@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan
+    $Date: 2017/04/06 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 税率定义-核算主体分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2100_tax_type_code_ref_ae_batch_link" url="$[/request/@context_path]/fnd/FND2100/fnd_tax_type_code_ref_ae_batch.screen"/>
+        <script><![CDATA[
+            var tax_type_id='$[/parameter/@tax_type_id]';
+            console.log(tax_type_id);
+            function FND2100_batchAssignTaxEntityFun() {
+                new $A.Window({
+                    url: $au('FND2100_tax_type_code_ref_ae_batch_link').getUrl() + '?tax_type_id=' + '$[/parameter/@tax_type_id]',
+                    id: 'FND2100_tax_type_code_ref_ae_batch_window',
+                    title: '$[l:GLD_SOB_RULE.ACC_ENTITY_BATCH]',
+                    width: 1020,
+                    side: 'right'
+                }).on('close', function() {
+                    $au('FND2100_tax_type_code_ref_ae_ds').query();
+                });
+            }
+            
+            function FND2100_setLovParam(grid, row, name, record) {
+                var metadata = record.getMeta();
+                if (name == 'acc_entity_code') {
+                    metadata.getField('acc_entity_code').setLovPara('tax_type_id', '$[/parameter/@tax_type_id]');
+                }
+            }
+            
+            function FND2100_taxEntityCodeEditFun(record, name) {
+                if (record.isNew) {
+                    return 'FND2100_tax_type_code_ref_ae_lov';
+                }
+                return '';
+            }
+            
+            function FND2100_onSubmitSuccessFun() {
+                $au('FND2100_tax_type_code_ref_ae_ds').query();
+            }
+            
+            function FND2100_backFndTaxRuleGpRefAeFun() {
+                $au('FND2100_tax_type_code_ref_ae_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2100_tax_type_code_ref_ae_ds"   autoPageSize="true" autoQuery="true" baseUrl="/fnd/tax-type-code-ref-ae" queryUrl="$[/request/@context_path]/fnd/tax-type-code-ref-ae/query?taxTypeId=$[/parameter/@tax_type_id]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="taxTypeId" defaultValue="$[/parameter/@tax_type_id]"/>
+                    <a:field name="accEntityCode" displayField="accEntityCode" valueField="accEntityCode" returnField="accEntityCode" prompt="csh_pay_batch_rule_asgn.acc_entity_code" autoComplete="true" lovAutoQuery="true" lovGridHeight="320" lovHeight="450" lovCode="GLD_ACCOUNTING_ENTITY_LOV?tax_type_id=$[/parameter/@tax_type_id]" lovWidth="500" required="true" title="gld_accouning_entity.choice">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityEode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName" prompt="csh_pay_batch_rule_asgn.acc_entity_name" required="true"/>
+                    <a:field name="accEntityEd"/>
+                    <a:field name="enabledFlag" prompt="fnd_tax_type_code_ref_ae.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2100_onSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="fnd_tax_type_codes.asgn_acc_entity">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2100_tax_type_code_ref_ae_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2100_tax_type_code_ref_ae_grid" type="save" width="80"/>
+                    <a:gridButton bind="FND2100_tax_type_code_ref_ae_grid" click="FND2100_batchAssignTaxEntityFun" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:gridButton bind="FND2100_tax_type_code_ref_ae_grid" click="FND2100_backFndTaxRuleGpRefAeFun" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="taxTypeCode" bindTarget="fnd_tax_type_codes_result_ds" prompt="fnd_tax_type_code.tax_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="fnd_tax_type_codes_result_ds" prompt="fnd_tax_type_code.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2100_tax_type_code_ref_ae_grid" bindTarget="FND2100_tax_type_code_ref_ae_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editor="FND2100_tax_type_code_ref_ae_lov" editorFunction="FND2100_taxEntityCodeEditFun" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2100_tax_type_code_ref_ae_ck" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND2100_tax_type_code_ref_ae_lov"/>
+                    <a:checkBox id="FND2100_tax_type_code_ref_ae_ck"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="FND2100_setLovParam"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

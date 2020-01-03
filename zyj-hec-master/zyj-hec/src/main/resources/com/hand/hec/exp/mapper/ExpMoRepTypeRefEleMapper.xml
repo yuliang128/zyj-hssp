@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoRepTypeRefEleMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoRepTypeRefEle">
+        <result column="REP_PAGE_ELE_REF_ID" property="repPageEleRefId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_REPORT_TYPE_ID" property="moExpReportTypeId" jdbcType="DECIMAL" />
+        <result column="REPORT_PAGE_ELEMENT_ID" property="reportPageElementId" jdbcType="DECIMAL" />
+        <result column="SEQUENCE" property="sequence" jdbcType="DECIMAL" />
+        <result column="DOC_TYPE_CODE" property="docTypeCode" jdbcType="VARCHAR" />
+        <result column="INVOICE_FLAG" property="invoiceFlag" jdbcType="VARCHAR" />
+        <result column="TAX_FLAG" property="taxFlag" jdbcType="VARCHAR" />
+        <result column="MORE_INVOICE_FLAG" property="moreInvoiceFlag" jdbcType="VARCHAR" />
+        <result column="MORE_TAX_FLAG" property="moreTaxFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="REPORT_PAGE_ELEMENT_NAME" property="reportPageElementName" jdbcType="VARCHAR"/>
+        <result column="REPORT_TYPE_FLAG" property="reportTypeFlag" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_FLAG" property="expenseObjectFlag" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_FLAG" property="dimensionFlag" jdbcType="VARCHAR"/>
+
+        <result column="SERVICE_NAME" property="serviceName" jdbcType="VARCHAR"/>
+        <result column="READONLY_SERVICE_NAME" property="readonlyServiceName" jdbcType="VARCHAR"/>
+        <result column="REPORT_PAGE_ELEMENT_CODE" property="reportPageElementCode" jdbcType="VARCHAR"/>
+        <result column="LINE_DS" property="lineDs" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryExpReportLineEle" resultMap="BaseResultMap">
+        SELECT
+            v.service_name,
+            e.SEQUENCE,
+            r.readonly_service_name,
+            v.REPORT_PAGE_ELEMENT_CODE,
+            (
+        CASE
+            v.REPORT_PAGE_ELEMENT_CODE
+            WHEN 'STANDARD' THEN
+            'EXP5110_exp_report_standard_line_ds'
+            WHEN 'TRAVEL_LINES' THEN
+            'EXP5110_exp_report_travel_line_ds'
+            WHEN 'TRAVEL_STAY_LINES' THEN
+            'EXP5110_exp_report_travel_stay_line_ds'
+            WHEN 'TRAVEL_SUBSIDY_LINES' THEN
+            'EXP5110_exp_report_travel_subsidy_line_ds'
+            WHEN 'TRAVEL_STAY_UNIFIED' THEN
+            'EXP5110_exp_report_travel_stay_unified_line_ds'
+            WHEN 'TICKET_UNIFIED' THEN
+            'EXP5110_exp_report_ticket_unified_line_ds'
+            WHEN 'TRAVEL_UNIFIED' THEN
+            'EXP5110_exp_report_unified_line_ds' ELSE ''
+        END
+            ) line_ds
+        FROM
+            exp_mo_rep_type_ref_ele e
+            LEFT JOIN (
+        SELECT
+            ss.URL AS service_name,
+            pe.REPORT_PAGE_ELEMENT_ID,
+            pe.REPORT_PAGE_ELEMENT_CODE
+        FROM
+            exp_report_page_element pe
+            LEFT JOIN sys_resource_b ss ON pe.SERVICE_ID = ss.RESOURCE_ID
+        WHERE
+            pe.ENABLED_FLAG = 'Y'
+            ) v ON e.REPORT_PAGE_ELEMENT_ID = v.REPORT_PAGE_ELEMENT_ID
+            LEFT JOIN (
+        SELECT
+            ss.URL AS readonly_service_name,
+            pe.REPORT_PAGE_ELEMENT_ID
+        FROM
+            exp_report_page_element pe
+            LEFT JOIN sys_resource_b ss ON pe.READONLY_SERVICE_ID = ss.RESOURCE_ID
+        WHERE
+            pe.ENABLED_FLAG = 'Y'
+            ) r ON e.REPORT_PAGE_ELEMENT_ID = r.REPORT_PAGE_ELEMENT_ID
+        WHERE
+            e.ENABLED_FLAG = 'Y'
+            AND e.DOC_TYPE_CODE = 'LINE'
+            AND e.MO_EXP_REPORT_TYPE_ID = ( CASE WHEN #{expMoReportTypeId} IS NULL THEN ( SELECT mo_exp_report_type_id FROM exp_report_header h WHERE h.exp_report_header_id = #{expReportHeaderId} ) ELSE #{expMoReportTypeId} END )
+        ORDER BY
+            e.SEQUENCE
+    </select>
+
+    <select id="queryInvoiceAndTaxFlag" resultMap="BaseResultMap">
+         SELECT
+            emre.mo_exp_report_type_id,
+            emre.invoice_flag,
+            emre.tax_flag,
+            emre.more_invoice_flag,
+            emre.more_tax_flag
+         FROM
+            exp_report_page_element erpe,
+            exp_mo_rep_type_ref_ele emre
+         WHERE
+            emre.mo_exp_report_type_id  = #{moExpReportTypeId} AND
+            erpe.report_page_element_id = emre.report_page_element_id AND
+            erpe.report_page_element_code = #{reportPageElementCode} AND
+            erpe.enabled_flag           = 'Y' AND
+            emre.enabled_flag           = 'Y'
+    </select>
+
+</mapper>

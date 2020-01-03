@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui $
+    $Date: 2017/03/28 11:33:04 $
+    $Revision: 1.3 $
+    $Purpose: 管理组织定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND2010_fnd_budget_organization_update_link"
+                url="$[/request/@context_path]/fnd/FND2010/fnd_mag_org_ref_bgt_orgs.screen"/>
+        <a:link id="FND2010_fnd_distribution_ledger_update_link"
+                url="$[/request/@context_path]/fnd/FND2010/fnd_mag_org_ref_gld_sobs.screen"/>
+        <a:link id="upload_image_link" url="$[/request/@context_path]/app/APP2030/app_uploadFile.screen"/>
+        <a:link id="upload_image_cannotUpload_link" url="$[/request/@context_path]/app/APP2030/app_uploadFile_cannotUpload.screen"/>
+        <a:link id="export_excel_link" url="$[/request/@context_path]/export_excel_template.screen"/>
+        <a:link id="FND2010_fnd_budget_organization_save_link"
+                url="$[/request/@context_path]/fnd/mag-org-ref-bgt-org/save"/>
+        <a:link id="FND2010_fnd_distribution_ledger_save_link"
+                url="$[/request/@context_path]/fnd/mag-org-ref-gld-sob/save"/>
+        <script><![CDATA[
+        function FND2010_querymanagingOrganizations() {
+            $au('FND2010_fnd_managing_organizations_result_ds').query();
+        }
+
+        function FND2010_resetmanagingOrganizations() {
+            $au('FND2010_fnd_managing_organizations_query_ds').reset();
+        }
+
+        function FND2010_managingOrganizationsCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'company_level_code_grid_tf';
+            } else {
+                return '';
+            }
+        }
+
+        function FND2010_budget_organization(value, record, name) {
+            var id = record.get('magOrgId');
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:FND2010_editOrganization(' + id + ')">$[l:prompt.budget_organization]</a>';
+        }
+
+        function FND2010_editOrganization(id) {
+            new Aurora.Window({
+                id: 'FND2010_organization_edit_window',
+                url: $au('FND2010_fnd_budget_organization_update_link').getUrl() + '?magOrgId=' + id,
+                title: '$[l:fnd_managing_organizations.budget_organization]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                FND2010_querymanagingOrganizations();
+            });
+        }
+
+        function FND2010_distribution_ledger(value, record, name) {
+            var id = record.get('magOrgId');
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:FND2010_distributionLedger(' + id + ')">$[l:prompt.set_of_books]</a>';
+        }
+
+        function FND2010_distributionLedger(id) {
+            new Aurora.Window({
+                id: 'FND2010_distribution_edit_window',
+                url: $au('FND2010_fnd_distribution_ledger_update_link').getUrl() + '?magOrgId=' + id,
+                title: '$[l:fnd_managing_organizations.distribution_ledger]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                FND2010_querymanagingOrganizations();
+            });
+        }
+
+        function FND2010_MaGorgCode(record, name) {
+            if (!record.isNew) {
+                return '';
+            } else {
+                return 'FND2010_textField';
+            }
+        }
+
+        function upload_file_link(value, record, name) {
+            var magOrgId = record.get('magOrgId');
+
+            return '<a href="javascript:uploadFile(' + magOrgId + ')">$[l:prompt.upload_attachment]</a>';
+
+        }
+
+        function uploadFile(magOrgId) {
+            // 1.隐藏 上传附件 按钮
+            //var url = $au('upload_image_cannotUpload_link').getUrl() + '?tableName=FND_MANAGING_ORGANIZATIONS&tablePkValue=' + magOrgId;
+            // 2.显示 上传附件 按钮
+            // var url = $au('upload_image_link').getUrl() + '?tableName=FND_MANAGING_ORGANIZATIONS&tablePkValue=' + magOrgId;
+            // 3.隐藏 上传附件，显示 附件删除 按钮（附件上传按钮默认隐藏）
+            // var url = $au('upload_image_cannotUpload_link').getUrl() + '?tableName=FND_MANAGING_ORGANIZATIONS&tablePkValue=' + magOrgId + '&showDelete=true';
+            // 4.显示 上传附件 并 显示 附件删除 按钮
+             var url = $au('upload_image_link').getUrl() + '?tableName=FND_MANAGING_ORGANIZATIONS&tablePkValue=' + magOrgId + '&showDelete=true';
+
+            new Aurora.Window({
+                url: url,
+                title: '$[l:prompt.upload_attachment]',
+                id: 'upload_image_screen',
+                width: 600,
+                height: 400
+            });
+        }
+
+        function FND2010_fnd_managing_organizations_export() {
+            let url = $au('export_excel_link').getUrl() + '?tableName=FND_MANAGING_ORGANIZATION&url=$[/request/@context_path]/fnd/fnd-managing-organizations/queryMain';
+            new Aurora.Window({
+                url: url,
+                id: 'export_excel_screen',
+                width: 600,
+                height: 400
+            });
+        }
+
+        function GLD6020_submitSuccessOrg() {
+            var fndDs = $au('FND2010_fnd_managing_organizations_result_ds');
+            fndDs.query();
+
+            var records = fndDs.getAll();
+            var bgtList = [];
+            var sobList = [];
+            //保存至管理组织-预算组织关联表
+            for (var i = 0; i < records.length; i++) {
+                var fndRefBgt = {};
+                fndRefBgt['refId'] = records[i].get("bgtRefId");
+                fndRefBgt['magOrgId'] = records[i].get("magOrgId");
+                fndRefBgt['bgtOrgId'] = records[i].get("bgtOrgId");
+                bgtList.push(fndRefBgt);
+            }
+
+            new Aurora.request({
+                url: $au('FND2010_fnd_budget_organization_save_link').getUrl(),
+                para: bgtList
+            });
+
+            //保存至管理组织-账套关联表
+            for (var i = 0; i < records.length; i++) {
+                var fndRefSob = {};
+                fndRefSob['refId'] = records[i].get("sobRefId");
+                fndRefSob['magOrgId'] = records[i].get("magOrgId");
+                fndRefSob['setOfBooksId'] = records[i].get("setOfBooksId");
+                sobList.push(fndRefSob);
+            }
+
+            new Aurora.request({
+                url: $au('FND2010_fnd_distribution_ledger_save_link').getUrl(),
+                para: sobList
+            });
+
+            fndDs.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2010_currencylist_ds">
+                <a:datas dataSource="currencyList/records"/>
+            </a:dataSet>
+            <a:dataSet id="FND2010_fnd_query_managing_ds">
+                <a:fields>
+                    <a:field name="setOfBooksName" autoCompleteField="setOfBooksName" lovCode="LOV_SET_OF_BOOK"
+                             title="fnd_managing_organization.distribution_ledger">
+                        <a:mapping>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2010_fnd_managing_organizations_result_ds" autoPageSize="true" autoQuery="true"
+                       fetchAll="false" baseUrl="/fnd/fnd-managing-organizations"
+                       queryDataSet="FND2010_fnd_query_managing_ds" selectable="true"
+                       queryUrl="$[/request/@context_path]/fnd/fnd-managing-organizations/queryMain">
+                <a:fields>
+                    <a:field name="magOrgId"/>
+
+                    <a:field name="defaultBgtOrgName" lovCode="LOV_BGT_ORG"
+                             title="fnd_managing_organization.budget_organization">
+                        <a:mapping>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                            <a:map from="description" to="defaultBgtOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtRefId"/>
+                    <a:field name="bgtOrgId"/>
+
+                    <a:field name="setOfBooksName" lovgridheight="" lovCode="LOV_SET_OF_BOOK"
+                             title="fnd_managing_organization.distribution_ledger">
+                        <a:mapping>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sobRefId"/>
+                    <a:field name="setOfBooksId"/>
+
+                    <a:field name="magOrgCode" required="true"/>
+                    <a:field name="description" dto="com.hand.hap.fnd.dto.FndManagingOrganization" dtoId="magOrgId"/>
+                    <a:field name="enabledFlag"  checkedValue="Y"
+                             defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="managingCurrencyName" displayField="currencyName" options="FND2010_currencylist_ds" required="true"
+                             returnField="managingCurrencyCode" valueField="currencyCode"/>
+                    <a:field name="managingCurrencyCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD6020_submitSuccessOrg"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND2010_fnd_managing_organizations_grid" type="add" width="80"/>
+                <a:gridButton bind="FND2010_fnd_managing_organizations_grid" type="save" text="hap.save" width="80"/>
+                <a:gridButton click="FND2010_fnd_managing_organizations_export" text="hap.exportexcel" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND2010_fnd_query_managing_ds"
+                         resultTarget="FND2010_fnd_managing_organizations_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:textField name="magOrgCode" prompt="fndmanagingorganization.magorgcode" typeCase="upper"/>
+                    <a:textField name="description" prompt="fndmanagingorganization.description"/>
+                    <a:multiLov name="setOfBooksName" prompt="fndmanagingorganization.setofbooksname"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND2010_fnd_managing_organizations_grid" bindTarget="FND2010_fnd_managing_organizations_result_ds"
+                marginHeight="115" marginWidth="15" navBar="true">
+            <a:columns>
+                <a:column name="magOrgCode" align="center" editorFunction="FND2010_MaGorgCode" width="80" prompt="fndmanagingorganization.magorgcode"/>
+                <a:column name="description" align="left" editor="FND2010_tledit" width="200" prompt="fndmanagingorganization.description"/>
+                <a:column name="managingCurrencyName" align="center" editor="FND2010_comBox" width="80" prompt="fndmanagingorganization.managingcurrencyname"/>
+                <a:column name="defaultBgtOrgName" align="center" editor="FND2010_lov" width="150" prompt="fndmanagingorganization.defaultbgtorgname"/>
+                <a:column name="setOfBooksName" align="left" editor="FND2010_lov" width="150" prompt="fndmanagingorganization.setofbooksname"/>
+                <a:column name="enabledFlag" align="left" editor="FND2010_checkBox" width="80" prompt="fndmanagingorganization.enabledflag"/>
+                <a:column name="budgetOrganization" align="center" renderer="FND2010_budget_organization" width="80"/>
+                <a:column name="distributionLedger" align="center" renderer="FND2010_distribution_ledger" width="80"/>
+                <a:column name="uploadFile" align="center" renderer="upload_file_link" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="FND2010_textField"/>
+                <a:checkBox id="FND2010_checkBox"/>
+                <a:comboBox id="FND2010_comBox"/>
+                <a:lov id="FND2010_lov"/>
+                <a:tledit id="FND2010_tledit"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

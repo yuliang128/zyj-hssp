@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-10-27 15:03:39
+    $Revision: 1.0
+    $Purpose: 计划付款行核销借款-只读页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP5110_report_write_off_requisition_view_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="EXP5110_report_write_off_prepayment_finance_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_write_off_prepayment_finance.screen"/>
+        <script><![CDATA[
+        function EXP5110_writeHeaderQuery() {
+            $au('EXP5110_write_off_header_ds').query();
+        }
+
+        function EXP5110_writeDetailQuery() {
+            $au('EXP5110_write_off_detail_ds').query();
+        }
+
+        function EXP5110_writeHistoryQuery() {
+            $au('EXP5110_write_off_history_ds').query();
+        }
+
+        function EXP5110_createWriteOff() {
+            var param = [];
+            //取出被修改的行
+            var records = $au('EXP5110_write_off_detail_ds').getJsonData(false);
+            for (var i = 0;i < records.length;i++) {
+                if (records[i]["amount"] != '' && records[i]["amount"]) {
+                    records[i]['writeOffDate'] = $au('EXP5110_write_off_header_ds').getAt(0).get('writeOffDate');
+                    param.push(records[i]);
+                }
+            }
+            Aurora.request({
+                lockMessage: '$[l:HAP_WAITING]',
+                url: $au('EXP5110_report_write_off_prepayment_create_link').getUrl(),
+                para: param,
+                success: function(resp) {
+                    EXP5110_writeHeaderQuery();
+                    EXP5110_writeDetailQuery();
+                    EXP5110_writeHistoryQuery();
+                },
+                scope: this
+            });
+        }
+
+        //校验：本次核销不能大于未核销
+
+        function writeOffAmount_change(record, name, value) {
+            if (value > record.get('unwriteOffAmount')) {
+                return '$[l:EXP_PREPAYMENT_POST.CHECK3]';
+            }
+            /*Modified by Arthur.Chen Date: 2017-08-17 16:23:55 begin
+             1.添加：若校验通过，则返回true。
+             */
+            return true; /*Modified by Arthur.Chen Date: 2017-08-17 16:23:55 end */
+        }
+
+        function EXP5110_deleteWriteSuccess(dataset, record, index) {
+            EXP5110_writeHeaderQuery();
+            EXP5110_writeDetailQuery();
+            EXP5110_writeHistoryQuery();
+        }
+
+        function EXP5110_requisitionRenderer(value, record, name) {
+            var id = record.get('paymentRequisitionHeaderId');
+            if (id) {
+                return '<a href = "javascript:EXP5110_requisitionWindow(' + id + ')">' + value + '</a>';
+            }
+            return '';
+        }
+
+        function EXP5110_accountRenderer(value, record, name) {
+            var id = record.get('writeOffId');
+            if (id) {
+                return '<a href = "javascript:EXP5110_accountWindow(' + id + ')">$[l:exp_prepayment_post.financeinformationtab]</a>';
+            }
+            return '';
+        }
+
+        function EXP5110_requisitionWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_report_write_off_requisition_view_link').getUrl() + '?paymentRequisitionHeaderId=' + id,
+                id: 'CSH5010_pay_requisition_view_main_window',
+                fullScreen: true
+            }).on('close', function() {
+                EXP5110_writeDetailQuery();
+                EXP5110_writeHistoryQuery();
+            });
+        }
+
+        function EXP5110_accountWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_report_write_off_prepayment_finance_link').getUrl() + '?writeOffId=' + id,
+                id: 'EXP5110_report_write_off_prepayment_finance_window',
+                fullScreen: true
+            }).on('close', function() {
+                EXP5110_writeDetailQuery();
+                EXP5110_writeHistoryQuery();
+            });
+        }
+
+        function EXP5110_writeDetailClick(floatList, row, record) {
+            var id = record.get('paymentRequisitionHeaderId');
+            if (id) {
+                new Aurora.Window({
+                    url: $au('EXP5110_report_write_off_requisition_view_link').getUrl() + '?expRequisitionHeaderId=' + record.get('expRequisitionHeaderId'),
+                    id: 'CSH5010_pay_requisition_view_main_window',
+                    fullScreen: true
+                }).on('close', function() {
+                    EXP5110_writeDetailQuery();
+                    EXP5110_writeHistoryQuery();
+                });
+            }
+        }
+
+        function unOpenRequisition(tx, event) {
+            event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+        }
+
+        function changeRecord(value) {
+            alert(value);
+        }
+        ]]></script>
+        <span><![CDATA[
+       		<script>
+
+       			var textRead =
+       				'		<th class="layout-th" width="200">' +
+	                '			<div style="text-align:right">#Prompt:</div>' +
+	                '		</th>' +
+	                '		<td class="layout-td-cell" style="padding:3px">' +
+	                '			<div class="item-wrap" style="width:150px;height:25px;" >' +
+					'				<div class="item-input-wrap item-readOnly" style="padding-right:3px;" >' +
+					'					<input tabindex="0" style="height:25px;line-height:25px;ime-mode:disabled;" class="item-textField " atype="field.input" autocomplete="off" value="#Value" type="input">' +
+					'				</div>' +
+					'			</div>' +
+					'		</td>';
+
+				var numberInput =
+					'		<th class="layout-th" width="200">' +
+					'			<div style="text-align:right">#Prompt:</div>' +
+					'		</th>' +
+					'		<td class="layout-td-cell" style="padding:3px">' +
+					'			<div class="item-wrap" style="width:150px;height:25px;padding-right:3px;">' +
+					'				<div class="item-input-wrap item-notBlank">' +
+					'						<input tabindex="0" onchange="changeRecord(#record)" style="text-indent:10px;height:25px;line-height:25px;" class="item-textField item-numberField" atype="field.input" autocomplete="off" value="#Value" type="input">' +
+					'				</div>'+
+					'			</div>'+
+					'		</td>';
+
+				var link =
+					'		<th class="layout-th" width="200">' +
+					'			<div style="text-align:right"><a href="#Url">#Value </a></div>' +
+					'		</th>'
+					'		<td class="layout-td-cell" style="width:150px;height:25px;padding-right:3px;" />';
+
+			    function EXP5110_writeDetailRecord(value, record, name){
+			        var tplt = new Ext.Template([
+	                '<table class="info-block" style="border-right:none;">',
+	                '	<tr>',
+	                '		<td rowspan="2" style="width:50px;">',
+	                '			{lineNumber}',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">单据编号:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" readonly="readonly" value="{doc_number}" style="text-indent:10px;height:25px;line-height:25px;" class="item-input-wrap item-readOnly"/>',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">借款类型:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" readonly="readonly" value="{doc_type}" style="text-indent:10px;height:25px;line-height:25px;" class="item-input-wrap item-readOnly"/>',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">现金事务编号:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	               	'			<input type="text" readonly="readonly" value="{csh_number}" style="text-indent:10px;height:25px;line-height:25px;" class="item-input-wrap item-readOnly" />',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">核销类别:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" readonly="readonly" value="{write_type}" style="text-indent:10px;height:25px;line-height:25px;" class="item-input-wrap item-readOnly"/>',
+	                '		</td>',
+	                '	</tr>',
+	                '	<tr>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">交易日期:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" readonly="readonly" value="{trx_date}" style="text-indent:10px;height:25px;line-height:25px;" class="item-input-wrap item-readOnly"/>',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">借款金额:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" readonly="readonly" value="{trx_amount}" style="text-indent:10px;height:25px;line-height:25px;text-align:right;" class="item-input-wrap item-readOnly"/>',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">借款余额:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" readonly="readonly" value="{unwrite_amount}" style="text-indent:10px;height:25px;line-height:25px;text-align:right;" class="item-input-wrap item-readOnly"/>',
+	                '		</td>',
+	                '		<td class="layout-th">',
+	                '			<div style="text-align:right">核销金额:</div>',
+	                '		</td>',
+	                '		<td class="layout-td-cell" style="padding:3px">',
+	                '			<input type="text" onchange="changeRecord(this.value)"  value="{amount}" style="text-indent:10px;height:25px;line-height:25px;text-align:right;" />',
+	                '		</td>',
+	                '	</tr>',
+	                '	<hr style="border:none;border-top:1px dashed #0066CC;" />',
+	                '</table>'
+	                ]);
+	                return tplt.applyTemplate({
+	                    lineNumber: record.get('lineNumber'),
+	                    doc_number: record.get('requisitionNumber'),
+	                    csh_number: record.get('transactionNum'),
+	                    doc_type:  record.get('moPaymentReqTypeName'),
+	                    write_type: record.get('writeOffTypeName') ,
+	                    trx_date:  record.get('transactionDate'),
+	                    trx_amount: Aurora.formatMoney(record.get('transactionAmount')),
+	                    unwrite_amount:  Aurora.formatMoney(record.get('unwriteOffAmount')),
+	                    amount: ''
+	                });
+			    }
+
+			    function EXP5110_writeHistoryRecord(value, record, name){
+			        var tplt = new Ext.Template([
+	                '<table class="info-block" style="border-right:none;">',
+	                '	<tr>',
+	                '		<td rowspan="2" style="width:1px;">',
+	                '			{lineNumber}',
+	                '		</td>',
+	                '		{doc_number}',
+	                '		{doc_type}',
+	                '		{csh_number}',
+	                '		{write_type}',
+	                '	</tr>',
+	                '	<tr>',
+	                '		{link}',
+	                '		{periodName}',
+	                '		{amount}',
+	                '		{trx_date}',
+	                '	</tr>',
+	                '	<hr style="border:none;border-top:1px dashed #0066CC;" />',
+	                '</table>'
+	                ]);
+	                return tplt.applyTemplate({
+	                    lineNumber: record.get('lineNumber'),
+	                    doc_number: textRead.replace('#Prompt','单据编号').replace('#Value', record.get('requisitionNumber')),
+	                    csh_number: textRead.replace('#Prompt','现金事务编号').replace('#Value', record.get('transactionNum')),
+	                    doc_type: textRead.replace('#Prompt','借款类型').replace('#Value', record.get('moPaymentReqTypeName')),
+	                    write_type: textRead.replace('#Prompt','核销类别').replace('#Value', record.get('writeOffTypeName')) ,
+	                    trx_date: textRead.replace('#Prompt','核销日期').replace('#Value', record.get('writeOffDate')),
+	                    periodName: textRead.replace('#Prompt','期间名称').replace('#Value', record.get('periodName')),
+	                    amount: textRead.replace('#Prompt','借款金额').replace('#Value', Aurora.formatMoney(record.get('cshWriteOffAmount'))),
+	                    link: link.replace('#Url','www.baidu.com').replace('#Value', '财务信息')
+	                });
+			    }
+
+       		</script>
+       ]]></span>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_write_off_header_ds" autoQuery="true" queryUrl="$[/request/@context_path]/exp/report-pmt-schedule/writeOffPrepaymentHeaderQuery?paymentScheduleLineId=$[/parameter/@paymentScheduleLineId]">
+                <a:fields>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="paymentScheduleLineId"/>
+                    <a:field name="writeOffDate" prompt="csh_write_off.write_off_date" readOnly="true"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate"/>
+                    <a:field name="expReportNumber" prompt="exp_report_headers.exp_report_number" readOnly="true"/>
+                    <a:field name="payeeCategoryName" prompt="exp_report_header.payee_category" readOnly="true"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeName" prompt="exp_report_header.payee_id" readOnly="true"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="dueAmount" prompt="exp_prepayment_post.due_amount" readOnly="true"/>
+                    <a:field name="canAmount" prompt="exp_prepayment_post.exchange_rate_type" readOnly="true"/>
+                    <a:field name="contractNumber" prompt="con_contract_header.contract_number" readOnly="true"/>
+                    <a:field name="paymentScheduleLineNumber" prompt="con_payment_schedule.payment_schedule_line_number" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_write_off_history_ds" autoQuery="true"  queryUrl="$[/request/@context_path]/exp/report-pmt-schedule/writeOffPrepaymentHistoryQuery?paymentScheduleLineId=$[/parameter/@paymentScheduleLineId]" selectable="true">
+                <a:fields>
+                    <a:field name="paymentScheduleLineId"/>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="writeOffId"/>
+                    <a:field name="writeOffDate" prompt="csh_transaction_headers.write_off_completed_date"/>
+                    <a:field name="periodName" prompt="csh_transaction_headers.period_name"/>
+                    <a:field name="writeOffTypeName" prompt="exp_prepayment_post.write_off_type"/>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="requisitionNumber" prompt="csh_pay_req.csh_num"/>
+                    <a:field name="moPaymentReqTypeName" prompt="csh_pay_req_type_trs_classes.pay_req_trs_class_id"/>
+                    <a:field name="cshWriteOffAmount" prompt="csh_write_off.csh_write_off_amount"/>
+                    <a:field name="account" prompt="csh_write_off_account.fina_info"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="remove" handler="EXP5110_deleteWriteSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="4" marginWidth="0" title="exp_prepayment_post.queryfrom">
+                <a:textField name="expReportNumber" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:datePicker name="writeOffDate" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:comboBox name="payeeCategoryName" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:lov name="payeeName" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:numberField name="dueAmount" allowFormat="true" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:numberField name="canAmount" allowFormat="true" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:textField name="contractNumber" bindTarget="EXP5110_write_off_header_ds"/>
+                <a:textField name="paymentScheduleLineNumber" bindTarget="EXP5110_write_off_header_ds"/>
+            </a:form>
+            <a:form padding="0" showmargin="false" title="exp_write_off_record">
+                <a:grid id="EXP5110_write_off_history_grid" bindTarget="EXP5110_write_off_history_ds" marginHeight="280" marginWidth="35" navBar="true" showRowNumber="false">
+                    <a:columns>
+                        <a:column name="requisitionNumber" align="center" renderer="EXP5110_requisitionRenderer" width="150"/>
+                        <a:column name="moPaymentReqTypeName" align="center" width="220"/>
+                        <a:column name="transactionNum" align="center" width="150"/>
+                        <a:column name="writeOffTypeName" align="center" width="220"/>
+                        <a:column name="writeOffDate" align="center" width="130"/>
+                        <a:column name="periodName" align="center" renderer="Aurora.formatMoney" width="130"/>
+                        <!--将借款金额改为核销金额   Y.duan 2017-8-28 13:55:56-->
+                        <a:column name="cshWriteOffAmount" align="right" prompt="csh_write_off.csh_write_off_amount" renderer="Aurora.formatMoney" width="130"/>
+                        <a:column name="account" align="center" renderer="EXP5110_accountRenderer" width="130"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

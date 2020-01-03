@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author luhui
+    $Date: 2019/1/25 15:46:39
+    $Revision: 1.1 $
+    $Purpose: 员工类型-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP1210_exp_mo_employee_types_batch_asgn_save_link" url="$[/request/@context_path]/exp/mo-emp-type-asgn-com/batchSubmit"/>
+        <script><![CDATA[
+         function EXP1210_expMoEmpTypesBatchAsgnFun() {
+                debugger;
+                var companyRecordsData = $au('EXP1210_exp_mo_emp_type_batch_asgn_com_ds').getJsonData(true);
+                var expMoempTypeRecordsData = $au('EXP1210_exp_employee_types_result_ds').getJsonData(true);
+                if (companyRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for(var i = 0 ; i < companyRecordsData.length ; i ++){
+                    var rs = companyRecordsData[i];
+                    companyRecordsData[i].enabled_flag='Y';
+                    rs['empTypeDetail'] = expMoempTypeRecordsData;
+                }
+                Aurora.request({
+                    lockMessage:'$[l:hap.waiting]',
+                    url: $au('EXP1210_exp_mo_employee_types_batch_asgn_save_link').getUrl(),
+                    para: companyRecordsData,
+                    success: EXP1210_expMoEmpTypesBatchAsgnBackFun,
+                    scope: this
+                });
+            }
+       
+          function EXP1210_expMoEmpTypesBatchAsgnBackFun() {
+                $au('EXP1210_exp_mo_employee_types_batch_asgn_window').close();
+                EXP1210_queryEmployeeType();
+            }
+              
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1210_exp_mo_emp_type_batch_asgn_com_ds" autoPageSize="true" autoQuery="true" fetchAll="false" queryUrl="$[/request/@context_path]/fnd-company/query" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="magOrgName" prompt="fnd_managing_organization.mag_org_name"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <!--<a:screenTitle/>-->
+                <a:toolbarButton click="EXP1210_expMoEmpTypesBatchAsgnFun" text="hec.assign" width="80"/>
+                <a:toolbarButton click="EXP1210_expMoEmpTypesBatchAsgnBackFun" text="hap.back" width="80"/>
+            </a:screenTopToolbar>
+            <a:grid id="EXP1210_exp_mo_emp_type_batch_assign_grid" autoAdjust="false" bindTarget="EXP1210_exp_mo_emp_type_batch_asgn_com_ds" marginHeight="150" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="magOrgName" align="center" width="200"/>
+                    <a:column name="companyCode" align="center" width="80"/>
+                    <a:column name="companyShortName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

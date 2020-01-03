@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.fnd.mapper.FndCompanyMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.fnd.dto.FndCompany">
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_FULL_NAME" property="companyFullName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="ADDRESS" property="address" jdbcType="VARCHAR"/>
+        <result column="COMPANY_LEVEL_ID" property="companyLevelId" jdbcType="DECIMAL"/>
+        <result column="PARENT_COMPANY_ID" property="parentCompanyId" jdbcType="DECIMAL"/>
+        <result column="SYSTEM_TIMEZONE_ID" property="systemTimezoneId" jdbcType="DECIMAL"/>
+        <result column="LANGUAGE" property="language" jdbcType="VARCHAR"/>
+        <result column="MANAGING_CURRENCY" property="managingCurrency" jdbcType="VARCHAR"/>
+        <result column="CHIEF_POSITION_ID" property="chiefPositionId" jdbcType="DECIMAL"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="COMPANY_INFO_URL" property="companyInfoUrl" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="COMPANY_CODE_NAME" property="companyCodeName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_CODE_NAME" property="magOrgCodeName" jdbcType="VARCHAR"/>
+
+    </resultMap>
+
+    <resultMap id="fndCompany" type="com.hand.hap.fnd.dto.FndCompany">
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_FULL_NAME" property="companyFullName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="ADDRESS" property="address" jdbcType="VARCHAR"/>
+        <result column="COMPANY_LEVEL_ID" property="companyLevelId" jdbcType="DECIMAL"/>
+        <result column="PARENT_COMPANY_ID" property="parentCompanyId" jdbcType="DECIMAL"/>
+        <result column="SYSTEM_TIMEZONE_ID" property="systemTimezoneId" jdbcType="DECIMAL"/>
+        <result column="LANGUAGE" property="language" jdbcType="VARCHAR"/>
+        <result column="MANAGING_CURRENCY" property="managingCurrency" jdbcType="VARCHAR"/>
+        <result column="CHIEF_POSITION_ID" property="chiefPositionId" jdbcType="DECIMAL"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="COMPANY_INFO_URL" property="companyInfoUrl" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+
+        <result column="defaultAccEntityName" property="defaultAccEntityName" jdbcType="VARCHAR"/>
+        <result column="BGT_ENTITY_ID" property="bgtEntityId" jdbcType="DECIMAL"/>
+        <result column="defaultBgtEntityName" property="defaultBgtEntityName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_CODE" property="magOrgCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="magOrgName" jdbcType="VARCHAR"/>
+        <result column="positionName" property="positionName" jdbcType="VARCHAR"/>
+
+    </resultMap>
+    <select id="checkFndCompany" resultMap="BaseResultMap">
+        select * from fnd_company fc
+        where
+        (
+            #{filtrateMethod} = 'INCLUDE'
+            and
+            (
+              (
+                #{controlType} = 'DETAIL'
+                and fc.company_id = #{companyId}
+                and (#{controlCompanyCodeFrom} is null or fc.company_code &gt;= #{controlCompanyCodeFrom})
+                and (#{controlCompanyCodeTo} is null or fc.company_code &lt;= #{controlCompanyCodeTo})
+              )
+              or
+              (
+                #{controlType} = 'SUMMARY'
+                and exists (
+                select * from fnd_company_hierarchy_detail hd where hd.company_id = #{companyId}
+                and hd.PARENT_COMPANY_ID = fc.COMPANY_ID
+                and hd.enabled_flag = 'Y'
+                )
+                and (#{controlCompanyCodeFrom} is null or fc.company_code &gt;= #{controlCompanyCodeFrom})
+                and (#{controlCompanyCodeTo} is null or fc.company_code &lt;= #{controlCompanyCodeTo})
+              )
+              or
+              (
+                #{controlType} = 'ALL'
+                and
+                (
+                  (
+                    fc.company_id = #{companyId}
+                    and (#{controlCompanyCodeFrom} is null or fc.company_code &gt;= #{controlCompanyCodeFrom})
+                    and (#{controlCompanyCodeTo} is null or fc.company_code &lt;= #{controlCompanyCodeTo})
+                  )
+                  or
+                  (
+                    exists (
+                      select * from fnd_company_hierarchy_detail hd where hd.company_id = #{companyId}
+                      and hd.PARENT_COMPANY_ID = fc.COMPANY_ID
+                      and hd.enabled_flag = 'Y')
+                    and (#{controlCompanyCodeFrom} is null or fc.company_code &gt;= #{controlCompanyCodeFrom})
+                    and (#{controlCompanyCodeTo} is null or fc.company_code &lt;= #{controlCompanyCodeTo})
+                  )
+                )
+              )
+            )
+          )
+          or
+          (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (
+                #{controlType} = 'DETAIL'
+                and fc.company_id = #{companyId}
+                and
+                (
+                    (#{controlCompanyCodeFrom} is null or fc.company_code &lt; #{controlCompanyCodeFrom})
+                    or (#{controlCompanyCodeTo} is null or fc.company_code &gt; #{controlCompanyCodeTo})
+                )
+              )
+              or
+              (
+                #{controlType} = 'SUMMARY'
+                and exists (
+                select * from fnd_company_hierarchy_detail hd where hd.company_id = #{companyId}
+                and hd.PARENT_COMPANY_ID = fc.COMPANY_ID
+                and hd.enabled_flag = 'Y'
+                )
+                and
+                (
+                    (#{controlCompanyCodeFrom} is null or fc.company_code &lt; #{controlCompanyCodeFrom})
+                    or (#{controlCompanyCodeTo} is null or fc.company_code &gt; #{controlCompanyCodeTo})
+                )
+              )
+              or
+              (
+                #{controlType} = 'ALL'
+                and
+                (
+                  (
+                    fc.company_id = #{companyId}
+                    and
+                    (
+                        (#{controlCompanyCodeFrom} is null or fc.company_code &lt; #{controlCompanyCodeFrom})
+                        or (#{controlCompanyCodeTo} is null or fc.company_code &gt; #{controlCompanyCodeTo})
+                    )
+                  )
+                  or
+                  (
+                    exists (
+                      select * from fnd_company_hierarchy_detail hd where hd.company_id = #{companyId}
+                      and hd.PARENT_COMPANY_ID = fc.COMPANY_ID
+                      and hd.enabled_flag = 'Y')
+                    and
+                    (
+                        (#{controlCompanyCodeFrom} is null or fc.company_code &lt; #{controlCompanyCodeFrom})
+                        or (#{controlCompanyCodeTo} is null or fc.company_code &gt; #{controlCompanyCodeTo})
+                    )
+                  )
+                )
+              )
+            )
+          )
+    </select>
+
+
+    <select id="queryFndCompany" resultMap="fndCompany" parameterType="com.hand.hap.fnd.dto.FndCompany">
+        SELECT
+        fc.COMPANY_ID,
+        COMPANY_CODE,
+        ft.COMPANY_SHORT_NAME,
+        ft.COMPANY_FULL_NAME,
+        fc.MAG_ORG_ID,
+        ADDRESS,
+        COMPANY_LEVEL_ID,
+        PARENT_COMPANY_ID,
+        SYSTEM_TIMEZONE_ID,
+        LANGUAGE,
+        MANAGING_CURRENCY,
+        fc.CHIEF_POSITION_ID,
+        ep.description positionName,
+        START_DATE_ACTIVE,
+        END_DATE_ACTIVE,
+        COMPANY_INFO_URL,
+        acc.ACC_ENTITY_ID acc_entity_id,
+        bgt.ENTITY_ID bgt_entity_id,
+        CONCAT_WS( '-', acc.ACC_ENTITY_CODE, acc.ACC_ENTITY_NAME ) defaultAccEntityName,
+        CONCAT_WS( '-', bgt.ENTITY_CODE, bgt.DESCRIPTION ) defaultBgtEntityName,
+        fo.MAG_ORG_CODE,
+        fo.DESCRIPTION
+        FROM
+        fnd_company fc
+        LEFT OUTER JOIN fnd_company_tl ft ON (
+        fc.COMPANY_ID = ft.COMPANY_ID
+        AND ft.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN (
+        SELECT
+        be.ENTITY_ID,
+        fbe.COMPANY_ID,
+        be.ENTITY_CODE,
+        bt.DESCRIPTION
+        FROM
+        bgt_entity be
+        LEFT OUTER JOIN bgt_entity_tl bt ON (
+        be.ENTITY_ID = bt.ENTITY_ID
+        AND bt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) ,
+        fnd_company_ref_bgt_entity fbe
+        WHERE
+        fbe.ENTITY_ID = be.ENTITY_ID
+        AND fbe.default_flag = 'Y'
+        ) bgt ON bgt.COMPANY_ID = fc.COMPANY_ID
+        LEFT JOIN (
+        SELECT
+        ae.ACC_ENTITY_ID,
+        fae.COMPANY_ID,
+        ae.ACC_ENTITY_CODE,
+        gt.ACC_ENTITY_NAME
+        FROM
+        gld_accounting_entity ae
+        LEFT OUTER JOIN gld_accounting_entity_tl gt ON (
+        ae.ACC_ENTITY_ID = gt.ACC_ENTITY_ID
+        AND gt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),
+        fnd_company_ref_acc_entity fae
+        WHERE
+        fae.ACC_ENTITY_ID = ae.ACC_ENTITY_ID
+        AND fae.default_flag = 'Y'
+        ) acc ON fc.COMPANY_ID = acc.COMPANY_ID
+        LEFT JOIN fnd_managing_organization fo ON fo.MAG_ORG_ID = fc.MAG_ORG_ID
+        LEFT JOIN exp_org_position ep ON fc.CHIEF_POSITION_ID = ep.POSITION_ID
+        <where>
+            <if test="magOrgId != null">
+                fc.MAG_ORG_ID = #{magOrgId}
+            </if>
+            <if test="companyCode != null">
+                and fc.COMPANY_CODE like '%${companyCode}%'
+            </if>
+            <if test="companyShortName != null">
+                and ft.COMPANY_SHORT_NAME like '%${companyShortName}%'
+            </if>
+            <if test="companyId != null">
+                and fc.COMPANY_ID = #{companyId}
+            </if>
+        </where>
+        order by COMPANY_CODE
+    </select>
+
+    <select id="queryFndCompanyBox" resultMap="BaseResultMap" parameterType="com.hand.hap.fnd.dto.FndCompany">
+      SELECT
+	fc.COMPANY_ID,
+	COMPANY_CODE,
+	ft.COMPANY_SHORT_NAME,
+	CONCAT_WS( '-', COMPANY_CODE, ft.COMPANY_SHORT_NAME )
+    FROM
+	fnd_company fc
+	LEFT OUTER JOIN fnd_company_tl ft ON (
+	fc.COMPANY_ID = ft.COMPANY_ID
+	AND ft.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+    WHERE
+	MAG_ORG_ID = #{magOrgId} and fc.company_id != #{companyId} order by COMPANY_CODE
+    </select>
+
+    <select id="queryBatchCompany" resultMap="BaseResultMap">
+        SELECT
+        fv.company_id,
+        fv.company_code,
+        fv.company_short_name
+        FROM
+        fnd_company fv
+        WHERE
+
+        (
+        fv.end_date_active IS NULL OR
+        now() BETWEEN fv.start_date_active AND fv.end_date_active
+        )
+        <if test="magOrgId!=null and magOrgId!=''">
+            and fv.mag_org_id = #{magOrgId}
+        </if>
+        order by company_code
+    </select>
+
+    <select id="selectEmployeeCompanyCount" resultType="int">
+        select count(1)
+        from exp_employee_assign t
+        where t.EMPLOYEE_ID = #{0} and t.COMPANY_ID = #{1}
+    </select>
+
+    <select id="queryByBgtOrgId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            fc.company_id,
+            fc.company_code,
+            fc.company_short_name company_name,
+            bord.enabled_flag,
+            fc.start_date_active,
+            fc.end_date_active
+        FROM
+            bgt_org_ref_detail bord,
+            fnd_company fc
+        WHERE
+            bord.bgt_org_id = #{bgtOrgId}
+            AND bord.source_id = fc.mag_org_id
+    </select>
+
+    <select id="queryDefaultCompany" resultType="java.util.Map">
+        SELECT
+            fc.company_id sourceId,
+            fc.company_code sourceCode,
+            fct.company_short_name sourceName
+        FROM
+          fnd_company fc
+        left outer join fnd_company_tl fct on (fc.company_id = fct.company_id and fct.LANG = #{request.locale,jdbcType=VARCHAR})
+        WHERE
+            fc.mag_org_id = #{magOrgId}
+            AND fc.company_id = #{companyId}
+            AND fc.start_date_active &lt;= CURRENT_TIMESTAMP AND ( fc.end_date_active IS NULL OR fc.end_date_active &gt;= CURRENT_TIMESTAMP
+        )
+        ORDER BY company_code
+    </select>
+
+    <select id="queryForBgtStructureAssign" resultMap="BaseResultMap">
+        SELECT
+            a.company_id,
+            a.company_code,
+            al.company_short_name
+        FROM
+            fnd_company a
+            LEFT OUTER JOIN fnd_company_tl al ON ( a.COMPANY_ID = al.company_id AND al.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            a.mag_org_id = #{magOrgId}
+            AND a.start_date_active &lt; CURRENT_TIMESTAMP AND ( a.end_date_active &gt; CURRENT_TIMESTAMP
+            OR a.end_date_active IS NULL
+            )
+            AND NOT EXISTS (
+                    SELECT 1
+                    FROM bgt_structure_asgn_com bc
+                    WHERE bc.company_id = a.company_id
+                    AND bc.assign_mo_id = #{assignMoId}
+            )
+    </select>
+
+    <select id="bgtItemAssignCompany" resultMap="BaseResultMap">
+        SELECT
+            fv.company_id,
+            fv.company_code,
+            fvt.company_short_name
+        FROM
+            fnd_company fv
+            LEFT OUTER JOIN fnd_company_tl FVT ON ( FV.COMPANY_ID = FVT.company_id AND FVT.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+        fv.mag_org_id = #{magOrgId}
+        AND ( fv.end_date_active IS NULL OR CURRENT_TIMESTAMP BETWEEN fv.start_date_active AND fv.end_date_active )
+        AND NOT EXISTS (
+            SELECT
+            1
+            FROM
+            bgt_budget_item_asgn_com bc
+            WHERE
+            bc.company_id = fv.company_id
+            AND bc.assign_mo_id = #{assignMoId} )
+    </select>
+
+    <select id="unitTypeAssignCompany" resultMap="BaseResultMap">
+        SELECT
+            fv.company_id,
+            fv.company_code,
+            fvt.company_short_name
+        FROM
+            fnd_company fv
+            LEFT OUTER JOIN fnd_company_tl FVT ON (
+            FV.COMPANY_ID = FVT.company_id
+            AND FVT.LANG = #{request.locale,jdbcType=VARCHAR} )
+
+        WHERE
+            fv.mag_org_id = #{magOrgId}
+            AND ( fv.end_date_active IS NULL OR CURRENT_TIMESTAMP BETWEEN fv.start_date_active AND fv.end_date_active )
+            AND NOT EXISTS (
+            SELECT 1
+            FROM
+                exp_org_unit_type_asgn_com emeo
+            WHERE
+                emeo.company_id = fv.company_id
+                AND emeo.unit_type_id = #{unitTypeId}
+            )
+    </select>
+    <select id="workCenterDocTypeFndCompany" resultMap="BaseResultMap">
+        SELECT
+        fcv.company_id,
+        fcv.company_code,
+        fcv1.company_short_name
+        FROM
+        fnd_company fcv,
+        fnd_company_tl fcv1
+        WHERE
+        NOT EXISTS (
+        SELECT
+        1
+        FROM
+        ssc_work_center_company swc
+        WHERE
+        swc.company_id = fcv.company_id
+        AND swc.scope_id = #{scopeId}
+        )
+        AND fcv.mag_org_id = #{magOrgId}
+        AND fcv.start_date_active &lt;= CURRENT_TIMESTAMP
+        and (fcv.END_DATE_ACTIVE is null or fcv.END_DATE_ACTIVE &gt;= CURRENT_TIMESTAMP)
+        AND fcv.company_id = fcv1.company_id
+        and fcv1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ORDER BY
+        company_code
+    </select>
+    
+    <select id="bgtJournalBatchAssign" resultMap="BaseResultMap">
+        SELECT
+        fcv.company_id,
+        fcv.company_code,
+        ft.company_short_name
+        FROM
+        fnd_company fcv
+        LEFT JOIN fnd_company_tl ft ON (
+        fcv.COMPANY_ID = ft.company_id
+        AND ft.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        fcv.mag_org_id = #{magOrgId}
+        AND fcv.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND (fcv.end_date_active IS NULL OR fcv.end_date_active &gt;= CURRENT_TIMESTAMP)
+        AND NOT EXISTS ( SELECT 1 FROM bgt_journal_type_asgn_com b WHERE b.company_id = fcv.company_id AND b.assign_mo_id = #{assignMoId}
+        )
+        ORDER BY
+        fcv.company_code
+    </select>
+
+    <select id="queryCurrentCompany" resultMap="BaseResultMap">
+        SELECT
+        fc.company_id,
+        fc.company_code,
+        fc.company_short_name,
+        concat(fc.company_code,'-',fc.company_short_name) companyName,
+         (select ae.acc_entity_id
+            from fnd_company_ref_acc_entity ae
+           where ae.company_id = #{request.companyId}
+             and ae.enabled_flag = 'Y'
+             and ae.default_flag = 'Y') AS accEntityId,
+         (select gaet.acc_entity_name
+            from gld_accounting_entity gae
+            left join gld_accounting_entity_tl gaet
+              on (gae.acc_entity_id = gaet.acc_entity_id and gaet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+           where gae.acc_entity_id = accEntityId) AS accEntityName,
+         (select ifnull(gae.functional_currency_code, sob.functional_currency_code)
+            from gld_accounting_entity gae,
+                 gld_set_of_book sob,
+                 gld_acc_entity_ref_sob aerf
+           where gae.acc_entity_id = aerf.acc_entity_id
+             and aerf.default_flag = 'Y'
+             and aerf.set_of_books_id= sob.set_of_books_id
+             and gae.acc_entity_id = accEntityId) AS functionalCurrencyCode,
+         (select gct.currency_name
+            from gld_currency gc
+            left join gld_currency_tl gct
+              on (gc.currency_id = gct.currency_id and gct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+           where gc.currency_code = functionalCurrencyCode) AS functionalCurrencyName
+    from fnd_company fc
+    left join fnd_company_tl fct
+      on (fc.company_id = fct.company_id and fct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+    where
+        fc.company_id=#{request.companyId}
+    </select>
+
+    <select id="queryCompanyForUoms" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (SELECT
+        fc.mag_org_id,
+        (SELECT
+        concat(fmo.mag_org_code,'-', fmot.DESCRIPTION)
+        FROM
+        fnd_managing_organization fmo
+        left join fnd_managing_organization_tl fmot
+        on(fmo.MAG_ORG_ID = fmot.MAG_ORG_ID and fmot.lang  =#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        fmo.mag_org_id = fc.mag_org_id
+        ) as mag_org_code_name,
+        fc.company_id,
+        fc.company_code,
+        concat (fc.company_code,'-',fct.company_short_name) as company_code_name
+        FROM
+        fnd_company fc
+        left join  fnd_company_tl fct
+        on (fc.company_id = fct.company_id and fct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        fc.start_date_active &lt;CURRENT_TIMESTAMP AND
+        (
+        fc.end_date_active IS NULL OR
+        fc.end_date_active  &gt; CURRENT_TIMESTAMP
+        )
+        ) v
+        <where>
+            <if test="companyCode !=null and companyCode !=''">
+                and v.company_code like concat('%',#{companyCode},'%')
+            </if>
+            <if test="companyName !=null and companyName !=''">
+                and v.company_code_name like concat('%',#{companyName},'%')
+            </if>
+        </where>
+        order by v.mag_org_id
+    </select>
+
+    <select id="queryNoAssignedCompanyForUoms" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (SELECT
+        fc.company_id,
+        fc.company_code,
+        fc.company_short_name
+        FROM
+        fnd_company fc
+        left join fnd_company_tl fct 
+        on(fc.company_id = fct.company_id and fct.lang =#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+        fc.start_date_active &lt; CURRENT_TIMESTAMP AND
+        (
+        fc.end_date_active IS NULL OR
+        fc.end_date_active  &gt; CURRENT_TIMESTAMP
+        )
+        AND
+        fc.mag_org_id = #{magOrgId} AND
+        NOT EXISTS
+        (SELECT
+        'x'
+        FROM
+        fnd_uom_asgn_com ac
+        WHERE
+        ac.company_id   = fc.company_id AND
+        ac.assign_mo_id = #{assignMoId}
+        )
+        ) v
+    </select>
+</mapper>

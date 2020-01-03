@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	$Author: xiuxian.wu
+    $Date: 2019-03-15 10:13:34
+    $Revision: 1.0
+	$purpose: 公司银行定义-账户 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1016_branchAccountAssignAcc_link" url="$[/request/@context_path]/csh/CSH1016/csh_bank_account_asgn_acc.screen"/>
+        <a:link id="CSH1016_branchAccountAssignOffer_link" url="$[/request/@context_path]/csh/CSH1016/csh_bank_ref_offer_format.screen"/>
+        <script><![CDATA[
+            function CSH1016_branchAccountBackFunc() {
+                $au('CSH1016_branch_account_window').close();
+            }
+            
+            function CSH1016_branchAccountLoadFunc(dataSet) {
+                var records = dataSet.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    var record = records[i];
+                    if (record.get('accountType') == 'COMPANY_BANK_ACCOUNT') {
+                        record.getField('responsibilityCenterName').setRequired(true);
+                    } else {
+                        record.getField('responsibilityCenterName').setRequired(false);
+                    }
+                    if (record.get('accountType') == 'CUSTOMER_BANK_ACCOUNT') {
+                        record.getField('customerName').setRequired(true);
+                    } else {
+                        record.getField('customerName').setRequired(false);
+                    }
+                    if (record.get('accountType') == 'VENDER_BANK_ACCOUNT') {
+                        record.getField('venderName').setRequired(true);
+                    } else {
+                        record.getField('venderName').setRequired(false);
+                    }
+                }
+            }
+            
+            function CSH1016_branchAccountUpdateFunc(ds, record, name, value, old) {
+                if (name == 'accountType') {
+                    if (value == 'COMPANY_BANK_ACCOUNT') {
+                        record.getField('responsibilityCenterName').setRequired(true);
+                    } else {
+                        record.getField('responsibilityCenterName').setRequired(false);
+                    }
+                    if (value == 'CUSTOMER_BANK_ACCOUNT') {
+                        record.getField('customerName').setRequired(true);
+                    } else {
+                        record.getField('customerName').setRequired(false);
+                    }
+                    if (value == 'VENDER_BANK_ACCOUNT') {
+                        record.getField('venderName').setRequired(true);
+                    } else {
+                        record.getField('venderName').setRequired(false);
+                    }
+                }
+            }
+            
+            function CSH1016_branchAccountEditorFunc(record, name) {
+                if (record.isNew) {
+                    if (name == 'accountTypeName' || name == 'currencyName') {
+                        return 'CSH1016_branchAccountComboBox';
+                    }
+                    if (name == 'countryName') {
+                        return 'CSH1016_branchAccountLov';
+                    }
+                    if (name == 'timezoneName') {
+                        return 'CSH1016_branchAccountLov';
+                    }
+                    if (name == 'responsibilityCenterName') {
+                        if (record.get("accountType") == 'COMPANY_BANK_ACCOUNT') {
+                            return 'CSH1016_branchAccountLov';
+                        } else {
+                            return '';
+                        }
+                    }
+                    if (name == 'customerName') {
+                        if (record.get("accountType") == 'CUSTOMER_BANK_ACCOUNT') {
+                            return 'CSH1016_branchAccountLov';
+                        } else {
+                            record.set("customerId", '');
+                            record.set("customer_code", '');
+                            record.set("customerName", '');
+                            return '';
+                        }
+                    }
+                    if (name == 'venderName') {
+                        if (record.get("accountType") == 'VENDER_BANK_ACCOUNT') {
+                            return 'CSH1016_branchAccountLov';
+                        } else {
+                            record.set("venderId", '');
+                            record.set("venderCode", '');
+                            record.set("venderName", '');
+                            return '';
+                        }
+                    }
+                }
+                if (name == 'responsibilityCenterName') {
+                    if (record.get("accountType") == 'COMPANY_BANK_ACCOUNT') {
+                        return 'CSH1016_branchAccountLov';
+                    }
+                }
+                return '';
+            }
+            
+            function CSH1016_branchAccountAssignAccountFunc(value, record, name) {
+                if (!record.isNew) {
+                    if (record.get("accountType") == 'COMPANY_BANK_ACCOUNT') {
+                        var id = record.get('bankAccountId');
+                        return '<a href="javascript:CSH1016_branchAccoutWindow(' + id + ')">$[l:csh_bank_account.asgn_cash_account]</a>';
+                    } else {
+                        return '';
+                    }
+                }
+            }
+            
+            function CSH1016_branchAccoutWindow(id) {
+                new Aurora.Window({
+                    id: 'CSH1016_branch_account_acc_window',
+                    url: $au('CSH1016_branchAccountAssignAcc_link').getUrl() + '?accEntityId=$[/parameter/@accEntityId]&bankAccountId=' + id,
+                    title: '$[l:csh_bank_branch.account_id]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function CSH1016_branchAccountAssignOfferFunc(value, record, name) {
+                if (!record.isNew) {
+                    var id = record.get('bankAccountId');
+                    return '<a href="javascript:CSH1016_branchAccountOfferWindow(' + id + ')">$[l:csh1015_banks_ref_format.format_file]</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH1016_branchAccountOfferWindow(id) {
+                new Aurora.Window({
+                    id: 'CSH1016_branch_account_offer_window',
+                    url: $au('CSH1016_branchAccountAssignOffer_link').getUrl() + '?accEntityId=$[/parameter/@accEntityId]&refType=ACCOUNT&refLineId=' + id,
+                    title: '$[l:csh1015_banks_ref_format.account_format]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function CSH1016_branchAccountSuccessFunc(dataSet) {
+                dataSet.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1016_branchAccountType_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BANK_ACCOUNT_TYPE"/>
+            <a:dataSet id="CSH1016_branchAccountCurrency_ds" autoQuery="true"  queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="CSH1016_branchAccount_ds" autoPageSize="true" autoQuery="true" submitUrl="$[/request/@context_path]/csh/bank-account/submit"  queryUrl="$[/request/@context_path]/csh/bank-account/query?bankBranchId=$[/parameter/@bankBranchId]" selectable="true">
+                <a:fields>
+                    <a:field name="bankAccountId"/>
+                    <a:field name="bankBranchId" defaultValue="$[/parameter/@bankBranchId]"/>
+                    <a:field name="accountType"/>
+                    <a:field name="accountTypeName" displayField="meaning" options="CSH1016_branchAccountType_ds" prompt="csh_bank_account.account_type" required="true" returnField="accountType" valueField="value"/>
+                    <a:field name="bankAccountName" dto="com.hand.hec.csh.dto.CshBankAccount" dtoId="bankAccountId" prompt="csh_bank_account.bank_account_name_id" required="true"/>
+                    <a:field name="bankAccountNum" prompt="csh_bank_account.bank_account_num" required="true"/>
+                    <a:field name="currencyName" displayField="currencyName" options="CSH1016_branchAccountCurrency_ds" prompt="csh_bank_account.currency_code" required="true" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="responsibilityCenterName"  LovCode="GLD_RESPONSIBILITY_CENTERS_VL_LOV?accEntityId=$[/parameter/@accEntityId]" prompt="csh_bank_account.responsibility_center_id" title="csh_bank_account.responsibility">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterCode" to="responsibilityCenterCode"/>
+                            <a:map from="responsibilityCenterId" to="responsibilityCenterId"/>
+                            <a:map from="responsibilityCenterName" to="responsibilityCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="countryName"  LovCode="FND_COUNTRY_CODE" prompt="gld_currency.country_name" title="gld_currency.country_name">
+                        <a:mapping>
+                            <a:map from="countryCode" to="countryCode"/>
+                            <a:map from="description" to="countryName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="countryCode"/>
+                    <a:field name="timezoneId"/>
+                    <a:field name="timezoneName" LovCode="SYS_TIMEZONE_VL_LOV" prompt="fnd_company.system_timezone_id_display" title="fnd_company.system_timezone_id_display">
+                        <a:mapping>
+                            <a:map from="timezoneId" to="timezoneId"/>
+                            <a:map from="timezoneCode" to="timezoneCode"/>
+                            <a:map from="timezoneName" to="timezoneName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="customerName" autoComplete="true"  lovCode="GLD_PAYEE_V_LOV?payeeCategory=CUSTOMER&amp;accEntityId=$[/parameter/@accEntityId]" prompt="ord_system_customer.description" title="ord_system_customer.customer_code">
+                        <a:mapping>
+                            <a:map from="payeeName" to="customerName"/>
+                            <a:map from="payeeCode" to="customer_code"/>
+                            <a:map from="payeeId" to="customerId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="venderName" autoComplete="true"  lovCode="GLD_PAYEE_V_LOV?payeeCategory=VENDER&amp;accEntityId=$[/parameter/@accEntityId]" prompt="pur_system_vender.description" title="pur_system_vender.vender_code">
+                        <a:mapping>
+                            <a:map from="payeeName" to="venderName"/>
+                            <a:map from="payeeCode" to="venderCode"/>
+                            <a:map from="payeeId" to="venderId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="receiptFlag" checkedValue="Y" defaultValue="N" prompt="csh_bank_account.receipt_flag" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="csh_bank_account.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="CSH1016_branchAccountLoadFunc"/>
+                    <a:event name="update" handler="CSH1016_branchAccountUpdateFunc"/>
+                    <a:event name="submitsuccess" handler="CSH1016_branchAccountSuccessFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1016_branchAccount_form" column="2" title="csh_bank_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1015_csh_bank_accounts_line_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1015_csh_bank_accounts_line_grid" type="save" width="80"/>
+                    <a:toolbarButton click="CSH1016_branchAccountBackFunc" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bankName" bindTarget="CSH1016_branchResult_ds" prompt="csh_bank.bank_name" readOnly="true"/>
+                <a:textField name="bankLocationName" bindTarget="CSH1016_branchResult_ds" prompt="csh_bank_branch.branch_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1015_csh_bank_accounts_line_grid" bindTarget="CSH1016_branchAccount_ds" marginHeight="195" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="accountTypeName" align="center" editorFunction="CSH1016_branchAccountEditorFunc" width="80"/>
+                    <a:column name="bankAccountName" editor="CSH1016_branchAccountTledit" width="150"/>
+                    <a:column name="bankAccountNum" align="center" editor="CSH1016_branchAccountTextField" width="150"/>
+                    <a:column name="currencyName" align="center" editor="CSH1016_branchAccountComboBox" width="80"/>
+                    <a:column name="countryName" align="center" editor="CSH1016_branchAccountLov" width="150"/>
+                    <a:column name="timezoneName" align="center" editor="CSH1016_branchAccountLov" width="150"/>
+                    <a:column name="responsibilityCenterName" align="center" editorFunction="CSH1016_branchAccountEditorFunc" width="120"/>
+                    <a:column name="customerName" editorFunction="CSH1016_branchAccountEditorFunc" width="150"/>
+                    <a:column name="venderName" editorFunction="CSH1016_branchAccountEditorFunc" width="150"/>
+                    <a:column name="receiptFlag" align="center" editor="CSH1016_branchAccountCheckBox" width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="CSH1016_branchAccountCheckBox" width="80"/>
+                    <a:column name="assign_account" align="center" renderer="CSH1016_branchAccountAssignAccountFunc" width="80"/>
+                    <a:column name="assign_offer" align="center" renderer="CSH1016_branchAccountAssignOfferFunc" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:tledit id="CSH1016_branchAccountTledit" />
+                    <a:comboBox id="CSH1016_branchAccountComboBox"/>
+                    <a:datePicker id="CSH1016_branchAccountDatePicker"/>
+                    <a:textField id="CSH1016_branchAccountTextField"/>
+                    <a:checkBox id="CSH1016_branchAccountCheckBox"/>
+                    <a:lov id="CSH1016_branchAccountLov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

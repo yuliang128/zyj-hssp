@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/17 $
+    $Revision: 1.1 $
+    $Purpose: 预算表定义-分配管理组织
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1070_period_asgn_com_link" url="$[/request/@context_path]/bgt/BGT2110/bgt_structure_asgn_com.screen"/>
+        <script><![CDATA[
+            function BGT2110_ReturnPeriod() {
+                $au('bgt2110_period_asgn_mo_window').close();
+            }
+            
+            //分配公司
+            
+            function BGT2110_CreateCompany(value, record, name) {
+                if (!record.isNew) {
+                    var bgtStructureId = record.get('structureId');
+                    var bgtAssignMoId = record.get('assignMoId');
+                    var bgtMagOrgId = record.get('magOrgId');
+                    return "<a href=\"javascript:BGT2110_CreateCompanyInfo('" + bgtStructureId + "','" + bgtAssignMoId + "','" + bgtMagOrgId + "')\">$[l:fnd_centralized_managing.company_id]</a>";
+                }
+                return '';
+            }
+            
+            function BGT2110_CreateCompanyInfo(bgtStructureId, bgtAssignMoId, bgtMagOrgId) {
+                new Aurora.Window({
+                    id: 'bgt2110_period_asgn_com_window',
+                    url: $au('BGT1070_period_asgn_com_link').getUrl() + '?structureId=' + bgtStructureId + '&assignMoId=' + bgtAssignMoId + '&magOrgId=' + bgtMagOrgId,
+                    title: '$[l:fnd_centralized_managing.company_id]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2110_magOrgDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/queryByBgtOrg?bgtOrgId=$[/parameter/@bgtOrgId]"/>
+            <a:dataSet id="BGT2110_structure_mo_init_ds" autoQuery="true" baseUrl="/bgt/structure" queryUrl="$[/request/@context_path]/bgt/structure/query?structureId=$[/parameter/@structureId]">
+                <a:fields>
+                    <a:field name="structureId"/>
+                    <a:field name="structureCode" prompt="bgt_budget_structure.budget_strc_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_structure.bgt_structure_desc" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2110_structure_asgn_mo_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/structure-asgn-mo" queryUrl="$[/request/@context_path]/bgt/structure-asgn-mo/query?structureId=$[/parameter/@structureId]" selectable="true" submitUrl="$[/request/@context_path]/bgt/structure-asgn-mo/submit">
+                <a:fields>
+                    <a:field name="structureId" defaultValue="$[/parameter/@structureId]"/>
+                    <a:field name="bgtOrgId" defaultValue="$[/parameter/@bgtOrgId]"/>
+                    <a:field name="assignMoId"/>
+                    <!--修改displayField为mag_org_name  解决下拉框没有值的问题     Y.duan  2017-8-15 09:35:07-->
+                    <a:field name="magOrgName" displayField="magOrgName" options="BGT2110_magOrgDs" required="true" returnField="magOrgId" valueField="magOrgId" prompt="bgt_budget_item_mapping.mag_org_name"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="bgt_period.bgt_period_assign_mo_org" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2110_structure_asgn_mo_grid_ds" type="add" width="80"/>
+                    <a:gridButton bind="BGT2110_structure_asgn_mo_grid_ds" type="save" width="80"/>
+                    <a:toolbarButton click="BGT2110_ReturnPeriod" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="structureCode" bindTarget="BGT2110_structure_mo_init_ds"/>
+                <a:textField name="description" bindTarget="BGT2110_structure_mo_init_ds"/>
+            </a:form>
+            <a:grid id="BGT2110_structure_asgn_mo_grid_ds" autoAdjust="true" bindTarget="BGT2110_structure_asgn_mo_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="magOrgName" align="left" editor="BGT2110_grid_mo_org_cb" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="BGT2110_grid_mo_ck" width="80"/>
+                    <a:column name="createCompany" align="center" prompt="" renderer="BGT2110_CreateCompany" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT2110_grid_mo_org_lov"/>
+                    <a:comboBox id="BGT2110_grid_mo_org_cb"/>
+                    <a:checkBox id="BGT2110_grid_mo_ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

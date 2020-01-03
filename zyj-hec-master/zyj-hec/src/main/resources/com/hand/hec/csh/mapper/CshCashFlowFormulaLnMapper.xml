@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshCashFlowFormulaLnMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshCashFlowFormulaLn">
+        <result column="FORMULA_ID" property="formulaId" jdbcType="DECIMAL" />
+        <result column="FORMULA_LINE_ID" property="formulaLineId" jdbcType="DECIMAL" />
+        <result column="OPERATION" property="operation" jdbcType="VARCHAR" />
+        <result column="CASH_FLOW_ITEM_ID_FROM" property="cashFlowItemIdFrom" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_ID_TO" property="cashFlowItemIdTo" jdbcType="DECIMAL" />
+        <result column="OPERATION_DESC" property="operationDesc" jdbcType="VARCHAR" />
+        <result column="CASH_FLOW_ITEM_ID_FROM_DESC" property="cashFlowItemIdFromDesc" jdbcType="VARCHAR" />
+        <result column="CASH_FLOW_ITEM_ID_TO_DESC" property="cashFlowItemIdToDesc" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryByItemId" resultType="java.util.Map">
+        SELECT
+            ffh.cash_flow_item_id cashFlowItemId,
+            ( SELECT cfi.CASH_FLOW_LINE_NUMBER FROM csh_cash_flow_item cfi WHERE cfi.CASH_FLOW_ITEM_ID = ffh.CASH_FLOW_ITEM_ID ) cashFlowLineNumber,
+            ffl.formula_id formulaId,
+            ffl.formula_line_id formulaLineId,
+            ffl.operation,
+            ffl.cash_flow_item_id_from AS lineNumberFrom,
+            ( SELECT cfit.DESCRIPTION FROM csh_cash_flow_item_tl cfit WHERE cfit.CASH_FLOW_ITEM_ID = ffl.cash_flow_item_id_from AND cfit.lang = #{request.locale} ) cashFlowItemIdFromDesc,
+            ffl.cash_flow_item_id_to AS lineNumberTo,
+            ( SELECT cfit.DESCRIPTION FROM csh_cash_flow_item_tl cfit WHERE cfit.CASH_FLOW_ITEM_ID = ffl.cash_flow_item_id_to AND cfit.lang = #{request.locale} ) cashFlowItemIdToDesc
+        FROM
+            csh_cash_flow_formula_ln ffl
+            INNER JOIN csh_cash_flow_formula_hd ffh ON ffl.formula_id = ffh.formula_id
+        WHERE
+            ffh.cash_flow_item_id = #{cashFlowItemId}
+        ORDER BY
+            ffl.operation
+    </select>
+
+</mapper>

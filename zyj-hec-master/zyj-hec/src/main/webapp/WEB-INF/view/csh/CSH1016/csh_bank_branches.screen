@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-03-15 10:13:34
+    $Revision: 1.0
+    $Purpose: 公司银行定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1016_branchAssignPerson_link" url="$[/request/@context_path]/csh/CSH1016/csh_bank_contact_persons.screen"/>
+        <a:link id="CSH1016_branchAssignAccount_link" url="$[/request/@context_path]/csh/CSH1016/csh_bank_accounts.screen"/>
+        <a:link id="CSH1016_branchAssignOffer_link" url="$[/request/@context_path]/csh/CSH1016/csh_bank_ref_offer_format.screen"/>
+        <script><![CDATA[
+            function CSH1016_focus() {
+                $au('CSH1016_acc_entity_ds').query();
+            }
+
+            function CSH1016_queryDsUpdate(ds, record, name, value, oldValue) {
+                if (name == 'accEntityId') {
+                    $au('CSH1016_branchResult_ds').query();
+                }
+            }
+
+            function CSH1016_branchesAddFunc(dataSet) {
+                var accEntityId = $au('CSH1016_branchQuery_ds').getCurrentRecord().get('accEntityId');
+                if (!Ext.isEmpty(accEntityId)) {
+                    dataSet.getCurrentRecord().set('accEntityId', accEntityId);
+                }
+            }
+
+
+            function CSH1016_branchesUpdateFunc(dataSet, record, name, value) {
+                if (name == 'bankCode') {
+                    record.set('cnapsId', '');
+                    record.set('bankLocationCode', '');
+                    record.set('branchName', '');
+                }
+            }
+
+            function CSH1016_branchAssignPersonFunc(value, record, name) {
+                if (!record.isNew) {
+                    var id = record.get("bankBranchId");
+                    return '<a href="javascript:CSH1016_branchPersonWindow(\'' + id + '\')">$[l:csh_bank_branch.contact_name]</a>';
+                }
+            }
+
+            function CSH1016_branchPersonWindow(id) {
+                new Aurora.Window({
+                    id: 'CSH1016_branch_person_window',
+                    url: $au('CSH1016_branchAssignPerson_link').getUrl() + '?bankBranchId=' + id,
+                    title: '$[l:csh_bank_branch.contact_name]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+            function CSH1016_branchAssignAccountFunc(value, record, name) {
+                if (!record.isNew) {
+                    var branchId = record.get("bankBranchId");
+                    var accEntityId = record.get('accEntityId');
+                    return '<a href="javascript:CSH1016_branchAccountWindow(' + branchId + ',' + accEntityId + ')">$[l:csh_bank_service.bank_account]</a>';
+                }
+            }
+
+            function CSH1016_branchAccountWindow(branchId, accEntityId) {
+                new Aurora.Window({
+                    id: 'CSH1016_branch_account_window',
+                    url: $au('CSH1016_branchAssignAccount_link').getUrl() + '?bankBranchId=' + branchId + '&accEntityId=' + accEntityId,
+                    title: '$[l:csh_bank_branch.account]',
+                    fullScreen: true
+                });
+            }
+
+            function CSH1016_editorFunc(record, name) {
+                if (name == 'bankCode'||name == 'bankLocationCode' ) {
+                    if (record.isNew) {
+                        return 'CSH1016_branchesLov';
+                    } else {
+                        return '';
+                    }
+                }
+            }
+
+            function CSH1016_branchAssignOfferFunc(value, record, name) {
+                if (!record.isNew) {
+                    var branchId = record.get('bankBranchId');
+                    var accEntityId = record.get('accEntityId');
+                    return '<a href="javascript:CSH1016_branchOfferWindow(' + branchId + ',' + accEntityId + ')">$[l:csh1015_banks_ref_format.format_file]</a>';
+                } else {
+                    return '';
+                }
+            }
+
+            function CSH1016_branchOfferWindow(branchId, accEntityId) {
+                new Aurora.Window({
+                    id: 'CSH1016_branch_offer_window',
+                    url: $au('CSH1016_branchAssignOffer_link').getUrl() + '?accEntityId=' + accEntityId + '&refType=BRANCH&refLineId=' + branchId,
+                    title: '$[l:csh1015_banks_ref_format.account_format]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+
+            function CSH1016_branchesCheckFunc() {
+                var accEntity = $au('CSH1016_branchQuery_ds').getAt(0).get('accEntityId');
+                if (Ext.isEmpty(accEntity)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.acc_entity_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+
+        function CSH1016_cellClickFunc(grid, index, name, record) {
+            if (name == 'bankLocationCode') {
+                var bankId = record.get('bankId');
+                if (!Ext.isEmpty(bankId)) {
+                    record.getField('bankLocationCode').setLovPara('bankId', record.get('bankId'));
+                    record.getField('bankLocationCode').setLovCode('LOV_BANK_CNAP');
+                } else {
+                    record.getField('bankLocationCode').setLovCode('');
+                }
+            }
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1016_acc_entity_ds" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/gld/account-entity/queryAccEntityByCompany"/>
+            <a:dataSet id="CSH1016_branchQuery_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" displayField="accEntityName" options="CSH1016_acc_entity_ds" prompt="csh_offer_format.acc_entity" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="bankLocationCode" prompt="csh_bank_branch.bank_branch_code"/>
+                    <a:field name="bankLocationName" prompt="csh_bank_branch.branch_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1016_queryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1016_branchResult_ds" autoPageSize="true" autoQuery="false" queryDataSet="CSH1016_branchQuery_ds" submitUrl="$[/request/@context_path]/csh/bank-branch/submit" queryUrl="$[/request/@context_path]/csh/bank-branch/query">
+                <a:fields>
+                    <a:field name="bankBranchId"/>
+                    <a:field name="accEntityId" required="true"/>
+                    <a:field name="bankId"/>
+                    <a:field name="bankCode"  lovCode="LOV_BANK" prompt="csh_bank.bank_code" required="true" title="csh_bank_detail">
+                        <a:mapping>
+                            <a:map from="bankId" to="bankId"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankName" prompt="csh_bank.bank_name"/>
+                    <a:field name="cnapsId"/>
+                    <a:field name="bankLocationCode"   prompt="csh_bank_branch.bank_branch_code" required="true" title="csh_bank.cnap_info">
+                        <a:mapping>
+                            <a:map from="cnapsId" to="cnapsId"/>
+                            <a:map from="bankLocationCode" to="bankLocationCode"/>
+                            <a:map from="bankLocationName" to="bankLocationName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankLocationName" prompt="csh_bank_branch.branch_name"/>
+                    <a:field name="address" prompt="csh_bank_branch.address"/>
+                    <a:field name="contactName" prompt="csh_bank_branch.contact_name"/>
+                    <a:field name="eMailAddress" prompt="csh_bank_branch.email_address"/>
+                    <a:field name="phone" prompt="csh_bank_branch.phone"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH1016_branchesAddFunc"/>
+                    <a:event name="update" handler="CSH1016_branchesUpdateFunc"/>
+                    <a:event name="beforecreate" handler="CSH1016_branchesCheckFunc"/>
+                    <a:event name="beforesubmit" handler="CSH1016_branchesCheckFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1016_csh_bank_branches_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1016_csh_bank_branches_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1016_branchQuery_ds" resultTarget="CSH1016_branchResult_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="accEntityName" bindTarget="CSH1016_branchQuery_ds" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1016_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="bankLocationCode" bindTarget="CSH1016_branchQuery_ds"/>
+                    <a:textField name="bankLocationName" bindTarget="CSH1016_branchQuery_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1016_csh_bank_branches_grid" bindTarget="CSH1016_branchResult_ds" marginHeight="150" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="bankCode" align="center" editorFunction="CSH1016_editorFunc" width="80"/>
+                <a:column name="bankName" width="150"/>
+                <a:column name="bankLocationCode"  align="center" editorFunction="CSH1016_editorFunc" width="80"/>
+                <a:column name="bankLocationName" width="150"/>
+                <a:column name="address" editor="CSH1016_branchesTextField" width="150"/>
+                <a:column name="contactName" align="center" editor="CSH1016_branchesTextField" width="80"/>
+                <a:column name="eMailAddress" align="center" editor="CSH1016_branchesTextField" width="80"/>
+                <a:column name="phone" align="center" editor="CSH1016_branchesTextField" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1016_branchesCheckBox" width="80"/>
+                <a:column name="assignPersons" align="center" renderer="CSH1016_branchAssignPersonFunc" width="80"/>
+                <a:column name="assignAccount" align="center" renderer="CSH1016_branchAssignAccountFunc" width="80"/>
+                <a:column name="assignOffer" align="center" renderer="CSH1016_branchAssignOfferFunc" width="80"/>
+            </a:columns>
+            <a:events>
+                <a:event name="cellclick" handler="CSH1016_cellClickFunc"/>
+            </a:events>
+            <a:editors>
+                <a:lov id="CSH1016_branchesLov"/>
+                <a:textField id="CSH1016_branchesTextField"/>
+                <a:checkBox id="CSH1016_branchesCheckBox"/>
+            </a:editors>
+            <a:events/>
+        </a:grid>
+    </a:view>
+</a:screen>

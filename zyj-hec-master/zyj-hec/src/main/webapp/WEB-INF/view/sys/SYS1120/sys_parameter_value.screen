@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="sys_parameter_value_lov_link"
+                url="$[/request/@context_path]/modules/sys/SYS1120/sys_parameter_value_lov.screen"/>
+        <script><![CDATA[
+        function queryParameterValues() {
+            $au('sys_parameter_values_query_ds').validate();
+            $au('sys_parameter_result_ds').query();
+        }
+
+        function saveValue() {
+            $au('sys_parameter_result_ds').submit();
+        }
+
+        function resetForm() {
+            var form = $au('sys_parameter_values_query_ds').getCurrentRecord();
+
+            //var levelValue=form.getMeta().getField('levelValue');
+            form.set('levelValue', null);
+            form.set('levelId', 101);
+            onLevelNameLoad();
+            form.set('companyName', null);
+            form.set('roleName', null);
+            form.set('levelValue', 1);
+            form.set('userName', null);
+            form.set('entityName', null);
+            form.set('parameterCode', null);
+            form.set('parameterName', null);
+        }
+
+        function onUpdate(ds, record, name) {
+            if (name === 'levelId') {
+                var levelId = record.get('levelId');
+                var companyName = record.getMeta().getField('companyName');
+                var roleName = record.getMeta().getField('roleName');
+                var userName = record.getMeta().getField('userName');
+                var entityName = record.getMeta().getField('entityName');
+                var magOrgName = record.getMeta().getField('magOrgName');
+                var setOfBooksName = record.getMeta().getField('setOfBooksName');
+                var bgtOrgName = record.getMeta().getField('bgtOrgName');
+                record.set('levelValue', null);
+                record.set('companyName', null);
+                record.set('userName', null);
+                record.set('roleName', null);
+                record.set('entityName', null);
+                record.set('magOrgName', null);
+                record.set('setOfBooksName', null);
+                record.set('bgtOrgName', null);
+
+                companyName.setReadOnly(true);
+                roleName.setReadOnly(true);
+                userName.setReadOnly(true);
+                entityName.setReadOnly(true);
+                magOrgName.setReadOnly(true);
+                setOfBooksName.setReadOnly(true);
+                bgtOrgName.setReadOnly(true);
+
+                roleName.setRequired(false);
+                companyName.setRequired(false);
+                userName.setRequired(false);
+                entityName.setRequired(false);
+                magOrgName.setRequired(false);
+                setOfBooksName.setRequired(false);
+                bgtOrgName.setRequired(false);
+
+                switch (levelId) {
+                    case '102':
+                        roleName.setReadOnly(false);
+                        roleName.setRequired(true);
+                        break;
+                    case '103':
+                        userName.setReadOnly(false);
+                        userName.setRequired(true);
+                        break;
+                    case '104':
+                        companyName.setReadOnly(false);
+                        companyName.setRequired(true);
+                        break;
+                    case '105':
+                        entityName.setReadOnly(false);
+                        entityName.setRequired(true);
+                        break;
+                    case '106':
+                        magOrgName.setReadOnly(false);
+                        magOrgName.setRequired(true);
+                        break;
+                    case '107':
+                        setOfBooksName.setReadOnly(false);
+                        setOfBooksName.setRequired(true);
+                        break;
+                    case '108':
+                        bgtOrgName.setReadOnly(false);
+                        bgtOrgName.setRequired(true);
+                        break;
+                    default:
+                        record.set('levelValue', 1);
+                        record.set('companyName', null);
+                        record.set('userName', null);
+                        record.set('roleName', null);
+
+                        companyName.setReadOnly(true);
+                        roleName.setReadOnly(true);
+                        userName.setReadOnly(true);
+                        entityName.setReadOnly(true);
+
+                        roleName.setRequired(false);
+                        companyName.setRequired(false);
+                        userName.setRequired(false);
+                        entityName.setRequired(false);
+                        break;
+                }
+            }
+
+        }
+
+        function parameter_function(record, name) {
+            if (record.get('parameterType') === 'LOV CODE') {
+                return 'sys_parameter_values_result_ds_lov';
+            }
+            return 'sys_parameter_values_result_ds_tf';
+        }
+
+        function gridInit(record) {
+            record.set('levelId', $au('sys_parameter_values_query_ds').getAt(0).get('levelId'));
+            record.set('levelValue', $au('sys_parameter_values_query_ds').getAt(0).get('levelValue'));
+            record.getField('parameterValue').setLovPara('parameterId', record.get('parameterId'));
+            record.getField('parameterValue').setLovPara('companyId', $au('sys_parameter_values_query_ds').getAt(0).get('levelValue'));
+            record.getField('parameterValue').setLovPara('roleId', $au('sys_parameter_values_query_ds').getAt(0).get('levelValue'));
+            record.getField('parameterValue').setLovPara('userId', $au('sys_parameter_values_query_ds').getAt(0).get('levelValue'));
+            record.getField('parameterValue').setLovPara('accEntityId', $au('sys_parameter_values_query_ds').getAt(0).get('levelValue'));
+            record.getField('parameterValue').setLovPara('accEntityId', $au('sys_parameter_values_query_ds').getAt(0).get('levelValue'));
+            record.getField('parameterValue').setLovWidth(510);
+            //record.getField('parameterValue').setLovHeight(650);
+            record.getField('parameterValue').setLovCode(record.data.lovCode);
+            record.dirty = false;
+        }
+
+        function lovcommit(lov, r1, r2) {
+            debugger;
+            r1.set('parameterValue', r2.get('valueId'));
+            r1.set('valueCode', r2.get('valueCode'));
+            r1.set('valueName', r2.get('valueName'));
+        }
+
+        function onLevelNameLoad() {
+            var ds = $au('sys_level_id_ds');
+            var records = ds.getAll();
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('value') === '101') {
+                    $au('sys_parameter_values_query_ds').getAt(0).set('levelName', records[i].get('meaning'));
+                    $au('sys_parameter_values_query_ds').getCurrentRecord().getMeta().getField('levelName').setRequired(true);
+                }
+            }
+        }
+
+        function paraLoadComplete(dataSet) {
+            var records = dataSet.getAll();
+            for (var i = 0; i < records.length; i++) {
+                gridInit(records[i]);
+            }
+        }
+
+        //modify lcy 2018/1/31 11:19:23  新增update事件
+
+        function resultUpdate(ds, record, name, value, oldValue) {
+            if (name === 'parameterValue') {
+                if (value === '' || value == null || value === 'undefined') {
+                    record.set('valueCode', '');
+                    record.set('valueName', '');
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="sys_level_id_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/SYS_PARAMETER_LEVEL">
+                <a:events>
+                    <a:event name="beforeload" handler="onLevelNameLoad"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="sys_parameter_values_query_ds" baseUrl="/sys/parameter">
+                <a:fields>
+                    <a:field name="levelValue" defaultValue="1"/>
+                    <a:field name="levelId" defaultValue="101"/>
+                    <a:field name="levelName" displayField="meaning" options="sys_level_id_ds"
+                             returnField="levelId" valueField="value"
+                             placeHolder="sys_parameter_value.value_level"/>
+                    <a:field name="companyName" autoComplete="true" autoCompleteField="companyShortName"
+                             lovCode="LOV_VALID_COMPANY" readOnly="true"
+                             placeHolder="sys_parameter.company">
+                        <a:mapping>
+                            <a:map from="companyShortName" to="companyName"/>
+                            <a:map from="companyId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="roleName" autoComplete="true" autoCompleteField="roleName"
+                             lovCode="LOV_ROLE" readOnly="true"
+                             placeHolder="sys_parameter.role">
+                        <a:mapping>
+                            <a:map from="roleName" to="roleName"/>
+                            <a:map from="roleId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="userName" autoComplete="true" autoCompleteField="userName"
+                             lovCode="LOV_VALID_USER"
+                             placeHolder="sys_parameter.user" readOnly="true">
+                        <a:mapping>
+                            <a:map from="userName" to="userName"/>
+                            <a:map from="userId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entityName" autoComplete="true" autoCompleteField="entityName"
+                             lovCode="LOV_VALID_ACC_ENTITY"
+                             placeHolder="sys_parameter.acc_entity" readOnly="true">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="entityName"/>
+                            <a:map from="accEntityId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgName" autoComplete="true" autoCompleteField="magOrgName"
+                             lovCode="LOV_COMPANY_ORG_CODE"
+                             placeHolder="sys_parameter.management_organization" readOnly="true">
+                        <a:mapping>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="setOfBooksName" autoComplete="true" autoCompleteField="setOfBooksName"
+                             lovCode="LOV_SET_OF_BOOK"
+                             placeHolder="sys_parameter.set_of_books" readOnly="true">
+                        <a:mapping>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                            <a:map from="setOfBooksId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtOrgName" autoComplete="true" autoCompleteField="bgtOrgName"
+                             lovCode="LOV_BGT_ORG"
+                             placeHolder="sys_parameter.bgt_org" readOnly="true">
+                        <a:mapping>
+                            <a:map from="description" to="bgtOrgName"/>
+                            <a:map from="bgtOrgId" to="levelValue"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="sys_parameter_result_ds" autoCount="true" autoPageSize="true" autoQuery="true"
+                       baseUrl="/sys/parameter-value" queryDataSet="sys_parameter_values_query_ds">
+                <a:fields>
+                    <a:field name="parameterValueId"/>
+                    <a:field name="parameterValue" prompt="sys_parameter_value.parameter_value"/>
+                    <a:field name="parameterCode" prompt="sys_parameter.parameter_code"/>
+                    <a:field name="parameterName" prompt="sys_parameter.parameter_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="paraLoadComplete"/>
+                    <a:event name="update" handler="resultUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="grid" click="saveValue" text="HAP_SAVE" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="sys_parameter_values_query_ds" resultTarget="sys_parameter_result_ds"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="parameterCode" bindTarget="sys_parameter_values_query_ds" typeCase="upper"
+                                 prompt="sys_parameter.parameter_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="parameterName" bindTarget="sys_parameter_values_query_ds"
+                                 prompt="sys_parameter.parameter_name">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <!--将prompt改为placeHolder  Y.duan 2017-9-30 09:35:18-->
+                    <a:comboBox name="levelName" bindTarget="sys_parameter_values_query_ds"/>
+                    <a:lov name="companyName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.company">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="roleName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.role">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="userName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.user">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="entityName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.acc_entity">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="magOrgName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.management_organization">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="setOfBooksName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.set_of_books">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="bgtOrgName" bindTarget="sys_parameter_values_query_ds"
+                           placeHolder="sys_parameter.bgt_org">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryParameterValues"/>
+                        </a:events>
+                    </a:lov>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="grid" bindTarget="sys_parameter_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="parameterCode" align="center" sortable="true" width="120"/>
+                <a:column name="parameterName" width="300"/>
+                <a:column name="parameterValue" align="center" editorFunction="parameter_function" width="80"
+                          prompt="sys_parameter_value.parameter_value"/>
+                <a:column name="valueCode" align="center" width="80" prompt="sys_parameter_value.value_code"/>
+                <a:column name="valueName" align="center" width="80" prompt="sys_parameter_value.value_name"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="sys_parameter_values_result_ds_tf"/>
+                <a:lov id="sys_parameter_values_result_ds_lov">
+                    <a:events>
+                        <a:event name="commit" handler="lovcommit"/>
+                    </a:events>
+                </a:lov>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

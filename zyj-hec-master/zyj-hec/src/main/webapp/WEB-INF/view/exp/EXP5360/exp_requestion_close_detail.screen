@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: LiLiang  
+    $Date: 2018-5-17 上午11:23:25  
+    $Revision: 1.0  
+    $Purpose: 申请费用单财务关闭-行关闭
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function closed() {
+                var ds = $au('exp_req_detail_grid_query_ds');
+                var records = ds.getSelected();
+                if (records.length == 0) {
+                    Aurora.showErrorMessage('$[l:PROMPT.ERROR]', '$[l:CHOOSE_ONE_RECORD]');
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    records[i].dirty = true;
+                }
+                ds.submitSelected();
+            }
+            
+            function EXP5360_Onsubmitsucess() {
+                $au('exp_req_detail_grid_query_ds').query();
+            }
+            
+            function back() {
+                $au(this.__host.id).close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="exp_req_close_detail_head_ds" autoQuery="true" queryUrl="$[/request/@context_path]/exp/requisition-header/queryDetailHead?headId=$[/parameter/@headId]">
+                <a:fields>
+                    <a:field name="paymentFlag" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="exp_req_detail_grid_query_ds" autoQuery="true" baseUrl="/exp/requisition-line" queryUrl="$[/request/@context_path]/exp/requisition-line/queryDetailLine?headId=$[/parameter/@headId]" submitUrl="$[/request/@context_path]/exp/requisition-header/closeDetailHead" selectable="true">
+                <a:fields>
+                    <a:field name="closedDate" prompt="EXP_REQUISITION_HEADERS.CLOSED_DATE" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP5360_Onsubmitsucess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form marginWidth="3" title="exp_requisition_header.close">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="closedAdmin" text="HAP_CLOSE" width="80"/>
+                    <a:toolbarButton click="back" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="expRequisitionNumber" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.exp_requisition_number" readOnly="true"/>
+                    <a:textField name="typeDescription" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.exp_requisition_type_id" readOnly="true"/>
+                    <a:textField name="employeeName" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.employee_id" readOnly="true"/>
+                    <a:textField name="requisitionDateStr" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.requisition_date" readOnly="true"/>
+                    <a:textField name="unitName" bindTarget="exp_req_close_detail_head_ds" prompt="exp_org_unit.unit" readOnly="true"/>
+                    <a:textField name="accEntityName" bindTarget="exp_req_close_detail_head_ds" prompt="csh_payment_requisition_hd.acc_entity_name" readOnly="true"/>
+                    <a:numberField name="attachmentNum" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.attachment_num" readOnly="true"/>
+                    <a:textField name="requisitionStatus" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.requisition_status" readOnly="true"/>
+                    <a:textField name="createdByName" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.created_by" readOnly="true"/>
+                    <a:numberField name="reqTotalAmount" bindTarget="exp_req_close_detail_head_ds" prompt="exp_report_header.quarter_num" readOnly="true" renderer="Aurora.formatMoney"/>
+                    <a:checkBox name="paymentFlag" bindTarget="exp_req_close_detail_head_ds" prompt="exp_requisition_header.payment_flag" readOnly="true"/>
+                </a:box>
+                <a:box style="width:100%;">
+                        <a:textArea name="description" bindTarget="exp_req_close_detail_head_ds" calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" prompt="exp_requisition_header.description" readOnly="true" width="800"/>
+                </a:box>
+            </a:form>
+            <a:form padding="0" showmargin="false" style="margin-top:10;" title="exp_requisition_close_simple_line">
+                <a:grid autoAdjustHeight="fasle" bindTarget="exp_req_detail_grid_query_ds" marginHeight="380" marginWidth="3" navBar="true" showRowNumber="false">
+                    <a:columns>
+                        <!--
+                        <a:column name="close_flag" align="center" prompt="EXP_REQUISITION_DISTS.CLOSE_FLAG" width="40"/>
+                        -->
+                        <a:column name="lineNumber" align="center" prompt="exp_requisition_line.line_number" width="40"/>
+                        <a:column name="closedDate" align="center" prompt="exp_requisition_header.closed_date" editor="EXP5360_financeCloseDsDP" renderer="Aurora.formatDate" width="80"/>
+                        <a:column name="description" align="left" prompt="exp_requisition_lines.description" width="200"/>
+                        <a:column name="moExpenseTypeName" align="center" prompt="exp_requisition_lines.expense_type_id" width="120"/>
+                        <a:column name="moReqItemName" align="center" prompt="EXP_REQUISITION_LINES.EXP_REQ_ITEM_ID" width="120"/>
+                        <a:column name="unitName" align="center" prompt="EXP_REQUISITION_LINES.UNIT_ID" width="120"/>
+                        <a:column name="businessPrice" align="right" prompt="BUSINESS_PRICE" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="primaryQuantity" align="right" prompt="EXP_REQUISITION_LINES.PRIMARY_QUANTITY" width="80"/>
+                        <a:column name="business_Amount" align="right" prompt="BUSINESS_AMOUNT" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="periodName" align="center" prompt="EXP_REQUISITION_LINES.PERIOD_NAME" width="80"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:datePicker id="EXP5360_financeCloseDsDP"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/02/18 10:03 $
+    $Revision: 1.0 $
+    $Purpose: 预算版本定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function BGT1030_QueryVersion() {
+            $au('BGT1020_scenarios_query_result_ds').query();
+        }
+
+        function BGT1030_VersionsCode(record, name) {
+            if (record.isNew) {
+                return 'BGT1030_grid_version_tf';
+            }
+            return '';
+        }
+
+        function BGT1030_BgtOrgDesc(record, name) {
+            if (record.isNew) {
+                return 'BGT1030_grid_cb';
+            }
+            return '';
+        }
+
+        function BGT1030_VersionDate(record, name) {
+            if (record.isNew) {
+                return 'BGT1030_grid_dp';
+            }
+            return '';
+        }
+
+        function BGT1030_submitSuccessFunction() {
+            $au('BGT1030_versions_query_result_ds').query();
+        }
+
+        function BGT1030_beforeDsCreate() {
+            var bgtOrgName = $au('BGT1030_versions_query_ds').getAt(0).get('bgtOrgName');
+            if (Ext.isEmpty(bgtOrgName)) {
+                new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function BGT1030_onDsAdd(ds, rd, idx) {
+            var bgtOrgId = $au('BGT1030_versions_query_ds').getAt(0).get('bgtOrgId');
+            rd.set('bgtOrgId', bgtOrgId);
+        }
+
+        function BGT1030_bgtOrgsDsQuery() {
+            $au('BGT1030_bgtOrgsDs').query();
+        }
+
+        function BGT1030_onQueryDsUpdate(ds, rd, name, value, old) {
+            if (name == 'bgtOrgName') {
+                $au('BGT1030_versions_query_result_ds').query();
+            }
+        }
+
+        function BGT1030_saveBgtVersion() {
+            var ds = $au('BGT1030_versions_query_result_ds').getAll();
+            var checkNumber = 0;
+            //最多只能设置一个状态为“当前”且启用的预算版本
+            if (ds.length > 0) {
+                for (var i = 0; i < ds.length; i++) {
+                    if ((ds[i].get('status') == 'CURRENT' && ds[i].get('enabledFlag') == 'Y')) {
+                        checkNumber += 1;
+                    }
+                }
+
+                if (checkNumber == 0) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:bgt1030_enabled_flag_version]', null, 250, 100);
+                    return;
+                }
+                if (checkNumber > 1) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:bgt1030_enabled_flag_versions]', null, 250, 100);
+                    return;
+                }
+            }
+
+            $au('BGT1030_versions_query_result_ds').submit();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1030_bgtOrgsDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/organization/bgtOrgOption"/>
+            <a:dataSet id="bgt_version_status_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BGT_VERSION_STATUS/"/>
+            <a:dataSet id="BGT1030_versions_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName"
+                             defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgCodeName]"
+                             displayField="bgtOrgCodeName" options="BGT1030_bgtOrgsDs" required="true"
+                             prompt="bgt_budget_item.budget_org_id" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1030_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT1030_versions_query_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       baseUrl="/bgt/version" queryDataSet="BGT1030_versions_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="versionCode" prompt="bgt_version.version_code" required="true"/>
+                    <a:field name="description" prompt="bgt_version.description" required="true"
+                             dto="com.hand.hec.bgt.dto.BgtVersion" dtoId="versionId"/>
+                    <a:field name="versionDate" prompt="bgt_version.version_date" required="true"/>
+                    <a:field name="status"/>
+                    <a:field name="statusDisplay" displayField="meaning" options="bgt_version_status_ds"
+                             prompt="bgt_version.status" required="true" valueField="value" returnField="status"/>
+                    <a:field name="notes" prompt="bgt_version.notes"/>
+                    <a:field name="enabledFlag" prompt="bgt_version.enabled_flag" checkedValue="Y" defaultValue="Y"
+                             uncheckedValue="N"/>
+                    <a:field name="bgtOrgId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT1030_submitSuccessFunction"/>
+                    <a:event name="beforecreate" handler="BGT1030_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT1030_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <!--<a:screenTitle/>-->
+                <a:gridButton bind="BGT1030_versions_grid" type="add" width="80"/>
+                <a:gridButton bind="BGT1030_versions_grid" click="BGT1030_saveBgtVersion" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT1030_versions_query_ds" resultTarget="BGT1030_versions_query_result_ds"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="bgtOrgName" bindTarget="BGT1030_versions_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT1030_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="versionCode" bindTarget="BGT1030_versions_query_ds"
+                                 prompt="bgt_version.version_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="BGT1030_QueryVersion"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="BGT1030_versions_query_ds"
+                                 prompt="bgt_version.version_desc">
+                        <a:events>
+                            <a:event name="enterdown" handler="BGT1030_QueryVersion"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT1030_versions_grid" bindTarget="BGT1030_versions_query_result_ds" marginHeight="115"
+                marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="versionCode" align="center" editorFunction="BGT1030_VersionsCode" sortable="true"
+                          width="80"/>
+                <a:column name="description" align="left" editor="BGT1030_grid_desc_tld" width="200"/>
+                <a:column name="versionDate" align="center" editorFunction="BGT1030_VersionDate"
+                          renderer="Aurora.formatDateTime" width="80"/>
+                <a:column name="statusDisplay" align="center" editor="BGT1030_grid_cb" width="80"/>
+                <a:column name="notes" align="left" editor="BGT1030_grid_desc_tf" width="200"/>
+                <a:column name="enabledFlag" editor="BGT1030_grid_ck" sortable="false" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="BGT1030_grid_version_tf" typeCase="upper"/>
+                <a:textField id="BGT1030_grid_desc_tf"/>
+                <a:tledit id="BGT1030_grid_desc_tld"/>
+                <a:checkBox id="BGT1030_grid_ck"/>
+                <a:lov id="BGT1030_grid_lov"/>
+                <a:dateTimePicker id="BGT1030_grid_dp"/>
+                <a:comboBox id="BGT1030_grid_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

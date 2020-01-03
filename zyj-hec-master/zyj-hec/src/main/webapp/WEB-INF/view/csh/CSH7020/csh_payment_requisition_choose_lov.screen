@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-10-16 下午3:18:54  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="csh_pay_req_query_detail_link"
+                url="$[/request/@context_path]/csh/public/csh_pay_req_query_detail.screen"/>
+        <script><![CDATA[
+        function CSH7010_csh_query() {
+            $au('CSH7020_choosePaymentRequisitionResultDs').query();
+        }
+
+        function CSH7020_choosePaymentFunc() {
+            var records = $au('CSH7020_choosePaymentRequisitionResultDs').getSelected();
+            if (records.length !== 1) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:csh_payment_requestion_choose_only_one]', null, 300, 100);
+            } else {
+                var record = $au('CSH7020_choosePaymentRequisitionResultDs').getSelected()[0];
+                $au('$[/parameter/@lovid]').commit(record);
+            }
+        }
+
+        /**
+         * @return {string}
+         */
+        function CSH7010_reqNumRenFunction(value, record, name) {
+            let url = '<a href="javascript:CSH7010_reqNumDispatch(' + record.get('paymentRequisitionHeaderId') + ',\'' + record.get('requisitionNumber') + '\')">' + value + '</a>';
+            return url;
+        }
+
+        function CSH7010_reqNumDispatch(headerId, reqNumber) {
+            url = $au('csh_pay_req_query_detail_link').getUrl() + '?paymentRequisitionHeaderId=' + headerId + '&requisitionNumber=' + reqNumber;
+            new Aurora.Window({
+                id: 'csh_pay_req_query_detail_window',
+                fullScreen: true,
+                url: url
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7020_choosePaymentRequisitionQueryDs">
+                <a:fields>
+                    <a:field name="requisitionNumber"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH7020_choosePaymentRequisitionResultDs" autoQuery="true"
+                       queryDataSet="CSH7020_choosePaymentRequisitionQueryDs"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/line/queryPaymentRequisition?employeeId=$[/parameter/@employeeId]&amp;currencyCode=$[/parameter/@currencyCode]"
+                       selectable="true"/>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:button click="CSH7020_choosePaymentFunc" text="HAP_CONFIRM" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="CSH7020_choosePaymentRequisitionQueryDs"
+                             resultTarget="CSH7020_choosePaymentRequisitionResultDs" style="width:100%;border:none">
+                    <a:formToolBar labelWidth="100">
+                        <a:textField name="requisitionNumber" prompt="csh7010.requisition_number"
+                                     bindTarget="CSH7020_choosePaymentRequisitionQueryDs"/>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid bindTarget="CSH7020_choosePaymentRequisitionResultDs" height="410" navBar="true" width="988">
+                <a:columns>
+                    <a:column name="requisitionNumber" align="center" renderer="CSH7010_reqNumRenFunction" width="120"
+                              prompt="csh7010.requisition_number"/>
+                    <a:column name="lineNumber" align="center" width="50"
+                              prompt="csh_repayment_register_ln.line_number"/>
+                    <a:column name="requisitionDate" align="center" renderer="Aurora.formatDate" width="80"
+                              prompt="csh7010.requisition_date"/>
+                    <a:column name="currencyName" align="center" width="80" prompt="gld_currency.currency_name"/>
+                    <a:column name="accountName" align="center" width="80" prompt="csh_payment.bank_account_code"/>
+                    <a:column name="accountNumber" align="center" width="150"
+                              prompt="csh_bank_account.bank_account_num"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"
+                              prompt="csh7010.balance"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="dblclick" handler="CSH7020_choosePaymentFunc"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

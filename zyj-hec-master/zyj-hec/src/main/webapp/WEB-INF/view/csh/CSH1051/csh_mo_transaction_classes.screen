@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-20 下午2:45:19  
+    $Revision: 1.0  
+    $Purpose: 管理组织级-现金事物分类定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+
+    <a:view>
+        <a:link id="CSH1051_csh_mo_trx_cls_asgn_com_link" url="$[/request/@context_path]/csh/CSH1051/csh_mo_trx_cls_asgn_com.screen"/>
+        <a:link id="CSH1051_csh_mo_trans_classes_select_link" url="$[/request/@context_path]/csh/CSH1051/csh_mo_transaction_classes_mag_org_select.screen"/>
+        <div/>
+        <script><![CDATA[
+            var glbTrxClassId;
+            var glbTrxClassCode;
+            
+            function CSH1051_closeTranClassesCreateWindow() {
+                window.location.href =
+                $au('CSH1051_csh_mo_trans_classes_select_link').getUrl();
+            }
+            
+            function CSH1051_cshTransactionEdit(record, name) {
+                if (record.isNew) {
+                    if (name == 'cshTransactionTypeCodeDesc') {
+                        return 'CSH1051_comboBox';
+                    } else if (name == 'moCshTrxClassCode') {
+                        return 'CSH1051_textField_upper';
+                    }
+                }
+                return '';
+            }
+            
+            function CSH1051_asgnCompany(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:CSH1051_asgnCompanyInfo(\'' + record.get('moCshTrxClassId') + '\')">$[l:acp_invoice_types_assign_company.title]</a>';
+            }
+            
+            function CSH1051_asgnCompanyInfo(trxClassId) {
+                var magOrgId = $au('CSH1051_csh_mo_transaction_classes_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'CSH1051_csh_mo_trx_cls_asgn_com',
+                    url: $au('CSH1051_csh_mo_trx_cls_asgn_com_link').getUrl() + '?moCshTrxClassId=' + trxClassId + '&magOrgId=' + magOrgId,
+                    title: '$[l:acp_invoice_types_assign_company.title]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            
+            function CSH1051_addFunction(ds, record, index) {
+                record.set('moCshTrxClassCode', glbTrxClassCode);
+                record.set('moCshTrxClassId', glbTrxClassId);
+            }
+            
+            function saveFunction() {
+                beforeSave('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds', 'cashFlowItemId', '$[l:csh_mo_trx_cls_ref_flow_its.repeated]');
+            }
+            
+            function beforeSave(ds, name, message) {
+                var records = $au(ds).getAll();
+                var default_number = 0;
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i].get('defaultFlag') == 'Y') {
+                        default_number++;
+                    }
+                    //该校验改为：同一账套下只能有一个默认现金流量项，放在后台校验@20170615 Tank
+                    // if (default_number > 1) {
+                    // Aurora.showErrorMessage('', '只能有一个默认现金流量项');
+                    // return;
+                    // }
+                    for (var j = i + 1;j < records.length;j++) {
+                        if (records[i].get(name) == records[j].get(name)) {
+                            Aurora.showErrorMessage('', message);
+                            return;
+                        }
+            
+                    }
+                }
+                $au(ds).submit();
+                $au(ds).query();
+            }
+            
+            function CSH1051_cashFlowItemTypeIdEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1051_flow_lov';
+                }
+                return '';
+            }
+            
+            function CSH1051_load(ds) {
+                //当输入筛选条件时，上级grid无符合条件的记录，此时下级grid也应清空
+                var length = ds.getAll().length;
+                if (length == 0) {
+                    $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').setQueryParameter('moCshTrxClassId', -1);
+                    $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').query();
+                }
+            }
+            
+            function CSH1051_tranClasIndexChange(ds, record) {
+            
+                $au('btnAdd').enable();
+                $au('btnSave').enable();
+            
+                glbTrxClassId = record.get('moCshTrxClassId');
+                glbTrxClassCode = record.get('moCshTrxClassCode');
+            
+                var traClassId = record.get('moCshTrxClassId');
+                if (traClassId == null || traClassId == undefined) {
+                    //新增记录时，清空下级grid数据，防止查出不符合的记录
+                    $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').setQueryParameter('moCshTrxClassId', -1);
+                    $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').query();
+                } else {
+                    //非新增情况下，正常传入参数查询下级grid中数据
+                    $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').setQueryParameter('moCshTrxClassId', traClassId);
+                    $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').query();
+                }
+            }
+            
+            function CSH1051_submit(ds) {
+                ds.query();
+            }
+            
+            function CSH1051_focus() {
+                $au('CSH1051_transaction_classes_magOrgList_ds').query();
+            }
+            
+            function CSH1051_add(ds) {
+                var magOrgId = $au('CSH1051_csh_mo_transaction_classes_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function CSH1051_cellClick(grid, row, name, record) {
+                var magOrgId = $au('CSH1051_csh_mo_transaction_classes_query_ds').getCurrentRecord().get('magOrgId');
+                var metadata = record.getMeta();
+                if (name == 'cashFlowItemDesc') {
+                    metadata.getField('cashFlowItemDesc').setLovPara('magOrgId', magOrgId);
+                }
+            }
+            
+            function CSH1051_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('CSH1051_csh_mo_transaction_classes_result_ds').query();
+                }
+            }
+            
+            function CSH1051_BeforeCreate() {
+                if (Ext.isEmpty($au('CSH1051_csh_mo_transaction_classes_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            //ADD CHQ 20171228
+            //校验现金流量项是否启用，未启用无法启用默认选项
+            
+            function CSH1051_CheckDefaultFlag(ds, record, name, value, oldValue) {
+                if (record.get('enabledFlag') == 'N' && record.get('defaultFlag') == 'Y') {
+            
+                    record.set('defaultFlag', 'N');
+                    new Aurora.showMessage('$[l:prompt]', '$[l:csh_mo_trx_cls_ref_flow_its.please_enable]', null, 300, 100);
+                }
+            }
+            
+            function CSH1051_csh_mo_transaction_classes_save() {
+                $au('CSH1051_csh_mo_transaction_classes_result_ds').submit();
+                $au('CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds').submit();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1051_transaction_classes_magOrgList_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="CSH1051_csh_transaction_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_TRANSACTION_TYPE/"/>
+            <a:dataSet id="CSH1051_csh_mo_transaction_classes_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/managingOrganization/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1051_transaction_classes_magOrgList_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/managingOrganization/records/record/@magOrgId]"/>
+                    <a:field name="cshTransactionTypeCodeDesc" displayField="meaning" options="CSH1051_csh_transaction_type_ds" placeHolder="csh_mo_transaction_classes.csh_transaction_type_code" returnField="cshTransactionTypeCode" valueField="value"/>
+                    <a:field name="cshTransactionTypeCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1051_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1051_csh_mo_transaction_classes_result_ds" autoPageSize="true" autoQuery="true" queryDataSet="CSH1051_csh_mo_transaction_classes_query_ds" baseUrl="/csh/mo-transaction-class" selectable="true">
+                <a:fields>
+                    <a:field name="moCshTrxClassId"/>
+                    <a:field name="moCshTrxClassCode" required="true"/>
+                    <a:field name="description" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="cshTransactionTypeCode"/>
+                    <a:field name="cshTransactionTypeCodeDesc" displayField="meaning" options="CSH1051_csh_transaction_type_ds" required="true" returnField="cshTransactionTypeCode" valueField="value"/>
+                    <a:field name="enabledWriteOffFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_types.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="indexchange" handler="CSH1051_tranClasIndexChange"/>
+                    <a:event name="submitsuccess" handler="CSH1051_submit"/>
+                    <a:event name="load" handler="CSH1051_load"/>
+                    <a:event name="add" handler="CSH1051_add"/>
+                    <a:event name="beforecreate" handler="CSH1051_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds" autoPageSize="true" baseUrl="/csh/mo-trx-cls-ref-flow-it" >
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="moCshTrxClassId"/>
+                    <a:field name="moCshTrxClassCode"/>
+                    <a:field name="cashFlowItemDesc" lovAutoQuery="true" lovCode="LOV_CSH_CASH_FLOW_ITEMS" prompt="csh_mo_trx_cls_ref_flow_its.cash_flow_item_id" required="true" title="csh_mo_trx_cls_ref_flow_its.cash_flow_item_id">
+                        <a:mapping>
+                            <a:map from="cashFlowItemId" to="cashFlowItemId"/>
+                            <a:map from="description" to="cashFlowItemDesc"/>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="setOfBooksName"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH1051_addFunction"/>
+                    <a:event name="submitsuccess" handler="CSH1051_submit"/>
+                    <a:event name="beforecreate" handler="CSH1051_BeforeCreate"/>
+                    <a:event name="update" handler="CSH1051_CheckDefaultFlag"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1051_csh_mo_transaction_classes_grid" type="add"/>
+                <a:gridButton click="CSH1051_csh_mo_transaction_classes_save" text="HAP_SAVE" type="save"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1051_csh_mo_transaction_classes_query_ds" resultTarget="CSH1051_csh_mo_transaction_classes_result_ds" style="width:100%;border:none">
+                <a:formToolBar LabelWidth="120">
+                    <a:comboBox name="magOrgDisplay" bindTarget="CSH1051_csh_mo_transaction_classes_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <!--<a:events>
+                            <a:event name="focus" handler="CSH1051_focus"/>
+                        </a:events>-->
+                    </a:comboBox>
+                    <a:textField name="moCshTrxClassCode" bindTarget="CSH1051_csh_mo_transaction_classes_query_ds" prompt="csh_mo_transaction_classes.mo_csh_trx_class_code" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="CSH1051_csh_mo_transaction_classes_query_ds" prompt="csh_mo_transaction_classes.description"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:comboBox name="cshTransactionTypeCodeDesc" bindTarget="CSH1051_csh_mo_transaction_classes_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1051_csh_mo_transaction_classes_grid" bindTarget="CSH1051_csh_mo_transaction_classes_result_ds" marginHeight="690" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="cshTransactionTypeCodeDesc" editorFunction="CSH1051_cshTransactionEdit" prompt="csh_mo_transaction_classes.csh_transaction_type_code" width="200"/>
+                <a:column name="moCshTrxClassCode" align="center" editorFunction="CSH1051_cshTransactionEdit" prompt="csh_mo_transaction_classes.mo_csh_trx_class_code" width="200"/>
+                <a:column name="description" editor="CSH1051_textField" prompt="csh_mo_transaction_classes.description" width="200"/>
+                <a:column name="enabledWriteOffFlag" align="center" editor="CSH1051_checkBox" prompt="csh_mo_transaction_classes.enabled_write_off_flag" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1051_checkBox" prompt="csh_mo_transaction_classes.enabled_flag" width="80"/>
+                <a:column name="asignCm" align="center" renderer="CSH1051_asgnCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="CSH1051_comboBox"/>
+                <a:textField id="CSH1051_textField_upper" typeCase="upper"/>
+                <a:textField id="CSH1051_textField"/>
+                <a:checkBox id="CSH1051_checkBox"/>
+            </a:editors>
+        </a:grid>
+        <a:grid id="CSH1051_csh_mo_trx_cls_ref_flow_its_grid" autoAdjustHeight="true" bindTarget="CSH1051_csh_mo_trx_cls_ref_flow_its_result_ds" height="600" marginWidth="3" navBar="true">
+            <a:toolBar>
+                <a:button id="btnAdd" disabled="true" type="add"/>
+                <a:button id="btnSave" click="saveFunction" disabled="true" type="save"/>
+            </a:toolBar>
+            <a:columns>
+                <a:column name="moCshTrxClassCode" align="center" prompt="csh_mo_transaction_classes.mo_csh_trx_class_code" width="140"/>
+                <a:column name="cashFlowItemDesc" align="left" editorFunction="CSH1051_cashFlowItemTypeIdEdit" prompt="csh_mo_trx_cls_ref_flow_its.cash_flow_item_id" width="200"/>
+                <a:column name="setOfBooksName" align="left" prompt="GLD_SET_OF_BOOKS_VL.SET_OF_BOOKS_NAME" width="200"/>
+                <a:column name="defaultFlag" align="center" editor="CSH1051_flow_checkBox" prompt="csh_mo_trx_cls_ref_flow_its.default_flag" width="100"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1051_flow_checkBox" prompt="csh_mo_trx_cls_ref_flow_its.enabled_flag" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="CSH1051_numberField" allowDecimals="false" allowFormat="false"/>
+                <a:checkBox id="CSH1051_flow_checkBox"/>
+                <a:lov id="CSH1051_flow_lov"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="CSH1051_cellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-04 14:07:47
+    $Revision: 1.1 $
+    $Purpose: 报盘文件导出格式定义-批量分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function CSH1090_AeBatchSave() {
+                //debugger;
+                var records = $au('sc_csh_offer_type_exp_sob_companies_ds').getSelected();
+                var param = [];
+                var type_id = '$[/parameter/@formatHdsId]';
+                if (records.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+
+                for (var i = 0;i < records.length;i++) {
+                    var obj = {
+                        accEntityId: records[i].get('accEntityId'),
+                        formatHdsId: type_id,
+                        __status: 'add'
+                    };
+                    param.push(obj);
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('sc_csh_offer_type_exp_sob_companies_ds').submiturl,
+                    para: param,
+                    success: function (){
+                        $au('csh_offer_format_asgn_ae_batch_screen').close();
+                        $au('sc_csh_offer_type_com_ass_ds').query();
+                    },
+                    scope: this
+                });
+            }
+
+            function CSH1090_AeBatchBack() {
+                $au('csh_offer_format_asgn_ae_batch_screen').close();
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="sc_csh_offer_type_exp_sob_companies_ds" autoQuery="true" baseUrl="/csh/offer-format-asgn-ae" queryUrl="$[/request/@context_path]/csh/offer-format-asgn-ae/queryBatch?formatHdsId=$[/parameter/@formatHdsId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityCode"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="sc_csh_offer_type_exp_sob_companies_form" column="2" labelWidth="100" title="prompt.batch_asgn_ae">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH1090_AeBatchSave" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="CSH1090_AeBatchBack" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="formatCode" bindTarget="csh_offer_type_ds" prompt="csh_offer_format.format_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="csh_offer_type_ds" prompt="csh_offer_format.format_name" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="sc_csh_offer_type_exp_sob_companies_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" prompt="csh_pay_batch_rule_asgn.acc_entity_code" width="120"/>
+                    <a:column name="accEntityName" prompt="csh_pay_batch_rule_asgn.acc_entity_name" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

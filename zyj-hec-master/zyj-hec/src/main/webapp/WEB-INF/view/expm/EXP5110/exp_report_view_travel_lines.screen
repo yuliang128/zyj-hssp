@@ -1,0 +1,1584 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <!--<a:init-procedure>-->
+        <!--<a:model-query defaultWhereClause="v.reportPageElementCode = &apos;TRAVEL_LINES&apos;" model="expm.EXP5110.exp_report_line_dimension_fields_query" rootPath="travel_line_dimensions"/>-->
+        <!--<a:model-query defaultWhereClause="v.reportPageElementCode = &apos;TRAVEL_LINES&apos;" model="expm.EXP5110.exp_report_line_object_fields_query" rootPath="travel_line_objects"/>-->
+        <!--<a:model-query defaultWhereClause="v.reportPageElementCode = &apos;TRAVEL_LINES&apos; " model="hec_util.exp_util.exp_rep_ele_invoice_flag" rootPath="travel_line_element"/>-->
+        <!--<a:model-query defaultWhereClause="erpe.reportPageElementCode = &apos;TRAVEL_LINES&apos;" model="expm.EXP5110.exp_report_line_description_query" rootPath="travel_lines_description"/>-->
+    <!--</a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP5110_exp_report_maintain_travel_lines_extend_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_maintain_standard_lines_extend.screen"/>
+        <a:link id="EXP5110_exp_report_maintain_travel_vat_invoice_list_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_maintain_vat_invoice_list.screen"/>
+        <a:link id="EXP5110_exp_report_travel_more_invoice_standard_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_more_invoice.screen"/>
+        <a:link id="EXP5110_exp_report_travel_vat_invoice_more_tax_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_vat_invoice_more_tax.screen"/>
+        <a:link id="EXP5110_exp_report_travel_cancel_report_realation_link" model="db.vat_invoice_relation_pkg.cancel_report_realation" modelaction="update"/>
+        <script><![CDATA[
+            function EXP5110_travelGetNextLineNumber() {
+                var nextLineNumber = 10;
+            
+                var allPmtRecords = $au('EXP5110_exp_report_travel_line_ds').getAll();
+                Ext.each(allPmtRecords, function(allPmtRecord) {
+                    if (allPmtRecord.get('lineNumber') >= nextLineNumber) {
+                        nextLineNumber = allPmtRecord.get('lineNumber') + 10;
+                    }
+                }, this);
+            
+                return nextLineNumber;
+            }
+            
+            function EXP5110_travelLineAdd(reqDatas) {
+                if (reqDatas && reqDatas.length && reqDatas.length != 0) {
+                    var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+            
+                    //从申请单创建
+                    Ext.each(reqDatas, function(reqData) {
+                        var data = {};
+                        for (var fieldName in reqDatas['fields']) {
+                            data[fieldName] = reqData[fieldName];
+                        }
+                        data['reportPageElementCode'] = 'TRAVEL_LINES';
+                        data['expReportHeaderId'] = headerRecord.get('expReportHeaderId');
+                        data['lineNumber'] = EXP5110_travelGetNextLineNumber();
+                        $au('EXP5110_exp_report_travel_line_ds').create(data);
+                    }, this);
+                    var vatInvoiceFlag = headerRecord.get('vatInvoiceFlag');
+                    if (vatInvoiceFlag == 'Y') {
+                        var records = $au('EXP5110_exp_report_travel_line_ds').getAll();
+                        for (var i = 0;i < records.length;i++) {
+                            records[i].getMeta().getField('lineInvoiceTypeDesc').setRequired(false); //update by penglei 暂时修改为非必输
+                        }
+                    }
+                } else {
+                    var selectedRecords = $au('EXP5110_exp_report_travel_line_ds').getSelected();
+                    if (selectedRecords && selectedRecords.length) {
+                        Ext.each(selectedRecords, function(selectedRecord) {
+                            var data = {};
+                            for (var field in $au('EXP5110_exp_report_travel_line_ds').fields) {
+                                data[field] = selectedRecord.get(field);
+                            }
+                            data['expReportLineId'] = null;
+                            data['lineNumber'] = EXP5110_travelGetNextLineNumber();
+                            $au('EXP5110_exp_report_travel_line_ds').create(data);
+                        });
+                    } else {
+                        var data = {};
+                        var lineDs = $au('EXP5110_exp_report_travel_line_ds');
+                        headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                        data['reportPageElementCode'] = 'TRAVEL_LINES';
+                        data['lineNumber'] = EXP5110_travelGetNextLineNumber();
+                        data['expReportHeaderId'] = headerRecord.get('expReportHeaderId');
+                        data['companyName'] = headerRecord.get('companyName');
+                        data['companyId'] = headerRecord.get('companyId');
+                        data['accEntityName'] = headerRecord.get('accEntityName');
+                        data['accEntityId'] = headerRecord.get('accEntityId');
+                        data['unitName'] = headerRecord.get('unitName');
+                        data['unitId'] = headerRecord.get('unitId');
+                        data['positionName'] = headerRecord.get('positionName');
+                        data['positionId'] = headerRecord.get('positionId');
+                        data['employeeName'] = headerRecord.get('employeeName');
+                        data['employeeId'] = headerRecord.get('employeeId');
+                        data['respCenterName'] = headerRecord.get('respCenterName');
+                        data['respCenterId'] = headerRecord.get('respCenterId');
+                        data['primaryQuantity'] = 1;
+                        data['businessCurrencyName'] = headerRecord.get('paymentCurrencyName');
+                        data['businessCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+                        data['businessCurrencyPrecision'] = headerRecord.get('paymentCurrencyPrecision');
+                        data['biz2payExchangeTypeName'] = headerRecord.get('pay2funExchangeTypeName');
+                        data['biz2payExchangeType'] = headerRecord.get('pay2funExchangeType');
+                        data['biz2payExchangeRate'] = 1;
+                        data['paymentCurrencyName'] = headerRecord.get('paymentCurrencyName');
+                        data['paymentCurrencyCode'] = headerRecord.get('paymentCurrencyCode');
+                        data['paymentCurrencyPrecision'] = headerRecord.get('paymentCurrencyPrecision');
+                        data['pay2funExchangeTypeName'] = headerRecord.get('pay2funExchangeTypeName');
+                        data['pay2funExchangeType'] = headerRecord.get('pay2funExchangeType');
+                        data['pay2funExchangeRate'] = headerRecord.get('pay2funExchangeRate');
+                        data['managementCurrencyName'] = headerRecord.get('managementCurrencyName');
+                        data['managementCurrencyCode'] = headerRecord.get('managementCurrencyCode');
+                        data['managementCurrencyPrecision'] = headerRecord.get('managementCurrencyPrecision');
+                        data['pay2magExchangeTypeName'] = headerRecord.get('pay2magExchangeTypeName');
+                        data['pay2magExchangeType'] = headerRecord.get('pay2magExchangeType');
+                        data['pay2magExchangeRate'] = headerRecord.get('pay2magExchangeRate');
+                        data['accEntityId'] = headerRecord.get('accEntityId');
+                        data['accEntityName'] = headerRecord.get('accEntityName');
+                        data['respCenterId'] = headerRecord.get('respCenterId');
+                        data['respCenterName'] = headerRecord.get('respCenterName');
+                        data['bgtEntityId'] = headerRecord.get('bgtEntityId');
+                        data['bgtEntityName'] = headerRecord.get('bgtEntityName');
+                        data['bgtCenterId'] = headerRecord.get('bgtCenterId');
+                        data['bgtCenterName'] = headerRecord.get('bgtCenterName');
+                        data['periodName'] = headerRecord.get('periodName');
+                        data['dateFrom'] = headerRecord.get('reportDate');
+                        data['dateTo'] = headerRecord.get('reportDate');
+                        for (var i = 1;i <= 20;i++) {
+                            data['dimension' + i + 'Id'] = lineDs.fields['dimension' + i + 'Id'] ? lineDs.fields['dimension' + i + 'Id'].pro.defaultvalue : '';
+                            data['dimension' + i + 'Name'] = lineDs.fields['dimension' + i + 'Name'] ? lineDs.fields['dimension' + i + 'Name'].pro.defaultvalue : '';
+                        }
+            
+                        //新增行的时候将默认报销类型自动带出
+                        //modified by ll 20180305
+                        // $au('EXP5110_travel_lines_expense_type_default_ds').setQueryParameter('companyId', headerRecord.get('companyId'));
+                        // $au('EXP5110_travel_lines_expense_type_default_ds').query();
+                        var expense_type_default_ds = $au('EXP5110_travel_lines_expense_type_default_ds').getAt(0);
+                        data['moExpenseTypeId'] = expense_type_default_ds.get('moExpenseTypeId');
+                        data['moExpenseTypeName'] = expense_type_default_ds.get('moExpenseTypeName');
+            
+                        $au('EXP5110_exp_report_travel_line_ds').create(data);
+                    }
+                    var vatInvoiceFlag = headerRecord.get('vatInvoiceFlag');
+                    if (vatInvoiceFlag == 'Y') {
+                        var records = $au('EXP5110_exp_report_travel_line_ds').getAll();
+                        for (var j = 0;j < records.length;j++) {
+                            records[j].getMeta().getField('lineInvoiceTypeDesc').setRequired(false); //update by penglei 暂时修改为非必输
+                        }
+                    }
+                }
+            }
+            
+            function EXP5110_travelDistAdd() {
+                var selectedRecords = $au('EXP5110_exp_report_travel_dist_ds').getSelected();
+                if (selectedRecords && selectedRecords.length) {
+                    Ext.each(selectedRecords, function(selectedRecord) {
+                        var data = {};
+                        for (var field in $au('EXP5110_exp_report_travel_dist_ds').fields) {
+                            data[field] = selectedRecord.get(field);
+                        }
+                        data['expReportDistId'] = null;
+                        $au('EXP5110_exp_report_travel_dist_ds').create(data);
+                    });
+                } else {
+                    var data = {};
+                    var lineDs = $au('EXP5110_exp_report_travel_line_ds');
+                    var lineRecord = lineDs.getCurrentRecord();
+                    var distDs = $au('EXP5110_exp_report_travel_dist_ds');
+                    data['expReportLineId'] = lineRecord.get('expReportLineId');
+                    data['companyName'] = lineRecord.get('companyName');
+                    data['companyId'] = lineRecord.get('companyId');
+                    data['accEntityName'] = lineRecord.get('accEntityName');
+                    data['accEntityId'] = lineRecord.get('accEntityId');
+                    data['unitName'] = lineRecord.get('unitName');
+                    data['unitId'] = lineRecord.get('unitId');
+                    data['positionName'] = lineRecord.get('positionName');
+                    data['positionId'] = lineRecord.get('positionId');
+                    data['employeeName'] = lineRecord.get('employeeName');
+                    data['employeeId'] = lineRecord.get('employeeId');
+                    data['respCenterName'] = lineRecord.get('respCenterName');
+                    data['respCenterId'] = lineRecord.get('respCenterId');
+                    data['primaryQuantity'] = 1;
+                    data['businessCurrencyName'] = lineRecord.get('businessCurrencyName');
+                    data['businessCurrencyCode'] = lineRecord.get('businessCurrencyCode');
+                    data['biz2payExchangeTypeName'] = lineRecord.get('biz2payExchangeTypeName');
+                    data['biz2payExchangeType'] = lineRecord.get('biz2payExchangeType');
+                    data['biz2payExchangeRate'] = lineRecord.get('biz2payExchangeRate');
+                    data['paymentCurrencyName'] = lineRecord.get('paymentCurrencyName');
+                    data['paymentCurrencyCode'] = lineRecord.get('paymentCurrencyCode');
+                    data['pay2funExchangeTypeName'] = lineRecord.get('pay2funExchangeTypeName');
+                    data['pay2funExchangeType'] = lineRecord.get('pay2funExchangeType');
+                    data['pay2funExchangeRate'] = lineRecord.get('pay2funExchangeRate');
+                    data['managementCurrencyName'] = lineRecord.get('managementCurrencyName');
+                    data['managementCurrencyCode'] = lineRecord.get('managementCurrencyCode');
+                    data['pay2magExchangeTypeName'] = lineRecord.get('pay2magExchangeTypeName');
+                    data['pay2magExchangeType'] = lineRecord.get('pay2magExchangeType');
+                    data['pay2magExchangeRate'] = lineRecord.get('pay2magExchangeRate');
+                    data['bgtEntityId'] = lineRecord.get('bgtEntityId');
+                    data['bgtEntityName'] = lineRecord.get('bgtEntityName');
+                    data['bgtCenterId'] = lineRecord.get('bgtCenterId');
+                    data['bgtCenterName'] = lineRecord.get('bgtCenterName');
+                    data['periodName'] = lineRecord.get('periodName');
+                    data['moExpenseTypeName'] = lineRecord.get('moExpenseTypeName');
+                    data['moExpenseTypeId'] = lineRecord.get('moExpenseTypeId');
+                    data['moExpenseItemName'] = lineRecord.get('moExpenseItemName');
+                    data['moExpenseItemId'] = lineRecord.get('moExpenseItemId');
+                    $au('EXP5110_exp_report_travel_dist_ds').create(data);
+                }
+            }
+            
+            // Modified by Arthur.Chen Date: 2017 - 09 - 18 15: 15: 12
+            // 1.若报销单类型中必须申请字段为Y，那么修改新增按钮为复制按钮。下为复制按钮的function
+            
+            function EXP5110_travelLineCopy() {
+                var selectedRecords = $au('EXP5110_exp_report_travel_line_ds').getSelected();
+                if (selectedRecords && selectedRecords.length) {
+                    Ext.each(selectedRecords, function(selectedRecord) {
+                        var data = {};
+                        for (var field in $au('EXP5110_exp_report_travel_line_ds').fields) {
+                            data[field] = selectedRecord.get(field);
+                        }
+                        data['expReportLineId'] = null;
+                        data['lineNumber'] = EXP5110_travelGetNextLineNumber();
+                        $au('EXP5110_exp_report_travel_line_ds').create(data);
+                    });
+                } else {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:hap_must_select_one]', null, 300, 100);
+                }
+            }
+            
+            
+            // Modify Tagin/2018.04.16 调整发票处理的逻辑（整理所有的函数）
+            var EXP5110_travelInvoice = (function(record) {
+                // 1.0 增值税发票字段必输/非必输
+                this.required = function(value) {
+                    if (value == 'VAT_SPECIAL') {
+                        record.getField('invoiceCode').setRequired(true);
+                        record.getField('invoiceNumber').setRequired(true);
+                        record.getField('invoiceDate').setRequired(true);
+                        record.getField('invoiceAmount').setRequired(true);
+                        record.getField('taxTypeName').setRequired(true);
+                        record.getField('taxAmount').setRequired(true); //发票金额
+                        record.getField('splittedTaxAmount').setRequired(true); //发票金额
+                    } else if (value == 'VAT_NORMAL' || value == 'VAT_ELECTRONIC_NORMAL') {
+                        record.getField('invoiceCode').setRequired(true);
+                        record.getField('invoiceNumber').setRequired(true);
+                        record.getField('invoiceDate').setRequired(true);
+                        record.getField('invoiceAmount').setRequired(true);
+                    } else if (value == 'OTHER' || value == undefined || value == '') {
+                        //Modifiied by caoke/2018-05-30 其他发票也比输
+                        // record.getField('invoiceCode').setRequired(false);
+                        // record.getField('invoiceNumber').setRequired(false);
+                        record.getField('invoiceCode').setRequired(true);
+                        record.getField('invoiceNumber').setRequired(true);
+                        record.getField('invoiceDate').setRequired(false);
+                        record.getField('invoiceAmount').setRequired(true);
+                        record.getField('taxTypeName').setRequired(false);
+                        record.getField('taxAmount').setRequired(false); //发票金额
+                        record.getField('splittedTaxAmount').setRequired(false); //发票金额
+                    }
+                };
+            
+                // 2.0 增值税发票字段清空
+                this.clear = function(value) {
+                    if (value == 'VAT_SPECIAL') {
+                        //
+                    } else if (value == 'VAT_NORMAL' || value == 'VAT_ELECTRONIC_NORMAL') {
+                        record.set('taxTypeName', '');
+                        record.set('taxTypeId', '');
+                        record.set('taxTypeRate', '');
+                        record.set('relationFlag', '');
+                    } else if (value == 'OTHER') {
+                        //record.set('invoiceCode', '');
+                        record.set('invoiceNumber', '');
+                        record.set('invoiceDate', '');
+                        record.set('invoiceAmount', '');
+                        record.set('taxTypeName', '');
+                        record.set('taxTypeId', '');
+                        record.set('taxTypeRate', '');
+                        record.set('taxAmount', '');
+                        record.set('splittedTaxAmount', '');
+                        record.set('relationFlag', '');
+                    } else if (value == '' || value == undefined) {
+                        record.set('invoiceId', '');
+                        record.set('invoiceLineId', '');
+                        record.set('invoiceCategoryName', '');
+                        record.set('invoiceCategoryId', '');
+                        record.set('invoiceCode', '');
+                        record.set('invoiceNumber', '');
+                        record.set('invoiceDate', '');
+                        record.set('invoiceAmount', '');
+                        record.set('taxTypeName', '');
+                        record.set('taxTypeId', '');
+                        record.set('taxTypeRate', '');
+                        record.set('taxAmount', '');
+                        record.set('splittedTaxAmount', '');
+                        record.set('invoiceType', '');
+                        record.set('invoiceSource', '');
+                        record.set('relationFlag', '');
+                    }
+                };
+            
+                // 3.0 增值税发票相关字段显示/隐藏
+                this.show = function(value, grid) {
+                    if (value == 'Y') {
+                        // Modify Tagin/2018.01.22 增加判断 若页面元素中更多发票/更多税额标识存在为Y则启用更多关联链接
+                        if ('$[/model/travel_line_element/record/@moreInvoiceFlag]' == 'Y' || '$[/model/travel_line_element/record/@moreTaxFlag]' == 'Y') {
+                            grid.showColumn('invoiceInfo');
+                        } else {
+                            grid.hideColumn('invoiceInfo');
+                        }
+                        if ('$[/model/travel_line_element/record/@invoiceFlag]' == 'N') {
+                            grid.hideColumn('invoiceCategoryName');
+                            grid.hideColumn('invoiceCode');
+                            grid.hideColumn('invoiceNumber');
+                            grid.hideColumn('invoiceDate');
+                            grid.hideColumn('invoiceAmount');
+                            grid.hideColumn('cancelInvoice');
+                        } else {
+                            grid.showColumn('invoiceCategoryName');
+                            grid.showColumn('invoiceCode');
+                            grid.showColumn('invoiceNumber');
+                            grid.showColumn('invoiceDate');
+                            grid.showColumn('invoiceAmount');
+                            grid.showColumn('cancelInvoice');
+                        }
+                        if ('$[/model/travel_line_element/record/@taxFlag]' == 'N') {
+                            grid.hideColumn('taxTypeName');
+                            grid.hideColumn('taxAmount');
+                            grid.hideColumn('splittedTaxAmount');
+                        } else {
+                            grid.showColumn('taxTypeName');
+                            grid.showColumn('taxAmount');
+                            grid.showColumn('splittedTaxAmount');
+                        }
+                    } else {
+                        grid.hideColumn('invoiceInfo');
+                        grid.hideColumn('invoiceCategoryName');
+                        grid.hideColumn('invoiceCode');
+                        grid.hideColumn('invoiceNumber');
+                        grid.hideColumn('invoiceDate');
+                        grid.hideColumn('invoiceAmount');
+                        grid.hideColumn('taxTypeName');
+                        grid.hideColumn('taxAmount');
+                        grid.hideColumn('splittedTaxAmount');
+                        grid.hideColumn('cancelInvoice');
+                    }
+                    //add by caoke/2018-05-02 报销单头关联申请单，隐藏行上的关联申请单号
+                    if ($au('EXP5110_exp_report_header_ds').getAt(0).get('relationMethodCode') == 'HEAD') {
+                        grid.hideColumn('expRequisitionNumber');
+                    }
+                };
+            
+                // 4.0 增值税发票相关字段是否可输入
+                this.edit = function(name) {
+                    var invoiceRow = !record.get('vatcount') ? 0 : record.get('vatcount');
+                    var invoiceSource = record.get('invoiceSource');
+                    var invoiceType = record.get('invoiceType');
+                    if (name == 'invoiceCategoryName') {
+                        // add caoke/2018.05-30 设置增值税相关字段的必输性
+                        if (record.get('invoiceSource') == 'MANUAL' && invoiceRow <= 1) {
+                            new EXP5110_travelInvoice(record).required(invoiceType);
+                        }
+                        //end
+                        if (invoiceRow <= 1) {
+                            return 'EXP5110_travel_cb';
+                        }
+                    } else if (name == 'invoiceCode') {
+                        if (invoiceRow <= 1 && record.get('invoiceCategoryName')) {
+                            return 'EXP5110_travel_lov';
+                        }
+                    } else if (name == 'invoiceNumber') {
+                        if (invoiceRow <= 1 && invoiceSource == 'MANUAL') {
+                            return 'EXP5110_travel_tf';
+                        }
+                    } else if (name == 'invoiceDate') {
+                        if (invoiceRow <= 1 && invoiceSource == 'MANUAL') {
+                            return 'EXP5110_travel_dp';
+                        }
+                    } else if (name == 'invoiceAmount') {
+                        if (invoiceRow <= 1 && invoiceSource == 'MANUAL') {
+                            return 'EXP5110_travel_nf_2';
+                        }
+                    } else if (name == 'taxTypeName') {
+                        // Modify Tagin/2018.04.17 存在只录税率及税额（只拆分税金不关联发票）
+                        if ((invoiceRow <= 1 && invoiceSource == 'MANUAL') || (!record.get('invoiceCode') && invoiceRow <= 1)) {
+                            return 'EXP5110_travel_cb';
+                        }
+                    } else if (name == 'taxAmount') {
+                        // Modify Tagin/2018.04.17 存在只录税率及税额（只拆分税金不关联发票）
+                        if ((invoiceRow <= 1 && invoiceSource == 'MANUAL') || (!record.get('invoiceCode') && invoiceRow <= 1)) {
+                            //add by caoke/2018-05-30 设置比输
+                            if (record.get('taxTypeRate')) {
+                                record.getField('taxAmount').setRequired(true);
+                            }
+                            return 'EXP5110_travel_nf_2';
+                        }
+                    } else if (name == 'splittedTaxAmount') {
+                        // Modify Tagin/2018.04.17 存在只录税率及税额（只拆分税金不关联发票）
+                        if ((invoiceRow <= 1 && invoiceSource == 'MANUAL') || (!record.get('invoiceCode') && invoiceRow <= 1)) {
+                            return 'EXP5110_travel_nf_2';
+                        }
+                    }
+                    return '';
+                };
+            
+                // 5.0 增值税发票取消关联
+                this.cancel = function(headerId, lineId, dataSet) {
+                    if (headerId && lineId) {
+                        Aurora.request({
+                            url: $au('EXP5110_exp_report_travel_cancel_report_realation_link').getUrl(),
+                            para: {
+                                expReportHeaderId: headerId,
+                                expReportLineId: lineId
+                            },
+                            success: function(resp) {
+                                dataSet.query();
+                            }
+                        });
+                    }
+                };
+            });
+            
+            
+            function EXPT5110_onTravelLineUpdateFun(ds, record, name, value, oldValue) {
+                var index = ds.indexOf(record);
+                var hecUtil = new HecUtil();
+                if (name == 'companyId') {
+                    //公司变更清除部门、岗位、员工
+                    record.set('unitName', '');
+                    record.set('unitId', '');
+                    record.set('positionName', '');
+                    record.set('positionId', '');
+                    //添加公司变更清除地点和地点类型   Y.duan 2017-8-14 17:12:09
+                    record.set('placeTypeName', '');
+                    record.set('placeTypeId', '');
+                    record.set('placeId', '');
+                    record.set('placeName', '');
+                } else if (name == 'accEntityId') {
+                    //核算实体边更清除责任中心
+                    record.set('respCenterName', '');
+                    record.set('respCenterId', '');
+                } else if (name == 'primaryQuantity') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                } else if (name == 'businessPrice') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentPrice', hecUtil.calExchangeAmount(record.get('businessPrice'), record.get('biz2payExchangeRate'), record.get('paymentCurrencyPrecision')));
+                } else if (name == 'paymentPrice') {
+                    record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementPrice', hecUtil.calExchangeAmount(record.get('paymentPrice'), record.get('pay2magExchangeRate'), record.get('managementCurrencyPrecision')));
+                } else if (name == 'managementPrice') {
+                    record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                } else if (name == 'paymentAmount') {
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                } else if (name == 'moExpenseTypeId') {
+                    record.set('moExpenseItemName', '');
+                    record.set('moExpenseItemId', '');
+                } else if (name == 'moExpenseItemId') {
+                    record.set('budgetItemId', '');
+                    record.set('budgetItemName', '');
+                } else if (name == 'biz2payExchangeRate') {
+                    // Modify Tagin/2018.05.08 当业务币种-支付币种 汇率变化时调整支付单价
+                    record.set('paymentPrice', hecUtil.calExchangeAmount(record.get('businessPrice'), value, record.get('paymentCurrencyPrecision')));
+                } else if (name == 'biz2payExchangeRate') {
+                    // Modify Tagin/2018.05.08 当支付币种-本位币 汇率变化时调整本位币金额
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), value, record.get('functionalCurrencyPrecision')));
+                } else if (name == 'invoiceCategoryId') {
+                    //add by caoke/2018-05-30 取消关联
+                    if (record.get('invoiceId')) {
+                        EXP5110_travelCancelLineRefInvoice(index);
+                    }
+                } else if (name == 'taxAmount') {
+                    //税金更新后，自动调整拆分税金金额。同时设置manual_splitted_tax_flag为N
+                    record.set('splittedTaxAmount', record.get('taxAmount'));
+                    record.set('reportAmount', record.get('taxAmount'));
+                    record.set('manualSplittedTaxFlag', 'N');
+                } else if (name == 'splittedTaxAmount') {
+                    //拆分税金更新后，设置manual_splitted_tax_flag
+                    record.set('manualSplittedTaxFlag', 'Y');
+                } else if (name == 'invoiceCode') {
+                    // Modify Tagin/2018.04.10 根据发票代码获取发票类型
+                    var dataSet = $au('EXP5110_travelInvoiceTypeDs');
+                    dataSet.setQueryParameter('invoiceCode', value);
+                    dataSet.query();
+                } else if (name == 'invoiceType') {
+                    if (record.get('invoiceSource') == 'MANUAL') {
+                        // Modify Tagin/2018.04.16 设置增值税发票清空逻辑
+                        new EXP5110_travelInvoice(record).clear(value);
+                        // Modify Tagin/2018.04.16 设置增值税相关字段的必输性
+                        new EXP5110_travelInvoice(record).required(value);
+                    }
+                } else if (name == 'businessCurrencyCode') {
+                    // Modify Tagin/2018.04.02 增加业务币种-支付币种、支付币种-本位币获取汇率逻辑
+                    var dataSet = $au('EXP5110_travelDocExchangeRate_ds');
+                    dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                    dataSet.setQueryParameter('businessCurrencyCode', record.get('businessCurrencyCode'));
+                    dataSet.setQueryParameter('paymentCurrencyCode', record.get('paymentCurrencyCode'));
+                    dataSet.query();
+            
+                } else if (name == 'invoiceAmount') {
+                    // Modify Tagin/2018.05.22 发票价税合计变更时自动计算税额/实际报销金额
+                    if (record.get('invoiceSource') == 'MANUAL') {
+                        if (record.get('taxTypeRate') && value) {
+                            //Modified by caoke/2018-05-30 计算价内税和价外税
+                            // record.set('taxAmount', hecUtil.calAmount(mul(record.get('taxTypeRate'), value), 1, record.get('businessCurrencyPrecision')));
+                            if (record.get('autoCalculationFlag') == 'Y') {
+                                record.set('taxAmount', hecUtil.calTaxAmount(record.get('invoiceAmount'), record.get('taxTypeRate'), record.get('taxCategory'), record.get('businessCurrencyPrecision')));
+                            } else {
+                                record.set('taxAmount', '');
+                            }
+                        }
+                        record.set('reportAmount', record.get('taxAmount') ? record.get('taxAmount') : value);
+                    }
+                } else if (name == 'taxTypeRate') {
+                    // Modify Tagin/2018.05.22 发票税率变更时自动计算税额/实际报销金额
+                    if (record.get('invoiceSource') == 'MANUAL') {
+                        if (record.get('invoiceAmount') && value) {
+                            //价税合计金额算税额方案为 ： 金额  * (税率 / (1 + 税率))
+                            //Modified by caoke/2018-05-30 计算价内税和价外税
+                            // record.set('taxAmount', hecUtil.calAmount(mul(value, record.get('invoiceAmount')), 1, record.get('businessCurrencyPrecision')));
+                            if (record.get('autoCalculationFlag') == 'Y') {
+                                record.set('taxAmount', hecUtil.calTaxAmount(record.get('invoiceAmount'), record.get('taxTypeRate'), record.get('taxCategory'), record.get('businessCurrencyPrecision')));
+                            } else {
+                                record.set('taxAmount', '');
+                            }
+                        }
+                        record.set('reportAmount', record.get('taxAmount') ? record.get('taxAmount') : record.get('invoiceAmount'));
+                    }
+                } else if (name == 'transportation') {
+                    //交通工具
+                    record.set('seatClassName', '');
+                    record.set('seatClass', '');
+                    if (value == 'SEATS_PLANE') {
+                        record.getMeta().getField('seatClassName').setReadOnly(false);
+                        record.getMeta().getField('seatClassName').setRequired(true);
+                        record.getMeta().getField('seatClassName').setOptions('EXP5110_seats_plane_ds');
+                    } else if (value == 'SEATS_TRAIN') {
+                        record.getMeta().getField('seatClassName').setReadOnly(false);
+                        record.getMeta().getField('seatClassName').setRequired(true);
+                        record.getMeta().getField('seatClassName').setOptions('EXP5110_seats_train_ds');
+                    } else if (value == 'SEATS_HSR_EMU') {
+                        record.getMeta().getField('seatClassName').setReadOnly(false);
+                        record.getMeta().getField('seatClassName').setRequired(true);
+                        record.getMeta().getField('seatClassName').setOptions('EXP5110_seats_hsr_emu_ds');
+                    } else if (value == 'SEATS_SHIPS') {
+                        record.getMeta().getField('seatClassName').setReadOnly(false);
+                        record.getMeta().getField('seatClassName').setRequired(true);
+                        record.getMeta().getField('seatClassName').setOptions('EXP5110_seats_ships_ds');
+                    } else if (value == 'SEATS_CAR') {
+                        record.getMeta().getField('seatClassName').setReadOnly(false);
+                        record.getMeta().getField('seatClassName').setRequired(true);
+                        record.getMeta().getField('seatClassName').setOptions('EXP5110_seats_car_ds');
+                    } else {
+                        record.getMeta().getField('seatClassName').setReadOnly(true);
+                        record.getMeta().getField('seatClassName').setRequired(false);
+                    }
+            
+                }
+                //发票税率变更或者发票金额变更的时候，自动计算税金金额
+                if (name == 'taxTypeRate' || name == 'invoiceAmount') {
+                    var taxTypeRate = record.get('taxTypeRate');
+                    var invoiceAmount = record.get('invoiceAmount');
+                    if (!isNaN(taxTypeRate) && !isNaN(invoiceAmount)) {
+                        //价税合计金额算税额方案为 ： 金额  * (税率 / (1 + 税率))
+                        record.set('taxAmount', hecUtil.calAmount(mul(div(taxTypeRate, plus(1, taxTypeRate)), invoiceAmount), 1, record.get('businessCurrencyPrecision')));
+                    }
+                }
+            
+                //数据变更获取费用政策
+                if (name == 'companyId' || name == 'employeeId' || name == 'moExpenseItemId' || name == 'placeTypeId' || name == 'placeId' || name == 'businessCurrencyCode' || name == 'unitId' || name == 'accEntityId' || name == 'positionId') {
+                    EXP5110_onTravelLinePolicyInit(record, 'N');
+                }
+            
+                //头金额变更
+                if (name == 'businessAmount') {
+                    EXP5110_onTravelLineRemoveFun();
+                }
+                if (/dimension/.test(name)) {
+                    // Modify Tagin/2018.01.22 增加维度设置查询条件
+                    var level = record.get('companyLevel');
+                    if (level == 'BUDGET') {
+                        id = record.get('bgtEntityId');
+                    } else if (level == 'ACCOUNTING') {
+                        id = record.get('accEntityId');
+                    } else if (level == 'MANAGEMENT') {
+                        id = '$[/session/@companyId]';
+                    }
+                    record.getField(name).setLovPara('companyId', id);
+                }
+            }
+            
+            function EXPT5110_onTravelDistUpdateFun(ds, record, name, value, oldValue) {
+                var hecUtil = new HecUtil();
+                if (name == 'primaryQuantity') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                } else if (name == 'businessPrice') {
+                    record.set('businessAmount', hecUtil.calAmount(record.get('businessPrice'), record.get('primaryQuantity'), record.get('businessCurrencyPrecision')));
+                    record.set('paymentPrice', hecUtil.calExchangeAmount(record.get('businessPrice'), record.get('biz2payExchangeRate'), record.get('paymentCurrencyPrecision')));
+                } else if (name == 'paymentPrice') {
+                    record.set('paymentAmount', hecUtil.calAmount(record.get('paymentPrice'), record.get('primaryQuantity'), record.get('paymentCurrencyPrecision')));
+                    record.set('managementPrice', hecUtil.calExchangeAmount(record.get('paymentPrice'), record.get('pay2magExchangeRate'), record.get('managementCurrencyPrecision')));
+                } else if (name == 'managementPrice') {
+                    record.set('managementAmount', hecUtil.calAmount(record.get('managementPrice'), record.get('primaryQuantity'), record.get('managementCurrencyPrecision')));
+                } else if (name == 'paymentAmount') {
+                    record.set('reportFunctionalAmount', hecUtil.calExchangeAmount(record.get('paymentAmount'), record.get('pay2funExchangeRate'), record.get('functionalCurrencyPrecision')));
+                } else if (name == 'taxAmount') {
+                    //税金更新后，自动调整拆分税金金额。同时设置manual_splitted_tax_flag为N
+                    record.set('splittedTaxAmount', record.get('taxAmount'));
+                    record.set('manualSplittedTaxFlag', 'N');
+                } else if (name == 'splittedTaxAmount') {
+                    //拆分税金更新后，设置manual_splitted_tax_flag
+                    record.set('manualSplittedTaxFlag', 'Y');
+                }
+            
+                //发票税率变更或者发票金额变更的时候，自动计算税金金额
+                if (name == 'taxTypeRate' || name == 'invoiceAmount') {
+                    var taxTypeRate = record.get('taxTypeRate');
+                    var invoiceAmount = record.get('invoiceAmount');
+                    if (!isNaN(taxTypeRate) && !isNaN(invoiceAmount)) {
+                        record.set('taxAmount', hecUtil.calAmount(mul(div(taxTypeRate, plus(1, taxTypeRate)), invoiceAmount), 1, record.get('businessCurrencyPrecision')));
+                    }
+                }
+            }
+            
+            function EXPT5110_onTravelLineLoadFun(dataSet) {
+                var records = dataSet.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+            
+                    if (headerRecord.get('vatInvoiceFlag') != 'Y') {
+            
+                        records[i].getMeta().getField('lineInvoiceTypeDesc').setRequired(false);
+                    } else {
+                        records[i].getMeta().getField('lineInvoiceTypeDesc').setRequired(false); //update by penglei 暂时修改为非必输
+                    }
+                    //交通工具
+                    var transportation = records[i].get('transportation');
+                    if (transportation == 'SEATS_PLANE') {
+                        records[i].getMeta().getField('seatClassName').setReadOnly(false);
+                        records[i].getMeta().getField('seatClassName').setRequired(true);
+                        records[i].getMeta().getField('seatClassName').setOptions('EXP5110_seats_plane_ds');
+                    } else if (transportation == 'SEATS_TRAIN') {
+                        records[i].getMeta().getField('seatClassName').setReadOnly(false);
+                        records[i].getMeta().getField('seatClassName').setRequired(true);
+                        records[i].getMeta().getField('seatClassName').setOptions('EXP5110_seats_train_ds');
+                    } else if (transportation == 'SEATS_HSR_EMU') {
+                        records[i].getMeta().getField('seatClassName').setReadOnly(false);
+                        records[i].getMeta().getField('seatClassName').setRequired(true);
+                        records[i].getMeta().getField('seatClassName').setOptions('EXP5110_seats_hsr_emu_ds');
+                    } else if (transportation == 'SEATS_SHIPS') {
+                        records[i].getMeta().getField('seatClassName').setReadOnly(false);
+                        records[i].getMeta().getField('seatClassName').setRequired(true);
+                        records[i].getMeta().getField('seatClassName').setOptions('EXP5110_seats_ships_ds');
+                    } else if (transportation == 'SEATS_CAR') {
+                        records[i].getMeta().getField('seatClassName').setReadOnly(false);
+                        records[i].getMeta().getField('seatClassName').setRequired(true);
+                        records[i].getMeta().getField('seatClassName').setOptions('EXP5110_seats_car_ds');
+                    } else {
+                        records[i].getMeta().getField('seatClassName').setReadOnly(true);
+                        records[i].getMeta().getField('seatClassName').setRequired(false);
+                    }
+            
+                    EXP5110_onTravelLinePolicyInit(records[i], 'Y');
+                }
+            }
+            
+            function EXP5110_onTravelLinePolicyInit(record, load_flg) {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                Aurora.request({
+                    url: $au('EXP5110_get_policy_info_link').getUrl(),
+                    para: {
+                        companyId: record.get('companyId'),
+                        employeeId: record.get('employeeId'),
+                        accEntityId: record.get('accEntityId'),
+                        placeId: record.get('placeId'),
+                        placeTypeId: record.get('placeTypeId'),
+                        positionId: record.get('positionId'),
+                        unitId: record.get('unitId'),
+                        vehicle_code: record.get('transportation'),
+                        reportDate: headerRecord.get('reportDate'),
+                        docCategory: 'EXP_REP',
+                        docTypeId: headerRecord.get('moExpReportTypeId'),
+                        moExpenseTypeId: record.get('moExpenseTypeId'),
+                        moExpenseItemId: record.get('moExpenseItemId')
+                    },
+                    success: function(resp) {
+                        if (resp && resp.result) {
+                            var policyData = resp.result;
+                            if (policyData.count == 1) {
+                                if (policyData.default_flag == 'Y' && record.isNew) {
+                                    //默认标志，自动带出金额
+                                    var hecUtil = new HecUtil();
+                                    var expenseStandard = policyData.expense_standard;
+                                    //自动倒算当前业务币种对应的金额，计算方式为：
+                                    //管理币种金额  * (1 / (付款币种 -》 管理币种汇率)) =》 付款币种金额
+                                    //付款币种金额  * (1 / (业务币种 -》 付款币种汇率)) =》 业务币种金额
+                                    var paymentExpenseStandard = hecUtil.calExchangeAmount(expenseStandard, 1 / record.get('pay2magExchangeRate'), record.get('paymentCurrencyPrecision'));
+                                    var businessExpenseStandard = hecUtil.calExchangeAmount(paymentExpenseStandard, 1 / record.get('biz2payExchangeRate'), record.get('businessCurrencyPrecision'));
+                                    record.set('businessPrice', businessExpenseStandard);
+                                } else if (policyData.default_flag == 'Y' && !record.isNew) {
+                                    //update的时候区分是否是load数据,load则不做处理
+                                    if (load_flg == 'N') {
+                                        //默认标志，自动带出金额
+                                        var hecUtil = new HecUtil();
+                                        var expenseStandard = policyData.expense_standard;
+                                        //自动倒算当前业务币种对应的金额，计算方式为：
+                                        //管理币种金额  * (1 / (付款币种 -》 管理币种汇率)) =》 付款币种金额
+                                        //付款币种金额  * (1 / (业务币种 -》 付款币种汇率)) =》 业务币种金额
+                                        var paymentExpenseStandard = hecUtil.calExchangeAmount(expenseStandard, 1 / record.get('pay2magExchangeRate'), record.get('paymentCurrencyPrecision'));
+                                        var businessExpenseStandard = hecUtil.calExchangeAmount(paymentExpenseStandard, 1 / record.get('biz2payExchangeRate'), record.get('businessCurrencyPrecision'));
+                                        record.set('businessPrice', businessExpenseStandard);
+                                    }
+                                }
+            
+                                //设置管理币种的标准、上下限信息、是否可修改、是否可提交信息
+                                //Modify lcy 2018/5/8 16:18:23 默认带出交通工具
+                                record.set('upperLimit', policyData.upperLimit);
+                                record.set('lowerLimit', policyData.lowerLimit);
+                                record.set('transportation', policyData.transportation);
+                                record.set('transportationName', policyData.transportation_desc);
+                                record.set('seatClass', policyData.seatClass);
+                                record.set('seatClassName', policyData.seat_class_desc);
+                                record.set('expense_standard', policyData.expense_standard);
+                                record.set('changeableFlag', policyData.changeableFlag);
+                                record.set('commitFlag', policyData.commitFlag);
+            
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function EXP5110_onTravelLineCellClickFun(grid, row, name, record) {
+                if (name == 'unitName') {
+                    record.getField('unitName').setLovPara('companyId', record.get('companyId'));
+                    // 新增核算主体Id查询条件 caoke 2018-1-25 14:38:04
+                    record.getField('unitName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else if (name == 'positionName') {
+                    record.getField('positionName').setLovPara('companyId', record.get('companyId'));
+                    record.getField('positionName').setLovPara('employeeId', record.get('employeeId'));
+                } else if (name == 'employeeName') {
+                    record.getField('employeeName').setLovPara('companyId', record.get('companyId'));
+                    //新增核算主体查询条件
+                    record.getField('employeeName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else if (name == 'accEntityName') {
+                    record.getField('accEntityName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCenterName') {
+                    record.getField('respCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                    record.getField('respCenterName').setLovPara('summary_flag', 'N');
+                    //add by caoke/20180-01-25 增加部门限制				
+                    record.getField('respCenterName').setLovPara('unitId', record.get('unitId'));
+                } else if (name == 'placeName') {
+                    record.getField('placeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_travel_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP5110_travel_expense_type_ds').query();
+                } else if (name == 'moExpenseItemName') {
+                    /*Modified by Arthur.Chen Date:2017-09-20 19:42:31
+                     1.动态获取mo_expense_item_name字段的options
+                     */
+                    $au('EXP5110_travel_items_ds').setQueryParameter('moExpenseTypeId', record.get('moExpenseTypeId'));
+                    $au('EXP5110_travel_items_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP5110_travel_items_ds').setQueryParameter('moExpReportTypeId', '$[/model/header_info/record/@moExpReportTypeId]');
+                    $au('EXP5110_travel_items_ds').setQueryParameter('pageElementCode', 'TRAVEL_LINES');
+                    $au('EXP5110_travel_items_ds').query();
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_travel_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                } else if (name == 'invoiceCode') {
+                    // Modify Tagin/2018.04.28 设置LovUrl及参数
+                    record.getField(name).setLovPara('sourceDataset', 'EXP5110_exp_report_travel_line_ds');
+                    record.getField(name).setLovPara('sourceLineDataset', 'EXP5110_travelInvoiceLineDs');
+                    record.getField(name).setLovPara('relationId', record.get('relationId') || '');
+                    record.getField(name).setLovPara('invoiceId', record.get('invoiceId') || '');
+                    record.getField(name).setLovPara('invoiceCategoryId', record.get('invoiceCategoryId') || '');
+                    record.getField(name).setLovPara('invoiceCode', record.get('invoiceCode') || '');
+                    record.getField(name).setLovPara('invoiceNumber', record.get('invoiceNumber') || '');
+                    record.getField(name).setLovPara('invoiceDate', record.get('invoiceDate') || '');
+                    record.getField(name).setLovPara('amount', record.get('amount') || '');
+                    record.getField(name).setLovPara('taxAmount', record.get('taxAmount') || '');
+                    record.getField(name).setLovPara('expReportLineId', record.get('expReportLineId') || '');
+                    record.getField(name).setLovWidth(parseInt(Aurora.getCookie('vw')) + 20);
+                    record.getField(name).setLovHeight(parseInt(Aurora.getCookie('vh')));
+                    record.getField(name).setTitle('$[l:invoice_select]');
+                }
+                if (/dimension/.test(name)) {
+                    // Modify Tagin/2018.01.22 增加维度设置查询条件
+                    var id = '';
+                    var level = record.get('companyLevel');
+                    if (level == 'BUDGET') {
+                        id = record.get('bgtEntityId');
+                    } else if (level == 'ACCOUNTING') {
+                        id = record.get('accEntityId');
+                    } else if (level == 'MANAGEMENT') {
+                        id = '$[/session/@companyId]';
+                    }
+                    record.getField(name).setLovPara('companyId', id);
+                }
+            }
+            
+            function EXP5110_travelBizPriceEditorFun(record, name) {
+                if (name == 'businessPrice') {
+                    if (record.get('changeableFlag') == 'N') {
+                        record.getMeta().getField('businessPrice').setReadOnly(true);
+                        return '';
+                    } else {
+                        var precision = record.get('businessCurrencyPrecision');
+                        record.getMeta().getField('businessPrice').setReadOnly(false);
+                        if (!precision) {
+                            return 'EXP5110_travel_nf_2';
+                        } else {
+                            return 'EXP5110_travel_nf_' + precision;
+                        }
+                    }
+                }
+            
+            }
+            
+            function EXP5110_travel_lineDateValidator(record, name, value) {
+                // modify lcy 2018/4/25 15:03:12 转换日期格式，否则update时校验无效
+                var departure_date = Aurora.formatDate(record.get('departure_date'));
+                var arrival_date = Aurora.formatDate(record.get('arrival_date'));
+                if (departure_date && arrival_date) {
+                    if (departure_date > arrival_date) {
+                        return '$[l:start_date_not_later_ending_date]';
+                    }
+                }
+            
+                return true;
+            }
+            
+            function EXP5110_travelLineBeforeSubmit() {
+                var travelLineDs = $au('EXP5110_exp_report_travel_line_ds');
+                if (!travelLineDs.validate()) {
+                    return false;
+                } else {
+                    var records = travelLineDs.getAll();
+                    for (var i = 0;i < records.length;i++) {
+                        var expObjDatas = [];
+                        for (field in travelLineDs.fields) {
+                            if (/^#/.test(field)) {
+                                //id字段
+                                var expObjTypeId = field.replace(/^#/, '');
+                                var idValue = records[i].get(field);
+                                var nameValue = records[i].get('^' + field);
+                                var expObjData = {
+                                    moExpObjTypeId: expObjTypeId,
+                                    moExpenseObjectId: idValue,
+                                    moExpenseObjectName: nameValue
+                                };
+                                expObjDatas.push(expObjData);
+                            }
+                        }
+                        records[i]['data']['expenseObjectLines'] = expObjDatas;
+                    }
+                }
+            }
+            
+            function EXP5110_travelCreateFromReq() {
+                //add lcy 2018/5/29 22:33:34 怎加是否为统购标识
+                var monopolizeFlag = 'N';
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_create_from_req_link').getUrl() + '?moExpReportTypeId=$[/model/header_info/record/@moExpReportTypeId]&reportPageElementCode=TRAVEL_LINES&paymentCurrencyCode=' + $au('EXP5110_exp_report_header_ds').getAt(0).get('paymentCurrencyCode') + '&monopolizeFlag=' + monopolizeFlag,
+                    id: 'EXP5110_exp_report_maintain_create_from_req_window',
+                    title: '$[l:exp_report_create.fromreq]',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP5110_travelLineInitVatColumn() {
+                var headerRd = $au('EXP5110_exp_report_header_ds').getAt(0);
+                var lineGrid = $au('EXP5110_travel_lines_grid');
+                // Modify Tagin/2018.04.16 调用增值税发票行信息显示方法
+                new EXP5110_travelInvoice().show(headerRd.get('vatInvoiceFlag'), lineGrid);
+            }
+            
+            function EXP5110_travelLineOnHeaderUpdate(ds, record, name, value, oldValue) {
+                // Modify Tagin/2018.04.16 单据头发票信息变更时，调用增值税发票行信息显示方法
+                if (name == 'vatInvoiceFlag') {
+                    new EXP5110_travelInvoice().show(value, $au('EXP5110_travel_lines_grid'));
+                }
+            
+            }
+            
+            // function EXP5110_travelLineInvoiceInfoRenderer(value, record, name) {
+            // var totalRefCount = !record.get('total_ref_count') ? 0 : record.get('total_ref_count');
+            // if (totalRefCount <= 1) {
+            // return '<a href="javascript:EXP5110_openTravelInvoiceDetailWindow(\'' + (record.get('invoiceId') ? record.get('invoiceId') : '') + '\',\'' + (record.get('invoiceLineId') ? record.get('invoiceLineId') : '') + '\',\'' + (record.get('invoiceCode') ? record.get('invoiceCode') : '') + '\',\'' + (record.get('invoiceNumber') ? record.get('invoiceNumber') : '') + '\',\'' + Aurora.formatDate((record.get('invoiceDate') ? record.get('invoiceDate') : '')) + '\',\'' + (record.get('invoiceAmount') ? record.get('invoiceAmount') : '') + '\')">${l:ACP_INVOICE_HEADERS.INVOICE_NEWS}</a>';
+            // } else {
+            // var content = '发票拆分明细';
+            // return '<a href="javascript:EXP5110_openTravelMoreWindowForInvoice(\'' + record.get('expReportLineId') + '\')">' + content + '</a>';
+            // }
+            // }
+            
+            
+            
+            function EXP5110_travelLineInvoiceInfoRenderer(value, record, name) {
+                var vatCount = !record.get('vatcount') ? 0 : record.get('vatcount');
+                var taxCount = !record.get('taxcount') ? 0 : record.get('taxcount');
+                var index = $au('EXP5110_exp_report_travel_line_ds').indexOf(record);
+                var vatContent = '';
+                var taxContent = '';
+                if ('$[/model/travel_line_element/record/@moreInvoiceFlag]' == 'Y') {
+                    if (vatCount <= 1) {
+                        if (!record.isNew) {
+                            vatContent = '<a href="javascript:EXP5110_openTravelMoreInvoiceWindow(\'' + index + '\')">$[l:exp_mo_req_types.invoice_flag]</a>';
+                        }
+                    } else {
+                        vatContent = '<a href="javascript:EXP5110_openTravelMoreInvoiceWindow(\'' + index + '\')"><font color="green">$[l:exp_mo_req_types.invoice_flag]</font></a>';
+                    }
+                }
+                if ('$[/model/travel_line_element/record/@moreTaxFlag]' == 'Y') {
+                    if (record.get('relationId')) { // Modify Tagin/2018.05.22 若不存在发票关联ID，则为关联多个发票税额不显示【进入更多发票查看税额】
+                        if (taxCount <= 1) {
+                            if (!record.isNew) {
+                                taxContent = '<a href="javascript:EXP5110_travelMoreTaxFunc(' + index + ')">$[l:vat_invoice_lines.tax_rate]</a>';
+                            }
+                        } else {
+                            taxContent = '<a href="javascript:EXP5110_travelMoreTaxFunc(' + index + ')"><font color="green">$[l:vat_invoice_lines.tax_rate]</font></a>';
+                        }
+                    }
+                }
+                return !vatContent ? (!taxContent ? '' : taxContent) : (!taxContent ? vatContent : vatContent + ' / ' + taxContent);
+            }
+            
+            function EXP5110_openTravelMoreInvoiceWindow(index) {
+                var record = $au('EXP5110_exp_report_travel_line_ds').getAt(index);
+                var headerId = record.get('expReportHeaderId') || '';
+                var lineId = record.get('expReportLineId') || '';
+                var distId = record.get('expReportDistId') || '';
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_travel_more_invoice_standard_link').getUrl() + '?expReportHeaderId=' + headerId + '&expReportLineId=' + lineId + '&expReportDistId=' + distId,
+                    id: 'EXP5110_exp_report_travel_more_invoice_standard_window',
+                    title: '$[l:more_invoice]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP5110_exp_report_travel_line_ds').query();
+                });
+            }
+            
+            function EXP5110_travelMoreTaxFunc(index) {
+                var record = $au('EXP5110_exp_report_travel_line_ds').getAt(index);
+                var invoiceLineId = record.get('invoiceLineId') || '';
+                var invoiceId = record.get('invoiceId') || '';
+                var relationId = record.get('relationId') || '';
+                var lineId = record.get('expReportLineId') || '';
+                new Aurora.Window({
+                    id: 'EXP5110_exp_report_travel_vat_invoice_more_tax_window',
+                    url: $au('EXP5110_exp_report_travel_vat_invoice_more_tax_link').getUrl() + '?invoiceLineId=' + invoiceLineId + '&invoiceId=' + invoiceId + '&relationId=' + relationId + '&expReportLineId=' + lineId,
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP5110_exp_report_travel_line_ds').query();
+                });
+            }
+            
+            function EXP5110_travel_invoiceItemValidator(record, name, value) {
+                if (record.get('invoiceLineId') && !value) {
+                    //发票项目允许为空，财务人员在审核时选择
+                    //return '发票项目必输!';
+                }
+                return true;
+            }
+            
+            function EXP5110_travel_invoiceUsedeValidator(record, name, value) {
+                if (record.get('invoiceLineId') && !value) {
+                    //发票用途允许为空，财务人员在审核时选择
+                    //return '发票用途必输!';
+                }
+                return true;
+            }
+            
+            
+            function EXP5110_openTravelInvoiceDetailWindow(invoiceId, invoiceLineId, invoiceCode, invoiceNumber, invoiceDate, invoiceAmount) {
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_travel_vat_invoice_list_link').getUrl() + '?line_ds_id=EXP5110_exp_report_travel_line_ds&accEntityId=' + $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId') + '&invoiceId=' + invoiceId + '&invoiceLineId=' + invoiceLineId + '&invoiceCode=' + invoiceCode + '&invoiceNumber=' + invoiceNumber + '&invoiceDate=' + invoiceDate + '&amount=' + invoiceAmount,
+                    id: 'EXP5110_exp_report_maintain_vat_invoice_list_standard_window',
+                    title: '$[l:acp_invoice_headers.invoice_news]',
+                    fullScreen: true
+                });
+            }
+            
+            
+            
+            
+            function EXP5110_travelTaxEditorFun(record, name) {
+                // Modify Tagin/2018.04.17 调整
+                return new EXP5110_travelInvoice(record).edit(name);
+            }
+            
+            
+            
+            function EXP5110_travelInvoiceValidator(record, name, value) {
+                if (!record.dirty && !record.isNew) {
+                    return true;
+                }
+                // 1.0 判断税额
+                if (name == 'taxAmount') {
+                    if (value < 0) {
+                        return '$[l:vat_invoice_tax_amount_positive]';
+                    } else {
+                        if (record.get('invoiceAmount') && value) {
+                            if (value > record.get('invoiceAmount')) {
+                                return '$[l:vat_invoice_tax_less_total]';
+                            }
+                        }
+                    }
+                    return true;
+                }
+                // 2.0 判断价税合计
+                if (name == 'invoiceAmount') {
+                    if (value < 0) {
+                        return '$[l:vat_invoice_total_amount_positive]';
+                    } else {
+                        if (record.get('taxAmount') && value) {
+                            if (value < record.get('taxAmount')) {
+                                return '$[l:vat_invoice_total_more_tax]';
+                            }
+                        }
+                    }
+                    return true;
+                }
+                return true;
+            }
+            
+            
+            $au('EXP5110_exp_report_header_ds')['on']('beforesubmit', EXP5110_travelLineBeforeSubmit);
+            $au('EXP5110_exp_report_header_ds')['on']('update', EXP5110_travelLineOnHeaderUpdate);
+            $au('EXP5110_exp_report_header_ds')['on']('submitsuccess', function() {
+                //如果当前拓展页面打开，则进行dists的查询，如果没有打开，则进行lines的查询
+                if ($A.CmpManager.get('EXP5110_exp_report_maintain_travel_lines_extend_window')) {
+                    $au('EXP5110_exp_report_travel_dist_ds').query();
+                } else {
+                    $au('EXP5110_exp_report_travel_line_ds').query();
+                }
+            });
+            
+            //重算金额
+            
+            function EXP5110_onTravelLineRemoveFun() {
+                //判断差旅页面存在多个差旅行页面
+                var travelLine = 0;
+                var travelStayLine = 0;
+                var travelSubsidyLine = 0;
+                var lineTotalAmount = 0;
+                if ($au('EXP5110_exp_report_travel_line_ds')) {
+                    var lineDs = $au('EXP5110_exp_report_travel_line_ds').getAll();
+                    for (var i = 0;i < lineDs.length;i++) {
+                        travelLine = plus(lineDs[i].get('businessAmount'), travelLine);
+                    }
+            
+                }
+                if ($au('EXP5110_exp_report_travel_stay_line_ds')) {
+                    var lineStayDS = $au('EXP5110_exp_report_travel_stay_line_ds').getAll();
+            
+                    for (var j = 0;j < lineStayDS.length;j++) {
+                        travelStayLine = plus(lineStayDS[j].get('businessAmount'), travelStayLine);
+                    }
+            
+                }
+                if ($au('EXP5110_exp_report_travel_subsidy_line_ds')) {
+                    var lineSubsidyDS = $au('EXP5110_exp_report_travel_subsidy_line_ds').getAll();
+                    for (var x = 0;x < lineSubsidyDS.length;x++) {
+                        travelSubsidyLine = plus(lineSubsidyDS[x].get('businessAmount'), travelSubsidyLine);
+                    }
+                }
+                lineTotalAmount = Number(travelLine) + Number(travelStayLine) + Number(travelSubsidyLine);
+                $au('EXP5110_exp_report_header_ds').getAt(0).set('repTotalAmount', lineTotalAmount);
+            }
+            
+            
+            function EXP5110_travelCancelVatRenderer(value, record, name) {
+                var index = $au('EXP5110_exp_report_travel_line_ds').indexOf(record);
+                return '<a href="javascript:EXP5110_travelCancelLineRefInvoice(' + index + ');">$[l:cancel_invoice]</a>';
+            }
+            
+            function EXP5110_travelCancelLineRefInvoice(index) {
+                var record = $au('EXP5110_exp_report_travel_line_ds').getAt(index);
+                var headerId = record.get('expReportHeaderId') || '';
+                var lineId = record.get('expReportLineId') || '';
+                if (record.get('vatcount') > 0) {
+                    // Modify Tagin/2018.04.16 取消关联增值税发票信息
+                    new EXP5110_travelInvoice().cancel(headerId, lineId, $au('EXP5110_exp_report_travel_line_ds'));
+                }
+                // Modify Tagin/2018.04.16 清空增值税发票信息
+                new EXP5110_travelInvoice(record).clear();
+            }
+            
+            function EXP5110_travelDocExchangeRateFunc(dataSet) {
+                // Modify Tagin/2018.05.08 将获取的汇率设置到单据行
+                var record = dataSet.getAt(0);
+                var reportRd = $au('EXP5110_exp_report_travel_line_ds').getCurrentRecord();
+                reportRd.set('biz2payExchangeRate', record.get('biz2payExchangeRate'));
+                reportRd.set('pay2funExchangeRate', record.get('pay2funExchangeRate'));
+            }
+            
+            function EXP5110_travelInvoiceLineAddFunc(dataSet, record, index) {
+                // Modify Tagin/2018.05.21 若发票拆分税金/实际报销金额为空则赋值为税额
+                record.set('reportAmount', record.get('reportAmount') ? record.get('reportAmount') : record.get('taxAmount'));
+                record.set('splittedTaxAmount', record.get('splittedTaxAmount') ? record.get('splittedTaxAmount') : record.get('taxAmount'));
+            }
+            
+            function EXP5110_travelInvoiceTypeLoadFunc(dataSet) {
+                // Modify Tagin/2018.04.10 增加根据发票代码获取发票类型加载时动态设置单据行的发票类型字段
+                var record = dataSet.getAt(0);
+                var reportRd = $au('EXP5110_exp_report_travel_line_ds').getCurrentRecord();
+                var invoiceType = record.get('invoiceType');
+                if (reportRd.get('invoiceCode')) {
+                    reportRd.set('invoiceSource', !reportRd.get('invoiceSource') ? 'MANUAL' : reportRd.get('invoiceSource'));
+                    reportRd.set('invoiceType', invoiceType);
+                } else {
+                    reportRd.set('invoiceType', '');
+                }
+            }
+            Aurora.onReady(EXP5110_travelLineInitVatColumn);
+        ]]></script>
+        <a:dataSets>
+            <!-- <a:dataSet id="EXP5110_standard_place_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_policy_place_types_vl_lov"/> -->
+            <a:dataSet id="EXP5110_travel_lines_expense_type_default_ds" autoQuery="true" fetchAll="true" model="expm.EXP5110.exp_rep_mo_expense_types" queryUrl="$[/request/@context_path]/autocrud/expm.EXP5110.exp_rep_mo_expense_types/query?pageElementCode=TRAVEL_LINES&amp;moExpReportTypeId=$[/model/header_info/record/@moExpReportTypeId]"/>
+            <a:dataSet id="EXP5110_travel_expense_type_ds" autoQuery="true" fetchAll="true" model="hec_util.exp_util.exp_rep_mo_expense_types_vl_lov" queryUrl="$[/request/@context_path]/autocrud/hec_util.exp_util.exp_rep_mo_expense_types_vl_lov/query?pageElementCode=TRAVEL_LINES&amp;moExpReportTypeId=$[/model/header_info/record/@moExpReportTypeId]"/>
+            <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31           	1.修改mo_expense_item_name字段的编辑器为combobox模式，设置item的option的ds            -->
+            <a:dataSet id="EXP5110_travel_items_ds" loadData="true" model="hec_util.exp_util.exp_rep_mo_expense_items_vl_lov"/>
+            <a:dataSet id="EXP5110_transportation_type_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/TRANSPORTATION/"/>
+            <a:dataSet id="EXP5110_seats_plane_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SEATS_PLANE/"  />
+            <a:dataSet id="EXP5110_seats_train_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SEATS_TRAIN/"  />
+            <a:dataSet id="EXP5110_seats_hsr_emu_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SEATS_HSR_EMU/"  />
+            <a:dataSet id="EXP5110_seats_ships_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SEATS_SHIPS/"  />
+            <a:dataSet id="EXP5110_seats_car_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SEATS_CAR/"  />
+            <a:dataSet id="EXP5110_travel_invoice_type_ds" loadData="true" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/VAT_INVOICE_TYPE/"  />
+            <a:dataSet id="EXP5110_travel_tax_rate_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/autocrud/hec_util.fnd_tax_type_code_vl_lov/query?withholding_flag=N"/>
+            <a:dataSet id="EXP5110_travelInvoiceCategory_ds" fetchAll="true" loadData="true" model="hec_util.vat_invoice_category_vl_lov"/>
+            <!-- Modify Tagin/2018.05.08 
+            		增加会单据业务币种-支付币种汇率、支付币种-本位币汇率获取逻辑
+            -->
+            <a:dataSet id="EXP5110_travelDocExchangeRate_ds" model="hec_util.get_doc_exchange_rate">
+                <a:events>
+                    <a:event name="load" handler="EXP5110_travelDocExchangeRateFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_travelInvoiceTypeDs" model="hec_util.get_invoice_type">
+                <a:events>
+                    <a:event name="load" handler="EXP5110_travelInvoiceTypeLoadFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_exp_report_travel_line_ds" autoQuery="true" bindName="travel_lines" bindTarget="EXP5110_exp_report_header_ds" prompt="exp_report_travel_lines.travel_reimbursement_trip_line" queryDataSet="EXP5110_exp_report_header_ds" queryUrl="$[/request/@context_path]/expm/EXP5110/exp_report_travel_line_query.svc?expReportHeaderId=$[/model/header_infp/record/@expReportHeaderId]&amp;reportPageElementCode=TRAVEL_LINES&amp;_ban_remind=Y" selectable="true" submitUrl="$[/request/@context_path]/autocrud/db.exp_report_pkg.delete_exp_report_lines/batch_update">
+                <a:fields>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="expReportLineId"/>
+                    <a:field name="releaseId"/>
+                    <a:field name="lineNumber" prompt="exp_report_lines.line_number" required="true"/>
+                    <a:field name="expRequisitionNumber" prompt="exp_report_lines.relation_requisition_number"/>
+                    <a:field name="reportPageElementCode" required="true"/>
+                    <a:field name="description" prompt="exp_report_headers.description"/>
+                    <a:field name="companyName" lovCode="LOV_BGT6200_COMPANY" prompt="acp_acp_requisition_hds.company_id" required="true">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId" required="true"/>
+                    <a:field name="accEntityName" lovCode="LOV_ACCOUNTING_ENEITY_BY_COM" prompt="gld_accounting_entities.acc_entity_name" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId" required="true"/>
+                    <a:field name="unitName" lovCode="EXP_ORG_UNIT_VL_LOV" prompt="exp_report_lines.unit_id" required="true">
+                        <!--添加默认核算主体，默认责任中心，默认预算主体，默认预算中心映射   Y.duan 2017-8-31 19:37:31-->
+                        <a:mapping>
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="defaultAccEntityId" to="accEntityId"/>
+                            <a:map from="defaultResCenterId" to="respCenterId"/>
+                            <a:map from="defaultBgtEntityId" to="bgtEntityId"/>
+                            <a:map from="defaultBgtCenterId" to="bgtCenterId"/>
+                            <a:map from="defaultAccEntityDisplay" to="accEntityName"/>
+                            <a:map from="defaultResCentersDisplay" to="respCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId" required="true"/>
+                    <a:field name="positionName" lovCode="EXP_ORG_POSITION_VL_LOV" prompt="exp_report_lines.position_id" required="true">
+                        <a:mapping>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionId" required="true"/>
+                    <a:field name="employeeName" lovCode="EXP_EMPLOYEE_VL_LOV" prompt="exp_report_lines.employee_id" required="true">
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId" required="true"/>
+                    <a:field name="respCenterName" lovCode="GLD_RESPONSIBILITY_CENTER_VL_LOV" prompt="exp_report_lines.responsibility_center_id" required="true">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterId" required="true"/>
+                    <a:field name="bgtEntityId" required="true"/>
+                    <a:field name="bgtCenterId" required="true"/>
+                    <a:field name="placeTypeName" prompt="exp_report_lines.place_type_id" readOnly="true"/>
+                    <a:field name="placeTypeId"/>
+                    <!--重新指定地点查询的lovService 地点类型直接自动带出   Y.duan 2017-8-14 17:13:08-->
+                    <a:field name="placeName" lovCode="EXP_POLICY_PLACES_AND_TYPES_VL_LOV" prompt="exp_report_lines.place_id">
+                        <a:mapping>
+                            <a:map from="placeName" to="placeName"/>
+                            <a:map from="placeId" to="placeId"/>
+                            <a:map from="placeTypeId" to="placeTypeId"/>
+                            <a:map from="placeTypeName" to="placeTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="placeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="dateFrom" prompt="exp_report_lines.date_from"/>
+                    <a:field name="dateTo" prompt="exp_report_lines.date_to"/>
+                    <a:field name="periodName" lovCode="BGT_PERIODS_LOV" prompt="exp_requisition_lines.period_name">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeName" displayField="moExpenseTypeName" options="EXP5110_travel_expense_type_ds" prompt="exp_expense_item_types.expense_type_id" required="true" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeId" required="true"/>
+                    <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31          			 1.修改mo_expense_item_name字段的编辑器为combobox模式,修改item的options为EXP5110_streamlined_items_ds             		 -->
+                    <a:field name="moExpenseItemName" displayField="moExpenseItemName" options="EXP5110_travel_items_ds" prompt="exp_report_lines.expense_item_id" required="true">
+                        <a:mapping>
+                            <a:map from="moExpenseItemName" to="moExpenseItemName"/>
+                            <a:map from="moExpenseItemId" to="moExpenseItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseItemId" required="true"/>
+                    <a:field name="primaryQuantity" prompt="exp_report_lines.primary_quantity" required="true"/>
+                    <a:field name="businessCurrencyName" displayField="currencyName" options="EXP5110_currency_ds" prompt="business_currency_name" required="true">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="businessCurrencyCode"/>
+                            <a:map from="precision" to="businessCurrencyPrecision"/>
+                            <!-- Modify Tagin/2018.04.02 增加业务币种-支付币种汇率计算 -->
+                            <a:map from="exchange_rate" to="biz2payExchangeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="businessCurrencyCode" required="true"/>
+                    <a:field name="biz2payExchangeTypeName" prompt="biz2pay_exchange_type_name"/>
+                    <a:field name="biz2payExchangeRate" prompt="biz2pay_exchange_rate" required="true"/>
+                    <a:field name="businessPrice" prompt="exp_report_lines.pric" required="true" validator="EXP5110_policyValidator"/>
+                    <a:field name="businessAmount" prompt="business_amount"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_requisition_headers.payment_currency_name" required="true"/>
+                    <a:field name="paymentCurrencyCode" required="true"/>
+                    <a:field name="pay2funExchangeTypeName" prompt="pay2fun_exchange_type_name"/>
+                    <a:field name="pay2funExchangeRate" prompt="pay2fun_exchange_rate" required="true"/>
+                    <a:field name="paymentPrice" prompt="payment_price" renderer="Aurora.formatMoney"/>
+                    <a:field name="paymentAmount" prompt="payment_amount"/>
+                    <a:field name="managementCurrencyName" prompt="exp_report_headers.currency_code" required="true"/>
+                    <a:field name="managementCurrencyCode" required="true"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="pay2mag_exchange_type_name"/>
+                    <a:field name="pay2magExchangeRate" prompt="pay2mag_exchange_rate" required="true"/>
+                    <a:field name="managementPrice" prompt="management_price"/>
+                    <a:field name="managementAmount" prompt="management_amount"/>
+                    <a:field name="reportFunctionalAmount" prompt="bgt_check_logs.functional_amount"/>
+                    <!-- Modified by penglei 20171220 新增报销单_差旅扩展表 字段 交通工具、座位等级、出发地、目的地 -->
+                    <a:field name="transportationName" displayField="description" options="EXP5110_transportation_type_ds" prompt="exp_report_travel_lines.transportation" required="true" returnField="transportation" valueField="value"/>
+                    <a:field name="transportation"/>
+                    <a:field name="seatClassName" displayField="description" prompt="exp_report_lines.seat_class" readOnly="true" required="false" returnField="seatClass" validator="EXP5110_policySeatClassValidator" valueField="value"/>
+                    <a:field name="seatClass"/>
+                    <!-- Modify lcy 2018/4/25 15:23:12  修改地点取值不做政策控制 -->
+                    <a:field name="departurePlaceName" lovCode="EXP_POLICY_PLACES_AND_TYPES_VL_LOV" prompt="exp_report_travel_lines.departure_place" required="true" width="120">
+                        <a:mapping>
+                            <a:map from="placeName" to="departurePlaceName"/>
+                            <a:map from="placeId" to="departurePlaceId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="departurePlaceId"/>
+                    <a:field name="arrivalPlaceName" lovCode="EXP_POLICY_PLACES_AND_TYPES_VL_LOV" prompt="exp_travel_plan_lines.arrival_place" required="true" width="120">
+                        <a:mapping>
+                            <a:map from="placeName" to="arrivalPlaceName"/>
+                            <a:map from="placeId" to="arrivalPlaceId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="arrivalPlaceId"/>
+                    <a:field name="departureDate" prompt="exp_report_travel_lines.departure_date" required="true" validator="EXP5110_travel_lineDateValidator" width="120"/>
+                    <a:field name="arrivalDate" prompt="exp_report_travel_lines.arrival_date" required="true" validator="EXP5110_travel_lineDateValidator" width="120"/>
+                    <!-- Modify Tagin/2018.04.12 将发票类型调整为从发票代码自动获取 / 增加发票种类字段 -->
+                    <a:field name="invoiceCategoryName" displayField="invoiceCategoryName" fetchRemote="false" options="EXP5110_travelInvoiceCategory_ds" prompt="vat_invoice_items.invoice_category" returnField="invoiceCategoryId" valueField="invoiceCategoryId"/>
+                    <a:field name="invoiceCategoryId"/>
+                    <a:field name="invoiceType"/>
+                    <a:field name="invoiceId"/>
+                    <a:field name="invoiceLineId"/>
+                    <a:field name="invoiceInfo" prompt="hap_more"/>
+                    <a:field name="invoiceCode" fetchRemote="false" lovUrl="$[/request/@context_path]/expm/EXP5110/exp_report_maintain_select_invoice.screen" prompt="vat_invoices.invoice_code"/>
+                    <a:field name="invoiceNumber" prompt="vat_invoices.invoice_number"/>
+                    <a:field name="invoiceDate" prompt="vat_invoices.invoice_date"/>
+                    <a:field name="invoiceAmount" prompt="total_ad_valorem_tax_invoice" validator="EXP5110_travelInvoiceValidator"/>
+                    <a:field name="taxAmount" prompt="vat_invoice_lines.tax_amount" validator="EXP5110_travelInvoiceValidator"/>
+                    <a:field name="taxTypeName" displayField="taxTypeName" options="EXP5110_travel_tax_rate_type_ds" prompt="exp_report_lines.tax_rate_type" validator="exp5110_standardinvoicevalidator">
+                        <a:mapping>
+                            <a:map from="taxTypeId" to="taxTypeId"/>
+                            <a:map from="taxCategory" to="taxCategory"/>
+                            <a:map from="precision" to="precision"/>
+                            <a:map from="autoCalculationFlag" to="autoCalculationFlag"/>
+                            <a:map from="saleTaxFlag" to="saleTaxFlag"/>
+                            <a:map from="taxTypeRate" to="taxTypeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="taxTypeId"/>
+                    <a:field name="taxTypeRate"/>
+                    <a:field name="manualSplittedTaxFlag" defaultValue="N"/>
+                    <a:field name="splittedTaxAmount" prompt="split_tax" validator="EXP5110_travelInvoiceValidator"/>
+                    <a:field name="reportAmount"/>
+                    <a:field name="more" prompt="&gt;&gt;"/>
+                    <a:placeHolder id="EXP5110_travelLineDimensionFields"/>
+                    <a:placeHolder id="EXP5110_travelLineObjectFields"/>
+                </a:fields>
+            </a:dataSet>
+            <!-- Modify Tagin/2018.05.18 增加报销单行关联发票行逻辑 【发票行可选择性被报销单关联】-->
+            <a:dataSet id="EXP5110_travelInvoiceLineDs" autoCreate="true" bindName="invoiceLines" bindTarget="EXP5110_exp_report_travel_line_ds">
+                <a:fields>
+                    <a:field name="relationId"/>
+                    <a:field name="documentCategory" defaultValue="EXP_REPORT"/>
+                    <a:field name="invoiceId"/>
+                    <a:field name="invoiceLineId"/>
+                    <a:field name="documentId"/>
+                    <a:field name="documentLineId"/>
+                    <a:field name="documentDistId"/>
+                    <a:field name="taxAmount"/>
+                    <a:field name="splittedTaxAmount"/>
+                    <a:field name="reportAmount"/>
+                    <a:field name="manualSplittedTaxFlag"/>
+                    <a:field name="taxTypeId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_exp_report_travel_dist_ds" model="expm.EXP5110.exp_report_dist_query" selectable="true" submitUrl="$[/request/@context_path]/autocrud/db.exp_report_pkg.delete_exp_report_dists/batch_update">
+                <a:fields>
+                    <a:field name="expReportLineId"/>
+                    <a:field name="expReportDistId"/>
+                    <a:field name="description"/>
+                    <a:field name="companyName" lovCode="LOV_BGT6200_COMPANY" required="true">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId" required="true"/>
+                    <a:field name="accEntityName" lovCode="LOV_ACCOUNTING_ENEITY_BY_COM" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId" required="true"/>
+                    <a:field name="unitName" lovCode="EXP_ORG_UNIT_VL_LOV" required="true">
+                        <!--添加默认核算主体，默认责任中心，默认预算主体，默认预算中心映射   Y.duan 2017-8-31 19:37:31-->
+                        <a:mapping>
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="defaultAccEntityId" to="accEntityId"/>
+                            <a:map from="defaultResCenterId" to="respCenterId"/>
+                            <a:map from="defaultBgtEntityId" to="bgtEntityId"/>
+                            <a:map from="defaultBgtCenterId" to="bgtCenterId"/>
+                            <a:map from="defaultAccEntityDisplay" to="accEntityName"/>
+                            <a:map from="defaultResCentersDisplay" to="respCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId" required="true"/>
+                    <a:field name="positionName" lovCode="EXP_ORG_POSITION_VL_LOV" required="true">
+                        <a:mapping>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionId" required="true"/>
+                    <a:field name="employeeName" lovCode="EXP_EMPLOYEE_VL_LOV" required="true">
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId" required="true"/>
+                    <a:field name="respCenterName" lovCode="GLD_RESPONSIBILITY_CENTER_VL_LOV" required="true">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterId" required="true"/>
+                    <a:field name="bgtEntityId" required="true"/>
+                    <a:field name="bgtCenterId" required="true"/>
+                    <a:field name="placeTypeName" readOnly="true"/>
+                    <a:field name="placeTypeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="periodName" lovCode="BGT_PERIODS_LOV">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeName" displayField="moExpenseTypeName" options="EXP5110_travel_expense_type_ds" required="true" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeId" required="true"/>
+                    <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31          			 1.修改mo_expense_item_name字段的编辑器为combobox模式,修改item的options为EXP5110_streamlined_items_ds             		 -->
+                    <a:field name="moExpenseItemName" displayField="moExpenseItemName" options="EXP5110_travel_items_ds" required="true">
+                        <a:mapping>
+                            <a:map from="moExpenseItemName" to="moExpenseItemName"/>
+                            <a:map from="moExpenseItemId" to="moExpenseItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseItemId" required="true"/>
+                    <a:field name="primaryQuantity" required="true"/>
+                    <a:field name="businessCurrencyName" displayField="currencyName" options="EXP5110_currency_ds" required="true">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="businessCurrencyCode"/>
+                            <a:map from="precision" to="businessCurrencyPrecision"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="businessCurrencyCode" required="true"/>
+                    <a:field name="biz2payExchangeTypeName" prompt="biz2pay_exchange_type_name"/>
+                    <a:field name="biz2payExchangeRate" prompt="biz2pay_exchange_rate" required="true"/>
+                    <a:field name="businessPrice" prompt="business_price" required="true" validator="EXP5110_policyValidator"/>
+                    <a:field name="businessAmount" prompt="business_amount"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_requisition_headers.payment_currency_name" required="true"/>
+                    <a:field name="paymentCurrencyCode" required="true"/>
+                    <a:field name="pay2funExchangeTypeName" prompt="pay2fun_exchange_type_name"/>
+                    <a:field name="pay2funExchangeRate" prompt="pay2fun_exchange_rate" required="true"/>
+                    <a:field name="paymentPrice" prompt="payment_price" renderer="Aurora.formatMoney"/>
+                    <a:field name="paymentAmount" prompt="payment_amount"/>
+                    <a:field name="managementCurrencyName" prompt="exp_report_headers.currency_code" required="true"/>
+                    <a:field name="managementCurrencyCode" required="true"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="pay2mag_exchange_type_name"/>
+                    <a:field name="pay2magExchangeRate" prompt="pay2mag_exchange_rate" required="true"/>
+                    <a:field name="managementPrice" prompt="management_price"/>
+                    <a:field name="managementAmount" prompt="management_amount"/>
+                    <a:field name="reportFunctionalAmount" prompt="bgt_check_logs.functional_amount"/>
+                    <a:field name="invoiceId"/>
+                    <a:field name="invoiceLineId"/>
+                    <a:field name="invoiceInfo" prompt="hap_more"/>
+                    <a:field name="invoiceCode" prompt="exp_report.invoice_code"/>
+                    <a:field name="invoiceNumber" prompt="acp_invoice_header.invoice_number"/>
+                    <a:field name="invoiceDate" prompt="vat_invoices.invoice_date"/>
+                    <a:field name="invoiceAmount" prompt="total_ad_valorem_tax_invoice" validator="EXP5110_travelInvoiceValidator"/>
+                    <a:field name="taxAmount" prompt="vat_invoice_lines.tax_amount" validator="EXP5110_travelInvoiceValidator"/>
+                    <a:field name="invoiceItemName" lovCode="VAT_INVOICE_ITEM_VL_LOV" prompt="exp_report.invoice_item" validator="EXP5110_travel_invoiceItemValidator">
+                        <a:mapping>
+                            <a:map from="invoiceItemName" to="invoiceItemName"/>
+                            <a:map from="invoiceItemId" to="invoiceItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="invoiceItemId"/>
+                    <a:field name="invoiceUsedeName" lovCode="VAT_INVOICE_USEDE_VL_LOV" prompt="exp_report.invoice_usede" validator="EXP5110_travel_invoiceUsedeValidator">
+                        <a:mapping>
+                            <a:map from="invoiceUsedeName" to="invoiceUsedeName"/>
+                            <a:map from="invoiceUsedeId" to="invoiceUsedeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="invoiceUsedeId"/>
+                    <a:field name="splittedTaxAmount" alidator="EXP5110_travelInvoiceValidator" prompt="split_tax"/>
+                    <a:field name="taxTypeName" displayField="taxTypeName" options="EXP5110_travel_tax_rate_type_ds" prompt="exp_report_lines.tax_rate_type">
+                        <a:mapping>
+                            <a:map from="taxTypeId" to="taxTypeId"/>
+                            <a:map from="taxTypeRate" to="taxTypeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="taxTypeId"/>
+                    <a:field name="taxTypeRate"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="0" showmargin="0" style="margin-top:10px;" title="$[/model/travel_lines_description/record/@lineDescription]">
+            <a:grid id="EXP5110_travel_lines_grid" autoAdjustHeight="true" bindTarget="EXP5110_exp_report_travel_line_ds" height="600" marginWidth="15" navBar="true" showRowNumber="false">
+                <a:toolBar>
+                    <a:placeHolder id="EXP5110_travelLineAddBtnPlace"/>
+                    <a:placeHolder id="EXP5110_travelLineFromReqBtnPlace"/>
+                </a:toolBar>
+                <a:columns>
+                    <!-- <a:column name="more" align="center" lock="true" renderer="EXP5110_travelMoreRenderer" width="35"/> -->
+                    <a:column name="lineNumber" lock="true" width="50"/>
+                    <a:column name="description" width="150"/>
+                    <a:column name="expRequisitionNumber" align="center" width="120"/>
+                    <a:column name="moExpenseTypeName" width="120"/>
+                    <!--Modified by Arthur.Chen Date:2017-09-20 19:42:31          			 1.修改mo_expense_item_name字段的编辑器为combobox模式             		 -->
+                    <a:column name="moExpenseItemName" width="120"/>
+                    <!-- <a:column name="invoiceItemName" align="center"  width="120"/>                    <a:column name="invoiceUsedeName" align="center"  width="120"/> -->
+                    <!-- <a:column name="companyName" width="120"/> -->
+                    <!-- <a:column name="positionName"  width="120"/> -->
+                    <a:column name="transportationName" width="120"/>
+                    <a:column name="seatClassName" width="120"/>
+                    <a:column name="departurePlaceName" width="120"/>
+                    <a:column name="departureDate" renderer="Aurora.formatDate" width="120"/>
+                    <a:column name="arrivalPlaceName" width="120"/>
+                    <a:column name="arrivalDate" renderer="Aurora.formatDate" width="120"/>
+                    <!-- <a:column name="place_type_name" width="120"/>                    <a:column name="placeName"  width="120"/> -->
+                    <!-- <a:column name="date_from"  renderer="Aurora.formatDate" width="80"/>                    <a:column name="date_to"  renderer="Aurora.formatDate" width="80"/> -->
+                    <a:column name="periodName" width="80"/>
+                    <a:column name="businessPrice" renderer="Aurora.formatMoney" width="100"/>
+                    <a:column name="primaryQuantity" width="100"/>
+                    <a:column name="employeeName" width="120"/>
+                    <a:column name="unitName" width="120"/>
+                    <a:column name="accEntityName" width="120"/>
+                    <a:column name="respCenterName" width="120"/>
+                    <!-- <a:column name="lineInvoiceTypeDesc" align="center"  width="120"/> //update by penglei 暂时隐藏 -->
+                    <a:column name="invoiceCategoryName" align="center" width="100"/>
+                    <a:column name="invoiceCode" align="center" width="100"/>
+                    <a:column name="invoiceNumber" align="center" width="100"/>
+                    <a:column name="invoiceDate" align="center" renderer="Aurora.formatDate" width="100"/>
+                    <a:column name="invoiceAmount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    <a:column name="taxTypeName" align="center" width="100"/>
+                    <a:column name="taxAmount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    <a:column name="invoiceInfo" align="center" renderer="EXP5110_travelLineInvoiceInfoRenderer" width="120"/>
+                    <!-- <a:column name="businessCurrencyName"  width="80"/> -->
+                    <!--<a:column name="biz2payExchangeTypeName"  width="100"/>                    
+                    <a:column name="biz2payExchangeRate"  width="80"/>                    
+                    <a:column name="paymentCurrencyName"  width="80"/>                    
+                    <a:column name="pay2fun_exchange_type_name"  width="100"/>                    
+                    <a:column name="pay2funExchangeRate"  width="80"/>                    
+                    <a:column name="paymentPrice"  width="80"/>                    
+                    <a:column name="management_currency_name"  width="100"/>                    
+                    <a:column name="pay2mag_exchange_type_name"  width="100"/>                    
+                    <a:column name="pay2magExchangeRate"  width="80"/>                    
+                    <a:column name="managementPrice"  renderer="Aurora.formatMoney" width="80"/>                    
+                    <a:column name="businessAmount"  renderer="Aurora.formatMoney" width="80"/>                    
+                    <a:column name="paymentAmount"  renderer="Aurora.formatMoney" width="80"/>                    
+                    <a:column name="managementAmount"  renderer="Aurora.formatMoney" width="80"/>                    
+                    <a:column name="reportFunctionalAmount"  renderer="Aurora.formatMoney" width="80"/>-->
+                    <a:placeHolder id="EXP5110_travelLineDimensionColumns"/>
+                    <a:placeHolder id="EXP5110_travelLineObjectColumns"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="EXP5110_travel_nf"/>
+                    <a:textField id="EXP5110_travel_tf"/>
+                    <a:textArea id="EXP5110_travel_ta"/>
+                    <a:lov id="EXP5110_travel_lov"/>
+                    <a:comboBox id="EXP5110_travel_cb"/>
+                    <a:datePicker id="EXP5110_travel_dp"/>
+                    <a:numberField id="EXP5110_travel_nf_0" allowDecimals="false" allowNegative="false"/>
+                    <a:numberField id="EXP5110_travel_nf_1" allowDecimals="true" allowNegative="false"/>
+                    <a:numberField id="EXP5110_travel_nf_2" allowDecimals="true" allowNegative="false"/>
+                    <a:numberField id="EXP5110_travel_nf_3" allowDecimals="true" allowNegative="false"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_travelLineDimensionFields">
+            <p:loop source="/model/travel_line_dimensions">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@defaultDimValueName]" lovCode="FND_DIMENSION_VALUE_VL_LOV?dimensionId=$[@dimensionId]&amp;companyLevel=$[@companyLevel]" prompt="$[@dimensionName]" required="true" title="$[@dimensionName]">
+                        <a:mapping>
+                            <a:map from="dimensionValueName" to="$[@displayField]"/>
+                            <a:map from="dimensionValueId" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@defaultDimValueId]"/>
+                    <a:field name="$[@levelField]" defaultValue="$[@companyLevel]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_travelLineDimensionColumns">
+            <p:loop source="/model/travel_line_dimensions">
+                <c:process-config>
+                    <a:column name="$[@displayField]" editor="EXP5110_travel_lov" prompt="$[@dimensionName]" width="120"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_travelLineObjectFields">
+            <p:loop source="/model/travel_line_objects">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@dftMoExpenseObjectName]" lovService="hec_util.exp_mo_expense_object_value_vl_lov?moExpObjTypeId=$[@moExpObjTypeId]" prompt="$[@moExpObjTypeName]" required="$[@requiredFlag]" title="$[@moExpObjTypeName]">
+                        <a:mapping>
+                            <a:map from="name" to="$[@displayField]"/>
+                            <a:map from="id" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@dftMoExpenseObjectId]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_travelLineObjectColumns">
+            <p:loop source="/model/travel_line_objects">
+                <p:switch test="@expenseObjectMethod">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:column name="$[@displayField]" editor="EXP5110_travel_tf" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:column name="$[@displayField]" editor="EXP5110_travel_lov" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflFlowMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflFlow">
+        <result column="flow_id" property="flowId" jdbcType="DECIMAL"/>
+        <result column="process_id" property="processId" jdbcType="DECIMAL"/>
+        <result column="flow_code" property="flowCode" jdbcType="VARCHAR"/>
+        <result column="flow_name" property="flowName" jdbcType="VARCHAR"/>
+        <result column="from_element_type" property="fromElementType" jdbcType="VARCHAR"/>
+        <result column="from_element_id" property="fromElementId" jdbcType="DECIMAL"/>
+        <result column="from_element_name" property="fromElementName" jdbcType="VARCHAR"/>
+        <result column="to_element_type" property="toElementType" jdbcType="VARCHAR"/>
+        <result column="to_element_id" property="toElementId" jdbcType="DECIMAL"/>
+        <result column="to_element_name" property="toElementName" jdbcType="VARCHAR"/>
+        <result column="flow_value" property="flowValue" jdbcType="VARCHAR"/>
+        <result column="sequence" property="sequence" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="processFlowQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select b.flow_id,
+            b.process_id,
+            b.flow_code,
+            b.from_element_type,
+            t.flow_name,
+            b.from_element_id,
+            (select we.element_name
+						from wfl_element_vl we
+						where we.element_type = b.from_element_type
+						and we.element_id = b.from_element_id
+						and we.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) as from_element_name,
+            b.to_element_type,
+            b.to_element_id,
+            (select we.element_name
+						from wfl_element_vl we
+						where we.element_type = b.to_element_type
+						and we.element_id = b.to_element_id
+						and we.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) as to_element_name,
+            b.flow_value,
+            b.sequence
+    from wfl_flow_b b,wfl_flow_tl t
+    where b.flow_id = t.flow_id and t.lang= #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    and b.process_id = #{processId}
+    and b.enabled_flag = 'Y'
+  </select>
+</mapper>

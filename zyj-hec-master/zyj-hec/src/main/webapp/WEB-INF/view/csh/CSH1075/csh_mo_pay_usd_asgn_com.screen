@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    *Author: yang.cai@hand-china.com
+    *Date: 2019-2-26 20:00:00
+    *Revision: 1.0
+    *Purpose: 管理组织级-付款用途定义-分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1075_csh_mo_pay_usd_batch_asgn_com_link" url="$[/request/@context_path]/csh/CSH1075/csh_mo_pay_usd_asgn_com_batch.screen"/>
+        <div/>
+        <script><![CDATA[
+            function CSH1075_closeAsgnComCreateWindow() {
+                $au('CSH1075_csh_mo_pay_usd_asgn_com').close();
+            }
+            
+            function CSH1075_exp_company_code(record, name) {
+                if (record.isNew) {
+                    return "CSH1075_asgn_com_lov";
+                } else {
+                    return "";
+                }
+            }
+            
+            function CSH1075_asgnCompanySubmit(ds) {
+                ds.query();
+            }
+            
+            //批量分配公司-跳转
+             function CSH1075_batchAssignCom() {
+                new Aurora.Window({
+                    id: 'CSH1075_csh_mo_pay_usd_batch_asgn_com',
+                    url: $au('CSH1075_csh_mo_pay_usd_batch_asgn_com_link').getUrl() + '?paymentUsedesId=' + '$[/parameter/@paymentUsedesId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    title: '$[l:fnd_sys_venders.batch_disp_company]',
+                    width:1020,
+                    side:'right'
+                });
+            }
+        function CSH1075_saveFunction() {
+            var records = $au('CSH1075_csh_mo_pay_usd_asgn_com_ds').getAll();
+            var default_number = 0;
+            for (var i = 0; i < records.length; i++) {
+                for (var j = i +1; j < records.length; j++) {
+                    if (records[i].get('companyId') == records[j].get('companyId')) {
+                        default_number++;
+                    }
+                    if (default_number > 0) {
+                        Aurora.showErrorMessage('$[l:prompt.error]', '$[l:company_hasbeen_assign_error]');
+                        return;
+                    }
+                }
+            }
+            $au('CSH1075_csh_mo_pay_usd_asgn_com_ds').submit();
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1075_csh_mo_pay_usd_asgn_com_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/mo-pay-usd-asgn-com" pageSize="50" queryUrl="$[/request/@context_path]/csh/mo-pay-usd-asgn-com/query?magOrgId=$[/parameter/@magOrgId]&amp;paymentUsedeId=$[/parameter/@paymentUsedesId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyCode" autoComplete="true" lovGridHeight="320" lovHeight="450" lovCode="CSH_MO_PAY_USD_ASGN_COM_LOV?magOrgId=$[/parameter/@magOrgId]&amp;paymentUsedesId=$[/parameter/@paymentUsedesId]" lovWidth="500" required="true" title="exp_employee_assign.choose_company">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyShortName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="paymentUsedeId" defaultValue="$[/parameter/@paymentUsedesId]"/>
+                    <a:field name="assignId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1075_asgnCompanySubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1075_csh_mo_pay_usd_asgn_com_form" column="2" title="csh_mo_payment_used.detail_msg" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1075_csh_mo_pay_usd_asgn_com_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1075_csh_mo_pay_usd_asgn_com_grid" click="CSH1075_saveFunction" type="save" width="80"/>
+                    <a:gridButton bind="CSH1075_csh_mo_pay_usd_asgn_com_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH1075_batchAssignCom" text="hec_batch_assign" width="90"/>
+                    <a:toolbarButton click="CSH1075_closeAsgnComCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="paymentUsedeCode" bindTarget="CSH1075_csh_mo_payment_usedes_result_ds" prompt="csh_mo_payment_used.payment_used_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1075_csh_mo_payment_usedes_result_ds" prompt="csh_mo_payment_used.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1075_csh_mo_pay_usd_asgn_com_grid" bindTarget="CSH1075_csh_mo_pay_usd_asgn_com_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="CSH1075_exp_company_code" prompt="fnd_companies.company_code" width="200"/>
+                    <a:column name="companyShortName" prompt="fnd_companies_vl.company_short_name" width="200"/>
+                    <a:column name="enabledFlag" editor="CSH1075_asgn_com_checkBox" prompt="exp_expense_req_types.enabled_flag" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1075_asgn_com_lov"/>
+                    <a:checkBox id="CSH1075_asgn_com_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

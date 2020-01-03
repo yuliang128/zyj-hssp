@@ -1,0 +1,725 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP4010_exp_requisition_view_main_link"
+                url="$[/request/@context_path]/modules/expm/EXP4010/exp_requisition_view_main.screen"/>
+        <a:link id="EXP4010_exp_requisition_maintain_type_choice_link"
+                url="$[/request/@context_path]/expm/EXP4010/exp_requisition_maintain_type_choice.screen"/>
+        <a:link id="EXP4010_exp_requisition_history_link"
+                url="$[/request/@context_path]/modules/expm/public/exp_document_history_query.screen"/>
+        <a:link id="EXP4010_exp_requestion_close_detail_link"
+                url="$[/request/@context_path]/modules/exp/EXP5360/exp_requestion_close_detail.screen"/>
+        <a:link id="EXP4010_exp_requisition_deleteHeader_link"
+                model="db.exp_requisition_pkg.delete_exp_requisition_header" modelaction="delete"/>
+        <a:link id="EXP4010_exp_requisition_close_selectDate_link"
+                url="$[/request/@context_path]/modules/expm/EXP4010/exp_requistion_main_close.screen"/>
+        <a:link id="wfl_workflow_preview_approve_link"
+                url="$[/request/@context_path]/modules/wfl/WFL1001/wfl_workflow_preview_for_user.screen"/>
+        <a:link id="wfl_workflow_preview_before_submit_link"
+                url="$[/request/@context_path]/modules/wfl/WFL1001/wfl_workflow_preview_before_submit.screen"/>
+        <a:link id="EXP4010_exp_requisition_ref_csh_payment_req_link"
+                url="$[/request/@context_path]/modules/expm/public/exp_requisition_query_csh_payment_req_readonly.screen"/>
+        <a:link id="EXP4010_exp_requisition_ref_report_link"
+                url="$[/request/@context_path]/modules/expm/public/exp_report_query_req.screen"/>
+        <style><![CDATA[
+            .item-float-list-row > table {
+                width: 100%;
+                border: 1px solid #f1f1f1;
+            }
+
+            .info-block {
+                height: 75px !important;
+                border-right: 1px solid #f1f1f1;
+                border-spacing: 0px;
+                padding-left: 10px;
+            }
+
+            .info-title {
+                height: 35px;
+                line-height: 35px;
+                color: #005a78;
+                font-weight: bold;
+            }
+
+            .info-detail {
+                height: 30px;
+                line-height: 20px;
+                vertical-align: top;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .info-amount {
+                height: 30px;
+                line-height: 20px;
+                color: #3c763d;
+                font-weight: bold;
+            }
+
+            .progress-color-bar {
+                width: 5px;
+                height: 77px;
+                border: none;
+            }
+
+            /*
+            正常状态：绿色 #3c763d
+            拒绝状态：红色 #a94442
+            收回状态：黄色 #d6ad65
+            审批通过：绿色 #3c763d
+            关闭状态：蓝色 #31708f
+            */
+            .progress-color-GENERATE {
+                background-color: #3c763d;
+            }
+
+            .progress-color-TAKEN_BACK {
+                background-color: #d6ad65;
+            }
+
+            .progress-color-REJECTED {
+                background-color: #a94442;
+            }
+
+            .progress-color-SUBMITTED {
+                background-color: #3c763d;
+            }
+
+            .progress-color-COMPLETELY_APPROVED {
+                background-color: #3c763d;
+            }
+
+            .progress-color-CLOSED {
+                background-color: #31708f;
+            }
+
+            .history-block {
+                z-index: 2;
+                position: fixed;
+                width: 100%;
+            }
+
+            .history-hidden {
+                visibility: hidden;
+            }
+
+            .history-show {
+                visibility: visible;
+            }
+
+            ]]></style>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/chart/echarts.min.js"/>
+        <script><![CDATA[
+        function EXP4010_query() {
+            $au('EXP4010_queryResultDs').query();
+        }
+
+        function EXP5110_onQueryConditionDsUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'exp_requisition_status_all') {
+                if (value == 'Y') {
+                    record.set('exp_requisition_status_can_modify', 'Y');
+                    record.set('exp_requisition_status_submitted', 'Y');
+                    record.set('exp_requisition_status_approved', 'Y');
+                    record.set('exp_requisition_status_closed', 'Y');
+                } else if (value == 'N') {
+                    record.set('exp_requisition_status_can_modify', 'N');
+                    record.set('exp_requisition_status_submitted', 'N');
+                    record.set('exp_requisition_status_approved', 'N');
+                    record.set('exp_requisition_status_closed', 'N');
+                }
+            } else if ((name == 'exp_requisition_status_can_modify' || name == 'exp_requisition_status_submitted' || name == 'exp_requisition_status_approved' || name == 'exp_requisition_status_closed') && value == 'N') {
+                record.data['exp_requisition_status_all'] = 'N';
+                $au('EXP4010_expRequisitionStatusAllCb').render(record);
+            } else if (name == 'payee_category') {
+                record.set('payee_name', '');
+                record.set('payee_id', '');
+            } else if (name == 'exp_requisition_date_scope') {
+                EXP4010_query();
+            }
+        }
+
+        function EXP4010_onQueryConditionDsAddFun(ds, record, index) {
+            record.set('exp_requisition_date_scope_name', (new HecUtil()).getNameByValue($au('EXP4010_dateScopeDs'), 'code_value', 'code_value_name', '000-090'));
+            record.set('exp_requisition_date_scope', '000-090');
+        }
+
+        //update by penglei 20171225 申请单表单头取值根据单据类型去取对应的页面元素表单头 begin
+
+        function EXP4010_onReportClickFun(header_id, status, service_name, readonly_service_name) {
+            if (status == 'GENERATE' || status == 'TAKEN_BACK' || status == 'REJECTED') {
+                if (service_name != '' && service_name != 'undefined' && service_name != null) {
+                    new Aurora.Window({
+                        title: '$[l:EXP_REQUISITION_HEADERS.EXP_REQUISITION]',
+                        url: '$[/request/@context_path]/' + service_name + '?exp_requisition_header_id=' + header_id,
+                        id: 'EXP4010_exp_requisition_maintain_main_window',
+                        fullScreen: true
+                    }).on('close', function () {
+                        EXP4010_query();
+                    });
+                } else {
+                    Aurora.showInfoMessage('$[l:PROMPT]', "$[l:EXP_REQUISITION_MAIN.MAIN_ERROR]", null, 250, 100);
+                    return;
+                }
+            } else {
+                if (readonly_service_name != '' && readonly_service_name != 'undefined' && readonly_service_name != null) {
+                    new Aurora.Window({
+                        title: '$[l:EXP_REQUISITION_HEADERS.EXP_REQUISITION]',
+                        url: '$[/request/@context_path]/' + readonly_service_name + '?exp_requisition_header_id=' + header_id,
+                        id: 'EXP4010_exp_requisition_view_main_window',
+                        fullScreen: true
+                    }).on('close', function () {
+                        EXP4010_query();
+                    });
+                } else {
+                    Aurora.showInfoMessage('$[l:PROMPT]', "$[l:EXP_REQUISITION_MAIN.READONLY_MAIN_ERROR]", null, 250, 100);
+                    return;
+                }
+            }
+        }
+
+        function EXP4010_onPayeeNameFocusFun() {
+            var record = $au('EXP4010_queryConditionDs').getAt(0);
+            var payee_category = record.get('payee_category');
+            if (Ext.isEmpty(payee_category)) {
+                new Aurora.showErrorMessage('$[l:PROMPT.ERROR]', '$[l:EXP_REPORT_MAIN.PAYEE_CATEGORY_IS_NULL]', null, 300, 400);
+                return;
+            }
+            record.getField('payee_name').setLovPara('payee_category', record.get('payee_category'));
+        }
+
+
+        function EXP4010_openReportTypeChoice() {
+            new Aurora.Window({
+                title: '$[l:EXP_REQUISITION_HEADERS.EXP_REQUISITION]',
+                url: $au('EXP4010_exp_requisition_maintain_type_choice_link').getUrl(),
+                id: 'EXP4010_exp_requisition_maintain_type_choice_window',
+                fullScreen: true
+            }).on('close', function () {
+                $au('EXP4010_queryResultDs').query();
+            });
+        }
+
+        ]]></script>
+        <span><![CDATA[
+        <script>
+        	function EXP4010_progressColorRenderer(value,record,name){
+        	    var tplt = new Ext.Template([
+        	    '<div class="progress-color-bar progress-color-{progress_status}"></div>'
+        	    ]);
+        	    
+        	    return tplt.applyTemplate({
+        	        progressStatus:record.get('progressStatus')
+        	    });
+        	}
+        
+            function EXP4010_docNumberAndTypeRenderer(value,record,name) {
+                var tplt = new Ext.Template([
+                '<table class="info-block">',
+                '	<tr>',
+                '		<td class="info-title">',
+                '			{doc_type_name}',
+                '		</td>',
+                '	</tr>',
+                '	<tr>',
+                '		<td class="info-detail">',
+                '			{doc_number}',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                
+                var numberHtml = '<a href="javascript:EXP4010_onReportClickFun(\''+record.get('expRequisitionHeaderId')+'\',\''+record.get('requisitionStatus')+'\',\''+record.get('serviceName') +'\',\''+record.get('readonlyServiceName') +'\')" >' + record.get('expRequisitionNumber') + '</a>'
+                var flowinfoa_width = parseInt(document.body.clientWidth / 9.5);
+                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+                    flowinfoa_width = 142.5;
+                }
+                var docTypeName = record.get('moExpReqTypeName') == undefined ?'':record.get('moExpReqTypeName');
+                var docHtml ='<div id="flowInfoAId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docTypeName + '\')">'+ docTypeName + '</div>';
+                return tplt.applyTemplate({
+                    doc_type_name:docHtml,
+                    doc_number:numberHtml
+                });
+            }
+            
+            function EXP4010_requisitionDateAndDescRendnerer(value,record,name){
+                var tplt = new Ext.Template([
+                '<table border="0" class="info-block">',
+                '	<tr>',
+                '		<td width="20%"  class="info-title">',
+                '			{doc_date}',
+                '		</td>',
+                '		<td width="30%" align="center" class="info-title">',
+                '			{employeeName}',
+                '		</td>',
+                '		<td width="50%" class="info-title">',
+                '			{unit_info}',
+                '		</td>',
+                '	</tr>',
+                '	<tr>',
+                '		<td  colspan="3" class="info-detail">',
+                '			{doc_desc}',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                if(record.get('description') == undefined){
+                    docDesc = '';
+                }else{
+                    docDesc = record.get('description');
+                }
+                
+                var flowinfoa_width = parseInt(document.body.clientWidth * 3 / 9.5);
+                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+                    flowinfoa_width = 427.5;
+                }
+                var docHtml ='<div id="flowInfoBId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docDesc + '\')">'+ docDesc + '</div>';
+                
+                //update by penglei 20180503 长度自适应调整 begin
+                var unitName = record.get('unitName');
+                var accEntityName = record.get('accEntityName');
+                if(unitName == undefined && accEntityName == undefined){
+                    unitDesc = '';
+                }else{
+                    var unitDesc = unitName +' / '+ accEntityName;
+                }
+                var unitHtml_width = parseInt(document.body.clientWidth * 3 / 19);
+                if(unitHtml_width < 100 || unitHtml_width == null || unitHtml_width == undefined){
+                    unitHtml_width = 213.5;
+                }
+                var unitHtml ='<div id="flowInfoCId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + unitHtml_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + unitDesc + '\')">'+ unitDesc + '</div>';
+                //by pl end
+                
+                return tplt.applyTemplate({
+                    doc_date:record.get('requisitionDate'),
+                    employeeName:record.get('employeeName'),
+                    unit_info: unitHtml,
+                    doc_desc:docHtml
+                });
+            }
+            
+            function EXP4010_requisitionAmountRenderer(value,record,name) {
+                var tplt = new Ext.Template([
+                '<table class="info-block">',
+                '	<tr>',
+                '		<td class="info-title" style="text-align:right;padding-right:10px;font-size:15px;">',
+                '			<span onmouseover="$A.ToolTip.show(this,\'$[l:ACP_REQUISITION.AMOUNT]\')" >{currency_symbol}&nbsp;{doc_amount}</span>',
+                '		</td>',
+                '	</tr>',
+                '	<tr>',
+                '		<td class="info-amount" style="text-align:right;padding-right:10px;font-size:13px;">',
+                '			<span onmouseover="$A.ToolTip.show(this,\'$[l:EXP_REQUISITION_HEADERS.REIMBURSED_NUM]\')">{currency_symbol1}&nbsp;{paid_amount}</span>',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                
+                return tplt.applyTemplate({
+                    doc_amount:Aurora.formatMoney(record.get('totalPaymentAmount')),
+                    currency_symbol:record.get('paymentCurrencySymbol'),
+                    //暂时置0，等晶总写完已报销金额获取过程。
+                   paid_amount:Aurora.formatMoney(0),
+                    currency_symbol1:record.get('paymentCurrencySymbol')
+                });
+            }
+            
+            function EXP4010_progressRenderer(value,record,name,floatList) {
+            	function onProgressLoad(){
+            	    var progressDom = document.getElementById('progress-' + record.id);
+            	    if(!progressDom){
+            	        return ;
+            	    }
+            	    var progressChart = echarts.init(progressDom);
+            	    if (record.get('progressStatus') == 'GENERATE' || record.get('progressStatus') == 'SUBMITTED') {
+            	        var progressColor = '#3c763d';
+            	    }else if (record.get('progressStatus') == 'REJECTED'){
+            	        var progressColor = '#a94442';
+            	    }else if (record.get('progressStatus') == 'TAKEN_BACK'){
+            	        var progressColor = '#d6ad65';
+            	    }else if (record.get('progressStatus') == 'COMPLETELY_APPROVED'){
+            	        var progressColor = '#3c763d';
+            	    }else if (record.get('progressStatus') == 'CLOSED'){
+            	        var progressColor = '#31708f';
+            	    }
+            	    /*
+		    		正常状态：绿色 #3c763d
+		    		拒绝状态：红色 #a94442
+		    		收回状态：黄色 #d6ad65
+		    		审批通过：绿色 #3c763d
+		    		关闭状态：蓝色 #31708f
+		    		*/
+					option = {
+					    series: [
+					        {
+					            name:'执行进度',
+					            type:'pie',
+					            radius: ['70%', '80%'],
+					            avoidLabelOverlap: false,
+					            hoverAnimation:false,
+					            animation:false,
+					            label: {
+					                normal: {
+					                    show: true,
+					                    position: 'center',
+					                    textStyle: {
+					                        fontSize: '11',
+					                        fontWeight: 'bold',
+					                        color:'#000'
+					                    }
+					                }
+					            },
+					            labelLine: {
+					                normal: {
+					                    show: false
+					                }
+					            },
+					            color:[progressColor,'#f1f1f1'],
+					            data:[
+					                {value:record.get('progressCount'),name:record.get('progressStatusName')},
+					                {value:100 - record.get('progressCount'),name:''}
+					            ]
+					        }
+					    ]
+					};
+					progressChart.setOption(option);
+            	}
+            	
+                var tplt = new Ext.Template([
+                '<div class="info-block" onmouseleave="onProgressMouseLeave(' + record.id + ',event);" >',
+                '<div id="progress-{record_id}" onClick="EXP4010_showHistory(' + record.get('exp_requisition_header_id') + ',' + record.id + ',event);" style="width:80px;height:80px;margin:auto;"></div>',
+                '<div class="history-block history-hidden" id="history-{record_id}">'
+                ]);
+                floatList['on']('load',onProgressLoad,this);
+                return tplt.applyTemplate({
+                    record_id:record.id
+                });
+            }
+            
+            function onProgressMouseLeave(recordId, event){
+                event.stopPropagation(); 
+                historyDiv = $('#history-' + recordId);
+                if(historyDiv.hasClass('history-show')){
+                    historyDiv.removeClass('history-show');
+                    historyDiv.addClass('history-hidden');
+                }
+            }
+             
+            function EXP4010_showHistory(docId, recordId, event) {
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                historyDiv = $('#history-' + recordId);
+                if(historyDiv.hasClass('history-hidden')){
+                    //异步加载单据历史页面
+        			historyDiv.load($au('EXP4010_exp_requisition_history_link').getUrl() + '?document_id=' + docId + '&document_type=EXP_REQUISITION',function(url,status,c){
+        			    if(status == 'success'){
+        			    //计算气泡的正确弹出位置
+	        			    EXP4010_correctPosition(recordId);
+		                    historyDiv.removeClass('history-hidden');
+		                    historyDiv.addClass('history-show');
+        			    }
+        			});
+                }else if(historyDiv.hasClass('history-show')){
+                    historyDiv.removeClass('history-show');
+                    historyDiv.addClass('history-hidden');
+                }
+            }
+            
+           function EXP4010_correctPosition(id){
+	            var flowBox = historyDiv.children('div.flowBox'),
+	                rowDiv = historyDiv.parents('div[_row='+id+']'),
+	                infoBlockDiv = $('#progress-' + id).parents('div.info-block'),
+	                triangleDiv = historyDiv.children('div.triangle'),
+	                width = flowBox.outerWidth(true),
+	            	height = flowBox.outerHeight(true),
+	            	vh = Aurora.getViewportHeight(),
+	            	x = infoBlockDiv.position().left-width+infoBlockDiv.outerWidth(true)/2,
+	            	y = rowDiv.position().top;
+	        	historyDiv.css({
+	        	    "top" : (y + height) > vh ? (vh - height) : y,
+	        	    "left": x
+	        	    });
+	    	    triangleDiv.css({
+	    	        "left" : width,
+	    	        "top" : (y + height) > vh ? (height - (vh - rowDiv.position().top - infoBlockDiv.outerHeight(true)/2)) : infoBlockDiv.outerHeight(true)/2
+	    	    });
+            }
+            
+            function EXP4010_operationRenderer(value,record,name) {
+                var tplt = new Ext.Template([
+                '<table class="info-block" style="border-right:none;">',
+                '	<tr>',
+                '		<td width="25%" align="center">',
+                '			{delete_link}',
+                '		</td>',
+                '		<td width="25%" align="center">',
+                '			{print_link}',
+                '		</td>',
+                '		<td width="25%" align="center">',
+                '			{close_link}',
+                '		</td>',
+                '		<td width="25%" align="center">',
+                '			{preview_link}',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                //新建 退回 拒绝状态的单据可以删除 显示删除图标
+                if (record.get('requisition_status') == 'GENERATE' || record.get('requisition_status') == 'TAKEN_BACK' || record.get('requisition_status') == 'REJECTED'){
+                	dLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_DELETE]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete.png"  alt="$[l:HAP_DELETE]" onClick="EXP4010_deleteHeader(' + record.get('exp_requisition_header_id') + ', event);"/>' ;
+                }else{
+                    //其他状态显示灰色图标
+                    dLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_DELETE]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete-1.png"  alt="$[l:HAP_DELETE]""/>' ;
+                }
+                
+                pLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_PRINT]\')" src="$[/request/@context_path]/resources/images/aurora/hap/print.png"  alt="$[l:HAP_PRINT]" onClick="EXP4010_print(' + record.get('exp_requisition_header_id') + ', event);"/>';
+                
+                //审批通过的单据可以关闭,显示关闭图标
+                if(record.get('requisition_status') == 'COMPLETELY_APPROVED'){
+                	if(record.get('progress_status') == 'CLOSED'){
+                   		var src='src="$[/request/@context_path]/resources/images/aurora/hap/close.png"'
+                   		var cLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_CLOSED]\')" ' + src + ' alt="Closed";"/>';
+                	}else{
+                    	var src='src="$[/request/@context_path]/resources/images/aurora/hap/open.png"'
+                    	var cLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_CLOSE]\')" ' + src + ' alt="Close" onClick="EXP4010_close_detail(' + record.get('exp_requisition_header_id') + ', event);"/>';
+                	}
+                }
+                else{
+                    //其它状态显示灰色图标
+                    var src='src="$[/request/@context_path]/resources/images/aurora/hap/open-1.png"'
+                    	var cLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_CLOSE]\')" ' + src + ' alt="Close""/>';
+                }
+                
+                //提交状态的单据可以预览 显示预览图标
+                if (record.get('requisition_status') == 'SUBMITTED'){
+                	preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:WFL.PREVIEW]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:WFL.PREVIEW]" onClick="EXP4010_PreviewWinFunc(' + record.get('instance_id') + ', event);"/>' ;
+                }else if (record.get('requisition_status') == 'GENERATE'||record.get('requisition_status') == 'TAKEN_BACK'||record.get('requisition_status') == 'REJECTED'){
+                	preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:WFL.PREVIEW]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:WFL.PREVIEW]" onClick="EXP4010_PreviewBSWinFunc(' + record.get('mo_exp_req_type_id')+','+ record.get('company_id')+','+ record.get('exp_requisition_header_id') + ', event);"/>' ;
+                }else{
+                 //其他状态的单据用灰色图标
+                    preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:WFL.PREVIEW]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview-1.png"  alt="$[l:WFL.PREVIEW]""/>';
+                }
+                return tplt.applyTemplate({
+                    delete_link: dLink,
+                    print_link: pLink,
+                    close_link: cLink,
+                    preview_link: preLink
+                });
+            }
+            
+            function EXP4010_PreviewWinFunc(id) {
+                new Aurora.Window({
+                    id: 'preview_window',
+                    url: $au('wfl_workflow_preview_approve_link').getUrl() + '?instance_id=' + id,
+                    title: '$[l:WFL.WFL_APPROVE_PREVIEW]',
+                    fullScreen: true
+                });
+            }
+            
+            //提交前预览
+            function EXP4010_PreviewBSWinFunc(transaction_type_id,company_id,instance_param) {
+                new Aurora.Window({
+                    id: 'preview_window',
+                    url: $au('wfl_workflow_preview_before_submit_link').getUrl() + '?transaction_category=EXP_REQUISITION&transaction_type_id=' + transaction_type_id + '&company_id=' + company_id + '&instance_param=' + instance_param,
+                    title: '$[l:WFL.WFL_APPROVE_PREVIEW]',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP4010_print(id, event){
+                event.stopPropagation();
+                // Tips：此处添加费用申请单打印逻辑【调用BIRT报表文件】
+                alert('确定打印当前付款申请单？');
+            }
+            
+            function EXP4010_deleteHeader(id, event){ 
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                Aurora.showConfirm('$[l:EXIT_SYSTEM]', '$[l:EXP4010_REQUISITION_DELETED]', function(resp) {
+                    Aurora.request({
+                        url: $au('EXP4010_exp_requisition_deleteHeader_link').getUrl(),
+                        para: {'exp_requisition_header_id': id},
+                        success: function() {
+                            EXP4010_query();
+                        },
+                        scope: this
+                    });
+                    resp.close();
+                });
+            }
+            
+		 	function EXP4010_close_detail(id, event){
+		 	    event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                new Aurora.Window({
+                    id: 'EXP4010_requestion_close_view_window',
+                    title:'$[l:BGT_PERIOD_SETS.DETAIL]',
+                    url: $au('EXP4010_exp_requestion_close_detail_link').getUrl() + '?head_id=' + id,
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('EXP4010_queryResultDs').query();
+                });
+		 	}
+          
+            /*function EXP4010_showHistory(id, event) {
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                new Aurora.Window({
+                    url: $au('EXP4010_exp_requisition_history_link').getUrl() +'?document_id='+ id + '&document_type=EXP_REQUISITION',
+                    id: 'EXP4010_exp_requisition_history_window',
+                    fullScreen: true
+                });
+            }*/
+            
+            //add by LiLiang 2018/5/17
+            //整单关闭
+            function EXP4010_allClose() {
+			    var selectRecords = $au('EXP4010_queryResultDs').getSelected();
+			    if(selectRecords.length == 0){
+			        Aurora.showMessage('$[l:PROMPT]', '$[l:HAP_MUST_SELECT_ONE]');
+			        return;
+			    }
+			    for (var i = 0; i < selectRecords.length; i++) {
+			        if (selectRecords[i].get('progress_status') == 'CLOSED') {
+			            Aurora.showMessage('$[l:PROMPT]', '$[l:EXP_ALREADY_CLOSE_ERROR]');
+			            return;
+			        }
+			    }
+		        new Aurora.Window({
+		            title: '$[l:CSH_CASH_PLAN_CLOSE_AFTER_APPROVED.CLOSE_PLAN_ALL]',
+		            url: $au('EXP4010_exp_requisition_close_selectDate_link').getUrl(),
+		            id: 'EXP4010_exp_requistion_main_close_window',
+		            fullScreen: false,
+		            width: 600,
+		            height: 205
+		        }).on('close',function() {
+		            $au('EXP4010_queryResultDs').query();
+		        });
+			}
+			 //add by caoke/2018-07-02 关联报销单
+            function EXP4010_openReport() {
+                var records = $au('EXP4010_queryResultDs').getSelected();
+                if (records.length != 1) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT_ONE]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    url: /*exp_report_query_req.screen*/
+                    $au('EXP4010_exp_requisition_ref_report_link').getUrl() + '?exp_requisition_header_id=' + records[0].get('exp_requisition_header_id'),
+                    title: '$[l:ACP_SYS_ACP_REQ_TYPES.RELATE_REPORT]',
+                    id: 'exp_report_query_req_screen',
+                    fullScreen: true
+                });
+            }
+
+            //add by caoke/2018-07-02关联借款单
+            function EXP4010_openCshPaymentReq() {
+                var records = $au('EXP4010_queryResultDs').getSelected();
+                if (records.length != 1) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT_ONE]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    url: /*exp_requisition_query_csh_payment_req_readonly.screen*/
+                    $au('EXP4010_exp_requisition_ref_csh_payment_req_link').getUrl() + '?head_id=' + records[0].get('exp_requisition_header_id'),
+                    title: '$[l:ACP_SYS_ACP_REQ_TYPES.RELATE_PAYMENT_REQ]',
+                    id: 'exp_requisition_query_csh_payment_req_readonly_screen',
+                    fullScreen: true
+                });
+            }
+        </script>
+        ]]></span>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_dateScopeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/DATE_SCOPE"/>
+            <a:dataSet id="EXP4010_RequisitionStatusDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/EXP_REPORT_QUERY_STATUS"/>
+            <a:dataSet id="EXP4010_queryConditionDs">
+                <a:fields>
+                    <a:field name="acpRequisitionStatus" prompt="acp_acp_requisition_hds.status" displayField="meaning" options="EXP4010_RequisitionStatusDs" returnField="status" valueField="value"/>
+                    <a:field name="expRequisitionDateScopeName" prompt="hap_date_range"/>
+                    <a:field name="expRequisitionNumber" prompt="exp_requisition_header.exp_requisition_number"/>
+                    <a:field name="requisitionDateFrom" placeHolder="exp_requisition_header.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" placeHolder="exp_requisition_header.requisition_date_to"/>
+                    <a:field name="moExpReqTypeName" placeHolder="exp_requisition_header.mo_exp_req_type_name"/>
+                    <a:field name="employeeName" placeHolder="exp_requisition_header.employee_name"/>
+                    <a:field name="paymentCurrencyName" placeHolder="exp_requisition_header.payment_currency_name"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="payeeCategoryName" placeHolder="exp_requisition_header.payee_category"/>
+                    <a:field name="payeeName" placeHolder="exp_requisition_header.payee_name">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="amountFrom" placeHolder="exp_requisition_header.amount_from"/>
+                    <a:field name="amountTo" placeHolder="exp_requisition_header.amount_to"/>
+                    <a:field name="createdDateFrom" placeHolder="exp_requisition_header.create_date_from"/>
+                    <a:field name="createdDateTo" placeHolder="exp_requisition_header.create_date_to"/>
+                    <a:field name="description" placeHolder="exp_requisition_header.description"/>
+                    <a:field name="payeeCategory"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="EXP4010_onQueryConditionDsAddFun"/>
+                    <a:event name="update" handler="EXP5110_onQueryConditionDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_queryResultDs" autoPageSize="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/requisition-header/queryExpRequisitionMain" pageSize="20"
+                       queryDataSet="EXP4010_queryConditionDs" selectable="true"/>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:button click="EXP4010_openReportTypeChoice" text="hap_create_document" width="80"/>
+            <a:buttonGroup text="HAP.ACTION" width="80">
+                <a:groupButtons>
+                    <a:button click="EXP4010_openReport" text="EXP_REQ.REPORT"/>
+                    <a:button click="EXP4010_openCshPaymentReq" text="EXP_REQ.CSH_PAYMENT_REQ"/>
+                    <a:button click="EXP4010_allClose" text="HAP_CLOSE"/>
+                </a:groupButtons>
+            </a:buttonGroup>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="EXP4010_queryConditionDs" resultTarget="EXP4010_queryResultDs"
+                     style="width:100%;border:none;">
+            <a:formToolBar>
+                <a:multiComboBox name="acpRequisitionStatus" bindTarget="EXP4010_queryConditionDs"/>
+                <a:comboBox name="expRequisitionDateScopeName" bindTarget="EXP4010_queryConditionDs"/>
+                <a:textField name="expRequisitionNumber" bindTarget="EXP4010_queryConditionDs">
+                    <a:events>
+                        <a:event name="enterdown" handler="EXP4010_query"/>
+                    </a:events>
+                </a:textField>
+            </a:formToolBar>
+            <!--<a:formBody column="4">-->
+                <!--<a:datePicker name="requisitionDateFrom" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:datePicker name="requisitionDateTo" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--&lt;!&ndash; Modified by Arthur.Chen 2017-12-15 10:08:13 修改单据类型为多选框 &ndash;&gt;-->
+                <!--<a:multiComboBox name="moExpReqTypeName" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:comboBox name="employeeName" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:comboBox name="paymentCurrencyName" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:comboBox name="payeeCategoryName" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:lov name="payeeName" bindTarget="EXP4010_queryConditionDs">-->
+                    <!--<a:events>-->
+                        <!--<a:event name="focus" handler="EXP4010_onPayeeNameFocusFun"/>-->
+                    <!--</a:events>-->
+                <!--</a:lov>-->
+                <!--<a:numberField name="amountFrom" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:numberField name="amountTo" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:datePicker name="createdDateFrom" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:datePicker name="createdDateTo" bindTarget="EXP4010_queryConditionDs"/>-->
+                <!--<a:textField name="description" bindtarget="EXP4010_queryConditionDs"/>-->
+            <!--</a:formBody>-->
+        </a:queryForm>
+        <a:form marginWidth="0" showmargin="false" shrinkable="false" title="exp_requisition_header.create">
+            <a:floatList bindTarget="EXP4010_queryResultDs" clickable="true" closeable="true" loadMore="false"
+                         marginHeight="185" navbar="true"
+                         rowStyle="width:99%;height:80px;margin-top:2px;margin-bottom:5px;margin-left:10px;margin-right:10px;"
+                         style="box-shadow:none;width:100%">
+                <a:columns>
+                    <a:column name="progressColor" renderer="EXP4010_progressColorRenderer" width="1"/>
+                    <a:column name="docNumberAndType" renderer="EXP4010_docNumberAndTypeRenderer" width="15"/>
+                    <a:column name="requisitionDateAndDesc" renderer="EXP4010_requisitionDateAndDescRendnerer"
+                              width="46"/>
+                    <a:column name="requisitionAmount" renderer="EXP4010_requisitionAmountRenderer" width="16"/>
+                    <a:column name="progress" renderer="EXP4010_progressRenderer" width="13"/>
+                    <a:column name="operation" renderer="EXP4010_operationRenderer" width="9"/>
+                </a:columns>
+            </a:floatList>
+        </a:form>
+    </a:view>
+</a:screen>

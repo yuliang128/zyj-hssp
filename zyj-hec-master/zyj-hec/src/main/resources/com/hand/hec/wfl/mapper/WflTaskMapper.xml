@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflTaskMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflTask">
+        <result column="task_id" property="taskId" jdbcType="DECIMAL"/>
+        <result column="process_id" property="processId" jdbcType="DECIMAL"/>
+        <result column="task_code" property="taskCode" jdbcType="VARCHAR"/>
+        <result column="task_name" property="taskName" jdbcType="VARCHAR"/>
+        <result column="task_type" property="taskType" jdbcType="VARCHAR"/>
+        <result column="process_page_id" property="processPageId" jdbcType="DECIMAL"/>
+        <result column="view_page_id" property="viewPageId" jdbcType="DECIMAL"/>
+        <result column="arrive_procedure_id" property="arriveProcedureId" jdbcType="DECIMAL"/>
+        <result column="depart_procedure_id" property="departProcedureId" jdbcType="DECIMAL"/>
+        <result column="receive_type" property="receiveType" jdbcType="VARCHAR"/>
+        <result column="task_type_name" property="taskTypeName" jdbcType="VARCHAR"/>
+        <result column="receive_type_name" property="receiveTypeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="taskNameLov" parameterType="java.lang.Long" resultMap="BaseResultMap">
+          select *
+          from wfl_task_b b
+          where b.process_id=#{processId}
+    </select>
+    <select id="queryWflTask" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflTask">
+        select wtv.* ,
+        (select c.code_value_name
+        from sys_code_values_v c
+        where c.code = 'WFL_TASK_TYPE'
+        and c.code_value = wtv.task_type
+        ) task_type_name,
+        (select c.code_value_name
+        from sys_code_values_v c
+        where c.code = 'WFL_RECEIVE_TYPE'
+        and c.code_value = wtv.receive_type
+        ) receive_type_name,
+        (select wpv.page_name from wfl_page_vl wpv where wpv.page_id=wtv.process_page_id) process_page_name,
+        (select wpv.page_name from wfl_page_vl wpv where wpv.page_id=wtv.view_page_id) view_page_name,
+        (select wprocv.procedure_name from wfl_procedure_vl wprocv where wprocv.procedure_id = wtv.arrive_procedure_id)
+        arrive_procedure_name,
+        (select wprocv.procedure_name from wfl_procedure_vl wprocv where wprocv.procedure_id = wtv.depart_procedure_id)
+        depart_procedure_name
+        from wfl_task_vl wtv
+        <where>
+            <if test="processId != null">
+                process_id = #{processId,jdbcType=BIGINT}
+            </if>
+        </where>
+    </select>
+    <select id="queryTaskNameLov" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflTask">
+        select wtv.task_id ,
+        wtv.task_code,
+        t.task_name
+        from wfl_task_b wtv,wfl_task_tl t
+        <where>
+            wtv.process_id = #{processId,jdbcType=BIGINT}
+            and wtv.task_id = t.task_id and t.lang=#{request.locale,jdbcType=VARCHAR}
+            <if test="taskCode != null">
+                and task_code LIKE concat('%',
+                concat(#{taskCode,jdbcType=VARCHAR}, '%'))
+            </if>
+            <if test="taskName != null">
+                and task_name LIKE concat('%',
+                concat(#{taskName,jdbcType=VARCHAR}, '%'))
+            </if>
+        </where>
+    </select>
+    <select id="queryCodeAndNameById" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflTask">
+        select wtv.task_code , t.task_name
+        from wfl_task_b wtv,wfl_task_tl t
+        <where>
+            wtv.task_id = t.task_id and t.lang=#{request.locale,jdbcType=VARCHAR}
+            <if test="taskId!=null">
+                AND wtv.task_id =#{taskId,jdbcType=BIGINT}
+            </if>
+        </where>
+    </select>
+    <select id="queryLinkedTask" resultMap="BaseResultMap">
+        WITH RECURSIVE task_tmp AS (
+        SELECT
+        t1.*
+        FROM
+        wfl_task_b t1
+        WHERE
+        t1.task_id = #{taskId} UNION ALL
+        SELECT
+        t2.*
+        FROM
+        wfl_task_b t2,task_tmp t3,wfl_flow_b f1
+        WHERE t2.task_id = f1.to_element_id
+        and f1.to_element_type = 'TASK'
+        and t3.task_id = f1.from_element_id
+        and f1.from_element_type = 'TASK'
+        ) SELECT
+        *
+        FROM
+        task_tmp T
+    </select>
+    <select id="queryByProcessId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        select wtv.*
+        from wfl_task_b wtv,wfl_task_tl t
+        <where>
+            wtv.task_id = t.task_id and t.lang=#{request.locale,jdbcType=VARCHAR}
+            <if test="processId != null">
+                and process_id = #{processId,jdbcType=BIGINT}
+            </if>
+        </where>
+    </select>
+</mapper>

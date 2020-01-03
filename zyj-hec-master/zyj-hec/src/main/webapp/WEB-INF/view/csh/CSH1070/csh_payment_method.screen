@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    * Author: yang.cai@hand-china.com
+    * Date: 2019-2-22 下午18:56:55
+    * Revision: 1.0
+    * Purpose: 付款方式定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1070_csh_payment_method_asgn_mo_link" url="$[/request/@context_path]/csh/CSH1070/csh_payment_method_asgn_mo.screen"/>
+        <script><![CDATA[
+            function CSH1070_methodCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1070_textField_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH1070_Submit(dataSet) {
+                dataSet.query();
+            }
+            
+            //分配公司-跳转
+            
+            function CSH1070_assignCompany(value, record, name) {
+                if (!record.isNew) {
+                    var id = record.get('paymentMethodId');
+                    return '<a href="javascript:CSH1070_payMethod_asgn_company(' + id + ')">$[l:exp_mo_employee_type.fnd_managing_organization]</a>';
+                }
+            }
+            
+            function CSH1070_payMethod_asgn_company(id) {
+                new Aurora.Window({
+                    id: 'CSH1070_csh_payment_method_asgn_mo',
+                    url: $au('CSH1070_csh_payment_method_asgn_mo_link').getUrl() + '?paymentMethodId=' + id,
+                    title: '$[l:exp_mo_employee_type.fnd_managing_organization]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1070_payMethod_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAY_METHOD/" />
+            <a:dataSet id="CSH1070_payCarrier_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAY_CARRIER/"/>
+            <a:dataSet id="CSH1070_csh_payment_methods_query_ds"/>
+            <a:dataSet id="CSH1070_csh_payment_methods_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-method" queryUrl="$[/request/@context_path]/csh/payment-method/query" queryDataSet="CSH1070_csh_payment_methods_query_ds" selectable="false">
+                <a:fields>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodCode" prompt="csh_payment_method.payment_method_code" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="description" prompt="csh_payment_method.payment_method_name" required="true" dto="com.hand.hec.csh.dto.CshPaymentMethod" dtoId="paymentMethodId"/>
+                    <a:field name="payMethodCode"/>
+                    <a:field name="payMethodName" prompt="csh_payment_method.pay_method_name" displayField="meaning"  options="CSH1070_payMethod_ds" required="true" returnField="payMethodCode" valueField="value"/>
+                    <a:field name="payCarrierCode"/>
+                    <a:field name="payCarrierName" prompt="csh_payment_method.pay_carrier_name" displayField="meaning" options="CSH1070_payCarrier_ds" required="true" returnField="payCarrierCode" valueField="value"/>
+                    <a:field name="postingFlag" prompt="csh_payment_method.posting_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="prompt.enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="assignMo"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1070_Submit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1070_csh_payment_methods_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1070_csh_payment_methods_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1070_csh_payment_methods_query_ds" resultTarget="CSH1070_csh_payment_methods_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:textField name="paymentMethodCode" bindTarget="CSH1070_csh_payment_methods_query_ds" prompt="csh_payment_method.payment_method_code" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="CSH1070_csh_payment_methods_query_ds" prompt="csh_payment_method.payment_method_name"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1070_csh_payment_methods_grid" bindTarget="CSH1070_csh_payment_methods_result_ds" marginHeight="115" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="paymentMethodCode" align="center" editorFunction="CSH1070_methodCodeEdit" width="120"/>
+                <a:column name="description" editor="CSH1070_description_tld" width="200"/>
+                <a:column name="payMethodName" align="center" editor="CSH1070_comboBox" width="120"/>
+                <a:column name="payCarrierName" align="center" editor="CSH1070_comboBox" width="120"/>
+                <a:column name="postingFlag" align="center" editor="CSH1070_checkBox" width="100"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1070_checkBox" width="100"/>
+                <a:column name="assignMo" align="center" renderer="CSH1070_assignCompany" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="CSH1070_textField_upper" typeCase="upper"/>
+                <a:textField id="CSH1070_textField"/>
+                <a:checkBox id="CSH1070_checkBox"/>
+                <a:comboBox id="CSH1070_comboBox"/>
+                <a:tledit id="CSH1070_description_tld"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

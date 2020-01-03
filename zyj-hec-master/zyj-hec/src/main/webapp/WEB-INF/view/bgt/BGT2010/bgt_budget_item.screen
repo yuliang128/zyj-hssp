@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>[
+        <a:link id="BGT2010_assgin_mo_link" url="$[/request/@context_path]/bgt/BGT2010/bgt_budget_item_assign_mo.screen"/>
+        <a:link id="bgt_budget_item_assigned_batch_link" url="$[/request/@context_path]/bgt/BGT2010/bgt_items_asgn_com_batch.screen"/>
+        <script><![CDATA[
+            function queryBudgetItems() {
+                $au('bgt_budget_items_query_result_ds').query();
+            }
+            
+            function budgetItemsEditorFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'budgetItemCode') {
+                        return 'bgt_BudgetItem_tf';
+                    }
+                    if (name == "budgetItemTypeName" || name == "variationAttributeName") {
+                        return 'bgt_BudgetItem_cb';
+                    }
+                }
+                return '';
+            }
+            
+            function assign_mo(value, record, name) {
+                if (record.get('budgetItemId')) {
+                    return "<a href=\"javascript:doAssignMo('" + record.get('budgetItemId') + "');\">$[l:bgt_period.bgt_period_assign_mo_org]</a>";
+                }
+            }
+            
+            function doAssignMo(id) {
+                new Aurora.Window({
+                    id: 'BGT2010_assign_mo_window',
+                    url: $au('BGT2010_assgin_mo_link').getUrl() + '?budgetItemId=' + id,
+                    title: '$[l:bgt_period.bgt_period_assign_mo_org]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            
+            function BGT2010_bgtOrgsDsQuery() {
+                $au('BGT2010_bgtOrgsDs').query();
+            }
+            
+            //汇总控件可修改控制
+            
+            function summaryFlag_proset(record, name) {
+                if (record.isNew) {
+                    return 'enabledFlag_ckb';
+                } else {
+                    return '';
+                }
+            }
+            
+            function BGT2010_beforeDsCreate() {
+                var bgtOrgName = $au('bgt_budget_items_query_ds').getAt(0).get('bgtOrgCodeName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+              //add lcy 2017/12/29  17:24:54  保存前校验预算组织
+                function BGT2010_beforeSubmit() {
+                var bgtOrgName = $au('bgt_budget_items_query_ds').getAt(0).get('bgtOrgCodeName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            function BGT2010_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('bgt_budget_items_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+            }
+            
+            function BGT2010_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgCodeName' == name) {
+                    $au('bgt_budget_items_query_result_ds').query();
+                }
+                else if(name == 'bgtOrgId'){
+                    $au('budgetItemType_ds').setQueryParameter('bgtOrgId', $au('bgt_budget_items_query_ds').getAt(0).get('bgtOrgId'));
+                    $au('budgetItemType_ds').query();
+                }
+            }
+            
+            function BGT2010_batch_assign() {
+                //add lcy 2017/12/29  17:24:54  批量分配前校验预算组织
+                   var bgtOrgName = $au('bgt_budget_items_query_ds').getAt(0).get('bgtOrgCodeName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+              
+           
+                var datas = $au('bgt_budget_items_query_result_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'BGT2010_assign_batch_win',
+                    url: $au('bgt_budget_item_assigned_batch_link').getUrl(),
+                    title: '$[l:budget_item.assign_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            // Modify Tagin/2017.12.04 增加预算项目类型点击后加载逻辑
+            
+            function BGT2010_cellClickFunc(grid, row, name, record) {
+                debugger;
+                if (name == 'budgetItemTypeName') {
+                    $au('budgetItemType_ds').setQueryParameter('bgtOrgId', $au('bgt_budget_items_query_ds').getAt(0).get('bgtOrgId'));
+                    $au('budgetItemType_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2010_bgtOrgsDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrganizationOptions"/>
+            <a:dataSet id="budgetItemType_ds" baseUrl="/bgt/budget-item-type" queryUrl="$[/request/@context_path]/bgt/budget-item-type/queryByBgtOrgId"/>
+            <a:dataSet id="variationAttribute_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_VARIATION_ATTRIBUTE/"/>
+            <a:dataSet id="bgt_budget_items_query_ds" autoCreate="true" baseUrl="/bgt/budget-item">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgCode" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgCode]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgName]"/>
+                    <a:field name="bgtOrgCodeName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgCodeName]"  options="BGT2010_bgtOrgsDs" displayField="bgtOrgCodeName" returnField="bgtOrgId" valueField="bgtOrgId" prompt="bgt_budget_item.budget_org_id" required="true">
+                        <!-- add lcy 2017/12/29 16:30:23 新增mapping值用于批量分配form显示 -->
+                        <a:mapping>
+                            <a:map from="bgtOrgCode" to="bgtOrgCode"/>
+                            <a:map from="bgtOrgName" to="bgtOrgName"/>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                            <a:map from="bgtOrgCodeName" to="bgtOrgCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="budgetItemCode" prompt="bgt_budget_item.budget_item_code"/>
+                    <a:field name="description" prompt="bgt_budget_item.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2010_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_budget_items_query_result_ds" autoPageSize="true" baseUrl="/bgt/budget-item" queryDataSet="bgt_budget_items_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="budgetItemCode" prompt="bgt_budget_item.budget_item_code" required="true"/>
+                    <a:field name="description" prompt="bgt_budget_item.description" dto="com.hand.hec.bgt.dto.BgtBudgetItem" dtoId="budgetItemId" required="true"/>
+                    <a:field name="budgetItemTypeName" displayField="description" options="budgetItemType_ds" prompt="bgt_budget_item.budget_item_type" required="true" returnField="budgetItemTypeId" valueField="budgetItemTypeId"/>
+                    <a:field name="variationAttributeName" displayField="meaning" options="variationAttribute_ds" prompt="bgt_budget_item.variation_attribute" required="true" returnField="variationAttribute" valueField="value"/>
+                    <a:field name="variationAttribute"/>
+                    <a:field name="summaryFlag" checkedValue="Y" defaultValue="N" prompt="bgt_budget_item.summary_flag" uncheckedvalue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_budget_item_type.enabled_flag" uncheckedvalue="N"/>
+                    <a:field name="notes" prompt="hap.comment"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="BGT2010_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT2010_onDsAdd"/>
+                    <a:event name="beforesubmit" handler="BGT2010_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="grid" type="add" width="80"/>
+                <a:gridButton bind="grid" type="save" width="80"/>
+                <a:gridButton bind="grid" type="clear" width="80"/>
+                <a:gridButton bind="grid" click="BGT2010_batch_assign" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="bgt_budget_items_query_ds" resultTarget="bgt_budget_items_query_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="bgtOrgCodeName" bindTarget="bgt_budget_items_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT2010_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="budgetItemCode" bindTarget="bgt_budget_items_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryBudgetItems"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="bgt_budget_items_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryBudgetItems"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="grid" bindTarget="bgt_budget_items_query_result_ds" marginHeight="115" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="budgetItemCode" align="center" editorFunction="budgetItemsEditorFun" width="120"/>
+                <a:column name="description" align="left" editor="description_tld" width="200"/>
+                <a:column name="budgetItemTypeName" align="center" editorFunction="budgetItemsEditorFun" width="120"/>
+                <a:column name="variationAttributeName" align="center" editorFunction="budgetItemsEditorFun" width="100"/>
+                <a:column name="notes" align="center" editor="description_tf" width="200"/>
+                <a:column name="summaryFlag" align="center" editorFunction="summaryFlag_proset" width="100"/>
+                <a:column name="enabledFlag" align="center" editor="enabledFlag_ckb" width="100"/>
+                <a:column name="assign_mo" align="center" renderer="assign_mo" width="100"/>
+            </a:columns>
+            <a:events>
+                <a:event name="cellclick" handler="BGT2010_cellClickFunc"/>
+            </a:events>
+            <a:editors>
+                <a:textField id="bgt_BudgetItem_tf" typeCase="upper"/>
+                <a:textField id="description_tf"/>
+                <a:tledit id="description_tld"/>
+                <a:checkBox id="enabledFlag_ckb"/>
+                <a:checkBox id="summaryFlag_ckb"/>
+                <a:comboBox id="bgt_BudgetItem_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

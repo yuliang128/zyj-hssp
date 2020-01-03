@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/17 $
+    $Revision: 1.1 $
+    $Purpose: 预算表定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_budget_stru_dimension_link" url="$[/request/@context_path]/bgt/BGT2110/bgt_budget_stru_dimension.screen"/>
+        <a:link id="BGT2110_period_assign_mo_link" url="$[/request/@context_path]/bgt/BGT2110/bgt_structure_asgn_mo.screen"/>
+        <script><![CDATA[
+            function BGT2110_bgtOrgsDsQuery() {
+                $au('BGT2110_bgtOrgsDs').query();
+            }
+            
+            function queryFunction() {
+                $au('BGT2110_structure_result_ds').query();
+            }
+            
+            //维度
+            
+            function BGT2110_CreateStrLayouts(value, record, name) {
+                if (record.isNew) return '';
+                var url = '<a href="javascript:BGT2110_CreateStrLayoutsInfo(' + record.get('structureId') + ',' + record.get('bgtOrgId') + ')">' + '$[l:exp_mo_rep_type_ref_ele.dimension]' + '</a>';
+                return url;
+            }
+            
+            function BGT2110_CreateStrLayoutsInfo(structureId, bgtOrgId) {
+                new Aurora.Window({
+                    id: 'bgt2110_stru_dimension_screen',
+                    url: $au('bgt_budget_stru_dimension_link').getUrl() + '?structureId=' + structureId + '&bgtOrgId=' + bgtOrgId,
+                    title: '$[l:bgt_stru.dimension_definition]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function BGT2110_GridEditor(record, name) {
+                if (name == 'structureCode') {
+                    if (!record.isNew) return '';
+                    return 'BGT2110_grid_tf';
+                }
+                if (name == 'bgtOrgCode') {
+                    if (!record.isNew) return '';
+                    return 'BGT2110_grid_cb';
+                }
+                if (name == 'periodSetCode') {
+                    if (!record.isNew) return '';
+                    return 'BGT2110_grid_lov';
+                }
+                if (name == 'entityFlag') {
+                    if (!record.isNew) return '';
+                    return 'BGT2110_grid_ck';
+                }
+                if (name == 'centerFlag') {
+                    if (!record.isNew) return '';
+                    return 'BGT2110_grid_ck';
+                }
+            }
+            
+            function BGT2110_PeriodSetCodelovUpdate(dataSet, record, name, value, oldValue) {
+                if (name == 'bgtOrgId') {
+                    record.set('periodSetCode', '');
+                    record.set('periodSetDesc', '');
+                    if (!Ext.isEmpty(value)) {
+                        record.getField('periodSetCode').setLovPara('bgtOrgId', record.get('bgtOrgId'));
+                    } else {
+                        record.getField('periodSetCode').setLovCode('');
+                    }
+                }
+            }
+            
+            function BGT2110_DimensionValueCodeLov(grid, row, name, record) {
+                record.set('structureId', $au('BGT2110_dimension_init_ds').getAt(0).get('structureId'));
+                if (name == 'dimensionValueCode') {
+                    field = record.getMeta().getField('dimensionValueCode');
+                    field.setLovPara('dimensionId', record.get('dimensionId'));
+                }
+            }
+            
+            //分配管理组织
+            
+            function BGT2110_CreateManagingOrg(value, record, name) {
+                if (!record.isNew) {
+                    var bgtStructureId = record.get('structureId')
+                    var bgtOrgId = record.get('bgtOrgId');
+                    return "<a href=\"javascript:BGT2110_CreateManagingOrgInfo('" + bgtStructureId + "','" + bgtOrgId + "')\">$[l:bgt_period.bgt_period_assign_mo_org]</a>";
+                }
+                return '';
+            }
+            
+            function BGT2110_CreateManagingOrgInfo(bgtStructureId, bgtOrgId) {
+                new Aurora.Window({
+                    id: 'bgt2110_period_asgn_mo_window',
+                    url: $au('BGT2110_period_assign_mo_link').getUrl() + '?structureId=' + bgtStructureId + '&bgtOrgId=' + bgtOrgId,
+                    title: '$[l:bgt_period.bgt_period_assign_mo_org]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function BGT2110_CheckEntity(value, record, name) {
+                if (record.get('entityFlag') == 'N') {
+                    record.set('centerFlag', 'N');
+                    record.getField('centerFlag').setReadOnly(true);
+                } else {
+                    record.getField('centerFlag').setReadOnly(false);
+                }
+            }
+            
+            function BGT2110_beforeDsCreate() {
+                var bgt_org_name = $au('BGT2110_structure_query_ds').getAt(0).get('bgtOrgName');
+                if (Ext.isEmpty(bgt_org_name)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function BGT2110_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('BGT2110_structure_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+            }
+            
+            
+            function BGT2110_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgName' == name) {
+                    $au('BGT2110_structure_result_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2110_bgtOrgsDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrganizationOptions"/>
+            <a:dataSet id="budget_period_code_value_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BUDGET_PERIOD/"/>
+            <a:dataSet id="BGT2110_structure_query_ds">
+                <a:fields>
+                    <a:field name="structureCode" prompt="bgt_budget_structure.budget_strc_code"/>
+                    <a:field name="description" prompt="bgt_structure.bgt_structure_desc"/>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT2110_bgtOrgsDs" prompt="bgt_budget_item.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2110_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT2110_structure_result_ds" autoPageSize="true" fetchAll="false" baseUrl="/bgt/structure" queryUrl="$[/request/@context_path]/bgt/structure/queryAll" queryDataSet="BGT2110_structure_query_ds">
+                <a:fields>
+                    <a:field name="structureCode" prompt="bgt_budget_structure.budget_strc_code" required="true" typeCase="upper"/>
+                    <a:field name="description" prompt="bgt_structure.bgt_structure_desc" dto="com.hand.hec.bgt.dto.BgtStructure" dtoId="structureId" required="true"/>
+                    <a:field name="periodSetCode" autoComplete="true" autoCompleteField="periodSetCode" lovCode="LOV_BGT_PERIOD" prompt="bgt_period.bgt_period_code" required="true" title="bgt_period.bgt_period_code">
+                        <a:mapping>
+                            <a:map from="periodSetId" to="periodSetId"/>
+                            <a:map from="periodSetCode" to="periodSetCode"/>
+                            <a:map from="periodSetDesc" to="periodSetDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="periodStrategyDisplay" displayField="meaning" options="budget_period_code_value_ds" prompt="bgt_stru.period_strategy" required="true" returnField="periodStrategy" valueField="value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" unCheckedValue="N"/>
+                    <a:field name="entityFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_structure.entity_flag" unCheckedValue="N"/>
+                    <a:field name="centerFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_structure.center_flag" unCheckedValue="N"/>
+                    <a:field name="note" prompt="hap.comment"/>
+                    <a:field name="structureId"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="bgtOrgDesc" prompt="bgt_organization.description" readOnly="true"/>
+                    <a:field name="periodSetId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2110_PeriodSetCodelovUpdate"/>
+                    <a:event name="beforecreate" handler="BGT2110_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT2110_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="BGT2110_bgt_structures_grid_ds" type="add" width="80"/>
+                <a:gridButton bind="BGT2110_bgt_structures_grid_ds" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT2110_structure_query_ds" resultTarget="BGT2110_structure_result_ds" style="width:100%;border:none;">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="bgtOrgName" bindTarget="BGT2110_structure_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT2110_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="structureCode" bindTarget="BGT2110_structure_query_ds" typeCase="UPPER"/>
+                    <a:textField name="description" bindTarget="BGT2110_structure_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT2110_bgt_structures_grid_ds" bindTarget="BGT2110_structure_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="structureCode" align="center" editorFunction="BGT2110_GridEditor" width="80"/>
+                <a:column name="description" align="left" editor="BGT2110_grid_tld" width="200"/>
+                <a:column name="periodSetCode" align="center" editorFunction="BGT2110_GridEditor" width="80"/>
+                <a:column name="periodStrategyDisplay" align="center" editor="BGT2110_grid_cb" width="80"/>
+                <a:column name="note" align="left" editor="BGT2110_grid_tf" width="200"/>
+                <a:column name="entityFlag" align="center" editorFunction="BGT2110_GridEditor" width="80"/>
+                <a:column name="centerFlag" align="center" editorFunction="BGT2110_GridEditor" renderer="BGT2110_CheckEntity" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="BGT2110_grid_ck" width="80"/>
+                <a:column name="dimensionLink" align="center" renderer="BGT2110_CreateStrLayouts" width="80"/>
+                <a:column name="assignComLink" align="center" renderer="BGT2110_CreateManagingOrg" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:checkBox id="BGT2110_grid_ck"/>
+                <a:textField id="BGT2110_grid_tf"/>
+                <a:comboBox id="BGT2110_grid_cb"/>
+                <a:lov id="BGT2110_grid_lov"/>
+                <a:tledit id="BGT2110_grid_tld"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

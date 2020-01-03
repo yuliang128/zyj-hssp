@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin 
+    $Date: 2018/03/22 18:38:00 
+    $Revision: 1.0
+    $Purpose: 发票种类定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true"  xmlns:p="uncertain.proc" >
+    <a:init-procedure>
+        <p:echo></p:echo>
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function VAT1020_invoiceCategoryQuery() {
+                $au('VAT1020_vatInvoiceCategoryResultDs').query();
+            }
+            
+            function VAT1020_invoiceCategoryEditorFunc(record, name) {
+                if (!record.isNew) {
+                    return "";
+                } else {
+                    if (name == 'invoiceCategoryCode') {
+                        return "VAT1020_textFieldUpper";
+                    }
+                    if (name == 'invoiceAttributesName') {
+                        return 'VAT1020_comboBox';
+                    }
+                    return '';
+                }
+            }
+            
+            
+            function VAT1020_invoiceCategoryAddFunc(dataSet) {
+                var magOrgId = $au('VAT1020_vatInvoiceCategoryQueryDs').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    dataSet.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            
+            function VAT1020_beforeCreateFunc() {
+                var magName = $au('VAT1020_vatInvoiceCategoryQueryDs').getAt(0).get('magOrgName');
+                if (Ext.isEmpty(magName)) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="VAT1020_magOrganizationListDs" fetchAll="true" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/exp/employee-job/queryForManagingOrganization"/>
+            <a:dataSet id="VAT1020_invoiceAttributesDs" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/VAT_INVOICE_ATTRIBUTES"/>
+            <a:dataSet id="VAT1020_vatInvoiceCategoryQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="invoiceCategoryCode" prompt="vat_invoice_category.invoice_category_code"/>
+                    <a:field name="description" prompt="vat_invoice_category.description"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/VAT1020_defaultMagList/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="VAT1020_magOrganizationListDs" prompt="vat_invoice_category.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/VAT1020_defaultMagList/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="VAT1020_invoiceCategoryQuery"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="VAT1020_vatInvoiceCategoryResultDs" autoCount="true" autoPageSize="true" autoQuery="true" baseUrl="/vat/invoice-category" queryDataSet="VAT1020_vatInvoiceCategoryQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="invoiceCategoryId"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="invoiceCategoryCode" prompt="vat_invoice_category.invoice_category_code" required="true"/>
+                    <a:field name="description" prompt="vat_invoice_category.description" required="true"/>
+                    <a:field name="invoiceAttributes"/>
+                    <a:field name="invoiceAttributesName" displayField="meaning" options="VAT1020_invoiceAttributesDs" prompt="vat_invoice_category.invoice_attributes" required="true" returnField="invoiceAttributes" valueField="value"/>
+                    <a:field name="authenticatingFlag" checkedValue="Y" defaultValue="N" prompt="vat_invoice_category.authenticating_flag" required="true" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="vat_invoice_category.enabled_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="VAT1020_beforeCreateFunc"/>
+                    <a:event name="add" handler="VAT1020_invoiceCategoryAddFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="VAT1020_invoiceCategory_grid" type="add" width="80"/>
+                <a:gridButton bind="VAT1020_invoiceCategory_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="VAT1020_vatInvoiceCategoryQueryDs" resultTarget="VAT1020_vatInvoiceCategoryResultDs" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="VAT1020_vatInvoiceCategoryQueryDs">
+                        <a:events>
+                            <a:event name="enterdown" handler="VAT1020_invoiceCategoryQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="invoiceCategoryCode" bindTarget="VAT1020_vatInvoiceCategoryQueryDs">
+                        <a:events>
+                            <a:event name="enterdown" handler="VAT1020_invoiceCategoryQuery"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="VAT1020_vatInvoiceCategoryQueryDs">
+                        <a:events>
+                            <a:event name="enterdown" handler="VAT1020_invoiceCategoryQuery"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="VAT1020_invoiceCategory_grid" bindTarget="VAT1020_vatInvoiceCategoryResultDs" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="invoiceCategoryCode" align="center" editorFunction="VAT1020_invoiceCategoryEditorFunc" width="80"/>
+                <a:column name="description" editor="VAT1020_textField" width="200"/>
+                <a:column name="invoiceAttributesName" align="center" editorFunction="VAT1020_invoiceCategoryEditorFunc" width="80"/>
+                <a:column name="authenticatingFlag" align="center" editor="VAT1020_checkBox" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="VAT1020_checkBox" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="VAT1020_textFieldUpper" typeCase="upper"/>
+                <a:comboBox id="VAT1020_comboBox"/>
+                <a:textField id="VAT1020_textField"/>
+                <a:checkBox id="VAT1020_checkBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

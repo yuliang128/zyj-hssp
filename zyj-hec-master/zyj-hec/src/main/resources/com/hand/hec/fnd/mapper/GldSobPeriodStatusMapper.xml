@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldSobPeriodStatusMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldSobPeriodStatus">
+        <result column="PERIOD_STATUS_ID" property="periodStatusId" jdbcType="DECIMAL" />
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="PERIOD_SET_CODE" property="periodSetCode" jdbcType="VARCHAR" />
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR" />
+        <result column="INTERNAL_PERIOD_NUM" property="internalPeriodNum" jdbcType="DECIMAL" />
+        <result column="PERIOD_STATUS_CODE" property="periodStatusCode" jdbcType="VARCHAR" />
+        <result column="PERIOD_YEAR" property="periodYear" jdbcType="DECIMAL" />
+        <result column="PERIOD_NUM" property="periodNum" jdbcType="DECIMAL" />
+        <result column="START_DATE_C" property="startDateC" jdbcType="DATE" />
+        <result column="END_DATE_C" property="endDateC" jdbcType="DATE" />
+        <result column="QUARTER_NUM" property="quarterNum" jdbcType="DECIMAL" />
+        <result column="ADJUSTMENT_FLAG" property="adjustmentFlag" jdbcType="VARCHAR" />
+    </resultMap>
+
+
+
+    <select id="queryForStatusOpen"  resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.GldSobPeriodStatus">
+
+        SELECT
+            gsps.period_status_id,
+            gsps.set_of_books_id,
+            gps.period_set_code,
+            gp.period_name,
+            gp.internal_period_num,
+            gp.period_year,
+            gp.period_num,
+            gp.start_date,
+            gp.end_date,
+            gp.quarter_num,
+            gp.adjustment_flag,
+            ( CASE WHEN gsps.period_status_code = NULL THEN 'U' ELSE gsps.period_status_code END ) period_status_code,
+            date_format( gp.start_date, '%Y-%m-%d' ) start_date_c,
+            date_format( gp.end_date, '%Y-%m-%d' ) end_date_c
+        FROM
+        gld_period gp
+            INNER JOIN gld_period_set gps ON gp.period_set_id = gps.period_set_id
+            INNER JOIN gld_sob_period_status gsps ON gps.period_set_code = gsps.period_set_code
+            AND gp.internal_period_num = gsps.internal_period_num
+            and gsps.set_of_books_id = #{setOfBooksId}
+
+            <if test="periodSetCode != null">
+                and gps.period_set_code = #{periodSetCode}
+            </if>
+
+        ORDER BY
+        period_status_code ASC,
+        gp.period_year ASC,
+        gp.period_num ASC
+
+    </select>
+
+
+    <select id="queryForStatusClosed"  resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.GldSobPeriodStatus">
+        SELECT
+               gps.period_set_code,
+               gp.period_name,
+               gp.internal_period_num,
+               gp.period_year,
+               gp.period_num,
+               gp.start_date,
+               gp.end_date,
+               gp.quarter_num,
+               gp.adjustment_flag,
+               date_format( gp.start_date, '%Y-%m-%d' ) start_date_c,
+               date_format( gp.end_date, '%Y-%m-%d' ) end_date_c
+        FROM gld_period gp
+          JOIN gld_period_set gps
+            ON gp.period_set_id = gps.PERIOD_SET_ID
+           AND gps.period_set_code = #{periodSetCode }
+           AND gp.internal_period_num &gt; (
+                                               CASE
+                                                     WHEN ( SELECT MAX( s.internal_period_num ) internal_period_num
+                                                           FROM gld_sob_period_status s
+                                                           WHERE s.period_set_code = #{periodSetCode }
+                                                           AND s.set_of_books_id = #{setOfBooksId }
+                                                           GROUP BY  period_set_code
+                                                          )  is NULL
+                                                     THEN  0
+
+                                                     ELSE  (   SELECT MAX( s.internal_period_num ) internal_period_num
+                                                               FROM gld_sob_period_status s
+                                                               WHERE s.period_set_code = #{periodSetCode}
+                                                               AND s.set_of_books_id = #{setOfBooksId}
+                                                               GROUP BY  period_set_code
+                                                       )
+                                               END
+                                           )
+        ORDER BY  gp.period_year ASC,  gp.period_num ASC
+
+    </select>
+
+    <select id="queryGldSobPeriodStatus" resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.GldSobPeriodStatus">
+        SELECT
+            gsps.PERIOD_STATUS_ID,
+            gsps.SET_OF_BOOKS_ID,
+            gps.PERIOD_SET_CODE,
+            gp.PERIOD_NAME,
+            gp.INTERNAL_PERIOD_NUM,
+            gsps.PERIOD_STATUS_CODE,
+            ( CASE WHEN gsps.period_status_code = NULL THEN 'U' ELSE gsps.period_status_code END ) period_status_code
+        FROM
+            gld_period gp
+            JOIN gld_period_set gps ON gp.period_set_id = gps.period_set_id
+            JOIN gld_sob_period_status gsps ON gps.period_set_code = gsps.period_set_code
+        <where>
+
+            <if test="setOfBooksId != null">
+                and gsps.SET_OF_BOOKS_ID = #{setOfBooksId}
+            </if>
+
+            <if test="periodSetCode != null">
+                and gsps.period_set_code = #{periodSetCode}
+            </if>
+
+            <if test="periodName != null">
+                and gsps.period_name = #{periodName}
+            </if>
+
+            <if test="internalPeriodNum != null">
+                and gsps.internal_period_num = #{internalPeriodNum}
+            </if>
+
+            <if test="periodStatusCode != null">
+                and gsps.period_status_code = #{periodStatusCode}
+            </if>
+
+
+
+        </where>
+
+
+    </select>
+
+    <update id="reopenGldPeriodStatus">
+        update gld_sob_period_status
+        set period_status_code = 'O',
+            last_updated_by    = #{lastUpdatedBy},
+            last_update_date   =  CURRENT_TIMESTAMP
+        where period_set_code = #{periodSetCode}
+          and set_of_books_id = #{setOfBooksId}
+          and period_name =  #{periodName}
+          and internal_period_num = #{internalPeriodNum};
+    </update>
+
+    <delete id="deleteFndSobClosePeriodErr">
+        delete from fnd_sob_close_period_err;
+
+    </delete>
+
+    <select id="checkIsFirstOpen"  resultType="java.lang.Long">
+        select count(*)
+        from gld_sob_period_status
+        where set_of_books_id = #{setOfBooksId}
+            and period_set_code = #{periodSetCode}
+            and internal_period_num  &lt;  #{internalPeriodNum}
+    </select>
+
+
+    <update id="closeGldSobPeriodStatus">
+        update gld_sob_period_status
+        set period_status_code = 'C',
+            last_updated_by    = #{request.userId},
+            last_update_date   = CURRENT_DATE
+        where period_set_code = #{periodSetCode}
+          and set_of_books_id = #{setOfBooksId}
+          and period_name = #{periodName}
+          and internal_period_num = #{internalPeriodNum};
+
+    </update>
+
+
+
+</mapper>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: jiangxz
+    $Date: 2019-3-1 下午1:50:55
+    $Revision: 1.0  
+    $Purpose: 管理组织级费用申请单类型定义-页面元素-报销类型
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP4020_mo_req_ele_ref_req_it_link"
+                url="$[/request/@context_path]/exp/EXP4020/exp_mo_req_ele_ref_req_it.screen"/>
+        <script><![CDATA[
+        function EXP4020_closeExpenseTypeCreateWindow() {
+            $au('EXP4020_exp_mo_req_ref_tp_window').close();
+        }
+
+
+        function reqRefItRenderer(value, record, name) {
+            if (!record.isNew) {
+                var url = $au('EXP4020_mo_req_ele_ref_req_it_link').getUrl() + '?expTypeRefId=' + record.get('expTypeRefId') + '&moExpenseTypeId=' + record.get('moExpenseTypeId') + '&magOrgId=' + '$[/parameter/@magOrgId]';
+                var selectedFlag = record.get('appointItemFlag');
+                if (selectedFlag == 'Y') {
+                    return '<a href="javascript:EXP4020_view_doc_ref_its(\'' + url + '\')">' + '$[l:exp_mo_req_ele_ref_req_it.assign_req_item]' + '</a>';
+                } else {
+                    return '';
+                }
+            }
+        }
+
+        function EXP4020_view_doc_ref_its(url) {
+            new Aurora.Window({
+                id: 'EXP4020_exp_mo_req_ref_it_window',
+                url: url,
+                title: '$[l:exp_mo_req_ele_ref_req_it.assign_req_item]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function EXP4020_eleTpsSubmit(ds) {
+            ds.query();
+        }
+
+        function EXP4020_reqExpTpCellClick(grid, row, name, record) {
+            if (name == 'moExpenseTypeCode') {
+                record.getMeta().getField('moExpenseTypeCode').setLovPara('magOrgId', '$[/parameter/@magOrgId]');
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4020_reqTypeRefEleDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type-ref-ele/query?reqPageEleRefId=$[/parameter/@reqPageEleRefId]">
+                <a:fields>
+                    <a:field name="reqPageElementName" prompt="exp_req_page_element.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP4020_reqEleRefExpTpDs" autoQuery="true" baseUrl="/exp/mo-req-ele-ref-exp-tp"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-ele-ref-exp-tp/query?reqPageEleRefId=$[/parameter/@reqPageEleRefId]"
+                       selectable="true">
+                <a:fields>5
+                    <a:field name="moExpenseTypeCode" LovCode="EXP_MO_EXPENSE_TYPE_LOV"
+                             prompt="exp_mo_expense_type.mo_expense_type_code">
+                        <a:mapping>
+                            <a:map from="moExpenseTypeId" to="moExpenseTypeId"/>
+                            <a:map from="moExpenseTypeCode" to="moExpenseTypeCode"/>
+                            <a:map from="description" to="moExpenseTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeName" prompt="exp_mo_req_ele_ref_exp_tp.mo_expense_type_name"/>
+                    <a:field name="reqPageEleRefId" defaultValue="$[/parameter/@reqPageEleRefId]"/>
+                    <a:field name="expTypeRefId"/>
+                    <a:field name="defaultFlag" prompt="exp_mo_req_ele_ref_exp_tp.default_flag" checkedValue="Y"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="exp_mo_req_ele_ref_exp_tp.enabled_flag" checkedValue="Y"
+                             defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="appointItemFlag" prompt="exp_mo_req_ele_ref_exp_tp.appoint_item_flag"
+                             checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4020_eleTpsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4020_moReqEleRefExpTpForm" column="2"
+                    title="exp_mo_req_ele_ref_exp_tp.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4020_moReqEleRefExpTpGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4020_moReqEleRefExpTpGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4020_moReqEleRefExpTpGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4020_closeExpenseTypeCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="reqPageElementName" bindTarget="EXP4020_reqTypeRefEleDs" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4020_moReqEleRefExpTpGrid" bindTarget="EXP4020_reqEleRefExpTpDs"
+                    marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="moExpenseTypeCode" align="center" editor="EXP4020_expenseTypeLov" width="80"/>
+                    <a:column name="moExpenseTypeName"
+                              width="200"/>
+                    <a:column name="defaultFlag" editor="EXP4020_expenseTypeCheckBox"
+                              width="80"/>
+                    <a:column name="enabledFlag" editor="EXP4020_expenseTypeCheckBox"
+                              width="80"/>
+                    <a:column name="appointItemFlag" editor="EXP4020_expenseTypeCheckBox"
+                              width="80"/>
+                    <a:column name="reqRefIt" align="center" renderer="reqRefItRenderer"
+                              width="80"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4020_reqExpTpCellClick"/>
+                </a:events>
+                <a:editors>
+                    <a:lov id="EXP4020_expenseTypeLov"/>
+                    <a:checkBox id="EXP4020_expenseTypeCheckBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

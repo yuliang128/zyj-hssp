@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+                           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd
+                           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.2.xsd
+                           http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd">
+
+    <context:component-scan base-package="**.*.service"/>
+    <context:component-scan base-package="**.*.components"/>
+
+    <context:property-placeholder location="classpath:config.properties"/>
+
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://192.168.12.68:3306/hap_dev"/>
+        <property name="username" value="root"/>
+        <property name="password" value="h@ndhec"/>
+    </bean>
+
+    <!-- config transactionManager -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="mapperLocations" value="classpath*:/**/*Mapper.xml"/>
+        <property name="configLocation" value="classpath:mybatis-configuration.xml"/>
+        <property name="plugins">
+            <array>
+                <bean class="com.hand.hap.core.interceptor.RequestContextInterceptor"/>
+                <bean class="com.hand.hap.core.interceptor.MultiLanguageInterceptor"/>
+                <bean class="com.hand.hap.core.interceptor.SecurityTokenInterceptor"/>
+                <bean class="com.hand.hap.core.interceptor.OvnInterceptor"/>
+                <bean class="com.hand.hap.core.interceptor.AuditInterceptor"/>
+                <bean class="com.github.pagehelper.PageHelper"/>
+                <bean class="com.hand.hap.core.interceptor.CacheJoinInterceptor">
+                    <property name="cacheJoinType" ref="cacheJoinType"></property>
+                </bean>
+            </array>
+        </property>
+    </bean>
+
+
+    <bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg index="0" name="sqlSessionFactory" ref="sqlSessionFactory"/>
+    </bean>
+
+    <!-- mapper definition -->
+    <bean id="mapperScannerConfigurer" class="com.hand.hap.mybatis.spring.MapperScannerConfigurer">
+        <property name="basePackage" value="com.hand.**.mapper"/>
+        <property name="processPropertyPlaceHolders" value="true"/>
+        <property name="propertiesMap">
+            <map>
+                <entry key="mappers" value="com.hand.hap.mybatis.common.Mapper"/>
+                <entry key="IDENTITY" value="${mybatis.identity}"/>
+                <entry key="seqFormat" value="{3}_s.nextVal"/>
+                <entry key="enableMethodAnnotation" value="true"/>
+            </map>
+        </property>
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+    </bean>
+
+    <bean id="languageProvider" class="com.hand.hap.core.impl.LanguageProviderImpl"/>
+
+    <bean id="messageSource" class="com.hand.hap.core.i18n.CacheMessageSource"/>
+
+    <!-- 密码加密 PasswordEncoder-->
+    <bean id="passwordManager" class="com.hand.hap.security.PasswordManager">
+        <property name="siteWideSecret" value="Zxa1pO6S6uvBMlY"/>
+    </bean>
+
+    <bean id="requestAD" class="com.hand.hap.core.impl.ServiceExecutionAdvice"/>
+
+    <aop:config expose-proxy="true">
+        <aop:pointcut id="servicePointcut" expression="execution(* *..*ServiceImpl.*(..))"/>
+        <aop:advisor advice-ref="requestAD" pointcut-ref="servicePointcut"/>
+    </aop:config>
+
+    <!--强制使用cglib进行代理-->
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+
+</beans>

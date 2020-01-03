@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflDeliverMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflDeliver">
+        <result column="deliver_id" property="deliverId" jdbcType="DECIMAL"/>
+        <result column="doc_category" property="docCategory" jdbcType="VARCHAR"/>
+        <result column="process_id" property="processId" jdbcType="DECIMAL"/>
+        <result column="from_user_id" property="fromUserId" jdbcType="DECIMAL"/>
+        <result column="to_user_id" property="toUserId" jdbcType="DECIMAL"/>
+        <result column="date_from" property="dateFrom" jdbcType="DATE"/>
+        <result column="date_to" property="dateTo" jdbcType="DATE"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="selectWflDeliver" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflDeliver">
+        select wd.deliver_id ,
+        wd.doc_category,
+        wd.process_id,
+        wd.from_user_id,
+        wd.to_user_id,
+        to_char(wd.date_from, 'YYYY-MM-DD') date_from,
+        to_char(wd.date_to, 'YYYY-MM-DD') date_to,
+        wd.description,
+        wd.creation_date,
+        wd.created_by,
+        wd.last_updated_by,
+        wd.last_update_date,
+        ( select wdv.employee_name from wfl_deliver_vl wdv where wdv.user_id=wd.from_user_id ) from_user_name,
+        ( select wdv.employee_name from wfl_deliver_vl wdv where wdv.user_id=wd.to_user_id ) to_user_name,
+        ( select fd.description_text
+        from wfl_process wp ,fnd_descriptions fd
+        where wp.process_id = wd.process_id
+        and wp.process_name_id =fd.description_id
+        and fd.language=#{session.lang,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) process_name,
+        ( select sc.meaning
+        from sys_code_value_b scv,sys_code_b sc
+        where scv.code_id = sc.code_id
+        and sc.code = 'FND.DOC_CATEGORY'
+        and c.code_value = wd.doc_category) doc_category_name
+        from wfl_deliver wd
+        <where>
+            <if test="fromUserId!=null">
+                AND wd.from_user_id =#{fromUserId,jdbcType=BIGINT}
+            </if>
+            <if test="toUserId!=null">
+                AND wd.to_user_id =#{toUserId,jdbcType=BIGINT}
+            </if>
+            <if test="docCategoryName!=null">
+                AND wd.doc_category_name LIKE concat('%', concat(#{docCategoryName,jdbcType=VARCHAR}, '%'))
+            </if>
+        </where>
+    </select>
+    <select id="selectWflDeliverLov" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflDeliver">
+    select
+    wdv.user_id,
+    wdv.employee_name,
+    wdv.employee_code
+    from wfl_deliver_vl  wdv
+  </select>
+    <select id="getMatchedDeliver" resultType="com.hand.hec.wfl.dto.WflDeliver" resultMap="BaseResultMap">
+    SELECT
+    *
+    FROM
+    wfl_deliver d
+    WHERE
+    d.doc_category = #{docCategory}
+    AND d.from_user_id = #{fromUserId}
+    AND ( d.process_id IS NULL OR d.process_id = #{processId} )
+    AND ( d.date_from IS NULL OR d.date_from &lt;= CURRENT_DATE )
+    AND ( d.date_to IS NULL OR d.date_to >= CURRENT_DATE )
+  </select>
+</mapper>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:service xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc" checkSessionLock="true" lockKey="${/session/@session_id}" trace="true">
+    <a:init-procedure>
+        <a:batch-apply sourcepath="/parameter">
+            <!--=========================================================================================-->
+            <!-- 头保存 开始 -->
+            <a:model-execute model="db.exp_report_pkg.update_back_report_headers"/>
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 标准费用行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/standard_lines">
+                <!-- 标准费用信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_back_report_lines"/>
+                        <!-- 报销单分配行保存,行保存时后台进行保存 -->
+                    </p:case>
+                </p:switch>
+            </a:batch-apply>
+            <!-- 标准费用行保存 结束 -->
+            <!--=========================================================================================-->
+            <!-- 计划付款行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/pmt_schedules">
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_back_pmt_schedules"/>
+                    </p:case>
+                </p:switch>
+            </a:batch-apply>
+            <!-- 计划付款行保存 结束 -->
+            <!--=========================================================================================-->
+        </a:batch-apply>
+    </a:init-procedure>
+    <a:service-output output="/parameter"/>
+</a:service>

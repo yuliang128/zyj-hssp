@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-06 16:58:28
+    $Revision: 1.0
+    $Purpose: 付款工作组定义-支付主体分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1240_csh_payment_gps_privilege_link" url="$[/request/@context_path]/csh/CSH1240/csh_payment_gps_privilege.screen"/>
+        <script><![CDATA[
+            function CSH1240_closeGpsAsgnAeCreateWindow() {
+                $au('CSH1240_csh_payment_gps_asgn_ae_window').close();
+            }
+
+            function CSH1240_asgnAeSubmit(ds) {
+                ds.query();
+            }
+
+            //权限分配-跳转
+
+            function CSH1240_asgnAuthorityDetail(value, record, name) {
+                var assignAeId = record.get('assignAeId');
+                var authorityCode = record.get('authorityCode');
+                var authorityFlag = record.get('authorityFlag'); //是否分权限支付标志：用于分配超链接显示。即当选择修改’是否分权限支付‘，只有当其保存后才进行判断
+                if (record.isNew) {
+                    return '';
+                } else {
+                    //当是否分权限支付为：有条件 时，显示分配超链接，反之不显示。
+                    // if(authorityCode == 'CONDITIONAL'){
+                    //是否分权限支付标志为Y时显示分配超链接，反之不显示。
+                    if (authorityFlag == 'Y') {
+                        return '<a href="javascript:CSH1240_openGpsPrivilegeDetail(' + assignAeId + ')">' + '$[l:csh_payment_gps_asgn_ae.authority_assign]' + '</a>';
+                    } else {
+                        return '';
+                    }
+
+                }
+            }
+
+            function CSH1240_openGpsPrivilegeDetail(id) {
+                url = $au('CSH1240_csh_payment_gps_privilege_link').getUrl() + '?assignAeId=' + id + '&magOrgId=' + '$[/parameter/@magOrgId]';
+                new Aurora.Window({
+                    id: 'CSH1240_csh_payment_gps_privilege_window',
+                    url: url,
+                    title: '$[l:csh_payment_gps_asgn_ae.authority_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="CSH1240_authorityCode_ds" loadData="true" lookupCode="CSH_PAYMENT_GPS_ASGN_AE_AUTHORITY"/>-->
+            <a:dataSet id="CSH1240_authorityCode_ds" autoQuery="true" fetchAll="true"
+                 queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_GPS_ASGN_AE_AUT/"/>
+            <a:dataSet id="CSH1240_csh_payment_gps_asgn_ae_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-gps-asgn-ae" queryUrl="$[/request/@context_path]/csh/payment-gps-asgn-ae/query?groupId=$[/parameter/@groupId]" selectable="true" >
+                <a:fields>
+                    <a:field name="assignAeId"/>
+                    <a:field name="accEntityCode" lovCode="GLD_ACCOUNTING_ENTITY_LOV" required="true" title="csh_payment_gps_acc_entity.select">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <!--为authority_desc字段添加必输属性   解决保存时无法插入null值问题    Y.duan  2017-8-15 10:06:12-->
+                    <a:field name="authorityDesc" displayField="meaning" options="CSH1240_authorityCode_ds" prompt="csh_payment_gps_asgn_ae.authority_code" required="true" returnField="authorityCode" valueField="value"/>
+                    <a:field name="authorityCode" />
+                    <a:field name="groupId" defaultValue="$[/parameter/@groupId]"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="authorityFlag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1240_asgnAeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1240_csh_payment_gps_asgn_ae_form" column="2" labelWidth="120" title="csh_payment_group.asgn_accentity" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1240_csh_payment_gps_asgn_ae_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1240_csh_payment_gps_asgn_ae_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1240_csh_payment_gps_asgn_ae_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH1240_closeGpsAsgnAeCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="groupCode" bindTarget="CSH1240_csh_payment_group_result_ds" prompt="csh_payment_group.group_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1240_csh_payment_group_result_ds" prompt="csh_payment_group.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1240_csh_payment_gps_asgn_ae_grid" bindTarget="CSH1240_csh_payment_gps_asgn_ae_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editor="CSH1240_asgnAe_lov" width="80" prompt="csh_payment_gps_asgn_ae.acc_entity_code"/>
+                    <a:column name="accEntityName" width="200" prompt="csh_payment_gps_asgn_ae.acc_entity_name"/>
+                    <a:column name="enabledFlag" editor="CSH1240_asgnAe_checkBox" width="80" prompt="csh_payment_gps_asgn_ae.enabledFlag"/>
+                    <a:column name="authorityDesc" align="center" editor="CSH1240_asgnAe_comboBox" width="80"/>
+                    <a:column name="asgnAuthority" align="center"  renderer="CSH1240_asgnAuthorityDetail" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="CSH1240_asgnAe_checkBox"/>
+                    <a:comboBox id="CSH1240_asgnAe_comboBox"/>
+                    <a:lov id="CSH1240_asgnAe_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

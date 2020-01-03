@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei $
+    $Date: 2018/05/07 16:07:11 $
+    $Revision: 1.2 $
+    $Purpose: 计量单位类型
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            //查询
+            function FND1060_queryUomTypes() {
+                $au('FND1060_fnd_uom_type_result_ds').query();
+            }
+            
+            //控制code不可输
+            function FND1060_typeCodeEditer(record, name) {
+                if (record.isNew) {
+                    return 'uom_type_code_tf_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            function FND1060_onUomTypeCreateSuccess() {
+                FND1060_queryUomTypes();
+            }
+            
+            function FND1060_gridCellClick(ds, row, name, record) {
+                if (name == 'metaUomName') {
+                    record.getMeta().getField('metaUomName').setLovPara('uomTypeId', record.get('uomTypeId'));
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1060_fnd_uom_type_query_ds" autoCreate="true"/>
+            <a:dataSet id="FND1060_fnd_uom_type_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/fnd/uom-type" queryDataSet="FND1060_fnd_uom_type_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="uomTypeId"/>
+                    <a:field name="uomTypeCode" prompt="fnd_uom_type.uom_type_code" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.fnd.dto.FndUomType" dtoId="uomTypeId" prompt="fnd_uom_type.uom_type_name" required="true"/>
+                    <a:field name="metaUomName" lovGridHeight="320" lovHeight="450" lovCode="LOV_FND_UOM" lovWidth="500" prompt="fnd_uom_type.meta_uom_id" title="fnd_uom_type.meta_uom_id">
+                        <a:mapping>
+                            <a:map from="uomId" to="metaUomId"/>
+                            <a:map from="uomName" to="metaUomName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="metaUomId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND1060_onUomTypeCreateSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND1060_fnd_uom_type_grid" type="add" width="80"/>
+                <a:gridButton bind="FND1060_fnd_uom_type_grid" type="save" width="80"/>
+                <a:gridButton bind="FND1060_fnd_uom_type_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1060_fnd_uom_type_query_ds" resultTarget="FND1060_fnd_uom_type_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:textField name="uomTypeCode" bindTarget="FND1060_fnd_uom_type_query_ds" prompt="fnd_uom_type.uom_type_code" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1060_queryUomTypes"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND1060_fnd_uom_type_query_ds" prompt="fnd_uom_type.uom_type_name">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1060_queryUomTypes"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1060_fnd_uom_type_grid" bindTarget="FND1060_fnd_uom_type_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="uomTypeCode" align="center" editorFunction="FND1060_typeCodeEditer" width="80"/>
+                <a:column name="description" align="left" editor="uom_type_name_tf" width="200"/>
+                <a:column name="metaUomName" align="center" editor="uom_type_lv" width="120"/>
+                <a:column name="enabledFlag" align="center" editor="enabled_flag_cb" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="uom_type_code_tf_upper" typeCase="upper"/>
+                <a:tledit id="uom_type_name_tf"/>
+                <a:checkBox id="enabled_flag_cb"/>
+                <a:lov id="uom_type_lv"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="FND1060_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>
+

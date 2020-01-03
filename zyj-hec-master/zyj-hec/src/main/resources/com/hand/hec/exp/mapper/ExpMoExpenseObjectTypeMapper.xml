@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpenseObjectTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpenseObjectType">
+        <result column="MO_EXP_OBJ_TYPE_ID" property="moExpObjTypeId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_OBJ_TYPE_CODE" property="moExpObjTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_FLAG" property="systemFlag" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_METHOD" property="expenseObjectMethod" jdbcType="VARCHAR"/>
+        <result column="SQL_QUERY" property="sqlQuery" jdbcType="VARCHAR"/>
+        <result column="SQL_VALIDATE" property="sqlValidate" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getExpMoExpenseObjectType" resultMap="BaseResultMap">
+        select
+			b.REQUEST_ID,
+			b.PROGRAM_ID,
+			b.OBJECT_VERSION_NUMBER,
+			b.CREATED_BY,
+			b.CREATION_DATE,
+			b.LAST_UPDATED_BY,
+			b.LAST_UPDATE_DATE,
+			b.LAST_UPDATE_LOGIN,
+			b.MO_EXP_OBJ_TYPE_ID,
+			b.MAG_ORG_ID,
+			b.MO_EXP_OBJ_TYPE_CODE,
+			t.DESCRIPTION,
+			b.SYSTEM_FLAG,
+			b.EXPENSE_OBJECT_METHOD,
+			b.SQL_QUERY,
+			b.SQL_VALIDATE,
+			b.ENABLED_FLAG
+		from
+			exp_mo_expense_object_type b
+		left outer join exp_mo_expense_object_type_TL t on
+			(b.mo_exp_obj_type_Id = t.mo_exp_obj_type_Id
+			and t.LANG = #{request.locale})
+		where
+			b.MO_EXP_OBJ_TYPE_ID = #{moExpObjTypeId}
+    </select>
+    <select id="queryMoExpObjValueLov" resultType="java.util.Map">
+        select id,code,name from (
+        <if test="objectType.expenseObjectMethod == 'VALUE_LIST'">
+            select
+            v.mo_expense_object_id as id,
+            v.mo_expense_object_code as code,
+            t.description as name
+            from
+            exp_mo_expense_object_value v
+            left join exp_mo_expense_object_value_tl t on
+            v.mo_expense_object_id = t.mo_expense_object_id
+            and t.lang = #{request.locale}
+            where
+            v.mo_exp_obj_type_id = #{objectType.moExpObjTypeId}
+        </if>
+        <if test="objectType.expenseObjectMethod == 'SQL_TEXT'">
+            ${objectType.sqlQuery}
+        </if>
+        ) v2
+        <where>
+            <if test="code != null">
+                and v2.code like #{code}
+            </if>
+            <if test="name != null">
+                and v2.name like #{name}
+            </if>
+        </where>
+    </select>
+
+</mapper>

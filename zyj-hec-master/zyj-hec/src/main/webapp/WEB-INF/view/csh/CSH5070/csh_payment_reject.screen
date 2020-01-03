@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure />
+    <a:view>
+        <a:link id="exp_payment_reject_control_link" url="$[/request/@context_path]/csh/payment-req-account/rejectPayReq"/>
+        <script><![CDATA[
+            function doSave() {
+                if ($au('payment_reject_ds').validate()) {
+                    var description = $au('payment_reject_ds').getAt(0).get('description');
+                    var myRecords = $au('audit_result_ds').getSelected();
+                    var datas = [];
+                    for (var i = 0,
+                        l = myRecords.length;i < l;i++) {
+                        var data = myRecords[i].data;
+                        data['rejectReason'] = description;
+                        datas.push(data);
+                    }
+                    Aurora.request({
+                        lockMessage: '$[l:hap_waiting]',
+                        url: $au('exp_payment_reject_control_link').getUrl(),
+                        para: datas,
+                        success: queryFunction,
+                        scope: this
+                    });
+                    doReturn();
+                }
+            }
+            
+            function doReturn() {
+                $au('exp_payment_reject_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="payment_reject_ds" autoQuery="true" queryUrl="$[/request/@context_path]/exp/employee/queryCurrentEmployee">
+                <a:fields>
+                    <a:field name="codeName" readOnly="true" prompt="exp_report_reject.name"/>
+                    <a:field name="description" required="true" prompt="exp_report_reject.description"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="exp_payment_reject.reject_reason">
+                <a:textField name="codeName" bindTarget="payment_reject_ds"/>
+                <a:textArea name="description" bindTarget="payment_reject_ds" width="485"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="doSave" text="prompt.ok"/>
+                <a:button click="doReturn" text="prompt.return"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+</a:screen>

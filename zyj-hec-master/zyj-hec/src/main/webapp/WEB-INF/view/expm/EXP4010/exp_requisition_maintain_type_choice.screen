@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP4010_exp_requisition_new_maintain_main_link"
+                url="$[/request/@context_path]/modules/expm/EXP4010/exp_requisition_maintain_main.screen"/>
+        <style><![CDATA[
+            .doc_note {
+                width: 98%;
+                padding-left: 1%;
+                padding-right: 1%;
+                overflow: auto;
+                white-space: nowrap;
+            }
+
+            .doc_note_info {
+                display: inline-block;
+                /* float:left; */
+                width: 19%;
+                white-space: pre-line;
+                vertical-align: top;
+            }
+
+            .doc_note_step {
+                width: 100%;
+                color: #237ae1;
+                line-height: 20px;
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+            .doc_note_summary {
+                width: 100%;
+                color: #333;
+            }
+
+            .doc_note_arrow {
+                display: inline-block;
+                /* float:left; */
+                margin-left: 3%;
+                margin-right: 3%;
+                width: 2%;
+                color: #237ae1;
+                line-height: 100px;
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+            .doc_note_empty {
+                font-size: 14px;
+                line-height: 100px;
+                color: #888;
+                width: 100%;
+                display: inline-block;
+                height: 100px;
+                vertical-align: middle;
+                text-align: center;
+            }
+
+            .exp-report-type-info {
+                padding: 10px;
+                border: 2px dotted #ccc;
+            }
+
+            .exp-report-type-icon {
+                float: left;
+            }
+
+            .exp-report-type-desc {
+                float: left;
+                line-height: 60px;
+                padding-left: 10px;
+            }
+
+            ]]></style>
+        <script><![CDATA[
+        function EXP4010_queryExpRequisitionTypeList() {
+            $au('EXP4010_typeChoiceRequisitionTypeDs').query();
+        }
+
+        function EXP4010_loadComplete() {
+            EXP4010_queryExpRequisitionTypeList();
+        }
+
+        function EXP4010_onQueryDsUpdate(dataSet, record, name, value) {
+            if (name == 'employeeId') {
+                $au('EXP4010_typeChoiceRequisitionTypeDs').setQueryParameter('employeeId', record.get('employeeId'));
+                EXP4010_queryExpRequisitionTypeList();
+            }
+
+            //modified by liliang 2018/7/5
+            //基础信息中的币种取值规则，切换单据类型时，将单据类型对应的币种设置到基础信息的币种中去
+            //当单据类型没有定义对应币种时，取核算主体对应的支付币种
+            if (name == 'accEntityId') {
+                if (!$au('EXP4010_typeChoiceRequisitionTypeDs').getCurrentRecord()) {
+                } else {
+                    if ($au('EXP4010_typeChoiceRequisitionTypeDs').getCurrentRecord().get('currencyCode') == undefined) {
+                        $au('EXP4010_typeChoiceDs').getAt(0).set('paymentCurrencyCode', record.get('payCurrencyCode'));
+                        $au('EXP4010_typeChoiceDs').getAt(0).set('paymentCurrencyName', record.get('payCurrencyName'));
+                    }
+                }
+            }
+        }
+
+        //update by penglei 20171226 申请单表单头取值根据单据类型去取对应的页面元素表单头 begin
+
+        function EXP4010_onRequisitionTypeClick() {
+            var record = $au('EXP4010_typeChoiceRequisitionTypeDs').getCurrentRecord();
+            var typeRecord = $au('EXP4010_typeChoiceDs').getAt(0);
+            var service_name = record.get('serviceName');
+            if (service_name == '' || service_name == 'undefined' || service_name == null) {
+                Aurora.showInfoMessage('$[l:PROMPT]', "$[l:EXP_REQUISITION_MAIN.MAIN_ERROR]", null, 250, 100);
+                return;
+            }
+            if ($au('EXP4010_typeChoiceDs').validate()) {
+                new Aurora.Window({
+                    id: 'EXP4010_exp_req_maintain_win',
+                    url: '$[/request/@context_path]/' + service_name + '?moExpReqTypeId=' + record.get('moExpReqTypeId') + '&employeeId=' + typeRecord.get('employeeId') + '&paymentCurrencyCode=' + typeRecord.get('paymentCurrencyCode') + '&accEntityId=' + typeRecord.get('accEntityId'),
+                    fullScreen: true
+                });
+            }
+
+        }
+
+        function EXP4010_onIndexChange(ds, record) {
+            //如果单据类型设置了币种，那么优先取单据类型所设置的币种
+            var rdx = $au('EXP4010_typeChoiceDs').getAt(0);
+            if (record.get("currencyCode") != undefined) {
+                rdx.set('paymentCurrencyName', record.get("currencyName"));
+                rdx.set('paymentCurrencyCode', record.get("currencyCode"));
+            }
+            var typeId = record.get('moExpReqTypeId');
+            var dataSet = $au('EXP4010_writeCaptionDs');
+            if (typeId) {
+                dataSet.setQueryParameter('docCategory', 'EXP_REQUISITION');
+                dataSet.setQueryParameter('docTypeId', typeId);
+                dataSet.query();
+            }
+        }
+
+        function EXP4010_writeCaptionQueryFunc(dataSet) {
+            var records = dataSet.getAll();
+            if (Ext.get('EXP4010_writeCaption') && records.length == 0) {
+                var html = '<div class="doc_note_empty">';
+                html += '<span>$[l:DOC_TYPE_UNCONFIGURED_DESCRIPTION]</span>';
+                html += '</div>';
+                Ext.get('EXP4010_writeCaption').dom.innerHTML = html;
+            } else {
+                var captionHtml = '';
+                for (var i = 0; i < records.length; i++) {
+                    var title = records[i].get('lineStepTitle') == undefined ? ' ' : records[i].get('lineStepTitle');
+                    var longContent = records[i].get('stepContent') == undefined ? ' ' : records[i].get('stepContent');
+                    var shortContent = longContent.length > 72 ? longContent.substring(1, 72) + '...' : longContent;
+                    var innerHtml = '<div class="doc_note_info">';
+                    innerHtml += '<p class="doc_note_step">' + title + '</p>';
+                    innerHtml += '<p class="doc_note_summary" onmouseover="$A.ToolTip.show(this' + ',\'' + longContent + '\')">' + shortContent + '</p>';
+                    innerHtml += '</div>';
+                    if (i != records.length - 1) {
+                        innerHtml += '<div class="doc_note_arrow">>></div>';
+                    }
+                    captionHtml += innerHtml;
+                }
+                Ext.get('EXP4010_writeCaption').dom.innerHTML = captionHtml;
+            }
+        }
+
+        ]]></script>
+        <span><![CDATA[
+            <script>
+	            function EXP4010_expRequisitionTypeInfoRenderer(value, record, name) {
+	                var tplt = new Ext.Template([
+	                '<div class="exp-report-type-info">', 
+	                '	<img src="$[/request/@context_path]/{iconFileName}" width="60" height=60" class="exp-report-type-icon"/>',
+	                '	<div class="exp-report-type-desc">{moExpReqTypeName}</div>',
+	                '	<div class="clearfix"></div>', 
+	                '</div>']);
+	                var moExpReqTypeName = record.get('description');
+	                var flowinfoa_width = parseInt(document.body.clientWidth / 8);
+	                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+	                    flowinfoa_width = 142.5;
+	                }
+	                var docHtml ='<div id="flowInfoAId" style="margin-left: 10px;max-width:' + flowinfoa_width + 'px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;" onmouseover="$A.ToolTip.show(this' + ',\'' + moExpReqTypeName + '\')">'+ moExpReqTypeName + '</div>';
+	                return tplt.applyTemplate({
+	                    iconFileName: record.get('iconFileName'),
+	                    moExpReqTypeName: docHtml
+	                });
+	            }
+            </script>
+            ]]></span>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_writeCaptionDs" queryUrl="$[/request/@context_path]/exp/mo-write-caption-ln/getWriteCaptionByDocType">
+                <a:events>
+                    <a:event name="load" handler="EXP4010_writeCaptionQueryFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_typeChoiceEmployeeDs" autoQuery="true" fetchAll="true"/>
+            <a:dataSet id="EXP4010_typeChoiceAccEntityDs"/>
+            <a:dataSet id="EXP4010_typeChoiceCurrencyListDs">
+            </a:dataSet>
+            <a:dataSet id="EXP4010_typeChoiceDs"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type/queryExpReqTypeChoiceCurrentInfor"
+                       autoCreate="true" autoQuery="true">
+                <a:fields>
+                    <a:field name="employeeName"
+                             prompt="exp_requisition_header.employee_id" required="true"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_requisition_header.payment_currency_code"
+                             required="true"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name" required="true"/>
+                    <a:field name="payCurrencyCode"/>
+                    <a:field name="payCurrencyName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="functionalCurrencyCode"/>
+                    <a:field name="functionalCurrencyName"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP4010_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_typeChoiceRequisitionTypeDs"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type/queryChoiceRequisitionTypeInfor"
+                       autoQuery="true"
+                       pageSize="12">
+                <a:events>
+                    <a:event name="indexchange" handler="EXP4010_onIndexChange"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="filling_explanation">
+                <div id="EXP4010_writeCaption" class="doc_note"/>
+            </a:form>
+            <a:form column="3" title="HAP_BASIC_INFO">
+                <a:hBox>
+                    <a:comboBox name="employeeName" bindTarget="EXP4010_typeChoiceDs" width="150"/>
+                    <a:comboBox name="paymentCurrencyName" bindTarget="EXP4010_typeChoiceDs" width="150"/>
+                    <a:comboBox name="accEntityName" bindTarget="EXP4010_typeChoiceDs" width="150"/>
+                </a:hBox>
+            </a:form>
+            <a:form title="SYS_REPORT_TYPE.DOCUMENT_TYPE">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                </a:formToolbar>
+                <a:floatList bindTarget="EXP4010_typeChoiceRequisitionTypeDs" clickable="true" closeable="false"
+                             columnnumber="4" loadmore="false" marginHeight="100" rowstyle="margin-top:10px;"
+                             style="box-shadow:none;width:100%">
+                    <a:columns>
+                        <a:column name="expReportTypeInfo" renderer="EXP4010_expRequisitionTypeInfoRenderer"/>
+                    </a:columns>
+                    <a:events>
+                        <a:event name="dblclick" handler="EXP4010_onRequisitionTypeClick"/>
+                    </a:events>
+                </a:floatList>
+            </a:form>
+        </a:screenBody>
+        <script><![CDATA[
+        ]]></script>
+    </a:view>
+</a:screen>

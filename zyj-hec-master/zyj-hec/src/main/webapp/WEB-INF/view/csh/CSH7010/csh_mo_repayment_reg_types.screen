@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan
+    $Date: 2017-9-21 19:16:04
+    $Revision: 1.0  
+    $Purpose: 还款登记单类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH7010_asgnComLink"
+                url="$[/request/@context_path]/csh/CSH7010/csh_mo_repa_reg_types_asgn_com.screen"/>
+        <a:link id="CSH7010_batchAsgnComLink"
+                url="$[/request/@context_path]/csh/CSH7010/csh_mo_repa_reg_types_batch_asgn_com.screen"/>
+        <a:link id="CSH7010_asgnEmpLink"
+                url="$[/request/@context_path]/csh/CSH7010/csh_mo_repay_reg_ref_emp_gps.screen"/>
+        <script><![CDATA[
+        //批量分配公司
+
+        /**
+         * @return {boolean}
+         */
+        function CSH7010_openBatchAsgnComWin() {
+            //add lcy 2017/12/21 19:05:45 批量分配前校验管理组织是否为空
+            if (Ext.isEmpty($au('csh_mo_repa_reg_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            let url = $au('CSH7010_batchAsgnComLink').getUrl();
+            let rds = $au('csh_mo_repa_reg_types_result_ds').getSelected();
+            let magOrgId = $au('csh_mo_repa_reg_types_result_ds').getCurrentRecord().get('magOrgId');
+            if (Ext.isEmpty($au('csh_mo_repa_reg_tp_asgn_com_result_ds'))) {
+                //若从主界面调用批量分配，检查是否选中了行
+                if (rds.length === 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                    return;
+                }
+            }
+            new Aurora.Window({
+                id: 'CSH7010_batchAsgnComWin',
+                title: '$[l:csh_repayment_reg_type.batch_asgn_com]',
+                url: url + '?magOrgId=' + magOrgId,
+                width: 1020,
+                side: 'right',
+                fullScreen: false
+            });
+        }
+
+        function CSH7010_closeThisWin() {
+            $au('CSH7010_acpMoPayReqTypesWin').close();
+        }
+
+        //分配员工组
+
+        /**
+         * @return {string}
+         */
+        function CSH7010_asgnEmpRenderer(value, record, name) {
+            if (record.isNew) {
+                return;
+            }
+            var moRepaymentRegTypeId = record.get('moRepaymentRegTypeId');
+            var magOrgId = record.get('magOrgId');
+            return '<a href="javascript:openEmpGroupWin(' + moRepaymentRegTypeId + ',' + magOrgId + ')">$[l:ipm_invest_req_type.user_group]</a>';
+        }
+
+        function openEmpGroupWin(moRepaymentRegTypeId, magOrgId) {
+            var url = $au('CSH7010_asgnEmpLink').getUrl() + '?moRepaymentRegTypeId=' + moRepaymentRegTypeId + '&magOrgId=' + magOrgId;
+            new Aurora.Window({
+                id: 'CSH7010_openEmpGroupWin',
+                url: url,
+                title: '$[l:pay_req_type_ref_employee_group]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        //分配管理公司
+
+        /**
+         * @return {string}
+         */
+        function CSH7010_asgnComRenderer(value, record, name) {
+            if (record.isNew) {
+                return;
+            }
+            const moRepaymentRegTypeId = record.get('moRepaymentRegTypeId');
+            const magOrgId = record.get('magOrgId');
+            return '<a href="javascript:CSH7010_openAsgnComWin(' + moRepaymentRegTypeId + ',' + magOrgId + ')">$[l:csh.company_set]</a>';
+        }
+
+        function CSH7010_openAsgnComWin(moRepaymentRegTypeId, magOrgId) {
+            var url = $au('CSH7010_asgnComLink').getUrl() + '?moRepaymentRegTypeId=' + moRepaymentRegTypeId + '&magOrgId=' + magOrgId;
+            new Aurora.Window({
+                id: 'CSH7010_asgnComWin',
+                url: url,
+                title: '$[l:budget_item.assign_company]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function CSH7010_onReqTypeSubmitSuccess(ds, url, datas) {
+            ds.query();
+        }
+
+        /**
+         * @return {string}
+         */
+        function CSH7010_typeCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'grid_id_textField_id';
+            } else {
+                return '';
+            }
+        }
+
+        function CSH7010_add(ds) {
+            const magOrgId = $au('csh_mo_repa_reg_types_query_ds').getCurrentRecord().get('magOrgId');
+            if (magOrgId !== '' && magOrgId != null && magOrgId !== undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function CSH7010_focus() {
+            $au('CSH7010_mange_organizationlist_ds').query();
+        }
+
+        /**
+         * @return {boolean}
+         */
+        function CSH7010_beforeCreate() {
+            if (Ext.isEmpty($au('csh_mo_repa_reg_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        //add lcy 2017/12/21 18:05:25 保存前校验管理组织是否为空事件
+
+        /**
+         * @return {boolean}
+         */
+        function CSH7010_beforeSubmit() {
+            if (Ext.isEmpty($au('csh_mo_repa_reg_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function CSH7010_update(ds, record, name, value) {
+            if (name === 'magOrgId') {
+                $au('csh_mo_repa_reg_types_result_ds').query();
+            }
+        }
+
+        /**
+         * @return {string}
+         */
+        function CSH7010_imagePickerFunc(value, record, name) {
+            if (value) {
+                return '<img style="width:20px;height:20px;margin-top:8px;" src="$[/request/@context_path]/' + value + '" />';
+            }
+        }
+
+        function CSH7010_Oncellclick(grid, row, name, record) {
+            const magOrgId = $au('csh_mo_repa_reg_types_query_ds').getCurrentRecord().get('magOrgId');
+            if (name === 'captionDescription') {
+                $au('CSH7010_writeCaption_ds').setQueryParameter('magOrgId', magOrgId);
+                $au('CSH7010_writeCaption_ds').setQueryParameter('docCategoryCode', 'REPAYMENT_REGISTER');
+                $au('CSH7010_writeCaption_ds').query();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7010_mange_organizationlist_ds" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd/mag-org/queryMagOrg"/>
+            <a:dataSet id="CSH7010_writeCaption_ds" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-write-caption-hd/limit/query"/>
+            <a:dataSet id="csh_mo_repa_reg_types_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgId" defaultValue="$[defaultMagOrg/records/record/@magOrgId]"/>
+                    <a:field name="magOrgName" defaultValue="$[defaultMagOrg/records/record/@description]"/>
+                    <a:field name="magOrgCode" defaultValue="$[defaultMagOrg/records/record/@magOrgCode]"/>
+                    <a:field name="magOrgCodeName"
+                             defaultValue="$[defaultMagOrg/records/record/@magOrgCodeName]"
+                             displayField="magOrgCodeName" options="CSH7010_mange_organizationlist_ds"
+                             prompt="bgt_budget_item_mapping.mag_org_name" required="true" returnField="magOrgId"
+                             valueField="magOrgId">
+                        <!-- modify lcy  2017/12/21  19:19:12 新增mapping值，用于批量分配时form显示 -->
+                        <a:mapping>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moRepaymentRegTypeCode"/>
+                    <a:field name="description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH7010_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="csh_mo_repa_reg_types_result_ds" autoQuery="true"
+                       baseUrl="/csh/mo-repayment-reg-type/" queryDataSet="csh_mo_repa_reg_types_query_ds"
+                       selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="moRepaymentRegTypeId"/>
+                    <a:field name="magOrgId" prompt="BGT_BUDGET_ITEM_MAPPING.MAG_ORG_NAME" required="true"/>
+                    <a:field name="moRepaymentRegTypeCode" required="true"/>
+                    <a:field name="crossEntityFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="autoAuditFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="description" required="true" dto="com.hand.hec.csh.dto.CshMoRepaymentRegType"
+                             dtoId="moRepaymentRegTypeId"/>
+                    <a:field name="icon" lovHeight="518" lovWidth="500" title="hap_icon_library"/>
+                    <a:field name="captionHdsId"/>
+                    <a:field name="captionDescription" displayField="description" options="CSH7010_writeCaption_ds"
+                             prompt="filling_explanation" returnField="captionHdsId" valueField="captionHdsId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH7010_onReqTypeSubmitSuccess"/>
+                    <a:event name="add" handler="CSH7010_add"/>
+                    <a:event name="beforecreate" handler="CSH7010_beforeCreate"/>
+                    <a:event name="beforesubmit" handler="CSH7010_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:gridButton bind="CSH7010_grid" type="add" width="80"/>
+            <a:gridButton bind="CSH7010_grid" text="hap_save" type="save" width="80"/>
+            <a:button click="CSH7010_openBatchAsgnComWin" text="HEC_BATCH_ASSIGN" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="csh_mo_repa_reg_types_query_ds" resultTarget="csh_mo_repa_reg_types_result_ds"
+                     style="margin-right:10px; width:100%;border:none;">
+            <a:formToolBar>
+                <a:comboBox name="magOrgCodeName" bindTarget="csh_mo_repa_reg_types_query_ds"
+                            prompt="bgt_budget_item_mapping.mag_org_name" width="170">
+                    <a:events>
+                        <a:event name="focus" handler="CSH7010_focus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:textField name="moRepaymentRegTypeCode" bindTarget="csh_mo_repa_reg_types_query_ds"
+                             prompt="csh_mo_repa_reg_type.type_code"/>
+                <a:textField name="description" bindTarget="csh_mo_repa_reg_types_query_ds"
+                             prompt="csh_mo_repa_reg_type.type_description"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <a:grid id="CSH7010_grid" bindTarget="csh_mo_repa_reg_types_result_ds" marginHeight="115" marginWidth="3"
+                navBar="true">
+            <a:columns>
+                <a:column name="moRepaymentRegTypeCode" align="center" editorFunction="CSH7010_typeCodeEdit"
+                          width="80" prompt="csh_mo_repa_reg_type.type_code"/>
+                <a:column name="description" align="center" editor="CSH7010_grid_tltf" width="250"
+                          prompt="csh_mo_repa_reg_type.type_description"/>
+                <a:column name="captionDescription" align="center" editor="CSH7010_grid_ccb" width="200"
+                          prompt="csh_mo_repa_reg_type.caption_description"/>
+                <a:column name="crossEntityFlag" align="center" editor="CSH7010_grid_cb" width="80"
+                          prompt="csh_mo_repa_reg_type.cross_entity_flag"/>
+                <a:column name="autoAuditFlag" align="center" editor="CSH7010_grid_cb" width="80"
+                          prompt="csh_mo_repa_reg_type.auto_audit_flag"/>
+                <a:column name="enabledFlag" align="center" editor="CSH7010_grid_cb" width="80"
+                          prompt="hap.enableflag"/>
+                <a:column name="icon" align="center" editor="CSH7010_imagePicker" prompt="csh_mo_payment_req_type.icon"
+                          renderer="CSH7010_imagePickerFunc" width="30"/>
+                <a:column name="asgnEmployeeGroup" align="center" renderer="CSH7010_asgnEmpRenderer" width="80"/>
+                <a:column name="asgnCompany" align="center" renderer="CSH7010_asgnComRenderer" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="grid_id_textField_id"/>
+                <a:checkBox id="CSH7010_grid_cb"/>
+                <a:comboBox id="CSH7010_grid_ccb"/>
+                <a:imagePicker id="CSH7010_imagePicker" path="resources/images/aurora/4.0/documents"/>
+                <a:tledit id="CSH7010_grid_tltf"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="CSH7010_Oncellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

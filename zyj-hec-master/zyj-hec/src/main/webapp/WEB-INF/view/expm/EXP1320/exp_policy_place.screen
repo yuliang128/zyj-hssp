@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: jane.wang2439 $
+    $Date: 2011/02/14 16:05:39 $
+    $Revision: 1.1 $
+    $Purpose: 费用政策地点维护
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+            function queryPlace() {
+                var ds = $au('exp_policy_place_query_result_ds');
+                ds.query();
+            }
+            
+            function placeCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'place_code_grid_tf';
+                }
+                return '';
+            }
+            
+            function EXP1320_onSubmitPolicyPlace(ds) {
+                ds.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="districts_cb" >
+                <a:datas dataSource="expPolicyDistricts/records"/>
+            </a:dataSet>
+            <a:dataSet id="policy_place_query_ds" baseUrl="/exp/policy-place">
+                <a:fields>
+                    <a:field name="districtFrom" displayField="description" options="districts_cb" returnField="districtNameFrom" valueField="districtId"/>
+                    <a:field name="districtTo" displayField="description" options="districts_cb" returnField="districtNameTo" valueField="districtId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="exp_policy_place_query_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/exp/policy-place" queryUrl="$[/request/@context_path]/exp/policy-place/queryPolicyPlace" queryDataSet="policy_place_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="placeCode" required="true" prompt="exp_policy_place.place_code"/>
+                    <a:field name="description" required="true" prompt="exp_policy_place.description"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="exp_policy_place.enabled_flag" />
+                    <a:field name="districtName" displayField="description" options="districts_cb" prompt="exp_policy_district.description" required="true" returnField="districtId" valueField="districtId"/>
+                    <a:field name="countryName" lovCode="FND_COUNTRY_CODE"  prompt="fnd_country_code.description" title="fnd_country_code.country_query">
+                        <a:mapping>
+                            <a:map from="countryCode" to="countryCode"/>
+                            <a:map from="description" to="countryName"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:events>
+                <a:event name="submitsuccess" handler="EXP1320_onSubmitPolicyPlace"/>
+            </a:events>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="exp_policy_place_query_result_grid" type="add" width="80"/>
+                <a:gridButton bind="exp_policy_place_query_result_grid" type="save" width="80"/>
+                <a:gridButton bind="exp_policy_place_query_result_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="policy_place_query_ds" resultTarget="exp_policy_place_query_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="90">
+                    <a:textField name="placeCode" bindTarget="policy_place_query_ds" prompt="exp_policy_place.place_code" typeCase="UPPER">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPlace"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="districtName" bindTarget="policy_place_query_ds" prompt="exp_policy_district.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPlace"/>
+                        </a:events>
+                    </a:textField>
+                    <a:comboBox name="districtFrom" bindTarget="policy_place_query_ds" prompt="exp_policy_district.description_from">
+                        <a:events>
+                            <a:event name="select" handler="queryPlace"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:comboBox name="districtTo" bindTarget="policy_place_query_ds"  placeHolder="exp_policy_district.description_to">
+                        <a:events>
+                            <a:event name="select" handler="queryPlace"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="exp_policy_place_query_result_grid" bindTarget="exp_policy_place_query_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="placeCode" align="center"  editorFunction="placeCodeEdit" sortable="true" width="120"/>
+                <a:column name="description"  editor="policy_place_description_grid_tf" width="200"/>
+                <a:column name="districtName"  align="center" editor="district_place_description_grid_tf" width="120"/>
+                <a:column name="countryName" editor="EXP1320_country_name_lov" width="200"/>
+                <a:column name="enabledFlag" editor="enabled_flag_ckb" sortable="false" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="place_code_grid_tf" typeCase="upper"/>
+                <a:textField id="policy_place_description_grid_tf"/>
+                <a:comboBox id="district_place_description_grid_tf"/>
+                <a:checkBox id="enabled_flag_ckb"/>
+                <a:lov id="EXP1320_country_name_lov"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

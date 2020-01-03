@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP5110_moreInvoiceSelectLink" url="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_select_more_invoice.screen"/>
+        <a:link id="EXP5110_moreInvoiceTaxLink" url="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_vat_invoice_more_tax.screen"/>
+        <a:link id="EXP5110_more_invoice_cancel_report_realation_link" model="db.vat_invoice_relation_pkg.cancel_report_realation" modelaction="execute"/>
+        <script><![CDATA[
+            // Modify caoke/2018.6.17 调整发票处理的逻辑（整理所有的函数）
+            var EXP5110_moreInvoice = (function(record) {
+                // 1.0 增值税发票字段必输/非必输
+                this.required = function() {
+                    var invoice_type = record.get('invoice_type');5
+                    if (invoice_type == 'VAT_SPECIAL') {
+                        record.getField('invoice_code').setRequired(true);
+                        record.getField('invoice_number').setRequired(true);
+                        record.getField('invoice_date').setRequired(true);
+                        record.getField('invoice_amount').setRequired(true);
+                        record.getField('tax_type_name').setRequired(true);
+                        record.getField('tax_amount').setRequired(true); //发票金额
+                    } else if (invoice_type == 'VAT_NORMAL' || invoice_type == 'VAT_ELECTRONIC_NORMAL') {
+                        record.getField('invoice_code').setRequired(true);
+                        record.getField('invoice_number').setRequired(true);
+                        record.getField('invoice_date').setRequired(true);
+                        record.getField('invoice_amount').setRequired(true);
+                    } else if (invoice_type == 'OTHER' || invoice_type == undefined || invoice_type == '') {
+                        record.getField('invoice_code').setRequired(false);
+                        record.getField('invoice_number').setRequired(false);
+                        record.getField('invoice_date').setRequired(false);
+                        record.getField('invoice_amount').setRequired(true);
+                        record.getField('tax_type_name').setRequired(false);
+                        record.getField('tax_amount').setRequired(false); //发票金额
+                    }
+                };
+                // 2.0 增值税发票相关字段是否可输入
+                this.edit = function(name) {
+                    var invoiceSource = record.get('invoice_source');
+                    if (!invoiceSource) {
+                        invoiceSource = 'MANUAL';
+                    }
+                    var invoiceType = record.get('invoice_type');
+                    var relationId = record.get('relation_id');
+                    if (name == 'invoice_category_name') {
+                        return 'EXP5110_more_invoice_cb';
+                        //Modified by caoke/2018-03-22 invoiceSource 从 AUTO_GENERATE 改成 MANUAL (报销单创建的发票)
+                    } else if (name == 'invoice_code') {
+                        if (record.get('invoice_category_id')) {
+                            return 'EXP5110_more_invoice_lov';
+                        }
+                    } else if (name == 'invoice_number') {
+                        if (invoiceSource == 'MANUAL' && !relationId) {
+                            return 'EXP5110_more_invoice_tf';
+                        }
+                    } else if (name == 'invoice_date') {
+                        if (invoiceSource == 'MANUAL' && !relationId) {
+                            return 'EXP5110_more_invoice_dp';
+                        }
+                    } else if (name == 'invoice_amount') {
+                        if (invoiceSource == 'MANUAL' && !relationId) {
+                            return 'EXP5110_more_invoice_nf_2';
+                        }
+                    } else if (name == 'tax_type_name') {
+                        if ((invoiceSource == 'MANUAL')) {
+                            return 'EXP5110_more_invoice_cb';
+                        }
+                    } else if (name == 'tax_amount') {
+                        if ((invoiceSource == 'MANUAL')) {
+                            //add by caoke/2018-05-30 设置必输
+                            if (record.get('tax_type_rate')) {
+                                record.getField('tax_amount').setRequired(true);
+                            } else {
+                                record.getField('tax_amount').setRequired(false);
+                            }
+                            return 'EXP5110_more_invoice_nf_2';
+                        }
+                    } else if (name == 'business_amount') {
+                        return 'EXP5110_more_invoice_nf_2';
+                    }
+                    return '';
+                };
+                // 3.0 增值税发票取消关联
+                this.cancel = function(relation_id, dataSet) {
+                    if (relation_id) {
+                        Aurora.request({
+                            url: $au('EXP5110_more_invoice_cancel_report_realation_link').getUrl(),
+                            para: {
+                                relation_id: relation_id
+                            },
+                            success: function(resp) {
+                                dataSet.query();
+                            }
+                        });
+                    }
+                };
+                // 2.0 增值税发票字段清空
+                this.clear = function(value) {
+                    if (value == 'VAT_SPECIAL') {
+                        //
+                    } else if (value == 'VAT_NORMAL' || value == 'VAT_ELECTRONIC_NORMAL') {
+                        record.set('tax_type_name', '');
+                        record.set('tax_type_id', '');
+                        record.set('tax_type_rate', '');
+                        record.set('relation_flag', '');
+                    } else if (value == 'OTHER') {
+                        //record.set('invoice_code', '');
+                        //Modiied by caoke/2018-06-04 其他类型发票，可以有发票税等信息
+                        // record.set('invoice_number', '');
+                        // record.set('invoice_date', '');
+                        // record.set('invoice_amount', '');
+                        // record.set('tax_type_name', '');
+                        // record.set('tax_type_id', '');
+                        // record.set('tax_type_rate', '');
+                        // record.set('tax_amount', '');
+                        // record.set('relation_flag', '');
+                    } else if (value == '' || value == undefined) {
+                        record.set('invoice_id', '');
+                        record.set('invoice_line_id', '');
+                        // record.set('invoice_category_name', '');
+                        // record.set('invoice_category_id', '');
+                        record.set('invoice_code', '');
+                        record.set('invoice_number', '');
+                        record.set('invoice_date', '');
+                        record.set('invoice_amount', '');
+                        record.set('tax_type_name', '');
+                        record.set('tax_type_id', '');
+                        record.set('tax_type_rate', '');
+                        record.set('tax_amount', '');
+                        record.set('invoice_type', '');
+                        record.set('invoice_source', '');
+                        record.set('relation_flag', '');
+                    }
+                };
+            });
+            
+            function EXP5110_moreInvoiceEditorFun(record, name) {
+                return new EXP5110_moreInvoice(record).edit(name);
+            }
+            
+            function EXP5110_onMoreInvoiceCellClickFun(grid, row, name, record) {
+                if (name == 'invoice_code') {
+                    record.getField(name).setLovPara('sourceDataset', 'EXP5110_moreInvoiceResultDs');
+                    record.getField(name).setLovPara('sourcePage', 'moreInvoice');
+                    record.getField(name).setLovPara('relation_id', record.get('relation_id'));
+                    record.getField(name).setLovPara('invoice_id', record.get('invoice_id'));
+                    record.getField(name).setLovPara('invoice_category_id', record.get('invoice_category_id'));
+                    record.getField(name).setLovPara('exp_report_line_id', record.get('exp_report_line_id'));
+                    record.getField(name).setLovWidth(parseInt(Aurora.getCookie('vw')) + 25);
+                    record.getField(name).setLovHeight(parseInt(Aurora.getCookie('vh')));
+                    record.getField(name).setTitle('${l:INVOICE_SELECT}');
+                }
+            }
+            
+            function EXP5110_onMoreInvoiceUpdateFun(ds, record, name, value, oldValue) {
+                var hecUtil = new HecUtil();
+                var length = $au('EXP5110_moreInvoiceResultDs').getAll().length;
+                if (name == 'invoice_category_name') {
+                    new EXP5110_moreInvoice(record).clear(null);
+                } else if (name == 'tax_type_rate') {
+                    if (record.get('invoice_amount') && value) {
+                        if (record.get('auto_calculation_flag') == 'Y') { // Modify by caoke/2018-05-30  自动计算税额标识为Y则自动计算
+                            record.set('tax_amount', hecUtil.calTaxAmount(record.get('invoice_amount'), value, record.get('tax_category'), record.get('business_currency_precision')));
+                        } else {
+                            record.set('tax_amount', '');
+                        }
+                    }
+                } else if (name == 'invoice_amount') {
+                    if (record.get('tax_type_rate') && value) {
+                        if (record.get('auto_calculation_flag') == 'Y') { // Modify by caoke/2018-05-30  自动计算税额标识为Y则自动计算
+                            record.set('tax_amount', hecUtil.calTaxAmount(value, record.get('tax_type_rate'), record.get('tax_category'), record.get('business_currency_precision')));
+                        } else {
+                            record.set('tax_amount', '');
+                        }
+                    }
+                } else if (name == 'business_amount') {
+                    if (record.get('biz2pay_exchange_rate') && value) {
+                        record.set('payment_amount', hecUtil.calExchangeAmount(value, record.get('biz2pay_exchange_rate'), record.get('payment_currency_precision')));
+                    }
+                } else if (name == 'payment_amount') {
+                    if (record.get('pay2fun_exchange_rate') && value) {
+                        record.set('functional_amount', hecUtil.calExchangeAmount(value, record.get('pay2fun_exchange_rate'), record.get('functional_currency_precision')));
+                    }
+                } else if (name == 'invoice_code') { // Modify Tagin/2018.04.10 根据发票代码获取发票类型
+                    var dataSet = $au('EXP5110_moreInvoiceTypeDs');
+                    dataSet.setQueryParameter('invoice_code', value);
+                    dataSet.query();
+                } else if (name == 'invoice_type') { // 设置字段必输
+                    new EXP5110_moreInvoice(record).required();
+                }
+            }
+            
+            function EXP5110_moreInvoiceTypeLoadFunc(dataSet) { // Modify Tagin/2018.04.10 增加根据发票代码获取发票类型加载时动态设置单据行的发票类型字段
+                var record = dataSet.getAt(0);
+                var reportRd = $au('EXP5110_moreInvoiceResultDs').getCurrentRecord();
+                var invoiceType = record.get('invoice_type');
+                if (reportRd.get('invoice_code')) {
+                    reportRd.set('invoice_source', !reportRd.get('invoice_source') ? 'MANUAL' : reportRd.get('invoice_source'));
+                    reportRd.set('invoice_type', invoiceType);
+                } else {
+                    reportRd.set('invoice_type', '');
+                }
+            }
+            
+            function EXP5110_moreInvoiceSelectFunc() {
+                new Aurora.Window({
+                    url: $au('EXP5110_moreInvoiceSelectLink').getUrl() + '?document_id=${/parameter/@exp_report_header_id}&document_line_id=${/parameter/@exp_report_line_id}&document_dist_id=${/parameter/@exp_report_dist_id}',
+                    id: 'EXP5110_moreInvoiceSelect_window',
+                    title: '${l:MORE_INVOICE}',
+                    width: .9,
+                    height: .9
+                }).on('close', function() {
+                    $au('EXP5110_moreInvoiceResultDs').query();
+                });
+            }
+            
+            function EXP5110_onMoreInvoiceSubmitFun(dataSet) {
+                dataSet.query();
+            }
+            
+            function EXP5110_moreInvoiceBackFunc() {
+                $au(this.__host.id).close();
+            }
+            
+            function EXP5110_moreInvoiceTaxRenderer(value, record, name) {
+                var index = $au('EXP5110_moreInvoiceResultDs').indexOf(record);
+                if (record.get('relation_id')) {
+                    return '<a href="javascript:EXP5110_moreInvoiceTaxFunc(' + index + ')">${l:VAT_INVOICE_LINES.TAX_RATE}</a>';
+                }
+                return '';
+            }
+            
+            function EXP5110_moreInvoiceTaxFunc(index) {
+                var record = $au('EXP5110_moreInvoiceResultDs').getAt(index);
+                var invoiceLineId = record.get('invoice_line_id') || '';
+                var invoiceId = record.get('invoice_id') || '';
+                var relationId = record.get('relation_id') || '';
+                var lineId = record.get('exp_report_line_id') || '';
+                new Aurora.Window({
+                    id: 'EXP5110_moreInvoiceTaxWindow',
+                    url: $au('EXP5110_moreInvoiceTaxLink').getUrl() + '?invoice_line_id=' + invoiceLineId + '&invoice_id=' + invoiceId + '&relation_id=' + relationId + '&exp_report_line_id=' + lineId,
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP5110_moreInvoiceResultDs').query();
+                });
+            }
+            
+            function EXP5110_onMoreInvoiceAddFun(dataSet, record, index) { // Modify Tagin/2018.07.11 新增时复制对应的单据汇率相关字段
+                var sourceHRd = $au('${/parameter/@sourceDataset}').getCurrentRecord();
+                record.set('biz2pay_exchange_rate', sourceHRd.get('biz2pay_exchange_rate'));
+                record.set('pay2fun_exchange_rate', sourceHRd.get('pay2fun_exchange_rate'));
+                record.set('business_currency_precision', sourceHRd.get('business_currency_precision'));
+                record.set('payment_currency_precision', sourceHRd.get('payment_currency_precision'));
+                record.set('functional_currency_precision', sourceHRd.get('functional_currency_precision'));
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_moreInvoiceTypeDs" model="hec_util.get_invoice_type">
+                <a:events>
+                    <a:event name="load" handler="EXP5110_moreInvoiceTypeLoadFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_moreInvoiceCategoryDs" fetchAll="true" loadData="true" model="hec_util.vat_invoice_category_vl_lov"/>
+            <a:dataSet id="EXP5110_moreInvoiceTaxRateTypeDs" autoQuery="true" queryUrl="${/request/@context_path}/autocrud/hec_util.fnd_tax_type_code_vl_lov/query?withholding_flag=N"/>
+            <a:dataSet id="EXP5110_moreInvoiceResultDs" autoPageSize="true" autoQuery="true" model="expm.EXP5110.exp_report_more_invoice_query" queryUrl="${/request/@context_path}/autocrud/expm.EXP5110.exp_report_more_invoice_query/query?exp_report_line_id=${/parameter/@exp_report_line_id}" selectable="true" submitUrl="${/request/@context_path}/modules/expm/EXP5110/exp_report_more_invoice.svc">
+                <a:fields>
+                    <!-- Modify Tagin/2018.04.12 将发票类型调整为从发票代码自动获取 / 增加发票种类字段 -->
+                    <a:field name="relation_id"/>
+                    <a:field name="exp_report_header_id" defaultValue="${/parameter/@exp_report_header_id}"/>
+                    <a:field name="exp_report_line_id" defaultValue="${/parameter/@exp_report_line_id}"/>
+                    <a:field name="exp_report_dist_id" defaultValue="${/parameter/@exp_report_dist_id}"/>
+                    <a:field name="invoice_category_name" displayField="invoice_category_name" options="EXP5110_moreInvoiceCategoryDs" prompt="VAT_INVOICE_ITEMS.INVOICE_CATEGORY" returnField="invoice_category_id" valueField="invoice_category_id"/>
+                    <a:field name="invoice_category_id"/>
+                    <a:field name="invoice_type"/>
+                    <a:field name="invoice_code" fetchRemote="false" lovUrl="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_select_invoice.screen" prompt="EXP_REPORT.INVOICE_CODE"/>
+                    <a:field name="invoice_number" prompt="ACP_INVOICE_HEADERS.INVOICE_NUMBER"/>
+                    <a:field name="invoice_date" prompt="VAT_INVOICES.INVOICE_DATE"/>
+                    <a:field name="invoice_amount" prompt="TOTAL_AD_VALOREM_TAX_INVOICE"/>
+                    <a:field name="tax_type_name" displayField="tax_type_name" options="EXP5110_moreInvoiceTaxRateTypeDs" prompt="EXP_REPORT_LINES.TAX_RATE_TYPE">
+                        <a:mapping>
+                            <a:map from="tax_type_id" to="tax_type_id"/>
+                            <a:map from="tax_category" to="tax_category"/>
+                            <a:map from="auto_calculation_flag" to="auto_calculation_flag"/>
+                            <a:map from="tax_type_rate" to="tax_type_rate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="tax_type_id"/>
+                    <a:field name="tax_type_rate"/>
+                    <a:field name="tax_amount" prompt="VAT_INVOICE_LINES.TAX_AMOUNT"/>
+                    <a:field name="invoice_source" prompt="MANUAL"/>
+                    <a:field name="business_amount" prompt="EXP_REPORT.ACTUAL_REIMBURSEMENT_AMOUNT" required="true"/>
+                    <a:field name="biz2pay_exchange_rate"/>
+                    <a:field name="payment_amount"/>
+                    <a:field name="pay2fun_exchange_rate"/>
+                    <a:field name="functional_amount"/>
+                    <a:field name="business_currency_precision"/>
+                    <a:field name="payment_currency_precision"/>
+                    <a:field name="functional_currency_precision"/>
+                    <a:field name="auto_calculation_flag"/>
+                    <a:field name="tax_category"/>
+                    <a:field name="more_tax"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="EXP5110_onMoreInvoiceAddFun"/>
+                    <a:event name="update" handler="EXP5110_onMoreInvoiceUpdateFun"/>
+                    <a:event name="submitsuccess" handler="EXP5110_onMoreInvoiceSubmitFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" shrinkable="false" title="MORE_INVOICE">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP5110_moreInvoiceGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP5110_moreInvoiceGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP5110_moreInvoiceGrid" type="delete" width="80"/>
+                    <a:button click="EXP5110_moreInvoiceSelectFunc" text="HAP_MORE" width="80"/>
+                    <a:button click="EXP5110_moreInvoiceBackFunc" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="exp_report_number" bindTarget="EXP5110_exp_report_header_ds" prompt="EXP_REPORT_HEADERS.EXP_REPORT_NUMBER" readOnly="true"/>
+                <a:textField name="mo_exp_report_type_name" bindTarget="EXP5110_exp_report_header_ds" prompt="EXP_REPORT_HEADERS.EXP_REPORT_TYPE" readOnly="true"/>
+                <a:textField name="employee_name" bindTarget="EXP5110_exp_report_header_ds" prompt="EXP_REPORT_HEADERS.EMPLOYEE_NAME" readOnly="true"/>
+                <a:textField name="acc_entity_name" bindTarget="EXP5110_exp_report_header_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.ACC_ENTITY_NAME" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP5110_moreInvoiceGrid" bindTarget="EXP5110_moreInvoiceResultDs" marginHeight="215" navBar="true" selectable="true" width=".8">
+                <a:columns>
+                    <a:column name="invoice_category_name" align="center" editorFunction="EXP5110_moreInvoiceEditorFun" width="90"/>
+                    <a:column name="invoice_code" align="center" editorFunction="EXP5110_moreInvoiceEditorFun" width="90"/>
+                    <a:column name="invoice_number" align="center" editorFunction="EXP5110_moreInvoiceEditorFun" width="90"/>
+                    <a:column name="invoice_date" align="center" editorFunction="EXP5110_moreInvoiceEditorFun" renderer="Aurora.formatDate" width="90"/>
+                    <a:column name="invoice_amount" align="right" editorFunction="EXP5110_moreInvoiceEditorFun" renderer="Aurora.formatMoney" width="90"/>
+                    <a:column name="tax_type_name" align="center" editorFunction="EXP5110_moreInvoiceEditorFun" width="90"/>
+                    <a:column name="tax_amount" align="right" editorFunction="EXP5110_moreInvoiceEditorFun" renderer="Aurora.formatMoney" width="90"/>
+                    <a:column name="business_amount" align="right" editorFunction="EXP5110_moreInvoiceEditorFun" renderer="Aurora.formatMoney" width="90"/>
+                    <a:column name="more_tax" align="center" renderer="EXP5110_moreInvoiceTaxRenderer" width="90"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="EXP5110_more_invoice_tf"/>
+                    <a:numberField id="EXP5110_more_invoice_nf_0" allowDecimals="false"/>
+                    <a:numberField id="EXP5110_more_invoice_nf_1" allowDecimals="true" decimalPrecision="1"/>
+                    <a:numberField id="EXP5110_more_invoice_nf_2" allowDecimals="true" decimalPrecision="2"/>
+                    <a:numberField id="EXP5110_more_invoice_nf_3" allowDecimals="true" decimalPrecision="3"/>
+                    <a:comboBox id="EXP5110_more_invoice_cb"/>
+                    <a:lov id="EXP5110_more_invoice_lov"/>
+                    <a:datePicker id="EXP5110_more_invoice_dp"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP5110_onMoreInvoiceCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: duanjian$
+    $Date: 2018/01/15 $
+    $Revision: 1.1 $
+    $Purpose: sap 统驭科目明细定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo></p:echo>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="sc_gld_sap_posting_key_set_select_link" url="$[/request/@context_path]/modules/gl/GL3002/gld_sap_postingKey_set_select.screen"/>
+        <script><![CDATA[
+            function GL3002_ReturnBack() {
+                window.location.href = $au('sc_gld_sap_posting_key_set_select_link').getUrl();
+            }
+            
+            function recon_add(ds, record, idx) {
+                var accountSetId = $au('sc_gld_sap_posting_key_form_ds').getAt(0).get('accountSetId');
+                var accEntityId = $au('sc_gld_sap_posting_key_form_ds').getAt(0).get('accEntityId');
+                var setOfBooksId = $au('sc_gld_sap_posting_key_form_ds').getAt(0).get('setOfBooksId');
+                record.set('accountSetId', accountSetId);
+                record.set('accEntityId', accEntityId);
+                record.set('setOfBooksId', setOfBooksId);
+            }
+            
+            function updateFun(dataSet, record, name, value, oldvalue) {
+                if (name == 'reconciliationType') {
+                    if (value == 'NO_RECONCILIATION') {
+                        record.set('specialGlType', 'N');
+                        record.set('payeeCategory', '');
+                        record.set('payeeCategoryDesc', '');
+                        // record.getField('specialGlType').setReadOnly(true);
+                        // record.getField('payeeCategoryDesc').setReadOnly(true);
+                    }
+                }
+            }
+        
+            function beforetriggerclickFunc() {
+                var record = $au('sc_gld_sap_posting_key_form_ds').getAt(0);
+                record.getField('accEntityName').setLovPara('setOfBooksId', record.get('setOfBooksId'));
+            }
+            
+            function QueryFormUpdate(dataSet, record, name, value, oldvalue) {
+                if (name == 'setOfBooksId') {
+                    record.set('accEntityName', '');
+                    record.set('accEntityCode', '');
+                    record.set('accEntityId', '');
+                    record.getField('accEntityName').setLovPara('setOfBooksId', record.get('setOfBooksId'));
+                    $au('gl_sap_posting_key_result_ds').query();
+                }
+                if (name == 'accountSetId') {
+                    $au('gl_sap_postingKey_result_ds').query();
+                }
+            }
+            
+            function onGridCellClick(grid, idx, name, record) {
+                var value = record.get('reconciliationType');
+                if (value == 'NO_RECONCILIATION') {
+                    record.getField('specialGlType').setReadOnly(true);
+                    record.getField('payeeCategoryDesc').setReadOnly(true);
+                } else {
+                    record.getField('specialGlType').setReadOnly(false);
+                    record.getField('payeeCategoryDesc').setReadOnly(false);
+                }
+            }
+            
+            function BeforeSubmitFun(ds) {
+                if ($au('sc_gld_sap_posting_key_form_ds').validate()) {
+                    return true;
+                }
+                return false;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GL3002_reconciliationTypeDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/RECONCILIATION_TYPE"/>
+            <a:dataSet id="FND2440_sobsDs" fetchAll="true" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/gld/sob-segment/query-sob-list"/>
+            <a:dataSet id="GL3002_drCrTypeDs"  fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/DR_CR_FLAG"/>
+            <a:dataSet id="GL3002_payment_objectDs"  fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="sc_gld_sap_posting_key_form_ds" autoCreate="true" loadData="true">
+                <a:fields>
+                    <a:field name="setOfBooksName" defaultValue="$[/model/defaultSob/records/record/@setOfBooksName]" displayField="setOfBooksName" options="FND2440_sobsDs" prompt="gl_sap_posting_key.set_of_books_name" required="true" returnField="setOfBooksId" valueField="setOfBooksId"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/model/defaultSob/records/record/@setOfBooksId]"/>
+                    <a:field name="accEntityName" autoComplete="true" lovAutoQuery="true" lovGridHeight="320" lovHeight="450" lovCode="GLD_ACC_DEFAULT_STE_OF_BOOK_LOV" lovWidth="500" prompt="gl_sap_posting_key.acc_entity_name" title="gl_sap_posting_key.acc_entity_choice">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCode" readOnly="true"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accountSetName" defaultValue="$[/model/initQuery/records/record/@accountSetName]" lovGridHeight="300" lovHeight="430" lovCode="GLD_ACCOUNT_SET_LOV" lovWidth="500" prompt="gl_sap_posting_key.account_set_name" required="true" title="gl_sap_posting_key.account_set_choice">
+                        <a:mapping>
+                            <a:map from="accountSetId" to="accountSetId"/>
+                            <a:map from="accountSetCode" to="accountSetCode"/>
+                            <a:map from="accountSetName" to="accountSetName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountSetCode" defaultValue="$[/model/initQuery/records/record/@accountSetCode]"/>
+                    <a:field name="accountSetId" defaultValue="$[/model/initQuery/records/record/@accountSetId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="QueryFormUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="gl_sap_posting_key_result_ds" autoQuery="true" baseUrl="/gld/sap-posting-key" queryDataSet="sc_gld_sap_posting_key_form_ds" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="postingKeyId" prompt="gl_sap_posting_key.posting_key_id"/>
+                    <a:field name="accountSetId" prompt="gl_sap_posting_key.account_set_id"/>
+                    <a:field name="accountSetDesc" prompt="gl_sap_posting_key.account_set_desc"/>
+                    <a:field name="reconciliationType" prompt="gl_sap_posting_key.reconciliation_type"/>
+                    <a:field name="reconciliationTypeDesc" displayfield="meaning" options="GL3002_reconciliationTypeDs" prompt="gl_sap_posting_key.reconciliation_type_desc" returnfield="reconciliationType" valuefield="value"/>
+                    <a:field name="reconciliationType"/>
+                    <a:field name="specialGlType" checkedValue="Y" defaultValue="N" prompt="gl_sap_posting_key.special_gl_type" uncheckedValue="N"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryDesc" displayfield="meaning" options="GL3002_payment_objectDs" prompt="gl_sap_posting_key.payee_category" returnfield="payeeCategory" valuefield="value"/>
+                    <a:field name="drCrType"/>
+                    <a:field name="drCrTypeDesc" displayfield="meaning" options="GL3002_drCrTypeDs" prompt="gl_sap_posting_key.dr_cr_type" required="true" returnfield="drCrType" valuefield="value"/>
+                    <a:field name="postingKey" prompt="gl_sap_posting_key.posting_key" required="true"/>
+                    <a:field name="rePostingKey" prompt="gl_sap_posting_key.re_posting_key"/>
+                    <a:field name="setOfBooksId" prompt="gl_sap_posting_key.set_of_books_id"/>
+                    <a:field name="setOfBooksName" prompt="gl_sap_posting_key.set_of_books_name"/>
+                    <a:field name="accEntityId" prompt="gl_sap_posting_key.acc_entity_id"/>
+                    <a:field name="accEntityDesc" prompt="gl_sap_posting_key.acc_entity_desc"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="recon_add"/>
+                    <a:event name="update" handler="updateFun"/>
+                    <a:event name="beforesubmit" handler="BeforeSubmitFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:gridButton bind="GL3002_grid" text="hap.add" type="add" width="80"/>
+            <a:gridButton bind="GL3002_grid" text="hap.save" type="save" width="80"/>
+            <a:gridButton bind="GL3002_grid" text="hap.delete" type="delete" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm id="sc_gld_sap_posting_key_form_id" bindTarget="sc_gld_sap_posting_key_form_ds" resultTarget="gl_sap_posting_key_result_ds" style="width:100%;border:none">
+            <a:formToolBar>
+                <a:label name="separator"/>
+                <a:comboBox name="setOfBooksName" bindTarget="sc_gld_sap_posting_key_form_ds" readOnly="false" width="200"/>
+                <a:lov name="accEntityName" bindTarget="sc_gld_sap_posting_key_form_ds" readOnly="false" width="200">
+                    <a:events>
+                        <a:event name="beforetriggerclick" handler="beforetriggerclickFunc"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="accountSetName" bindTarget="sc_gld_sap_posting_key_form_ds" width="200"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <a:grid id="GL3002_grid" bindTarget="gl_sap_posting_key_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="postingKey" align="center" editor="GL3002_gridTf" width="120"/>
+                <a:column name="rePostingKey" align="center" editor="GL3002_gridTf" width="120"/>
+                <a:column name="reconciliationTypeDesc" align="center" editor="GL3002_gridCbb" width="120"/>
+                <a:column name="specialGlType" align="left" editor="GL3002_gridCb" width="120"/>
+                <a:column name="payeeCategoryDesc" align="center" editor="GL3002_gridCbb" width="120"/>
+                <a:column name="drCrTypeDesc" align="center" editor="GL3002_gridCbb" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="GL3002_gridTf"/>
+                <a:comboBox id="GL3002_gridCbb"/>
+                <a:lov id="GL3002_gridLov"/>
+                <a:checkBox id="GL3002_gridCb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="onGridCellClick"/>
+            </a:events>
+        </a:grid>
+        <script><![CDATA[
+        ]]></script>
+    </a:view>
+</a:screen>

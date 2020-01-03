@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: duanjian$
+    $Date: 2018/01/15 $
+    $Revision: 1.1 $
+    $Purpose: sap 统驭科目明细定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo></p:echo>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="sc_gld_sap_recon_accounts_set_select_link" url="$[/request/@context_path]/modules/gl/GL3001/gld_sap_recon_accounts_set_select.screen"/>
+        <script><![CDATA[
+            function GL3001_ReturnBack() {
+                window.location.href = $au('sc_gld_sap_recon_accounts_set_select_link').getUrl();
+            }
+            
+            function recon_add(ds, record, idx) {
+                var accountSetId = $au('GL3001_scGldSapReconAccountsFormDs').getAt(0).get('accountSetId');
+                var accEntityId = $au('GL3001_scGldSapReconAccountsFormDs').getAt(0).get('accEntityId');
+                var setOfBooksId = $au('GL3001_scGldSapReconAccountsFormDs').getAt(0).get('setOfBooksId');
+                record.set('accountSetId', accountSetId);
+                record.set('accEntityId', accEntityId);
+                record.set('setOfBooksId',setOfBooksId);
+            }
+            
+            function GL3001_ap_reconUpdate(dataSet, record, name, value, oldValue) {
+                if (name == 'setOfBooksId') {
+                    record.set('accEntityName', '');
+                    record.set('accEntityCode', '');
+                    record.set('accEntityId', '');
+                    record.getField('accEntityName').setLovPara('setOfBooksId', record.get('setOfBooksId'));
+                    $au('sc_gld_sap_recon_accounts_result_ds').query();
+                }
+                if (name == 'accountSetId') {
+                    $au('sc_gld_sap_recon_accounts_result_ds').query();
+                }
+            }
+            
+            function recon_BeforeSubmit(ds) {
+                if ($au('GL3001_scGldSapReconAccountsFormDs').validate()) {
+                    return true;
+                }
+                return false;
+            }
+
+            function GL3001_gridCellClickFunc(grid, row, name, record) {
+                var setOfBooksId = $au('GL3001_scGldSapReconAccountsFormDs').getAt(0).get('setOfBooksId');
+                var metadata = record.getMeta();
+                if (name == 'accountCode') {
+                    metadata.getField('accountCode').setLovPara('setOfBooksId', setOfBooksId);
+                }
+            }
+
+            function beforetriggerclickFunc() {
+                var record = $au('GL3001_scGldSapReconAccountsFormDs').getAt(0);
+                record.getField('accEntityName').setLovPara('setOfBooksId', record.get('setOfBooksId'));
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GL3002_reconciliation_typeDs" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/RECONCILIATION_TYPE_ACC"/>
+            <a:dataSet id="FND2440_sobsDs" fetchAll="true" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/gld/sob-segment/query-sob-list"/>
+            <a:dataSet id="GL3001_confirmFlagDs"  autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/YES_NO"/>
+            <a:dataSet id="GL3001_scGldSapReconAccountsFormDs" autoCreate="true" loadData="true">
+                <a:fields>
+                    <a:field name="setOfBooksName" defaultValue="$[/model/defaultSob/records/record/@setOfBooksName]" displayField="setOfBooksName" options="FND2440_sobsDs" prompt="sc_gld_sap_recon_accounts.set_of_books_name" required="true" returnField="setOfBooksId" valueField="setOfBooksId"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/model/defaultSob/records/record/@setOfBooksId]"/>
+                    <a:field name="accEntityName" autoComplete="true" lovAutoQuery="true" lovGridHeight="320" lovHeight="450"  lovCode="GLD_ACC_DEFAULT_STE_OF_BOOK_LOV" prompt="sc_gld_sap_recon_accounts.acc_entity_name" title="sc_gld_sap_recon_accounts.acc_entity_choice">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCode"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accountSetName" defaultValue="$[/model/initQuery/records/record/@accountSetName]" lovCode="GLD_ACCOUNT_SET_LOV" lovGridHeight="300" lovHeight="430" lovWidth="500" prompt="sc_gld_sap_recon_accounts.account_set_name" required="true" title="sc_gld_sap_recon_accounts.account_set_choice">
+                        <a:mapping>
+                            <a:map from="accountSetId" to="accountSetId"/>
+                            <a:map from="accountSetCode" to="accountSetCode"/>
+                            <a:map from="accountSetName" to="accountSetName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountSetCode" defaultValue="$[/model/initQuery/records/record/@accountSetCode]"/>
+                    <a:field name="accountSetId" defaultValue="$[/model/initQuery/records/record/@accountSetId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GL3001_ap_reconUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="sc_gld_sap_recon_accounts_result_ds" autoQuery="true" baseUrl="/gld/sap-recon-account" queryDataSet="GL3001_scGldSapReconAccountsFormDs" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="scGldSapReconAccountsId" prompt="sc_gld_sap_recon_accounts.sc_gld_sap_recon_accounts_id"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/parameter/@setOfBooksId]" prompt="sc_gld_sap_recon_accounts.set_of_books_id"/>
+                    <a:field name="setOfBooksName" prompt="sc_gld_sap_recon_accounts.set_of_books_name"/>
+                    <a:field name="accEntityId" prompt="sc_gld_sap_recon_accounts.acc_entity_id"/>
+                    <a:field name="accEntityDesc" prompt="sc_gld_sap_recon_accounts.acc_entity_desc"/>
+                    <a:field name="accountId" prompt="sc_gld_sap_recon_accounts.account_id"/>
+                    <a:field name="accountCode" lovCode="GLD_UTIL_ACCOUNT_LOV" prompt="sc_gld_sap_recon_accounts.account_code" required="true">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountName" prompt="sc_gld_sap_recon_accounts.account_name"/>
+                    <a:field name="commandFlagDesc" displayfield="meaning" options="GL3002_reconciliation_typeDs" prompt="sc_gld_sap_recon_accounts.command_flag" returnfield="commandFlag" valuefield="value"/>
+                    <a:field name="commandFlag"/>
+                    <!--                     <a:field name="commandFlag" checkedValue="Y" defaultValue="Y" prompt="sc_gld_sap_recon_accounts.commandFlag" uncheckedValue="N"/>
+ -->
+                    <a:field name="sglFlag" checkedValue="Y" defaultValue="N" prompt="sc_gld_sap_recon_accounts.sgl_flag" uncheckedValue="N"/>
+                    <a:field name="sgl" prompt="sc_gld_sap_recon_accounts.sgl"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="sc_gld_sap_recon_accounts.enabled_flag" uncheckedValue="N"/>
+                    <a:field name="accountSetId" defaultValue="$[/initQuery/records/record/@accountSetId]" prompt="sc_gld_sap_recon_accounts.account_set_id"/>
+                    <a:field name="accountSetDesc" prompt="sc_gld_sap_recon_accounts.account_set_desc"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="recon_add"/>
+                    <a:event name="beforesubmit" handler="recon_BeforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:gridButton bind="GL3001_grid" text="hap.add" type="add" width="80"/>
+            <a:gridButton bind="GL3001_grid" text="hap.save" type="save" width="80"/>
+            <a:gridButton bind="GL3001_grid" text="hap.delete" type="delete" width="80"/>
+            <!-- <a:toolbarButton click="GL3001_ReturnBack" text="HAP_BACK" width="80"/> -->
+        </a:screenTopToolbar>
+        <a:queryForm id="sc_gld_sap_recon_accounts_form_id" bindTarget="GL3001_scGldSapReconAccountsFormDs" resultTarget="sc_gld_sap_recon_accounts_result_ds" style="width:100%;border:none">
+            <a:formToolBar>
+                <a:label name="separator"/>
+                <a:comboBox name="setOfBooksName" bindTarget="GL3001_scGldSapReconAccountsFormDs" readOnly="false" width="200"/>
+                <a:lov name="accEntityName" bindTarget="GL3001_scGldSapReconAccountsFormDs" readOnly="false" width="200">
+                    <a:events>
+                        <a:event name="beforetriggerclick" handler="beforetriggerclickFunc"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="accountSetName" bindTarget="GL3001_scGldSapReconAccountsFormDs" width="200"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <a:grid id="GL3001_grid" bindTarget="sc_gld_sap_recon_accounts_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="accountCode" align="center" editor="GL3001_gridLov" width="120"/>
+                <a:column name="accountName" align="center" width="120"/>
+                <a:column name="commandFlagDesc" align="left" editor="GL3001_gridCbb" width="120"/>
+                <a:column name="sglFlag" align="center" editor="GL3001_gridCb" width="120"/>
+                <a:column name="sgl" align="center" editor="GL3001_gridTf" width="120"/>
+                <a:column name="enabledFlag" align="center" editor="GL3001_gridCb" width="120"/>
+            </a:columns>
+            <a:events>
+                <a:event name="cellclick" handler="GL3001_gridCellClickFunc"/>
+            </a:events>
+            <a:editors>
+                <a:textField id="GL3001_gridTf"/>
+                <a:comboBox id="GL3001_gridCbb"/>
+                <a:lov id="GL3001_gridLov"/>
+                <a:checkBox id="GL3001_gridCb"/>
+            </a:editors>
+        </a:grid>
+        <script><![CDATA[
+        ]]></script>
+    </a:view>
+</a:screen>

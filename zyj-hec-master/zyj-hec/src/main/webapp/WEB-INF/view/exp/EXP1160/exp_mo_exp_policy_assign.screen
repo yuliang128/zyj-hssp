@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-7-31 下午7:44:56  
+    $Revision: 1.0  
+    $Purpose: 管理组织级政策标准分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1160_exp_mo_exp_policy_assign_details_link" url="$[/request/@context_path]/exp/EXP1160/exp_mo_exp_policy_assign_details.screen"/>
+        <script><![CDATA[
+            function EXP1160_closesExp_mo_exp_policy_assign() {
+                $au('EXP1160_exp_mo_exp_policy_assign_win').close();
+            }
+            
+            function EXP1160_detailRenFun(value, record, name) {
+                if (!record.isNew) {
+                    return '<a href="javascript:EXP1160_openDetail(' + record.get('assignId') + ')">$[l:exp_policy_standard_assign.policy_standard_assign]</a>';
+                }
+                return '';
+            }
+            
+            function EXP1160_openDetail(assignId) {
+                var record = $au('EXP1160_exp_mo_exp_policy_assign_result_ds').find('assignId', assignId);
+                var docTypeName = Ext.isEmpty(record.get('docTypeName')) ? '' : record.get('docTypeName');
+                var url = $au('EXP1160_exp_mo_exp_policy_assign_details_link').getUrl() + '?assignId=' + assignId + '&docCategoryValue=' + record.get('docCategoryValue') + '&docTypeName=' + docTypeName;
+                new Aurora.Window({
+                    id: 'EXP1160_policy_assign_detail_win',
+                    url: url,
+                    title: '$[l:exp_policy_standard_assign.policy_standard_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function EXP1160_gridEditorLovFun(record, name) {
+                if (name == 'docTypeCode' && !Ext.isEmpty(record.get('docCategory'))) {
+                    return 'EXP1160_exp_mo_exp_policy_assign_lov';
+                }
+            
+                if (name == 'expenseTypeCode' && !Ext.isEmpty(record.get('docCategory'))) {
+                    return 'EXP1160_exp_mo_exp_policy_assign_lov';
+                }
+                if (name == 'expItemCode' && !Ext.isEmpty(record.get('docCategory'))) {
+                    return 'EXP1160_exp_mo_exp_policy_assign_lov';
+                }
+                return '';
+            }
+
+            function EXP1160_gridCellClickFun(grid, row, name, record) {
+                if (name == 'docTypeCode' && !Ext.isEmpty(record.get('docCategory'))) {
+                    record.getField('docTypeCode').setLovCode('LOV_EXP1160_DOC_TYPE');
+                    record.getField('docTypeCode').setLovPara('docCategory', record.get('docCategory'));
+                    record.getField('docTypeCode').setLovPara('magOrgId', record.get('magOrgId'));
+                }
+                if (name == 'expenseTypeCode' && !Ext.isEmpty(record.get('docCategory'))) {
+                    if (!Ext.isEmpty(record.get('docTypeCode'))) {
+                        record.getField('expenseTypeCode').setLovCode('LOV_EXP1160_POLICY_ASSIGN_EXPENSE_TYPE');
+                        record.getField('expenseTypeCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        record.getField('expenseTypeCode').setLovPara('docCategory', record.get('docCategory'));
+                        record.getField('expenseTypeCode').setLovPara('documentTypeId', record.get('docTypeId'));
+                    } else {
+                        record.getField('expenseTypeCode').setLovCode('LOV_EXP1160_EXPENSE_TYPE');
+                        record.getField('expenseTypeCode').setLovPara('docCategory', record.get('docCategory'));
+                        record.getField('expenseTypeCode').setLovPara('magOrgId', record.get('magOrgId'));
+                    }
+
+                }
+                if (name == 'expItemCode' && !Ext.isEmpty(record.get('docCategory'))) {
+                    if (!Ext.isEmpty(record.get('docTypeCode'))) {
+                        if (!Ext.isEmpty(record.get('expenseTypeCode'))) {
+                            record.getField('expItemCode').setLovCode('LOV_EXP1160_ASSIGN_EXP_ITEM');
+                            record.getField('expItemCode').setLovPara('docCategory', record.get('docCategory'));
+                            record.getField('expItemCode').setLovPara('magOrgId', record.get('magOrgId'));
+                            record.getField('expItemCode').setLovPara('documentTypeId', record.get('docTypeId'));
+                            record.getField('expItemCode').setLovPara('moExpenseTypeId', record.get('expenseTypeId'));
+
+                        } else {
+                            new Aurora.showWarningMessage('$[l:hap.warning]', '$[l:exp1160_expense_type_required]。', null, 300, 200);
+                            return;
+                        }
+                    } else {
+                        if (!Ext.isEmpty(record.get('expenseTypeCode'))) {
+                            record.getField('expItemCode').setLovCode('LOV_EXP1160_EXP_ITEM_REF_EXP_TYPE');
+                            record.getField('expItemCode').setLovPara('docCategory', record.get('docCategory'));
+                            record.getField('expItemCode').setLovPara('magOrgId', record.get('magOrgId'));
+                            record.getField('expItemCode').setLovPara('moExpenseTypeId', record.get('expenseTypeId'));
+                        } else {
+                            record.getField('expItemCode').setLovCode('LOV_EXP1160_EXP_ITEM_ONLY');
+                            record.getField('expItemCode').setLovPara('docCategory', record.get('docCategory'));
+                            record.getField('expItemCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        }
+                    }
+                }
+            }
+
+            function EXP1160_exp_mo_exp_policy_assign_result_update_fun(ds, record, name, value, oldvalue) {
+                var fields = new Array("docTypeId", "docTypeName", "docTypeCode", "expenseTypeId", "expenseTypeName", "expenseTypeCode", "expItemId", "expItemName", "expItemCode");
+                if (name == "docCategory") {
+                    for (var i = 0;i < fields.length;i++) {
+                        record.set(fields[i], null);
+                    }
+                    record.getField('docTypeCode').setLovPara('docCategory', null);
+                    record.getField('docTypeCode').setLovPara('magOrgId', null);
+                    record.getField('expenseTypeCode').setLovPara('docCategory', null);
+                    record.getField('expenseTypeCode').setLovPara('magOrgId', null);
+                    record.getField('expenseTypeCode').setLovPara('documentTypeId', null);
+                    record.getField('expItemCode').setLovPara('docCategory', null);
+                    record.getField('expItemCode').setLovPara('magOrgId', null);
+                    record.getField('expItemCode').setLovPara('documentTypeId', null);
+                    record.getField('expItemCode').setLovPara('moExpenseTypeId', null);
+                }
+
+                if (name == "docTypeCode") {
+                    for (var j = 3;j < fields.length;j++) {
+                        record.set(fields[j], null);
+                    }
+                    record.getField('expenseTypeCode').setLovPara('docCategory', null);
+                    record.getField('expenseTypeCode').setLovPara('magOrgId', null);
+                    record.getField('expenseTypeCode').setLovPara('documentTypeId', null);
+                    record.getField('expItemCode').setLovPara('docCategory', null);
+                    record.getField('expItemCode').setLovPara('magOrgId', null);
+                    record.getField('expItemCode').setLovPara('documentTypeId', null);
+                    record.getField('expItemCode').setLovPara('moExpenseTypeId', null);
+                }
+
+                if (name == "expenseTypeCode") {
+                    for (var k = 6;k < fields.length;k++) {
+                        record.set(fields[k], null);
+                    }
+                    record.getField('expItemCode').setLovPara('docCategory', null);
+                    record.getField('expItemCode').setLovPara('magOrgId', null);
+                    record.getField('expItemCode').setLovPara('documentTypeId', null);
+                    record.getField('expItemCode').setLovPara('moExpenseTypeId', null);
+                }
+
+            }
+
+
+            function EXP_exp_mo_exp_policy_assign_result_ds_submit_success_fun(dataSet, res) {
+                $au('EXP1160_exp_mo_exp_policy_assign_result_ds').query();
+            }
+
+            function EXP1160_add(ds) {
+                var magOrgId = $au('EXP1160_exp_mo_exp_policy_assign_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            function EXP1160_focus(){
+                $au('EXP1160_magOrg_ds').query();
+            }
+            function EXP1160_update(ds,record,name,value){
+                if(name=='magOrgId'){
+                    $au('EXP1160_exp_mo_exp_policy_assign_result_ds').query();
+                }
+            }
+            function EXP1160_BeforeCreate(){
+                if (Ext.isEmpty($au('EXP1160_exp_mo_exp_policy_assign_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            // add lcy 2017/12/25 11:08:56 保存前检验管理组织
+            function EXP1160_beforeSubmit(){
+                if (Ext.isEmpty($au('EXP1160_exp_mo_exp_policy_assign_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1160_magOrg_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/exp/mo-exp-policy-assign/queryFndMagOra"/>
+            <a:dataSet id="doc_category_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_RELATED_BUSINESS_TYPE/"/>
+            <a:dataSet id="EXP1160_exp_mo_exp_policy_assign_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/@magOrgName]" displayField="description" options="EXP1160_magOrg_ds" prompt="bgt_budget_item_mapping.mag_org_name" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="docCategoryValue" displayField="description" options="doc_category_ds" prompt="exp_mo_exp_policy_assign.doc_category" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docTypeCode" prompt="exp_mo_exp_policy_assign.doc_type_code"/>
+                    <a:field name="expItemCode" placeHolder="exp_mo_exp_policy_assign.exp_item_code"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1160_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1160_exp_mo_exp_policy_assign_result_ds" autoQuery="true"  queryDataSet="EXP1160_exp_mo_exp_policy_assign_query_ds" baseUrl="/exp/mo-exp-policy-assign" queryUrl="$[/request/@context_path]/exp/mo-exp-policy-assign/query" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="assignId" datatype="java.lang.Long"/>
+                    <a:field name="magOrgId" datatype="java.lang.Long" prompt="BGT_BUDGET_ITEM_MAPPING.MAG_ORG_NAME" required="true"/>
+                    <a:field name="docCategoryValue" datatype="java.lang.String" displayField="description" options="doc_category_ds" prompt="exp_mo_exp_policy_assign.doc_category" required="true" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docTypeCode" autoComplete="true" autoCompleteField="document_type_code" prompt="exp_mo_exp_policy_assign.doc_type_code" title="exp_mo_exp_policy_assign.doc_type_code">
+                        <a:mapping>
+                            <a:map from="documentTypeCode" to="docTypeCode"/>
+                            <a:map from="documentTypeName" to="docTypeName"/>
+                            <a:map from="documentTypeId" to="docTypeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="docTypeName" prompt="exp_mo_exp_policy_assign.doc_type"/>
+                    <a:field name="docTypeId" datatype="java.lang.Long"/>
+                    <a:field name="expenseTypeCode" autoComplete="true" autoCompleteField="moExpenseTypeCode" prompt="exp_mo_exp_policy_assign.rpt_code" title="exp_mo_exp_policy_assign.rpt_code">
+                        <a:mapping>
+                            <a:map from="moExpenseTypeId" to="expenseTypeId"/>
+                            <a:map from="moExpenseTypeCode" to="expenseTypeCode"/>
+                            <a:map from="moExpenseTypeName" to="expenseTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="expenseTypeName" prompt="exp_mo_exp_policy_assign.rpt"/>
+                    <a:field name="expenseTypeId" datatype="java.lang.Long"/>
+                    <a:field name="expItemCode" autoComplete="true" autoCompleteField="mo_exp_item_code" prompt="exp_mo_exp_policy_assign.exp_item_code" required="true" title="exp_mo_exp_policy_assign.exp_item_code">
+                        <a:mapping>
+                            <a:map from="moExpItemCode" to="expItemCode"/>
+                            <a:map from="moExpItemId" to="expItemId"/>
+                            <a:map from="moExpItemName" to="expItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="expItemName" prompt="exp_mo_exp_policy_assign.exp_item"/>
+                    <a:field name="expItemId" datatype="java.lang.Long"/>
+                    <a:field name="detail"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1160_exp_mo_exp_policy_assign_result_update_fun"/>
+                    <a:event name="submitsuccess" handler="EXP_exp_mo_exp_policy_assign_result_ds_submit_success_fun"/>
+                    <a:event name="add" handler="EXP1160_add"/>
+                    <a:event name="beforecreate" handler="EXP1160_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP1160_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1160_exp_mo_exp_policy_assign_grid"  type="add" width="80"/>
+                <a:gridButton bind="EXP1160_exp_mo_exp_policy_assign_grid"  type="save" width="80"/>
+                <a:gridButton bind="EXP1160_exp_mo_exp_policy_assign_grid" width="80" type="delete"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1160_exp_mo_exp_policy_assign_query_ds" marginWidth="15" resultTarget="EXP1160_exp_mo_exp_policy_assign_result_ds" style="width:100%;border:none;">
+                <a:formToolBar>
+                    <a:label name="separator"/>
+                    <a:comboBox name="magOrgName" bindTarget="EXP1160_exp_mo_exp_policy_assign_query_ds" prompt="BGT_BUDGET_ITEM_MAPPING.MAG_ORG_NAME" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1160_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="docCategoryValue" bindTarget="EXP1160_exp_mo_exp_policy_assign_query_ds"/>
+                    <a:textField name="docTypeCode" bindTarget="EXP1160_exp_mo_exp_policy_assign_query_ds"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:textField name="expItemCode" bindTarget="EXP1160_exp_mo_exp_policy_assign_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1160_exp_mo_exp_policy_assign_grid" bindTarget="EXP1160_exp_mo_exp_policy_assign_result_ds" marginHeight="115" marginWidth="3" navBar="true" selectable="true">
+            <a:columns>
+                <a:column name="docCategoryValue" align="center" editor="EXP1160_exp_mo_exp_policy_assign_cb" width="120"/>
+                <a:column name="docTypeCode" align="center" editorFunction="EXP1160_gridEditorLovFun" width="100"/>
+                <a:column name="docTypeName" align="center" width="150"/>
+                <a:column name="expenseTypeCode" align="center" editorFunction="EXP1160_gridEditorLovFun" width="100"/>
+                <a:column name="expenseTypeName" align="center" width="150"/>
+                <a:column name="expItemCode" align="center" editorFunction="EXP1160_gridEditorLovFun" width="100"/>
+                <a:column name="expItemName" align="center" width="150"/>
+                <a:column name="detail" align="center" renderer="EXP1160_detailRenFun" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="EXP1160_exp_mo_exp_policy_assign_cb"/>
+                <a:lov id="EXP1160_exp_mo_exp_policy_assign_lov"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="EXP1160_gridCellClickFun"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

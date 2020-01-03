@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Zealot
+    $Date: 2018/05/15
+    $Revision: 1.1
+    $Purpose: 物料分类集定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND1200_ref_view_class_link"
+                url="$[/request/@context_path]/fnd/FND1200/fnd_mo_classes_level1.screen"/>
+        <script><![CDATA[
+        function FND1200_classSetsQuery() {
+            $au('FND1200_fnd_mo_class_sets_query_result_ds').query();
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1200_viewClass(value, record, name) {
+            if (!record.isNew) {
+                const url = $au('FND1200_ref_view_class_link').getUrl() + '?moClassSetId=' + record.get('moClassSetId') + '&magOrgId=' + record.get('magOrgId');
+                return '<a href="javascript:FND1200_view_class(\'' + url + '\')">' + '$[l:fnd_mo_class_set.view_sub_level]' + '</a>';
+            }
+        }
+
+        function FND1200_view_class(url) {
+            new Aurora.Window({
+                id: 'FND1200_view_sub_level1_win',
+                url: url,
+                title: '$[l:fnd_mo_class_set.view_sub_level]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1200_invItemCode(record, name) {
+            if (record.isNew) {
+                return 'FND1200_grid_tf_up';
+            }
+            return '';
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1200_classLevelEditorFunc(record, name) {
+            if (record.isNew) {
+                return 'FND1200_grid_cb';
+            }
+            return '';
+        }
+
+        function FND1200_onAdd(ds, record) {
+            const magOrgId = $au('FND1200_fnd_mo_class_sets_query_ds').getAt(0).get('magOrgId');
+            record.set('magOrgId', magOrgId);
+        }
+
+        function FND1200_submitsuccess(ds) {
+            ds.query();
+        }
+
+        function FND1200_onQueryUpdate(dataSet, record, name, value, oldvalue) {
+            if (name === 'magOrgId' && record.get('magOrgId')) {
+                $au('FND1200_fnd_mo_class_sets_query_result_ds').query();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1200_fnd_mo_class_sets_level_depth_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_MO_CLASS_SETS_LEVEL_DEPTH/"/>
+            <a:dataSet id="FND1200_mag_org_list_ds" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd/mag-org/queryMagOrg"/>
+            <a:dataSet id="FND1200_fnd_mo_class_sets_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgName" defaultValue="$[defaultMagOrg/records/record/@description]"
+                             displayField="magOrgCodeName" options="FND1200_mag_org_list_ds"
+                             prompt="fnd_mo_class_set.mag_org_name" required="true" returnField="magOrgId"
+                             valueField="magOrgId">
+                        <a:mapping>
+                            <a:map from="magOrgCodeName" to="magOrgName"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId" defaultValue="$[defaultMagOrg/records/record/@magOrgId]"/>
+                    <a:field name="classSetCode"/>
+                    <a:field name="description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1200_onQueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="FND1200_fnd_mo_class_sets_query_result_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/fnd/mo-class-set" queryDataSet="FND1200_fnd_mo_class_sets_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="moClassSetId"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="magOrgName"/>
+                    <a:field name="classSetCode" required="true"/>
+                    <a:field name="description" required="true" dto="com.hand.hec.fnd.dto.FndMoClassSet" dtoId="moClassSetId"/>
+                    <a:field name="codeName"/>
+                    <a:field name="levelDepth" displayField="meaning"
+                             options="FND1200_fnd_mo_class_sets_level_depth_ds" prompt="fnd_mo_class_set.level_depth"
+                             required="true" returnField="levelDepth" valueField="value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="FND1200_onAdd"/>
+                    <a:event name="submitsuccess" handler="FND1200_submitsuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND1200_fnd_mo_class_sets_grid" type="add" width="80"/>
+                <a:gridButton bind="FND1200_fnd_mo_class_sets_grid" type="save" width="80"/>
+                <a:gridButton bind="FND1200_fnd_mo_class_sets_grid" type="clear" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1200_fnd_mo_class_sets_query_ds"
+                         resultTarget="FND1200_fnd_mo_class_sets_query_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="FND1200_fnd_mo_class_sets_query_ds"
+                                prompt="fnd_mo_class_set.mag_org_name">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1200_classSetsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="classSetCode" bindTarget="FND1200_fnd_mo_class_sets_query_ds"
+                                 prompt="fnd_mo_class_set.class_set_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1200_classSetsQuery"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND1200_fnd_mo_class_sets_query_ds"
+                                 prompt="fnd_mo_class_set.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1200_classSetsQuery"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1200_fnd_mo_class_sets_grid" bindTarget="FND1200_fnd_mo_class_sets_query_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="classSetCode" align="center" editorFunction="FND1200_invItemCode" sortable="true"
+                          width="80" prompt="fnd_mo_class_set.class_set_code"/>
+                <a:column name="description" align="left" editor="FND1200_grid_tltf" width="200" prompt="fnd_mo_class_set.description"/>
+                <a:column name="levelDepth" align="center" editorFunction="FND1200_classLevelEditorFunc" width="120" prompt="fnd_mo_class_set.level_depth"/>
+                <a:column name="enabledFlag" align="center" editor="FND1200_grid_ck" width="80" prompt="hap.enableflag"/>
+                <a:column name="viewClass" align="center" renderer="FND1200_viewClass" width="80" />
+            </a:columns>
+            <a:editors>
+                <a:textField id="FND1200_grid_tf_up" typeCase="upper"/>
+                <a:textField id="FND1200_grid_tf"/>
+                <a:tledit id="FND1200_grid_tltf"/>
+                <a:checkBox id="FND1200_grid_ck"/>
+                <a:comboBox id="FND1200_grid_cb"/>
+                <a:lov id="FND1200_grid_lv"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

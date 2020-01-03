@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query model="gld.gld_set_of_books_of_sessioncompany" rootPath="set_of_books"/>-->
+        <!--<a:model-query defaultWhereClause="enabledFlag = &apos;Y&apos;" fetchAll="true" model="exp.setbookslist_query" rootPath="setbookslist"/>-->
+        <!--<a:model-query fetchAll="true" model="gl.gld_current_set_of_book_name" rootPath="setbooksonly"/>-->
+        <!--<a:model-query fetchAll="true" model="hec_util.get_mag_org_default_sob" rootPath="GL1010_defaultSobOfMagOrg"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="GL1010_gl_segments_define_value_source_edit_link" url="$[/request/@context_path]/gl/GL1010/gl_segments_define_value_source_edit.screen"/>
+        <a:link id="GL1010_gl_segments_define_value_list_edit_link" url="$[/request/@context_path]/gl/GL1010/gl_segments_define_value_list_edit.screen"/>
+        <a:link id="GL1010_gl_segments_define_sql_value_list_edit_link" url="$[/request/@context_path]/gl/GL1010/gl_segments_define_sql_value_list_edit.screen"/>
+        <a:link id="GL1010_gl_segments_define_sql_edit_link" url="$[/request/@context_path]/gl/GL1010/gl_segments_define_sql_edit.screen"/>
+        <a:link id="GL1010_gl_segments_select_back_link" url="$[/request/@context_path]/gl/GL1010/gl_segments_define_sob_select.screen"/>
+        <script><![CDATA[
+            function GL1010_queryFun() {
+                $au('GL1010_segment_ds').query();
+            }
+            
+            function GL1010_resetFun() {
+                $au('GL1010_query_ds').reset();
+            }
+            
+            function GL1010_segFieldDescEditFun(record, name) {
+                if (record.isNew) {
+                    return 'combobox_editor';
+                }
+                return '';
+            }
+            
+            function GL1010_segTypeEditFun(record, name) {
+                if (record.isNew) {
+                    return 'combobox_editor';
+                }
+                return '';
+            }
+            
+            function GL1010_segTypeLinkRenderer(value, record, name) {
+                var recordIndex = $au('GL1010_segment_ds').indexOf(record);
+                var segmentId = record.get('segmentId');
+                if (!record.isNew) {
+                    if (record.get('segmentType') == 'VALUE_SOURCE') {
+                        return '<a href="javascript:GL1010_editValueSource(' + recordIndex + ',' + segmentId + ');">' + record.get('segmentTypeName') + '</a>';
+                    } else if (record.get('segmentType') == 'TEXT') {
+            
+                       } else if (record.get('segmentType') == 'VALUE_LIST') {
+                        return '<a href="javascript:GL1010_editValueList(' + recordIndex + ',' + segmentId + ')">' + record.get('segmentTypeName') + '</a>';
+                    } else if (record.get('segmentType') == 'SQL_VALUE_LIST') {
+                        return '<a href="javascript:GL1010_editSqlValueList(' + recordIndex + ',' + segmentId + ')">' + record.get('segmentTypeName') + '</a>';
+                    } else if (record.get('segmentType') == 'SQL') {
+                        return '<a href="javascript:GL1010_editSql(' + recordIndex + ',' + segmentId + ')">' + record.get('segmentTypeName') + '</a>';
+                    } else {
+                        return '';
+                    }
+                }
+            }
+            
+            function GL1010_editValueSource(recordIndex, segmentId) {
+                new Aurora.Window({
+                    id: 'gl_segments_define_value_source_edit_screen',
+                    url: $au('GL1010_gl_segments_define_value_source_edit_link').getUrl() + '?recordIndex=' + recordIndex + '&segmentId=' + segmentId,
+                    title: '$[l:gl.value_source]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function GL1010_editValueList(recordIndex, segmentId) {
+                new Aurora.Window({
+                    id: 'gl_segments_define_value_list_edit_screen',
+                    url: $au('GL1010_gl_segments_define_value_list_edit_link').getUrl() + '?recordIndex=' + recordIndex + '&segmentId=' + segmentId,
+                    title: '$[l:gl.value_list]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function GL1010_editSqlValueList(recordIndex, segmentId) {
+                new Aurora.Window({
+                    id: 'gl_segments_define_sql_value_list_edit_screen',
+                    url: $au('GL1010_gl_segments_define_sql_value_list_edit_link').getUrl() + '?recordIndex=' + recordIndex + '&segmentId=' + segmentId,
+                    title: '$[l:gl.sql_value_list]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function GL1010_editSql(recordIndex, segmentId) {
+                new Aurora.Window({
+                    id: 'gl_segments_define_sql_edit_screen',
+                    url: $au('GL1010_gl_segments_define_sql_edit_link').getUrl() + '?recordIndex=' + recordIndex + '&segmentId=' + segmentId,
+                    title: '$[l:gl.sql]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            
+            function GL1010_back() {
+                window.location.href = $au('GL1010_gl_segments_select_back_link').getUrl();
+            }
+            
+            function GLD1010_beforeDsCreate() {
+                var setOfBooksName = $au('GL1010_query_ds').getAt(0).get('setOfBooksName');
+                if (Ext.isEmpty(setOfBooksName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:gld.sob_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function GLD1010_onDsAdd(ds, rd, idx) {
+                var setOfBooksId = $au('GL1010_query_ds').getAt(0).get('setOfBooksId');
+                rd.set('setOfBooksId', setOfBooksId);
+            }
+            
+            function GL1010_sobsDsQuery() {
+                $au('GL1010_sobsDs').query();
+            }
+            
+            function GLD1010_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('setOfBooksName' == name) {
+                    $au('GL1010_segment_ds').query();
+                }
+            }
+            
+            function GLD1010_onDsUpdate(dataSet, record, name, value, oldValue) {
+                if (name == 'segmentTypeName') {
+                    record.set('defaultText', '');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GL1010_sobsDs" fetchAll="true" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/gld/sob-segment/query-sob-list"/>
+            <a:dataSet id="GL1010_segmentField_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/GL_SEGMENT_FIELD"/>
+            <a:dataSet id="GL1010_segmentType_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/GL_SEGMENT_TYPE"/>
+            <a:dataSet id="GL1010_dr_cr_flag_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/DR_CR_FLAG"/>
+            <a:dataSet id="GL1010_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="setOfBooksId" defaultValue="$[/model/defaultSobOfMagOrg/records/record/@setOfBooksId]"/>
+                    <a:field name="setOfBooksName" defaultValue="$[/model/defaultSobOfMagOrg/records/record/@setOfBooksName]" displayField="setOfBooksName" options="GL1010_sobsDs" prompt="exp_expense_items.set_of_books_id" required="true" returnField="setOfBooksId" valueField="setOfBooksId"/>
+                    <a:field name="segmentFieldDesc" displayField="meaning" options="GL1010_segmentField_ds" placeHolder="gld_segments.segment_field_desc" returnField="segmentField" valueField="value"/>
+                    <a:field name="segmentField" prompt="gld_segments.segment_field" readOnly="true"/>
+                    <a:field name="segmentCode" prompt="gld_segments.segment_code"/>
+                    <a:field name="description" prompt="gld_segments.description"/>
+                    <a:field name="segmentType" prompt="gld_segments.segment_type"/>
+                    <a:field name="segmentTypeName" displayField="meaning" options="GL1010_segmentType_ds" placeHolder="gld_segments.segment_type_name" returnField="segmentType" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD1010_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GL1010_segment_ds" autoQuery="true" baseUrl="/gld/sob-segment" pageSize="15" queryDataSet="GL1010_query_ds" queryUrl="$[/request/@context_path]/gld/sob-segment/query" selectable="false">
+                <a:fields>
+                    <a:field name="setOfBooksId" datatype="java.lang.Integer" defaultValue="$[/parameter/@setOfBooksId]"/>
+                    <a:field name="segmentId"/>
+                    <a:field name="segmentField" prompt="gld_segments.segment_field"/>
+                    <a:field name="segmentFieldDesc" prompt="gld_segments.segment_field_desc" displayField="meaning" options="GL1010_segmentField_ds" required="true" returnField="segmentField" valueField="value"/>
+                    <a:field name="segmentCode" prompt="gld_segments.segment_code" required="true"/>
+                    <a:field name="description" prompt="gld_segments.description" required="true"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="segmentTypeName" prompt="gld_segments.segment_type_name" displayField="meaning" options="GL1010_segmentType_ds" required="true" returnField="segmentType" valueField="value"/>
+                    <a:field name="segmentType"/>
+                    <a:field name="enabledFlag" prompt="gld_segments.enabled_flag" checkedValue="Y" defaultValue="Y" required="true" uncheckedValue="N"/>
+                    <a:field name="sqlQuery"/>
+                    <a:field name="sqlValidate"/>
+                    <a:field name="defaultText" prompt="gld_segments.default_text"/>
+                    <a:field name="drCrFlagDesc" prompt="gld_segments.dr_cr_flag_desc" displayField="meaning" options="GL1010_dr_cr_flag_ds" returnField="drCrFlag" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="GLD1010_beforeDsCreate"/>
+                    <a:event name="add" handler="GLD1010_onDsAdd"/>
+                    <a:event name="update" handler="GLD1010_onDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="GL1010_segment_grid" type="add" width="80"/>
+                <a:gridButton bind="GL1010_segment_grid" type="save" width="80"/>
+                <!-- <a:toolbarButton click="GL1010_back" text="HAP_BACK" width="80"/> -->
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="GL1010_query_ds" resultTarget="GL1010_segment_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:comboBox name="setOfBooksName" bindTarget="GL1010_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="GL1010_sobsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="segmentCode" bindTarget="GL1010_query_ds"/>
+                    <a:textField name="description" bindTarget="GL1010_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4" labelWidth="100">
+                    <a:comboBox name="segmentTypeName" bindTarget="GL1010_query_ds"/>
+                    <a:comboBox name="segmentFieldDesc" bindTarget="GL1010_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="GL1010_segment_grid" bindTarget="GL1010_segment_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="segmentCode" align="center" editor="textfield_editor" width="80"/>
+                <a:column name="description" editor="textfield_editor" width="150"/>
+                <a:column name="segmentFieldDesc" align="center" editorFunction="GL1010_segFieldDescEditFun" width="80"/>
+                <a:column name="drCrFlagDesc" align="center" editor="combobox_editor" width="80"/>
+                <a:column name="segmentField" align="center" width="80"/>
+                <a:column name="segmentTypeName" align="center" editor="combobox_editor" width="80"/>
+                <a:column name="edit_function" align="center" renderer="GL1010_segTypeLinkRenderer" width="80"/>
+                <a:column name="defaultText" align="center" editor="textfield_editor" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="checkbox_editor" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="combobox_editor"/>
+                <a:textField id="textfield_editor"/>
+                <a:checkBox id="checkbox_editor"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

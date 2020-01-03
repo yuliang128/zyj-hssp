@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei
+    $Date: 2017-11-27 下午21:45:19  
+    $Revision: 1.0  
+    $Purpose: 付款批类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo></p:echo>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH1260_csh_payment_b_types_mag_org_select_link" url="$[/request/@context_path]/csh/CSH1230/csh_payment_rules_mag_org_select.screen"/>
+        <a:link id="CSH1260_csh_payment_b_types_tp_dtl_link" url="$[/request/@context_path]/csh/CSH1260/csh_payment_batch_tp_dtl.screen"/>
+        <a:link id="CSH1260_csh_payment_b_types_tp_rule_link" url="$[/request/@context_path]/csh/CSH1260/csh_payment_batch_tp_rule.screen"/>
+        <a:link id="CSH1260_csh_payment_b_types_tp_asgn_ae_link" url="$[/request/@context_path]/csh/CSH1260/csh_payment_batch_tp_asgn_ae.screen"/>
+        <script><![CDATA[
+            /* function CSH1260_closePaymentRulesCreateWindow() {
+             var url = $au('CSH1260_csh_payment_b_types_mag_org_select_link').getUrl();
+             window.location.href = url;
+             } */
+            
+            //渲染字段
+            var v_edit = 0;
+            
+            function CSH1260_ruleCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1260_textField_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            //加载
+            
+            function CSH1260_load(ds) {
+                var records = ds.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    var record = records[i];
+                    if (record.get('accountMethod') == 'BATCH_HEADER') {
+                        record.getField('accountFlag').setReadOnly(false);
+                    } else {
+                        record.getField('accountFlag').setReadOnly(true);
+                    }
+                }
+            }
+            
+            //新增事件
+            
+            function CSH1260_add(ds) {
+                var magOrgId = $au('CSH1260_csh_payment_b_types_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                    ds.getCurrentRecord().set('accountFlag', 'N');
+                    ds.getCurrentRecord().set('enabledFlag', 'Y');
+                }
+            }
+            
+            //修改触发事件
+            
+            function CSH1260_update(ds, record, name, value) {
+                if (name == 'accountMethod') {
+                    if (value == 'BATCH_HEADER') {
+                        record.set('accountFlag', 'Y');
+                        record.getField('accountFlag').setReadOnly(false);
+                    } else {
+                        record.set('accountFlag', 'N');
+                        record.getField('accountFlag').setReadOnly(true);
+                    }
+                }
+            }
+            
+            //提交
+            
+            function CSH1260_submit(ds) {
+                ds.query();
+            }
+            
+            //点击跳转页面 判断
+            
+            function CSH1260_columnDetail(value, record, name) {
+                var typeId = record.get('typeId');
+                var accountFlag = record.get('accountFlag');
+                if (record.isNew) {
+                    return '';
+                } else {
+                    if (name == 'tpDtl') {
+                        return '<a href="javascript:CSH1260_openTpDtlDetail(' + typeId + ')">' + '$[l:csh_payment_batch_types.tp_dtl]' + '</a>';
+                    } else if (name == 'tpRule' && accountFlag == 'Y') {
+                        return '<a href="javascript:CSH1260_openTpRuleDetail(' + typeId + ')">' + '$[l:csh_payment_batch_types.tp_rule]' + '</a>';
+                    } else if (name == 'tpAsgnAe') {
+                        return '<a href="javascript:CSH1260_openTpAsgnAeDetail(' + typeId + ')">' + '$[l:csh_payment_batch_types.tp_asgn_ae]' + '</a>';
+                    }
+                }
+            }
+            
+            //组批规则
+            
+            function CSH1260_openTpDtlDetail(id) {
+                var magOrgId = $au('CSH1260_csh_payment_b_types_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1260_csh_payment_b_types_tp_dtl_link').getUrl() + '?typeId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1260_csh_payment_b_types_tp_dtl_window',
+                    url: url,
+                    title: '$[l:csh_payment_batch_types.tp_dtl]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //合并规则
+            
+            function CSH1260_openTpRuleDetail(id) {
+                var magOrgId = $au('CSH1260_csh_payment_b_types_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1260_csh_payment_b_types_tp_rule_link').getUrl() + '?typeId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1260_csh_payment_b_types_tp_rule_window',
+                    url: url,
+                    title: '$[l:csh_payment_batch_types.tp_rule]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //分配付款主体
+            
+            function CSH1260_openTpAsgnAeDetail(id) {
+                var magOrgId = $au('CSH1260_csh_payment_b_types_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1260_csh_payment_b_types_tp_asgn_ae_link').getUrl() + '?typeId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1260_csh_payment_b_types_tp_asgn_ae_window',
+                    url: url,
+                    title: '$[l:csh_payment_batch_types.tp_asgn_ae]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //焦点触发
+            
+            function CSH1260_focus() {
+                $au('CSH1260_csh_payment_b_types_magOrgList_ds').query();
+            }
+            
+            //修改查询条件触发
+            
+            function CSH1260_QueryUpdate(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('CSH1260_csh_payment_b_types_result_ds').query();
+                }
+            }
+            
+            function CSH1260_checkBoxFun(record, name) {
+                var value = record.get('accountMethod');
+                if (name == 'accountFlag') {
+                    if (value == 'BATCH_HEADER') {
+                        return 'CSH1260_checkBox';
+                    } else {
+                        return '';
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="auditMethodDs" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAY_BAT_TYPE_AUDIT_METHOD"/>
+            <a:dataSet id="postingMethodDs" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAY_BAT_TYPE_ACC_METHOD"/>
+            <a:dataSet id="accountMethodDs" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAY_BAT_TYPE_ACC_METHOD"/>
+            <a:dataSet id="CSH1260_csh_payment_b_types_magOrgList_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/exp/employee-job/queryForManagingOrganization"/>
+            <a:dataSet id="CSH1260_csh_payment_b_types_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="typeCode"/>
+                    <a:field name="description"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/CSH1260DefaultMagList/records/record/@description]" displayField="description" options="CSH1260_csh_payment_b_types_magOrgList_ds" prompt="exp_mo_req_type.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId">
+                        <a:mapping>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                            <a:map from="description" to="magOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId" defaultValue="$[/model/CSH1260DefaultMagList/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1260_QueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1260_csh_payment_b_types_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-batch-type" queryDataSet="CSH1260_csh_payment_b_types_query_ds" queryUrl="$[/request/@context_path]/csh/payment-batch-type/query" selectable="false">
+                <a:fields>
+                    <a:field name="typeId"/>
+                    <a:field name="magOrgId" prompt="csh_payment_batch_type.mag_org_id" required="true"/>
+                    <a:field name="typeCode" prompt="csh_payment_batch_type.type_code" required="true"/>
+                    <a:field name="description" prompt="csh_payment_batch_type.description" required="true"/>
+                    <a:field name="auditMethodDisplay" prompt="csh_payment_batch_type.audit_method_display" displayfield="meaning" options="auditMethodDs" required="true" returnfield="auditMethod" valuefield="value"/>
+                    <a:field name="auditMethod"/>
+                    <a:field name="postingMethodDisplay" prompt="csh_payment_batch_type.posting_method_display" displayfield="meaning" options="postingMethodDs" required="true" returnfield="postingMethod" valuefield="value"/>
+                    <a:field name="postingMethod"/>
+                    <a:field name="accountMethodDisplay" prompt="csh_payment_batch_type.account_method_display" displayfield="meaning" options="accountMethodDs" required="true" returnfield="accountMethod" valuefield="value"/>
+                    <a:field name="accountMethod"/>
+                    <a:field name="accountFlag" prompt="csh_payment_batch_type.account_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="csh_payment_batch_type.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1260_submit"/>
+                    <a:event name="add" handler="CSH1260_add"/>
+                    <a:event name="load" handler="CSH1260_load"/>
+                    <a:event name="update" handler="CSH1260_update"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1260_csh_payment_b_types_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1260_csh_payment_b_types_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1260_csh_payment_b_types_query_ds" resultTarget="CSH1260_csh_payment_b_types_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="CSH1260_csh_payment_b_types_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1260_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="typeCode" bindTarget="CSH1260_csh_payment_b_types_query_ds" prompt="csh_payment_batch_type.type_code"/>
+                    <a:textField name="description" bindTarget="CSH1260_csh_payment_b_types_query_ds" prompt="csh_payment_batch_type.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1260_csh_payment_b_types_grid" bindTarget="CSH1260_csh_payment_b_types_result_ds" marginHeight="115" marginWidth="0" navBar="true">
+            <a:columns>
+                <a:column name="typeCode" align="center" editorFunction="CSH1260_ruleCodeEdit" width="110"/>
+                <a:column name="description" editor="CSH1260_textField" width="210"/>
+                <a:column name="auditMethodDisplay" align="center" editor="CSH1260_comboBox" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="postingMethodDisplay" align="center" editor="CSH1260_comboBox" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="accountMethodDisplay" align="center" editor="CSH1260_comboBox" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="accountFlag" align="center" editorFunction="CSH1260_checkBoxFun" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1260_checkBox" width="80"/>
+                <a:column name="tpDtl" align="center" renderer="CSH1260_columnDetail" width="80"/>
+                <a:column name="tpRule" align="center" renderer="CSH1260_columnDetail" width="80"/>
+                <a:column name="tpAsgnAe" align="center" renderer="CSH1260_columnDetail" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="CSH1260_textField"/>
+                <a:textField id="CSH1260_textField_upper" typeCase="upper"/>
+                <a:comboBox id="CSH1260_comboBox"/>
+                <a:checkBox id="CSH1260_checkBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

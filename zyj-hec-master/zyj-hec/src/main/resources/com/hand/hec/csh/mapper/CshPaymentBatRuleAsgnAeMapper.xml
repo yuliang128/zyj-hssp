@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentBatRuleAsgnAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentBatRuleAsgnAe">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="RULE_ID" property="ruleId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="quertAccCanAsgn" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        gae.acc_entity_id,
+        gae.acc_entity_code,
+        gae.acc_entity_name
+        FROM
+        gld_accounting_entity gae
+        LEFT OUTER JOIN gld_accounting_entity_tl gaet ON (
+        gae.acc_entity_id = gaet.acc_entity_id
+        AND gaet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        ( gae.end_date_active IS NULL OR gae.end_date_active &gt; CURRENT_DATE)
+        AND gae.start_date_active &lt; CURRENT_DATE
+        AND EXISTS (
+        SELECT
+        1
+        FROM
+        fnd_mag_org_ref_gld_sob fmg,
+        gld_acc_entity_ref_sob gar
+        WHERE
+        fmg.mag_org_id = CASE WHEN #{magOrgId} IS NULL THEN #{request.magOrgId,javaType=java.lang.Long,jdbcType=DECIMAL} ELSE #{magOrgId} END
+        AND fmg.set_of_books_id = gar.set_of_books_id
+        AND fmg.enabled_flag = 'Y'
+        AND gar.enabled_flag = 'Y'
+        AND gar.acc_entity_id = gae.acc_entity_id
+        )
+        AND NOT EXISTS ( SELECT 1 FROM csh_payment_bat_rule_asgn_ae cpae WHERE cpae.rule_id = #{ruleId} AND cpae.acc_entity_id = gae.acc_entity_id )
+        ORDER BY
+        gae.acc_entity_code
+
+    </select>
+</mapper>

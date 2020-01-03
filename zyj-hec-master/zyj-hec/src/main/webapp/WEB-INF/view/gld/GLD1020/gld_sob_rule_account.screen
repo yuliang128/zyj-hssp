@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong
+    $Date: 2017/04/06 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 会计规则明细-科目分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <!--<a:model-query defaultWhereClause="t1.ruleId=$[/parameter/@ruleId]" model="gld.GLD1020.gld_sob_rules_details" rootPath="rule_details_info"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="GLD1020_gld_sob_rule_account_batch_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rule_account_batch.screen"/>
+        <script><![CDATA[
+            function GLD1020_batchAssignAccountsFun() {
+                new $A.Window({
+                    url: $au('GLD1020_gld_sob_rule_account_batch_link').getUrl() + '?ruleId=' + '$[/parameter/@ruleId]' + '&setOfBookId=' + '$[/parameter/@setOfBookId]' + '&ruleGroupId=' + '$[/parameter/@ruleGroupId]',
+                    id: 'GLD1020_gld_sob_rule_accounts_batch_window',
+                    title: '$[l:gld_sob_rule.accounts_batch]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('GLD1020_rule_accounts_result_ds').query();
+                });
+            }
+            
+            function GLD1020_onRuleAccountsSubmitSuccessFun() {
+                $au('GLD1020_rule_accounts_result_ds').query();
+            }
+            
+            function GLD1020_backRuleAccountsFun() {
+                $au('GLD1020_gld_sob_rule_accounts_window').close();
+                $au('GLD1020_gld_sob_rules_result_ds').query();
+            }
+            
+            function GLD1020_ruleAcountsEditorFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'accountCode') {
+                        return 'GLD1020_rule_accounts_grid_lov';
+                    }
+                }
+                return '';
+            }
+            // modify lcy 2018/1/22 10:20:34 update事件实现query
+            
+            function rule_details_account_query_UpdateFun(dataSet, record, name, value, oldValue) {
+                if (name == 'accountCodeNameFrom' || name == 'accountCodeNameTo') {
+                    $au('GLD1020_rule_accounts_result_ds').query();
+                }
+            }
+            
+            function GLD1020_batchAssignAccountsQueryFun() {
+                $au('GLD1020_rule_accounts_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD1020_rule_details_account_query_ds">
+                <a:fields>
+
+                    <a:field name="accountCodeFrom"/>
+                    <a:field name="accountCodeNameFrom" lovCode="LOV_GLD_ACCOUNT_RANGE?setOfBookId=$[/parameter/@setOfBookId]"   title="gld_account_entry.account_code_from" >
+                        <a:mapping>
+                            <a:map from="accountCodeName" to="accountCodeNameFrom"/>
+                            <a:map from="accountCode" to="accountCodeFrom"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="accountCodeTo"/>
+                    <a:field name="accountCodeNameTo" lovCode="LOV_GLD_ACCOUNT_RANGE?setOfBookId=$[/parameter/@setOfBookId]"   title="gld_account_entry.account_code_to" >
+                        <a:mapping>
+                            <a:map from="accountCodeName" to="accountCodeNameTo"/>
+                            <a:map from="accountCode" to="accountCodeTo"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="accountCode" lovCode="LOV_GLD_ACCOUNT_RANGE?setOfBookId=$[/parameter/@setOfBookId]"   prompt="gld_accounts.account_code" title="gld_sob_rule_account.account_choose">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="accountName"  prompt="gld_accounts.account_description"/>
+                    <a:field name="accountId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="rule_details_account_query_UpdateFun"/>
+                </a:events>
+            </a:dataSet>
+
+            <a:dataSet id="GLD1020_rule_accounts_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/sob-rule-account" queryDataSet="GLD1020_rule_details_account_query_ds" queryUrl="$[/request/@context_path]/gld/sob-rule-account/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="ruleAccountId"/>
+<!--                    <a:field name="accountCode" lovGridHeight="320" lovHeight="450" lovService="gld.GLD1020.gld_account_assign_lov?setOfBookId=$[/parameter/@setOfBookId]&amp;ruleId=$[/parameter/@ruleId]&amp;rule_group_id=$[/parameter/@rule_group_id]" lovWidth="500" required="true" prompt="gld_accounts.account_code" title="GLD_SOB_SEGMENTS.SEGMENT_CHOICE">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>-->
+
+                    <a:field name="accountCode" lovCode="LOV_GLD_SOB_RULE_REF_ACCOUNT?ruleGroupId=$[/parameter/@ruleGroupId]"  required="true" prompt="gld_accounts.account_code" title="gld_sob_rule_account.account_choose">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+
+
+                    <a:field name="accountName" required="true" prompt="gld_accounts.account_description"/>
+                    <a:field name="accountId"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD1020_onRuleAccountsSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD1020_rule_details_info_fs" column="2" title="gld.rule_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="GLD1020_batchAssignAccountsQueryFun" text="hap_query" width="80"/>
+                    <a:gridButton bind="GLD1020_rule_accounts_grid" type="add" width="80"/>
+                    <a:gridButton bind="GLD1020_rule_accounts_grid" type="save" width="80"/>
+                    <a:gridButton bind="GLD1020_rule_accounts_grid" type="delete" width="80"/>
+                    <a:gridButton click="GLD1020_batchAssignAccountsFun" text="hec_batch_assign" width="80"/>
+                    <a:gridButton click="GLD1020_backRuleAccountsFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="GLD1020_gld_sob_rules_result_ds"  readOnly="true"  prompt="gld_sob_rule_group.rule_code"/>
+                <a:textField name="ruleName" bindTarget="GLD1020_gld_sob_rules_result_ds" readOnly="true" prompt="gld_sob_rule_group.rule_name"/>
+                <!--  modify lcy 2018/1/22 10:20:34 新增两个lov查询字段-->
+                <a:lov name="accountCodeNameFrom" bindTarget="GLD1020_rule_details_account_query_ds" prompt="gld_account_set.account_code_from" resultTarget="GLD1020_rule_accounts_result_ds"/>
+                <a:lov name="accountCodeNameTo" bindTarget="GLD1020_rule_details_account_query_ds" prompt="gld_account_set.account_code_to" resultTarget="GLD1020_rule_accounts_result_ds"/>
+                <a:lov name="accountCode" bindTarget="GLD1020_rule_details_account_query_ds" prompt="gld_accounts.account_code" resultTarget="GLD1020_rule_accounts_result_ds"/>
+            </a:form>
+            <a:grid id="GLD1020_rule_accounts_grid" bindTarget="GLD1020_rule_accounts_result_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" editor="GLD1020_rule_accounts_grid_lov" editorFunction="GLD1020_ruleAcountsEditorFun" width="80"/>
+                    <a:column name="accountName" prompt="gld_accounts.account_description" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="GLD1020_rule_accounts_grid_cx" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD1020_rule_accounts_grid_lov"/>
+                    <a:checkBox id="GLD1020_rule_accounts_grid_cx"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-15 16:58:28
+    $Revision: 1.0  
+    $Purpose: 工作中心定义分配业务范围-业务范围-明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function SSC1010_docTypeBack(){
+                $au('SSC1010_work_center_doc_type_win').close();
+            }
+            function SSC1010_gridCellClick(grid,row,name,record){
+                if(name=='docTypeName'){
+                    var docCategory = record.get('docCategory');
+                    if(Ext.isEmpty(docCategory)){
+                        Aurora.showMessage('$[l:prompt]', '$[l:ssc_work_center.choose_doc_category]');
+                        return;
+                    }
+                    record.getMeta().getField('docTypeName').setLovPara('docCategory',docCategory);
+                    record.getMeta().getField('docTypeName').setLovPara('magOrgId','$[/parameter/@magOrgId]');
+                    record.getMeta().getField('docTypeName').setLovPara('scopeId','$[/parameter/@scopeId]');
+                }
+            }
+            function SSC1010_docUpdate(ds,record,name,value){
+                if(name=='docCategory'){
+                    record.set('docTypeId','');
+                    record.set('docTypeName','');
+                }
+            }
+            function SSC1010_docSubmitSuccess(ds){
+                ds.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1010_doc_category_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/wbc_doc_category/"/>
+            <a:dataSet id="SSC1010_work_center_doc_type_ds" autoPageSize="true" autoQuery="true" baseUrl="/ssc/work-center-doc-type" pageSize="50" queryUrl="$[/request/@context_path]/ssc/work-center-doc-type/query?scopeId=$[/parameter/@scopeId]&amp;magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="recordId"/>
+                    <a:field name="scopeId" defaultValue="$[/parameter/@scopeId]"/>
+                    <a:field name="docCategory" />
+                    <a:field name="docCategoryName" displayField="meaning" options="SSC1010_doc_category_ds" prompt="ssc_work_center.doc_category" required="true" returnField="docCategory" valueField="value"/>
+                    <a:field name="docTypeId"/>
+                    <a:field name="docTypeName" lovCode="exp_doc_type_mag_org_lov" prompt="ssc_work_center.doc_type" title="ssc_work_center.doc_type">
+                        <a:mapping>
+                            <a:map from="name" to="docTypeName"/>
+                            <a:map from="docTypeId" to="docTypeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_work_center.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="SSC1010_docUpdate"/>
+                    <a:event name="submitsuccess" handler="SSC1010_docSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="SSC1010_companies_form" column="2" title="ssc_work_center-asgn_bus_scope-detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="SSC1010_doc_type_grid" type="add" width="80"/>
+                    <a:gridButton bind="SSC1010_doc_type_grid" type="save" width="80"/>
+                    <a:gridButton bind="SSC1010_doc_type_grid" type="clear" width="80"/>
+                    <a:toolbarButton click="SSC1010_docTypeBack" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="busiScopeCodeName" bindTarget="SSC1010_work_ceneter_busi_scope_ds" prompt="ssc_work_center.busi_scope" readOnly="true" width="120"/>
+                <a:textField name="magOrgCodeName" bindTarget="SSC1010_work_ceneter_busi_scope_ds" prompt="ssc_work_center.mag_org_name" readOnly="true" width="200"/>
+            </a:form>
+            <a:grid id="SSC1010_doc_type_grid" bindTarget="SSC1010_work_center_doc_type_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="docCategoryName" align="center" editor="SSC1010_doc_type_comboBox" width="160"/>
+                    <a:column name="docTypeName" align="center" editor="SSC1010_doc_type_lov" width="225"/>
+                    <a:column name="enabledFlag" align="center" editor="SSC1010_doc_type_checkBox"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="SSC1010_doc_type_lov"/>
+                    <a:checkBox id="SSC1010_doc_type_checkBox"/>
+                    <a:comboBox id="SSC1010_doc_type_comboBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="SSC1010_gridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script">
+    <a:init-procedure>
+        <a:model-query model="expm.EXP5110.exp_report_more_tax_header_query" rootPath="EXP5110_moreTaxInvoice_list"/>
+        <a:model-query defaultWhereClause="withholding_flag=&apos;N&apos;" model="hec_util.fnd_tax_type_code_vl_lov" rootPath="EXP5110_moreTaxType_list"/>
+        <a:model-query model="expm.EXP5110.vat_invoices_tax_lines" rootPath="EXP5110_moreTaxLine_list"/>
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function EXP5110_moreTaxSuccessFunc(dataSet) {
+                dataSet.query();
+            }
+            
+            function EXP5110_moreTaxBackFunc() {
+                $au(this.__host.id).close();
+            }
+            
+            function EXP5110_moreTaxEditorFunc(record, name) {
+                var invoiceSource = '${/model/EXP5110_moreTaxInvoice_list/record/@invoice_source}';
+                if (invoiceSource == 'MANUAL' || invoiceSource == 'TAX') {
+                    return 'EXP5110_moreTaxNumber';
+                } else {
+                    return '';
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_moreTaxType_ds">
+                <a:datas dataSource="/model/EXP5110_moreTaxType_list"/>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_moreTaxLine_ds">
+                <a:datas dataSource="/model/EXP5110_moreTaxLine_list"/>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_moreTaxQuery_ds">
+                <a:datas dataSource="/model/EXP5110_moreTaxInvoice_list"/>
+                <a:fields>
+                    <a:field name="invoice_code" readOnly="true"/>
+                    <a:field name="invoice_number" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_moreTaxResult_ds" autoQuery="true" model="db.vat_invoice_rel_tax_lns_pkg.vat_invoice_rel_tax_lns" queryUrl="${/request/@context_path}/autocrud/db.vat_invoice_rel_tax_lns_pkg.vat_invoice_rel_tax_lns/query?relation_id=${/parameter/@relation_id}" selectable="true">
+                <a:fields>
+                    <a:field name="relation_id" defaultValue="${/parameter/@relation_id}"/>
+                    <a:field name="invoice_line_id" defaultValue="${/parameter/@invoice_line_id}"/>
+                    <a:field name="invoice_id" defaultValue="${/parameter/@invoice_id}"/>
+                    <a:placeHolder id="EXP5110_moreTaxFields"/>
+                    <a:field name="tax_type_id"/>
+                    <a:field name="tax_rate" prompt="VAT_INVOICE_LINES.TAX_RATE"/>
+                    <a:field name="tax_amount" prompt="VAT_INVOICE_LINES.TAX_AMOUNT"/>
+                    <a:field name="manual_splitted_flag" defaultValue="Y"/>
+                    <a:field name="splitted_tax_amount" prompt="SPLIT_TAX" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP5110_moreTaxSuccessFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP5110_moreTax_form" column="4" labelWidth="120" title="ACP_INVOICE_HEADERS.INVOICE_HEADER_NEWS">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP5110_moreTax_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP5110_moreTax_grid" type="save" width="80"/>
+                    <a:gridButton bind="EXP5110_moreTax_grid" type="delete" width="80"/>
+                    <a:button click="EXP5110_moreTaxBackFunc" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:placeHolder id="EXP5110_moreTaxForm"/>
+            </a:form>
+            <a:grid id="EXP5110_moreTax_grid" bindTarget="EXP5110_moreTaxResult_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="tax_type_name" align="center" editor="EXP5110_moreTaxComboBox"/>
+                    <a:column name="tax_rate" align="right" renderer="Aurora.formatNumber"/>
+                    <a:column name="tax_amount" align="right" editorFunction="EXP5110_moreTaxEditorFunc" renderer="Aurora.formatMoney"/>
+                    <a:column name="splitted_tax_amount" align="right" editor="EXP5110_moreTaxNumber" renderer="Aurora.formatMoney"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="EXP5110_moreTaxComboBox"/>
+                    <a:numberField id="EXP5110_moreTaxNumber" allowDecimals="true"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_moreTaxForm">
+            <p:switch test="/model/EXP5110_moreTaxInvoice_list/record/@invoice_source">
+                <p:case value="TAX">
+                    <c:process-config>
+                        <a:textField name="invoice_code" bindTarget="EXP5110_moreTaxQuery_ds" prompt="EXP_REPORT_LINES.EXPENSE_ITEM_ID"/>
+                        <a:numberField name="invoice_number" bindTarget="EXP5110_moreTaxQuery_ds" prompt="BUSINESS_AMOUNT" renderer="Aurora.formatMoney"/>
+                    </c:process-config>
+                </p:case>
+                <p:case>
+                    <c:process-config>
+                        <a:textField name="invoice_code" bindTarget="EXP5110_moreTaxQuery_ds" prompt="VAT_INVOICES.INVOICE_CODE"/>
+                        <a:textField name="invoice_number" bindTarget="EXP5110_moreTaxQuery_ds" prompt="VAT_INVOICES.INVOICE_NUMBER"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_moreTaxFields">
+            <p:switch test="/model/EXP5110_moreTaxInvoice_list/record/@invoice_source">
+                <p:case value="MANUAL">
+                    <c:process-config>
+                        <a:field name="tax_type_name" displayField="tax_type_name" options="EXP5110_moreTaxType_ds" prompt="VAT_INVOICE_LINES.TAX_TYPE_NAME" required="true">
+                            <a:mapping>
+                                <a:map from="tax_type_id" to="tax_type_id"/>
+                                <a:map from="tax_type_rate" to="tax_rate"/>
+                            </a:mapping>
+                        </a:field>
+                    </c:process-config>
+                </p:case>
+                <p:case value="TAX">
+                    <c:process-config>
+                        <a:field name="tax_type_name" displayField="tax_type_name" options="EXP5110_moreTaxType_ds" prompt="VAT_INVOICE_LINES.TAX_TYPE_NAME" required="true">
+                            <a:mapping>
+                                <a:map from="tax_type_id" to="tax_type_id"/>
+                                <a:map from="tax_type_rate" to="tax_rate"/>
+                            </a:mapping>
+                        </a:field>
+                    </c:process-config>
+                </p:case>
+                <p:case>
+                    <c:process-config>
+                        <a:field name="tax_type_name" displayField="tax_type_name" options="EXP5110_moreTaxLine_ds" prompt="VAT_INVOICE_LINES.TAX_TYPE_NAME" required="true">
+                            <a:mapping>
+                                <a:map from="tax_type_id" to="tax_type_id"/>
+                                <a:map from="tax_rate" to="tax_rate"/>
+                                <a:map from="tax_amount" to="tax_amount"/>
+                                <a:map from="tax_amount" to="splitted_tax_amount"/>
+                            </a:mapping>
+                        </a:field>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

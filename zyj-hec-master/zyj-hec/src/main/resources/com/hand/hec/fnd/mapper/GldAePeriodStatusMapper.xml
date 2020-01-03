@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldAePeriodStatusMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldAePeriodStatus">
+        <result column="PERIOD_STATUS_ID" property="periodStatusId" jdbcType="BIGINT"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="BIGINT"/>
+        <result column="PERIOD_SET_CODE" property="periodSetCode" jdbcType="VARCHAR"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="INTERNAL_PERIOD_NUM" property="internalPeriodNum" jdbcType="BIGINT"/>
+        <result column="INTERNAL_PERIOD_NUM_FOR_CLOSE" property="internalPeriodNumForClose" jdbcType="BIGINT"/>
+        <result column="PERIOD_STATUS_CODE" property="periodStatusCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="accEntityListMap" type="com.hand.hec.fnd.dto.GldAePeriodStatus">
+        <result column="value" property="accEntityId" jdbcType="BIGINT"/>
+        <result column="code" property="code" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="valueName" property="valueName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="periodListMap" type="com.hand.hec.fnd.dto.GldAePeriodStatus">
+        <result column="periodYear" property="periodYear" jdbcType="BIGINT"/>
+        <result column="periodNum" property="periodNum" jdbcType="BIGINT"/>
+        <result column="periodName" property="periodName" jdbcType="VARCHAR"/>
+        <result column="adjustmentFlag" property="adjustmentFlag" jdbcType="VARCHAR"/>
+        <result column="internalPeriodNum" property="internalPeriodNum" jdbcType="BIGINT"/>
+        <result column="startDate" property="startDate" jdbcType="VARCHAR"/>
+        <result column="endDate" property="endDate" jdbcType="VARCHAR"/>
+        <result column="quarterNum" property="quarterNum" jdbcType="BIGINT"/>
+        <result column="periodName" property="periodName" jdbcType="VARCHAR"/>
+        <result column="periodStatusCode" property="periodStatusCode" jdbcType="VARCHAR"/>
+        <result column="periodStatusId" property="periodStatusId" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <select id="accEntityListQuery" resultMap="accEntityListMap">
+        SELECT
+        x.*
+        FROM
+        (
+        SELECT
+        gae.acc_entity_id value,
+        gae.acc_entity_code code,
+        gae.acc_entity_name name,
+        concat_ws( '-', gae.acc_entity_code, gae.acc_entity_name, NULL ) AS valueName
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_set_of_book gsob ON gsob.SET_OF_BOOKS_ID = gae.DEFAULT_SET_OF_BOOKS_ID
+        WHERE
+        gae.start_date_active &lt;= sysdate() AND ( ( gae.end_date_active >= sysdate()
+        )
+        OR gae.end_date_active IS NULL
+        )
+        AND gae.company_type &lt;&gt; 2
+        ) x
+        ORDER BY
+        x.CODE
+    </select>
+
+    <select id="unOpenedPeriodQuery" resultMap="periodListMap">
+        SELECT
+            gp.period_year periodYear,
+            gp.period_num periodNum,
+            gp.period_name periodName,
+            gp.adjustment_flag adjustmentFlag,
+            gp.internal_period_num internalPeriodNum,
+            date_format(gp.start_date, '%Y-%m-%d') startDate,
+            date_format(gp.end_date, '%Y-%m-%d') endDate,
+            gp.quarter_num quarterNum
+        FROM
+            gld_period gp,
+            gld_period_set gps
+        WHERE
+            gps.period_set_id     = #{periodSetId} AND
+            gps.period_set_id     = gp.period_set_id AND
+            gp.internal_period_num > ifnull(
+            (SELECT
+                MAX(gaps.internal_period_num)
+            FROM
+                gld_ae_period_status gaps
+            WHERE
+                gaps.acc_entity_id   = #{accEntityId} AND
+                gaps.period_set_code = gps.period_set_code
+            GROUP BY
+                gaps.period_set_code
+            ), 0)
+        ORDER BY
+            periodYear,
+            periodNum
+    </select>
+
+    <select id="OpenedPeriodQuery" resultMap="periodListMap">
+        SELECT
+            gp.period_year periodYear,
+            gp.period_num periodNum,
+            gp.period_name periodName,
+            gp.adjustment_flag adjustmentFlag,
+            gp.internal_period_num internalPeriodNum,
+            date_format(gp.start_date, '%Y-%m-%d') startDate,
+            date_format(gp.end_date, '%Y-%m-%d') endDate,
+            gp.quarter_num quarterNum,
+            gaps.period_status_code periodStatusCode,
+            gaps.period_status_Id periodStatusId
+        FROM
+            gld_ae_period_status gaps,
+            gld_period gp,
+            gld_period_set gps
+        WHERE
+            gaps.acc_entity_id     = #{accEntityId} AND
+            gaps.period_set_code   = gps.period_set_code AND
+            gps.period_set_id      = #{periodSetId} AND
+            gps.period_set_id      = gp.period_set_id AND
+            gp.internal_period_num = gaps.internal_period_num
+        ORDER BY
+            periodStatusCode,
+            periodYear,
+            periodNum
+    </select>
+
+    <select id="checkNextPeriod" resultType="Integer">
+        select count(*)
+          from gld_ae_period_status gaps
+         where gaps.acc_entity_id = #{accEntityId}
+           and gaps.period_set_code = #{periodSetCode}
+           and gaps.period_status_code = 'O'
+           and gaps.internal_period_num = #{internalPeriodNum}
+    </select>
+    <select id="checkLastPeriod" resultType="Integer">
+        select count(*)
+          from gld_ae_period_status gaps
+         where gaps.acc_entity_id = #{accEntityId}
+           and gaps.period_set_code = #{periodSetCode}
+        <if test="periodStatusCode!=null">
+            and period_status_code = #{periodStatusCode}
+        </if>
+           and gaps.internal_period_num = #{internalPeriodNum}
+    </select>
+
+    <select id="checkIsFirstPeriod" resultType="Integer">
+        select count(*)
+        from gld_ae_period_status gaps
+        where gaps.acc_entity_id = #{accEntityId}
+        and gaps.period_set_code = #{periodSetCode}
+        and gaps.internal_period_num &lt; #{internalPeriodNum}
+    </select>
+
+    <select id="selectLastPeriod" resultType="Long">
+        select max(internal_period_num)
+        from gld_period gp
+        where gp.period_set_id = #{periodSetId}
+        and gp.internal_period_num &lt; #{internalPeriodNum}
+    </select>
+
+    <select id="selectNextPeriod" resultType="Long">
+        select min(internal_period_num)
+              from gld_ae_period_open_v
+             where acc_entity_id = #{accEntityId}
+               and period_set_code = #{periodSetCode}
+               and internal_period_num > #{internalPeriodNum}
+    </select>
+
+    <select id="checkPeriodOpen" resultType="java.lang.String">
+        SELECT
+	        t.period_status_code
+        FROM
+            gld_ae_period_open_v t
+        WHERE
+            t.acc_entity_id = #{accEntityId}
+            AND t.period_name = #{periodName}
+            AND t.adjustment_flag = 'N'
+            AND t.period_set_code = ( SELECT sob.period_set_code
+                                                                FROM gld_set_of_book sob,gld_acc_entity_ref_sob accSob, gld_accounting_entity ae
+                                                                WHERE ae.acc_entity_id = #{accEntityId}
+                                                                AND ae.acc_entity_id = accSob.acc_entity_id
+                                                                AND accSob.DEFAULT_FLAG = 'Y'
+                                                                AND sob.set_of_books_id = accSob.SET_OF_BOOKS_ID
+                                                                )
+        LIMIT 0,1
+    </select>
+    <select id="queryGldAePeriodStatus" resultType="com.hand.hec.fnd.dto.GldAePeriodStatus">
+        select
+               gaps.PERIOD_STATUS_ID,
+               gaps.ACC_ENTITY_ID,
+               gaps.PERIOD_SET_CODE,
+               gaps.PERIOD_NAME,
+               gaps.INTERNAL_PERIOD_NUM,
+               gaps.PERIOD_STATUS_CODE
+        from gld_period gp
+           JOIN gld_period_set gps ON gp.period_set_id = gps.period_set_id
+           JOIN gld_ae_period_status gaps  ON gps.period_set_code = gaps.period_set_code
+                                          and gp.internal_period_num = gaps.internal_period_num
+
+        <where>
+
+            <if test="accEntityId != null">
+              and  gaps.acc_entity_id = #{accEntityId}
+            </if>
+
+            <if test="periodSetId != null">
+              and gps.period_set_id = #{periodSetId}
+            </if>
+
+            <if test="periodSetCode != null">
+              and gaps.period_set_code = #{periodSetCode}
+            </if>
+
+            <if test="periodName != null">
+              and gaps.period_name = #{periodName}
+            </if>
+
+            <if test="internalPeriodNum != null">
+              and gaps.internal_period_num = #{internalPeriodNum}
+            </if>
+
+            <if test="internalPeriodNumForClose != null">
+              and gaps.internal_period_num  &lt;  #{internalPeriodNumForClose}
+            </if>
+
+            <if test="periodStatusCode != null">
+                and gaps.period_status_code = #{periodStatusCode}
+            </if>
+
+        </where>
+    </select>
+
+
+    <select id="queryNextInternalPeriodNum" resultType="Long">
+        SELECT
+        max( t.internal_period_num ) internal_period_num
+        FROM
+        (
+        SELECT
+        gp.internal_period_num,
+        gaps.acc_entity_id,
+        gp.period_set_id,
+        gaps.period_set_code
+        FROM
+        gld_period gp
+        JOIN gld_period_set gps ON gps.PERIOD_SET_ID = gp.PERIOD_SET_ID
+        JOIN gld_ae_period_status gaps ON gaps.period_set_code = gps.period_set_code
+        AND gp.internal_period_num = gaps.internal_period_num
+
+        union
+
+        select
+        gp.internal_period_num
+        FROM
+        gld_period gp
+        )   t
+
+        <where>
+            <if test="accEntityId != null">
+                and gaps.acc_entity_id = #{accEntityId}
+            </if>
+
+            <if test="periodSetId != null">
+                and gp.period_set_id = #{periodSetId}
+            </if>
+
+            <if test="internalPeriodNum != null">
+                and gp.internal_period_num &gt; #{internalPeriodNum}
+            </if>
+
+        </where>
+
+    </select>
+    
+    <select id="getMaxDateOfPeriod" parameterType="java.lang.Long" resultType="date">
+        SELECT
+            max( gaov.end_date )
+        FROM
+            gld_ae_period_open_v gaov,
+            gld_set_of_book gsob,
+            gld_accounting_entity gae,
+            gld_acc_entity_ref_sob accsob
+        WHERE
+            gae.acc_entity_id = #{accEntityId}
+            AND gae.ACC_ENTITY_ID = accsob.ACC_ENTITY_ID
+            AND accsob.SET_OF_BOOKS_ID = gsob.SET_OF_BOOKS_ID
+            AND accsob.DEFAULT_FLAG = 'Y'
+            AND gsob.period_set_code = gaov.period_set_code
+            AND gaov.acc_entity_id = gae.acc_entity_id
+            AND gaov.adjustment_flag = 'N'
+            AND gaov.period_status_code = 'O'
+    </select>
+
+</mapper>

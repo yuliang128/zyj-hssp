@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscWorkflowActionMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscWorkflowAction">
+        <result column="ACTION_ID" property="actionId" jdbcType="DECIMAL" />
+        <result column="WORKFLOW_ID" property="workflowId" jdbcType="DECIMAL" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="ACTION_TYPE" property="actionType" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="getActionId" resultType="java.lang.Long">
+        select a.action_id
+          from ssc_workflow_node_action na
+          left join ssc_workflow_action      a on na.action_id = a.action_id
+          left join ssc_task_dispatch_record  r on r.node_id = na.node_id
+         where r.dispatch_record_id = #{dispatchRecordId}
+           and a.action_type = #{actionType}
+    </select>
+    <select id="getActionByDispatchRecordId" resultMap="BaseResultMap">
+        select
+        	*
+        from
+          (
+          select
+            a.action_id,
+            wat.DESCRIPTION,
+            a.action_type,
+            case
+              when a.action_type = 'APPROVE' then 1
+              when a.action_type = 'REJECT' then 2
+              when a.action_type = 'HOLD' then 3
+              when a.action_type = 'APPLY_RETURN' then 3
+            end orderField
+          from
+            ssc_task_dispatch_record r left join
+            ssc_workflow_node_action na on r.node_id = na.node_id left join
+            ssc_workflow_action a on na.action_id = a.action_id left join
+            ssc_workflow_action_tl wat on a.ACTION_ID = wat.ACTION_ID and wat.LANG = #{request.local,jdbcType = DECIMAL}
+          where a.enabled_flag = 'Y'
+            and r.dispatch_record_id = #{dispatchRecordId}) v
+        order by
+          v.orderField
+    </select>
+</mapper>

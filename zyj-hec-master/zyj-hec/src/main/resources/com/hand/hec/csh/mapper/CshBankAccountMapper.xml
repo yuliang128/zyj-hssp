@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshBankAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshBankAccount">
+        <result column="BANK_ACCOUNT_ID" property="bankAccountId" jdbcType="DECIMAL"/>
+        <result column="BANK_BRANCH_ID" property="bankBranchId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_TYPE" property="accountType" jdbcType="VARCHAR"/>
+        <result column="BANK_ACCOUNT_NAME" property="bankAccountName" jdbcType="VARCHAR"/>
+        <result column="BANK_ACCOUNT_NUM" property="bankAccountNum" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="COUNTRY_CODE" property="countryCode" jdbcType="VARCHAR"/>
+        <result column="TIMEZONE_ID" property="timezoneId" jdbcType="DECIMAL"/>
+        <result column="RESPONSIBILITY_CENTER_ID" property="responsibilityCenterId" jdbcType="DECIMAL"/>
+        <result column="CUSTOMER_ID" property="customerId" jdbcType="DECIMAL"/>
+        <result column="VENDER_ID" property="venderId" jdbcType="DECIMAL"/>
+        <result column="RECEIPT_FLAG" property="receiptFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE_TYPE" property="exchangeRateType" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE_TYPE_NAME" property="exchangeRateTypeName" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_METHOD_CODE" property="exchangeMethodCode" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE" property="exchangeRate" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <sql id="pExchangeRateType">
+      (select
+          t1.parameter_value
+       from
+          sys_parameter_value t1 LEFT JOIN sys_parameter t2 ON t1.parameter_id = t2.parameter_id
+       where t2.parameter_code = 'DEFAULT_EXCHANGE_RATE_TYPE'
+        and t2.start_date_active &lt;= CURRENT_TIMESTAMP
+        and (t2.end_date_active is NULL or t2.end_date_active &gt;= CURRENT_TIMESTAMP)
+        and (t1.level_id = 105 and t1.level_value = #{accEntityId})
+        and t1.parameter_value is not null
+        and t2.acc_entity_enabled_flag is not null
+        and t2.acc_entity_enabled_flag = 'Y')
+    </sql>
+
+    <sql id="functionalCurrencyCode">
+      (SELECT
+            case WHEN ae.functional_currency_code is null then sob.functional_currency_code else ae.functional_currency_code end
+       FROM
+            gld_accounting_entity ae,
+            gld_set_of_book sob,
+            gld_acc_entity_ref_sob accSob
+       WHERE
+            ae.acc_entity_id = accSob.acc_entity_id
+            AND accSob.DEFAULT_FLAG = 'Y'
+            AND accSob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+            AND ae.acc_entity_id = #{accEntityId})
+    </sql>
+
+    <select id="queryBankAccounts" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        cbav.bank_account_id,
+        cabt.bank_account_name,
+        cbav.bank_account_num,
+        cbav.currency_code,
+        CASE WHEN<include refid="functionalCurrencyCode"/>!= cbav.currency_code
+        THEN
+        <include refid="pExchangeRateType"/>
+        ELSE ''
+        END AS exchange_rate_type,
+        CASE WHEN<include refid="functionalCurrencyCode"/>!= cbav.currency_code
+        THEN (SELECT cabt.DESCRIPTION FROM gld_exchangerate_type tv LEFT OUTER JOIN gld_exchangerate_type_tl cabt
+        ON (tv.TYPE_ID = cabt.TYPE_ID AND cabt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE tv.type_code =<include refid="pExchangeRateType"/>)
+        ELSE ''
+        END AS exchange_rate_type_name,
+        CASE WHEN<include refid="functionalCurrencyCode"/>!= cbav.currency_code
+        THEN (SELECT t.method_code FROM gld_exchangerate_type t WHERE t.type_code =<include refid="pExchangeRateType"/>)
+        ELSE ''
+        END AS exchange_method_code,
+        '' AS exchange_rate /*考虑到复用性,在service中注入*/
+        FROM
+        csh_bank_account cbav LEFT OUTER JOIN csh_bank_account_tl cabt ON (
+        cbav.BANK_ACCOUNT_ID = cabt.BANK_ACCOUNT_ID AND cabt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),
+        csh_bank_branch cbb
+        WHERE
+        cbav.bank_branch_id = cbb.bank_branch_id
+        AND cbb.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        AND cbav.enabled_flag = 'Y'
+        AND cbb.enabled_flag = 'Y'
+        AND EXISTS (
+        SELECT
+        'x'
+        FROM
+        csh_bank_account_privilege cbap,
+        csh_payment_group cpg,
+        csh_payment_gps_ref_emp cpre
+        WHERE
+        cbap.bank_account_id = cbav.bank_account_id
+        AND cbap.start_date_active &lt;= CURRENT_TIMESTAMP
+        AND (cbap.end_date_active IS NULL OR cbap.end_date_active &gt;= CURRENT_TIMESTAMP)
+        AND cbap.group_id = cpg.group_id
+        AND cpg.enabled_flag = 'Y'
+        AND cpg.group_id = cpre.group_id
+        AND cpre.employee_id = #{request.employeeId,javaType=java.lang.Long,jdbcType=DECIMAL}
+        AND cpre.enabled_flag = 'Y'
+        )
+        ) v
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="bankAccountName != null">
+                AND v.bank_account_name LIKE CONCAT('%',
+                #{bankAccountName, jdbcType=VARCHAR, javaType=java.lang.String},'%')
+            </if>
+            <if test="bankAccountNum != null">
+                AND v.bank_account_num LIKE CONCAT('%', #{bankAccountNum, jdbcType=VARCHAR, javaType=java.lang.String},
+                '%')
+            </if>
+            <if test="currencyCode != null">
+                AND v.currency_code LIKE CONCAT('%', #{currencyCode, jdbcType=VARCHAR, javaType=java.lang.String}, '%')
+            </if>
+        </trim>
+        ORDER BY
+        v.bank_account_num
+    </select>
+    <!-- 获取银行账户的科目及责任中心 -->
+    <select id="queryAccountAndResp" resultType="java.util.Map">
+        select
+        cba.responsibility_center_id AS respCenterId,
+        cbaa.cash_account_id AS accountId
+        from
+        csh_bank_account cba,
+        csh_bank_account_asgn_acc cbaa
+        where
+        cba.bank_account_id = #{bankAccountId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and cba.bank_account_id = cbaa.bank_account_id
+        and cbaa.set_of_books_id = #{setOfBooksId, javaType=java.lang.Long, jdbcType=DECIMAL}
+    </select>
+    <!-- Modify Tagin/2019.04.08 根据银行账户ID获取账号银行信息 -->
+    <select id="queryAccountAndBank" resultType="java.util.Map">
+        select
+        cb.bank_code as bankCode,
+        cbt.bank_name as bankName,
+        cba.bank_account_num as bankAccountNum,
+        cbat.bank_account_name as bankAccountName
+        from
+        csh_bank_account cba
+        left outer join csh_bank_account_tl cbat on
+        cba.bank_account_id = cbat.bank_account_id
+        and cbat.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        csh_bank_branch cbb,
+        csh_bank cb
+        left outer join csh_bank_tl cbt on
+        cb.bank_id = cbt.bank_id
+        and cbt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        where
+        cba.bank_account_id = #{bankAccountId, javaType=java.lang.Long, jdbcType=DECIMAL}
+        and cba.bank_branch_id = cbb.bank_branch_id
+        and cbb.bank_id = cb.bank_id
+    </select>
+
+    <!--获取核算主体下银行信息-->
+    <select id="queryBankAccountByAe" resultType="java.util.Map">
+         select cbv.bank_id as bankId,
+                cbb.bank_branch_id as bankBranchId,
+                cbav.bank_account_id as bankAccountId,
+                cbv.bank_code as bankCode,
+                cbv.bank_name as bankName,
+                cc.bank_location_code as bankLocationCode,
+                cc.bank_location_name as bankLocationName,
+                cc.province_code as provinceCode,
+                cc.province_name as provinceName,
+                cc.city_code as cityCode,
+                cc.city_name as cityName,
+                cbav.bank_account_name as bankAccountName,
+                cbav.bank_account_num as bankAccountNum,
+                cbav.currency_code as currencyCode,
+                null exchangeRateType,
+                null exchangeRateTypeName,
+                null exchangeMethodCode,
+                null as exchangeRate
+         from csh_bank_branch    cbb,
+              (select cba.bank_account_id,cba.bank_account_num,cbat.bank_account_name,cba.currency_code,cba.enabled_flag,cba.bank_branch_id from csh_bank_account cba left join csh_bank_account_tl cbat on cba.bank_account_id = cbat.bank_account_id and cbat.lang = #{request.locale}) cbav,
+              (select cb.bank_id,cb.bank_code,cbt.bank_name,cb.enabled_flag from csh_bank cb left join csh_bank_tl cbt on cb.bank_id = cbt.bank_id and cbt.lang = #{request.locale})  cbv,
+              csh_cnaps          cc
+         where cbb.acc_entity_id = #{accEntityId}
+           and cbb.enabled_flag = 'Y'
+           and cbb.bank_branch_id = cbav.bank_branch_id
+           and cbav.enabled_flag = 'Y'
+           and cbb.bank_id = cbv.bank_id
+           and cbv.enabled_flag = 'Y'
+           and cbb.cnaps_id = cc.cnaps_id
+           and cbv.bank_id = cc.bank_id
+           and cc.enabled_flag = 'Y'
+    </select>
+</mapper>

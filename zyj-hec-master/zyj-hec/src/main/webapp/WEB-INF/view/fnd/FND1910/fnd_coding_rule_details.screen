@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[
+    ]]></a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function FND1910_closeCodingRulesDetailsCreateWindow() {
+                $au('FND1910_fnd_coding_rule_details_window').close();
+            }
+            
+            function FND1910_segmentValueEdit(record, name) {
+                if (record.get('segmentType') == '01') {
+                    return 'GND1910_ruleDetails_tf';
+                }
+                record.set('segmentValue', null);
+                return '';
+            }
+            
+            function FND1910_displayFlagRenderer(value, record, name) {
+                if (record.get('segmentType') != '04') {
+                    record.set('displayFlag', 'Y');
+                    return '$[l:HAP_YES]';
+                }
+            }
+            
+            function FND1910_dateFormatEdit(record, name) {
+                if (record.get('segmentType') == '02') {
+                    return 'GND1910_ruleDetails_cmb';
+                }
+                record.set('dataFormat', null);
+                record.set('dateFormatDisplay', null);
+                return '';
+            }
+            
+            function FND1910_displayFlagEdit(record, name) {
+                if (record.get('segmentType') == '04') {
+                    return 'GND1910_ruleDetails_ckb';
+                }
+                record.set('displayFlag', 'Y');
+                return '';
+            }
+            
+            function FND1910_detailsNfEdit(record, name) {
+                if (record.get('segmentType') == '06') {
+                    if (name == 'length') {
+                        return 'GND1910_ruleDetails_nf';
+                    }
+                    if (name == 'incremental') {
+                        return 'GND1910_ruleDetails_nf';
+                    }
+                    if (name == 'startValue') {
+                        return 'GND1910_ruleDetails_nf';
+                    }
+                }
+                record.set('length', null);
+                record.set('incremental', null);
+                record.set('startValue', null);
+                return '';
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="segment_type_ds"  autoQuery="true" fetchAll="true" loadData="true"  queryUrl="$[/request/@context_path]/common/auroraCode/CODING_RULE_SEGMENT/"/>
+            <a:dataSet id="date_format_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/FND_DATE_FORMAT/" />
+            <a:dataSet id="fnd_coding_rules_info_ds" autoQuery="true" baseUrl="/fnd/coding-rule" queryUrl="$[/request/@context_path]/fnd/coding-rule/query?codingRuleObjectId=$[/parameter/@codingRuleObjectId]&amp;codingRuleId=$[/parameter/@codingRuleId]">
+                <a:fields>
+                    <a:field name="codingRuleCode" readOnly="true"/>
+                    <a:field name="resetFrequencyDisplay" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND1910_fnd_coding_rule_details_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/fnd/coding-rule-detail" queryUrl="$[/request/@context_path]/fnd/coding-rule-detail/queryBySequence?codingRuleId=$[/parameter/@codingRuleId]" selectable="true" submitUrl="$[/request/@context_path]/fnd/coding-rule-detail/submit">
+                <a:fields>
+                    <a:field name="codingRuleObjectId" defaultValue="$[/parameter/@codingRuleObjectId]"/>
+                    <a:field name="codingRuleId" defaultValue="$[/parameter/@codingRuleId]"/>
+                    <a:field name="sequence" required="true"/>
+                    <a:field name="segmentType"/>
+                    <a:field name="segmentTypeDisplay" displayField="description" options="segment_type_ds" required="true" returnField="segmentType" valueField="value"/>
+                    <a:field name="dateFormatDisplay" displayField="description" options="date_format_ds" returnField="dateFormat" valueField="value"/>
+                    <a:field name="displayFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND1910_fnd_coding_rule_details_fs" column="3" labelWidth="120" title="fnd_coding_rule_details.fnd_coding_rule_info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1910_fnd_coding_rule_details_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND1910_fnd_coding_rule_details_grid" type="save" width="80"/>
+                    <a:gridButton bind="FND1910_fnd_coding_rule_details_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="FND1910_closeCodingRulesDetailsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="documentCategoryDisplay" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="fnd_coding_rule_object.document_category" readOnly="true"/>
+                <a:textField name="documentTypeName" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="fnd_coding_rule_object.document_type" readOnly="true"/>
+                <a:textField name="companyShortName" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="fnd_company.company_short_name" readOnly="true"/>
+                <a:textField name="accEntityName" bindTarget="FND1910_fnd_coding_rule_objects_result_ds" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+                <a:textField name="codingRuleCode" bindTarget="fnd_coding_rules_info_ds" prompt="fnd_coding_rule.coding_rule_code"/>
+                <a:comboBox name="resetFrequencyDisplay" bindTarget="fnd_coding_rules_info_ds" prompt="fnd_coding_rule.reset_frequency"/>
+            </a:form>
+            <a:grid id="FND1910_fnd_coding_rule_details_grid" bindTarget="FND1910_fnd_coding_rule_details_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="sequence" prompt="fnd_coding_rule_details.sequence" align="center" editor="GND1910_ruleDetails_nf" width="50"/>
+                    <a:column name="segmentTypeDisplay" prompt="fnd_coding_rule.details.segment_type_display" align="center" editor="GND1910_ruleDetails_cmb" width="100"/>
+                    <a:column name="segmentValue" prompt="fnd_coding_rule.details.segment_value" editorFunction="FND1910_segmentValueEdit" width="100"/>
+                    <a:column name="dateFormatDisplay" prompt="fnd_coding_rule.date_format_display" align="center" editorFunction="FND1910_dateFormatEdit" width="100"/>
+                    <a:column name="length" prompt="fnd_coding_rule.length" align="right" editorFunction="FND1910_detailsNfEdit" width="60"/>
+                    <a:column name="incremental" prompt="fnd_coding_rule.incremental" align="right" editorFunction="FND1910_detailsNfEdit" width="60"/>
+                    <a:column name="startValue" prompt="fnd_coding_rule.start_value" align="right" editorFunction="FND1910_detailsNfEdit" width="60"/>
+                    <a:column name="displayFlag" prompt="fnd_coding_rule.display_flag" align="center" editorFunction="FND1910_displayFlagEdit" renderer="FND1910_displayFlagRenderer" width="60"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="GND1910_ruleDetails_nf" allowDecimals="false" allowNegative="false"/>
+                    <a:comboBox id="GND1910_ruleDetails_cmb"/>
+                    <a:textField id="GND1910_ruleDetails_tf" typeCase="upper"/>
+                    <a:checkBox id="GND1910_ruleDetails_ckb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

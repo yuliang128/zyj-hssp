@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan  
+    $Date: 2018-8-14 14:48:53  
+    $Revision: 1.0  
+    $Purpose: 管理组织级单据填写说明定义(多语言)
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP2180_moWriteCaptionLnsLink" url="$[/request/@context_path]/exp/EXP2180/exp_mo_write_caption_lines.screen"/>
+        <script><![CDATA[
+            function EXP2180_onFocus() {
+                $au('EXP2180_mangeOrganizationlistDs').query();
+            }
+            
+            function EXP2180_CaptionCodeEditFun(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'EXP2180_TextField';
+                }
+            }
+            
+            function EXP2180_QueryDsUpdate(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('EXP2180_expMoWriteCaptionResultDs').query();
+                }
+            }
+            
+            function EXP2180_onSubmitCaption(ds) {
+                ds.query();
+            }
+            
+            function EXP2180_onAdd(ds) {
+                var magOrgId = $au('EXP2180_expMoWriteCaptionQueryDs').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function EXP2180_beforeSubmit() {
+                if (Ext.isEmpty($au('EXP2180_expMoWriteCaptionQueryDs').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP2180_BeforeCreate() {
+                if (Ext.isEmpty($au('EXP2180_expMoWriteCaptionQueryDs').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            function EXP2180_captionDetail(value, record, name){
+                if (!record.isNew) {
+                    var captionHdsId = record.get('captionHdsId');
+                    var url = $au('EXP2180_moWriteCaptionLnsLink').getUrl() + '?captionHdsId=' + captionHdsId;
+                    return '<a href="javascript:EXP2180_viewCaptionLns(\'' + url + '\')">' + '$[l:EXP_MO_CAPTION_HD.DETAIL]' + '</a>';
+                }
+            }
+            function EXP2180_viewCaptionLns(url){
+                new Aurora.Window({
+                    id: 'EXP2180_caption_lns_window',
+                    url: url,
+                    title: '$[l:EXP_MO_CAPTION_HD.DETAIL_TITLE]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2180_mangeOrganizationlistDs" loadData="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP2180_docCategoryDs" autoQuery="true" fetchAll="true"  queryUrl="$[/request/@context_path]/common/auroraCode/WFL_WORKFLOW_CATEGORY"/>
+            <a:dataSet id="EXP2180_expMoWriteCaptionQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgId" defaultValue="$[/model/fndManagingOrganizationList/records/record/@magOrgId]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/fndManagingOrganizationList/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP2180_mangeOrganizationlistDs" prompt="exp_mo_report_type.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="captionCode" prompt="exp_mo_caption_hd.caption_code"/>
+                    <a:field name="description" prompt="exp_mo_caption_hd.description"/>
+                    <a:field name="docCategoryCode"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="EXP2180_docCategoryDs" placeHolder="csh_payment_trx_rule.business_type" returnField="docCategoryCode" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP2180_QueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP2180_expMoWriteCaptionResultDs" autoPageSize="true" autoQuery="true" fetchAll="true" loadData="true" baseUrl="/exp/mo-write-caption-hd" queryUrl="$[/request/@context_path]/exp/mo-write-caption-hd/query"   queryDataSet="EXP2180_expMoWriteCaptionQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="captionHdsId"/>
+                    <a:field name="captionCode" prompt="exp_mo_caption_hd.caption_code" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.exp.dto.ExpMoWriteCaptionHd" dtoId="captionHdsId" prompt="exp_mo_caption_hd.description" required="true"/>
+                    <a:field name="magOrgId" required="true" prompt="exp_mo_report_type.mag_org_id"/>
+                    <a:field name="docCategoryCode"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="EXP2180_docCategoryDs" prompt="csh_payment_trx_rule.business_type" required="true" returnField="docCategoryCode" valueField="value"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP2180_onSubmitCaption"/>
+                    <a:event name="add" handler="EXP2180_onAdd"/>
+                    <a:event name="beforecreate" handler="EXP2180_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP2180_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP2180_expMoWriteCaptionGrid" type="add" width="80"/>
+                <a:gridButton bind="EXP2180_expMoWriteCaptionGrid" type="save" width="80"/>
+                <a:gridButton bind="EXP2180_expMoWriteCaptionGrid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP2180_expMoWriteCaptionQueryDs" resultTarget="EXP2180_expMoWriteCaptionResultDs" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="EXP2180_expMoWriteCaptionQueryDs" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2180_onFocus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="captionCode" bindTarget="EXP2180_expMoWriteCaptionQueryDs"/>
+                    <a:textField name="description" bindTarget="EXP2180_expMoWriteCaptionQueryDs"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:comboBox name="docCategoryName" bindTarget="EXP2180_expMoWriteCaptionQueryDs" width="170"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP2180_expMoWriteCaptionGrid" bindTarget="EXP2180_expMoWriteCaptionResultDs" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="captionCode" align="center" editorFunction="EXP2180_CaptionCodeEditFun" width="80"/>
+                <a:column name="description" align="left" editor="EXP2180_expWriteCaptionTd" width="200"/>
+                <a:column name="docCategoryName" align="center" editor="EXP2180_expWriteCaptionCb" width="80"/>
+                <a:column name="detail" align="center" renderer="EXP2180_captionDetail" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP2180_TextField" typeCase="upper"/>
+                <a:tledit id="EXP2180_expWriteCaptionTd"/>
+                <a:comboBox id="EXP2180_expWriteCaptionCb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

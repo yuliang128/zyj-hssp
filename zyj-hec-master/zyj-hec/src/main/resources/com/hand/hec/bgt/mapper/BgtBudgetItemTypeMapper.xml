@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBudgetItemTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtBudgetItemType">
+        <result column="BUDGET_ITEM_TYPE_ID" property="budgetItemTypeId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_ITEM_TYPE_CODE" property="budgetItemTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="NOTES" property="notes" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="checkBgtItemType" resultMap="BaseResultMap">
+        select * from bgt_budget_item_type t
+        where
+        t.bgt_org_id = #{bgtOrgId}
+        and t.budget_item_type_id = #{itemTypeId}
+        and
+        (
+          (
+            #{filtrateMethod} = 'INCLUDE'
+            and (#{controlItemTypeCodeFrom} is null or t.budget_item_type_code &gt;= #{controlItemTypeCodeFrom})
+            and (#{controlItemTypeCodeTo} is null or t.budget_item_type_code &lt;= #{controlItemTypeCodeTo})
+          )
+          or
+          (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (#{controlItemTypeCodeFrom} is null or t.budget_item_type_code &lt; #{controlItemTypeCodeFrom})
+                or (#{controlItemTypeCodeTo} is null or t.budget_item_type_code &gt; #{controlItemTypeCodeTo})
+            )
+          )
+        )
+        and t.enabled_flag = 'Y'
+    </select>
+    
+    <select id="queryByBgtOrgId" resultMap="BaseResultMap" parameterType="com.hand.hec.bgt.dto.BgtBudgetItemType">
+        SELECT
+            bt.BUDGET_ITEM_TYPE_ID,
+            bt.BGT_ORG_ID,
+            bt.BUDGET_ITEM_TYPE_CODE,
+            btl.DESCRIPTION,
+            bt.NOTES,
+            bt.ENABLED_FLAG
+        FROM
+            BGT_BUDGET_ITEM_TYPE BT
+            LEFT OUTER JOIN bgt_budget_item_type_tl btl ON ( bt.BUDGET_ITEM_TYPE_ID = btl.BUDGET_ITEM_TYPE_ID AND btl.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+            where bt.BGT_ORG_ID = #{bgtOrgId}
+        <if test="budgetItemTypeCode!=null">
+            bt.BUDGET_ITEM_TYPE_CODE like concat('%',budgetItemTypeCode,'%')
+        </if>
+        <if test="description!=null">
+            and btl.description like concat('%',description,'%')
+        </if>
+    </select>
+
+    <select id="getBudgetItemTypeListForQuery" resultMap="BaseResultMap">
+        SELECT
+            bit.*
+        FROM
+            bgt_budget_item_type bit
+        WHERE
+            bit.bgt_org_id = #{bgtOrgId}
+            AND bit.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR bit.budget_item_type_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR bit.budget_item_type_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR bit.budget_item_type_code &lt;= #{parameterUpperLimit})
+    </select>
+</mapper>

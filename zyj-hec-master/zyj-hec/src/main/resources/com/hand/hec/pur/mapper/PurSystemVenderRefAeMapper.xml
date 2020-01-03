@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.pur.mapper.PurSystemVenderRefAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.pur.dto.PurSystemVenderRefAe">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="VENDER_ID" property="venderId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByVenderId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT
+            t1.REF_ID,
+            t1.VENDER_ID,
+            t1.ACC_ENTITY_ID,
+            t1.ENABLED_FLAG,
+            (
+            SELECT
+                gae.acc_entity_code
+            FROM
+                gld_accounting_entity gae
+            WHERE
+                gae.acc_entity_id = t1.acc_entity_id
+            ) AS acc_entity_code,
+            (
+            SELECT
+                gaetl.acc_entity_name
+            FROM
+                gld_accounting_entity gae,
+                gld_accounting_entity_tl gaetl
+            WHERE
+                gae.acc_entity_id = t1.acc_entity_id
+                AND gae.ACC_ENTITY_ID = gaetl.ACC_ENTITY_ID
+                AND gaetl.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+            ) AS acc_entity_name
+        FROM
+            PUR_SYSTEM_VENDER_REF_AE t1
+        WHERE
+            t1.vender_id = #{venderId}
+        ORDER BY
+            acc_entity_code
+    </select>
+    
+    <select id="queryUnallocatedAccEntity" resultMap="BaseResultMap">
+        SELECT
+            gae.acc_entity_id,
+            gae.acc_entity_code,
+            gaetl.acc_entity_name
+        FROM
+            gld_accounting_entity gae
+            LEFT JOIN gld_accounting_entity_tl gaetl ON (
+                gae.acc_entity_id = gaetl.acc_entity_id
+            AND gaetl.lang = #{request.locale,javaType=java.lang.String})
+            WHERE
+                gae.start_date_active &lt;= CURRENT_TIMESTAMP
+            AND ( gae.end_date_active &gt;= CURRENT_TIMESTAMP OR gae.end_date_active IS NULL )
+            AND gae.company_type &lt;&gt; '2'
+            AND (#{venderId} is NULL OR (NOT EXISTS ( SELECT 1 FROM pur_system_vender_ref_ae psvra WHERE gae.ACC_ENTITY_ID = psvra.ACC_ENTITY_ID AND psvra.VENDER_ID = #{venderId})))
+        ORDER BY
+            acc_entity_code
+    </select>
+
+</mapper>

@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin
+    $Date: 2017-08-21 02:42:22 PM  
+    $Revision: 1.0  
+    $Purpose: 费用申请单-创建借款申请
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <a:model-query model="csh.CSH5010.csh_payment_requisition_header_query" rootPath="header_info"/>
+        <a:model-query model="expm.EXP4010.exp_requisition_payment_amount" rootPath="EXP4010_paymentRequisition_list"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP4010_paymentDelete_link" model="csh.CSH5010.csh_payment_requisition" modelaction="delete"/>
+        <a:link id="EXP4010_paymentHistory_link" url="${/request/@context_path}/modules/expm/public/exp_document_history_query.screen"/>
+        <a:link id="EXP4010_paymentUpload_link" url="${/request/@context_path}/uploadFile.screen"/>
+        <script><![CDATA[
+            function EXP4010_paymetnRequisitionInitFunc() {
+                var headerRecord = $au('EXP4010_paymentHeader_ds').getAt(0);
+                var headerId = '${/parameter/@payment_requisition_header_id}';
+                var status = '${/model/header_info/record/@status}';
+                if (!(typeof(headerId) == 'undefined') && !Ext.isEmpty(headerId) && (status == 'GENERATE' || status == 'REJECTED' || status == 'TAKEN_BACK')) {
+                    //维护界面
+                    document.getElementById('EXP4010_paymentCreateBtn_box').style.display = 'none';
+                    document.getElementById('EXP4010_paymentUpdateBtn_box').style.display = 'block';
+                    headerRecord.getMeta().getField('currency_name').setReadOnly(true);
+                }
+            }
+            
+            function EXP4010_paymentBackFunc() {
+                $au('EXP4010_paymentRequisition_window').close();
+            }
+            
+            function EXP4010_paymentHeaderUpdateFunc(dataSet, record, name, value, oldValue) {
+                if (name == 'payee_category_name') {
+                    //当修改收款对象时，收款方置空
+                    record.set('payee_id', '');
+                    record.set('payee_name', '');
+                } else if (name == 'company_name') {
+                    //当修改管理公司时，核算主体置空
+                    record.set('acc_entity_id', '');
+                    record.set('acc_entity_name', '');
+                }
+            }
+            
+            function EXP4010_paymentSaveFunc() {
+                //正在保存....请勿关闭
+                Aurora.Masker.mask(Ext.getBody(), '${l:CSH_PAYMENT_REQUISITION.SAVE}');
+                //头金额重算
+                EXP4010_setHeaderAmountFunc();
+                var headerDs = $au('EXP4010_paymentHeader_ds');
+                var lineDs = $au('EXP4010_paymentLine_ds');
+                if (!headerDs.isModified()) {
+                    headerDs.data[0].dirty = true;
+                }
+                if (!headerDs.validate() || !lineDs.validate()) {
+                    return;
+                }
+            
+                if ($au('EXP4010_paymentLine_ds').getAll().length == 0) {
+                    Aurora.showInfoMessage('${l:PROMPT}', '${l:PLEASE_INSERT_LINE_DATA}', null, 250, 100);
+                    return;
+                }
+            
+                $au('EXP4010_paymentHeader_ds').submit();
+                Aurora.Masker.unmask(Ext.getBody());
+            }
+            
+            function EXP4010_paymentHeaderSubmitFunc(ds) {
+                var headRecord = $au('EXP4010_paymentHeader_ds').getCurrentRecord();
+                var payment_requisition_header_id = headRecord.get('payment_requisition_header_id');
+                document.getElementById('EXP4010_paymentCreateBtn_box').style.display = 'none';
+                document.getElementById('EXP4010_paymentUpdateBtn_box').style.display = 'block';
+                $au('EXP4010_paymentHeader_ds').setQueryUrl('${/request/@context_path}/autocrud/csh.CSH5010.csh_payment_requisition_header_query/query?payment_requisition_header_id=' + payment_requisition_header_id);
+                $au('EXP4010_paymentHeader_ds').query();
+                $au('EXP4010_paymentLine_ds').setQueryUrl('${/request/@context_path}/autocrud/csh.csh_pay_req_line_query/query?payment_requisition_header_id=' + payment_requisition_header_id);
+                $au('EXP4010_paymentLine_ds').query();
+                Aurora.Masker.unmask(Ext.getBody());
+            }
+            
+            function CSH5010_getNextLineNumber() {
+                var nextLineNumber = 10;
+                var allLineRecords = $au('EXP4010_paymentLine_ds').getAll();
+                Ext.each(allLineRecords, function(allLineRecord) {
+                    if (allLineRecord.get('line_number') >= nextLineNumber) {
+                        nextLineNumber = allLineRecord.get('line_number') + 10;
+                    }
+                }, this);
+            
+                return nextLineNumber;
+            }
+            
+            function EXP4010_paymentLineAddFunc() {
+                if ($au('EXP4010_paymentHeader_ds').validate()) {
+                    var selectedRecords = $au('EXP4010_paymentLine_ds').getSelected();
+                    if (selectedRecords && selectedRecords.length) {
+                        Ext.each(selectedRecords, function(selectedRecord) {
+                            var data = {};
+                            for (var field in $au('EXP4010_paymentLine_ds').fields) {
+                                data[field] = selectedRecord.get(field);
+                            }
+                            data['payment_requisition_line_id'] = null;
+                            data['line_number'] = CSH5010_getNextLineNumber();
+                            $au('EXP4010_paymentLine_ds').create(data);
+                        });
+                    } else {
+                        var data = {};
+                        var headerRecord = $au('EXP4010_paymentHeader_ds').getAt(0);
+                        data['line_number'] = CSH5010_getNextLineNumber();
+                        data['payment_requisition_header_id'] = headerRecord.get('payment_requisition_header_id');
+                        data['company_name'] = headerRecord.get('company_name');
+                        data['company_id'] = headerRecord.get('company_id');
+                        data['acc_entity_name'] = headerRecord.get('acc_entity_name');
+                        data['acc_entity_id'] = headerRecord.get('acc_entity_id');
+                        data['unit_name'] = headerRecord.get('unit_name');
+                        data['unit_id'] = headerRecord.get('unit_id');
+                        data['employee_name'] = headerRecord.get('employee_name');
+                        data['employee_id'] = headerRecord.get('employee_id');
+                        data['ref_document_id_display'] = '${/model/EXP4010_paymentRequisition_list/record/@exp_requisition_number}';
+                        data['payment_requisition_line_type'] = 'EXP_REQUISITION';
+                        data['payee_category_name'] = headerRecord.get('payee_category_name');
+                        data['payee_category'] = headerRecord.get('payee_category');
+                        data['payee_name'] = headerRecord.get('payee_name');
+                        data['payee_id'] = headerRecord.get('payee_id');
+                        data['account_name'] = headerRecord.get('account_name');
+                        data['account_number'] = headerRecord.get('account_number');
+                        data['bank_code'] = headerRecord.get('bank_code');
+                        data['bank_name'] = headerRecord.get('bank_name');
+                        data['bank_location_code'] = headerRecord.get('bank_location_code');
+                        data['bank_location_name'] = headerRecord.get('bank_location_name');
+                        data['province_code'] = headerRecord.get('province_code');
+                        data['province_name'] = headerRecord.get('province_name');
+                        data['city_code'] = headerRecord.get('city_code');
+                        data['city_name'] = headerRecord.get('city_name');
+                        data['payment_method_name'] = headerRecord.get('payment_method_name');
+                        data['payment_method_id'] = headerRecord.get('payment_method_id');
+                        data['need_payment_amount'] = '${/model/EXP4010_paymentRequisition_list/record/@payment_amount}';
+                        data['requisited_amount'] = 0;
+                        data['requisited_unpayment_amount'] = '${/model/EXP4010_paymentRequisition_list/record/@payment_amount}';
+                        data['ref_document_id'] = '${/model/EXP4010_paymentRequisition_list/record/@exp_requisition_header_id}';
+                        $au('EXP4010_paymentLine_ds').create(data);
+            
+                    }
+                }
+            }
+            
+            function CSH5010_onPaymentReqLineCellClickFun(grid, row, name, record) {
+                if (name == 'acc_entity_name') {
+                    record.getField('acc_entity_name').setLovPara('company_id', record.get('company_id'));
+                } else if (name == 'payee_name') {
+                    var payeeCategory = record.get('payee_category');
+                    var accEntityId = record.get('acc_entity_id');
+                    //判断核算主体和收款对象是否已维护，否则不可编辑。
+                    if (typeof(payeeCategory) == 'undefined' || Ext.isEmpty(payeeCategory) || typeof(accEntityId) == 'undefined' || Ext.isEmpty(accEntityId)) {
+                        record.getMeta().getField('payee_name').setReadOnly(true);
+                    } else {
+                        record.getMeta().getField('payee_name').setReadOnly(false);
+                        record.getField('payee_name').setLovPara('payee_category', payeeCategory);
+                        record.getField('payee_name').setLovPara('acc_entity_id', accEntityId);
+                    }
+                } else if (name == 'account_number') {
+                    record.getField('account_number').setLovPara('payee_id', record.get('payee_id'));
+                    record.getField('account_number').setLovPara('payee_category', record.get('payee_category'));
+                    record.getField('account_number').setLovPara('acc_entity_id', record.get('acc_entity_id'));
+                }
+            }
+            
+            function CSH5010_paySchLineNumFunction(record, name) {
+                if (record.get('contract_header_id')) {
+                    var metaField = record.getMeta().getField('line_number');
+                    metaField.setLovService('csh.CSH5010.csh_pay_req_schedules_lov');
+                    metaField.setLovPara('contract_header_id', record.get('contract_header_id'));
+                    metaField.setLovPara('currency_code', headerRecord.get('currency_code'));
+                    metaField.setLovPara('payee_category', record.get('payee_category'));
+                    metaField.setLovPara('payee_id', record.get('payee_id'));
+                    return 'CSH5010_payReqLineCreate_lov';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH5010_conNumFunction(record, name) {
+                var req_id = record.get('ref_document_id');
+                var metaField = record.getMeta().getField('contract_number');
+                metaField.setLovService('csh.CSH5010.csh_pay_req_contract_lov');
+                if (record.get('payment_requisition_line_type') != 'EXP_REQUISITION') {
+                    metaField.setLovPara('payee_category', record.get('payee_category'));
+                    metaField.setLovPara('payee_id', record.get('payee_id'));
+                    metaField.setLovPara('type_fg', 'OTHER');
+                } else {
+                    metaField.setLovPara('ref_document_id', req_id);
+                    metaField.setLovPara('payee_category', record.get('payee_category'));
+                    metaField.setLovPara('payee_id', record.get('payee_id'));
+                    metaField.setLovPara('type_fg', 'REQUIS');
+                }
+            
+                var r = $au('EXP4010_paymentHeader_ds').getAt(0);
+                r.set('p_req_id', req_id);
+                return 'CSH5010_payReqLineCreate_lov';
+            }
+            
+            function EXP4010_paymentLineUpdateFunc(dataSet, record, name, value, oldValue) {
+                if (name == 'company_name') {
+                    record.set('acc_entity_id', '');
+                    record.set('acc_entity_name', '');
+                } else if (name == 'contract_number') {
+                    if (oldValue != value) {
+                        record.set('line_number', '');
+                    }
+                    record.set('line_number', '');
+                    record.set('payment_schedule_line_id', '');
+                } else if (name == 'payee_category') {
+                    record.set('payee_name', '');
+                    record.set('payee_id', '');
+                    record.set('account_number', '');
+                    record.set('account_name', '');
+                }
+            }
+            
+            function CSH5010_headAmountValidator(record, name, value) {
+                var dataSet = $au('EXP4010_paymentLine_ds');
+                if (record.get('payment_requisition_line_type') == 'EXP_REQUISITION') {
+                    if (value <= 0 || value > (parseFloat(('' + record.get('need_payment_amount')).replace(/[,]+/g, ""))).toFixed(5)) {
+                        record.set('amount', '');
+                        EXP4010_setHeaderAmountFunc();
+                        return '${l:CSH_PAYMENT_REQUISITION_HDS.CHECK2}';
+                    }
+                    var rs = dataSet.getAll();
+                    var usedAmount = 0;
+                    for (var i = 0;i < rs.length;i++) {
+                        var r = rs[i];
+                        if (r.get('ref_document_id_display') == record.get('ref_document_id_display') && r != record) {
+                            usedAmount = plus(usedAmount, r.get('amount') || 0);
+                        }
+                    }
+                    if (plus(value, usedAmount) > record.get('need_payment_amount')) {
+                        record.set('amount', '');
+                        EXP4010_setHeaderAmountFunc();
+                        return '${l:CSH_PAYMENT_REQUISITION_HDS.CHECK2}';
+                    }
+                } else {
+                    if (record.get('amount') <= 0) {
+                        record.set('amount', '');
+                        EXP4010_setHeaderAmountFunc();
+                        return '${l:CSH_PAYMENT_REQUISITION_HDS.CHECK17}';
+                    }
+                }
+                EXP4010_setHeaderAmountFunc();
+                return true;
+            }
+            
+            function EXP4010_setHeaderAmountFunc() {
+                var records = $au('EXP4010_paymentLine_ds').getAll();
+                var lineAmount = 0;
+                for (var i = 0;i < records.length;i++) {
+                    amount = records[i].get('amount') == undefined ? 0 : records[i].get('amount');
+                    lineAmount = plus(lineAmount, amount);
+                }
+                $au('EXP4010_paymentHeader_ds').getAt(0).set('amount', lineAmount);
+            }
+            
+            //整单删除
+            
+            function EXP4010_paymentDeleteFunc() {
+                var okCan = Aurora.showConfirm('${l:PROMPT}', '${l:CSH_PAYMENT_REQUISITION.SURE_DELETE_REQ}', function() {
+                    var payment_requisition_header_id = $au('EXP4010_paymentHeader_ds').getAt(0).get('payment_requisition_header_id');
+                    param = {};
+                    param['payment_requisition_header_id'] = payment_requisition_header_id;
+                    Aurora.request({
+                        lockMessage: '${l:HAP_WAITING}',
+                        url: $au('EXP4010_paymentDelete_link').getUrl(),
+                        para: param,
+                        success: EXP4010_paymentBackFunc,
+                        scope: this
+                    });
+                }, function() {
+                    okCan.close();
+                }, 250, 100);
+            }
+            
+            //点击跟踪单据按钮所发生的操作
+            
+            function EXP4010_paymentHistoryFunc() {
+                var payReqHeaderId = $au('EXP4010_paymentHeader_ds').getAt(0).get('payment_requisition_header_id');
+                new Aurora.Window({
+                    url: $au('EXP4010_paymentHistory_link').getUrl() + '?document_id=' + payReqHeaderId + '&document_type=PAYMENT_REQUISITION',
+                    id: 'CSH5010_exp_document_history_view_window',
+                    fullScreen: true
+                });
+            }
+            
+            //点击上传附件按钮所发生的操作
+            
+            function EXP4010_paymentUploadFunc() {
+                new Aurora.Window({
+                    url: $au('EXP4010_paymentUpload_link').getUrl() + '?table_name=CSH_PAYMENT_REQUISITION_HDS&header_id=' + $au('EXP4010_paymentHeader_ds').getAt(0).get('payment_requisition_header_id'),
+                    title: '${l:ATM.UPLOAD_ATTACHMENT}',
+                    id: 'check_upload_file_screen',
+                    width: 600,
+                    height: 400
+                });
+            }
+            
+            function EXP4010_paymentSetHeaderpayee() {
+                var record = $au('EXP4010_paymentHeader_ds').getAt(0);
+                var payeeCategory = record.get('payee_category');
+                var accEntityId = record.get('acc_entity_id');
+                if (payeeCategory && accEntityId) {
+                    record.getField('payee_name').setLovPara('payee_category', payeeCategory);
+                    record.getField('payee_name').setLovPara('acc_entity_id', accEntityId);
+                    record.getField('payee_name').setLovService('hec_util.gld_payee_v_lov');
+                } else {
+                    record.getField('payee_name').setLovService('');
+                }
+            }
+            
+            function EXP4010_paymentSetHeaderReqType() {
+                $au('EXP4010_paymentTypeDs').setQueryParameter('employee_id', '${/parameter/@employee_id}');
+                $au('EXP4010_paymentTypeDs').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_paymentMethodDs" loadData="true" model="hec_util.csh_mo_payment_methods_vl_lov"/>
+            <a:dataSet id="EXP4010_currencyListDs" loadData="true" model="gld.gld_currency_vl"/>
+            <a:dataSet id="EXP4010_paymentObjectDs" lookupCode="PAYMENT_OBJECT"/>
+            <a:dataSet id="EXP4010_docCategoryListDs" loadData="true" lookupCode="PAYMENT_REQ_DOC_CATEGORY"/>
+            <a:dataSet id="EXP4010_transClassesDs" autoQuery="true" queryUrl="${/request/@context_path}/autocrud/hec_util.csh_util.csh_mo_trx_classes_for_loan/query?mo_payment_req_type_id=${/parameter/@payment_req_type_id}"/>
+            <a:dataSet id="EXP4010_paymentTypeDs" fetchAll="true" model="csh.CSH5010.csh_mo_payment_req_type_list"/>
+            <a:dataSet id="EXP4010_paymentHeader_ds" submitUrl="${/request/@context_path}/modules/csh/CSH5010/csh_pay_req_create_save.svc">
+                <a:datas dataSource="/model/header_info"/>
+                <a:fields>
+                    <a:field name="payment_requisition_header_id"/>
+                    <a:field name="requisition_number" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITION_NUMBER" readOnly="true"/>
+                    <a:field name="acc_entity_name" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME" readOnly="true"/>
+                    <a:field name="requisition_date" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITION_DATE" readOnly="true"/>
+                    <a:field name="payment_req_type_id"/>
+                    <a:field name="payment_req_type_name" displayField="mo_payment_req_type_name" options="EXP4010_paymentTypeDs" prompt="CSH_PAY_REQ_TYPES.TYPE_CODE" required="true" returnField="payment_req_type_id" valueField="mo_payment_req_type_id"/>
+                    <a:field name="amount" prompt="PUR_ORDER_LINES.SUM_AMOUNT" readOnly="true"/>
+                    <a:field name="employee_id"/>
+                    <a:field name="employee_name" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITOR" readOnly="true"/>
+                    <a:field name="unit_id"/>
+                    <a:field name="unit_name" prompt="CSH_PAYMENT_REQUISITION_HDS.UNIT_ID" readOnly="true"/>
+                    <a:field name="created_by_name" prompt="EXP_REPORT_HEADERS.CREATE_BY" readOnly="true"/>
+                    <a:field name="currency_name" displayField="currency_name" options="EXP4010_currencyListDs" prompt="CSH_PAYMENT_REQUISITION_HDS.PAYMENT_CURRENCY_NAME" required="true" returnField="currency_code" valueField="currency_code"/>
+                    <a:field name="currency_code"/>
+                    <a:field name="status"/>
+                    <a:field name="status_name" prompt="PUR_PURCHASE_ORDER.DOCUMENT_STATUS" readOnly="true"/>
+                    <a:field name="payment_method_name" displayField="payment_method_name" options="EXP4010_paymentMethodDs" prompt="CSH_TRANSACTION_HEADERS.PAYMENT_METHOD_ID" required="true" returnField="payment_method_id" valueField="payment_method_id"/>
+                    <a:field name="payment_method_id"/>
+                    <a:field name="payee_category"/>
+                    <a:field name="payee_category_name" displayField="code_value_name" options="EXP4010_paymentObjectDs" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_CATEGORY" required="true" returnField="payee_category" valueField="code_value"/>
+                    <a:field name="payee_name" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID" required="true" title="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID">
+                        <a:mapping>
+                            <a:map from="payee_id" to="payee_id"/>
+                            <a:map from="payee_name" to="payee_name"/>
+                            <a:map from="account_number" to="account_number"/>
+                            <a:map from="account_name" to="account_name"/>
+                            <a:map from="bank_code" to="bank_code"/>
+                            <a:map from="bank_name" to="bank_name"/>
+                            <a:map from="bank_location_code" to="bank_location_code"/>
+                            <a:map from="bank_location_name" to="bank_location_name"/>
+                            <a:map from="province_code" to="province_code"/>
+                            <a:map from="province_name" to="province_name"/>
+                            <a:map from="city_code" to="city_code"/>
+                            <a:map from="city_name" to="city_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="description" prompt="CSH_PAYMENT_REQUISITION_HDS.DESCRIPTION"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP4010_paymentHeaderUpdateFunc"/>
+                    <a:event name="submitsuccess" handler="EXP4010_paymentHeaderSubmitFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_paymentLine_ds" autoQuery="true" bindName="lines" bindTarget="EXP4010_paymentHeader_ds" model="csh.csh_pay_req_line_query" queryDataSet="EXP4010_paymentHeader_ds" queryUrl="${/request/@context_path}/autocrud/csh.csh_pay_req_line_query/query?payment_requisition_header_id=${/model/header_info/record/@payment_requisition_header_id}" selectable="true">
+                <a:fields>
+                    <a:field name="payment_requisition_header_id"/>
+                    <a:field name="payment_requisition_line_id"/>
+                    <a:field name="line_number" readOnly="true" required="true"/>
+                    <a:field name="description" prompt="CSH_PAYMENT_REQUISITION_HDS.DESCRIPTION"/>
+                    <a:field name="company_name" lovService="hec_util.fnd_companies_vl_lov" prompt="CSH_PAYMENT_REQUISITION_LNS.COMPANY_ID" required="true">
+                        <a:mapping>
+                            <a:map from="company_name" to="company_name"/>
+                            <a:map from="company_id" to="company_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="company_id" required="true"/>
+                    <a:field name="acc_entity_name" lovService="hec_util.gld_accounting_entities_vl_lov" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME" required="true">
+                        <a:mapping>
+                            <a:map from="acc_entity_name" to="acc_entity_name"/>
+                            <a:map from="acc_entity_id" to="acc_entity_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="acc_entity_id" required="true"/>
+                    <a:field name="mo_csh_trx_class_id"/>
+                    <a:field name="csh_transaction_class_name" displayField="mo_csh_trx_class_name" options="EXP4010_transClassesDs" prompt="CSH_PAYMENT_REQUISITION_PAYMENT.SACTION_CLASS_DESC" required="true" returnField="mo_csh_trx_class_id" valueField="mo_csh_trx_class_id"/>
+                    <a:field name="payment_requisition_line_type"/>
+                    <a:field name="pay_requisition_line_type_desc" displayField="code_value_name" options="EXP4010_docCategoryListDs" prompt="CSH_PAYMENT_REQUISITION_LNS.PAYMENT_REQUISITION_LINE_TYPE" readOnly="true" required="true" returnField="payment_requisition_line_type" valueField="code_value"/>
+                    <a:field name="ref_document_id_display" prompt="CSH_PAYMENT_REQUISITION_LNS.REF_DOCUMENT_ID"/>
+                    <a:field name="payee_category" required="true"/>
+                    <a:field name="payee_category_name" displayField="code_value_name" options="EXP4010_paymentObjectDs" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_CATEGORY" required="true" returnField="payee_category" valueField="code_value"/>
+                    <a:field name="payee_id"/>
+                    <a:field name="payee_name" lovService="hec_util.gld_payee_v_lov" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID" required="true" title="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID">
+                        <a:mapping>
+                            <a:map from="payee_id" to="payee_id"/>
+                            <a:map from="payee_name" to="payee_name"/>
+                            <a:map from="account_number" to="account_number"/>
+                            <a:map from="account_name" to="account_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payment_method_id"/>
+                    <a:field name="payment_method_name" displayField="payment_method_name" options="EXP4010_paymentMethodDs" prompt="CSH_TRANSACTION_HEADERS.PAYMENT_METHOD_ID" required="true" returnField="payment_method_id" valueField="payment_method_id"/>
+                    <a:field name="contract_number" prompt="CON_CONTRACT_HEADERS.CONT_DOCUMENT_NUMBER" title="CON_CONTRACT_HEADERS.CONT_DOCUMENT_NUMBER">
+                        <a:mapping>
+                            <a:map from="contract_number" to="contract_number"/>
+                            <a:map from="contract_header_id" to="contract_header_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="account_number" lovService="hec_util.gld_util.gld_payee_account_vl_lov" required="true" title="CSH_BANK_ACCOUNTS.BANK_ACCOUNT_NUM">
+                        <a:mapping>
+                            <a:map from="account_number" to="account_number"/>
+                            <a:map from="account_name" to="account_name"/>
+                            <a:map from="bank_code" to="bank_code"/>
+                            <a:map from="bank_name" to="bank_name"/>
+                            <a:map from="bank_location_code" to="bank_location_code"/>
+                            <a:map from="bank_location_name" to="bank_location_name"/>
+                            <a:map from="province_code" to="province_code"/>
+                            <a:map from="province_name" to="province_name"/>
+                            <a:map from="city_code" to="city_code"/>
+                            <a:map from="city_name" to="city_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="line_number" prompt="CON_PAYMENT_SCHEDULES.PAYMENT_SCHEDULE_LINE_NUMBER" title=" ">
+                        <a:mapping>
+                            <a:map from="line_number" to="line_number"/>
+                            <a:map from="payment_schedule_line_id" to="payment_schedule_line_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="need_payment_amount" prompt="CSH_PAYMENT_REQUISITION_LNS.NEED_PAYMENT_AMOUNT"/>
+                    <a:field name="requisited_amount" prompt="CSH_PAYMENT_REQUISITION_LNS.REQUISITED_AMOUNT"/>
+                    <a:field name="requisited_unpayment_amount" prompt="CSH_PAYMENT_REQUISITION_LNS.REQUISITED_UNPAYMENT_AMOUNT"/>
+                    <a:field name="amount" prompt="CSH_PAYMENT_REQUISITION_LNS.CURRENT_AMOUNT" required="true" validator="CSH5010_headAmountValidator"/>
+                    <a:field name="payment_schedule_line_id"/>
+                    <a:field name="contract_header_id"/>
+                    <a:field name="ref_document_id"/>
+                    <a:field name="account_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP4010_paymentLineUpdateFunc"/>
+                    <a:event name="remove" handler="EXP4010_setHeaderAmountFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4010_payment_form" marginWidth="0" title="CSH_PAYMENT_REQUISITION_HDS.CREATE">
+                <a:formToolbar>
+                    <a:hBox id="EXP4010_paymentCreateBtn_box">
+                        <a:toolbarButton click="EXP4010_paymentSaveFunc" style="padding:0px" text="HAP_SAVE" width="80"/>
+                        <a:toolbarButton click="EXP4010_paymentBackFunc" text="HAP_BACK" width="80"/>
+                    </a:hBox>
+                    <a:hBox id="EXP4010_paymentUpdateBtn_box" style="display:none">
+                        <a:toolbarButton click="EXP4010_paymentSaveFunc" style="padding:0px" text="HAP_SAVE" width="80"/>
+                        <a:toolbarButton click="EXP4010_paymentDeleteFunc" text="PROMPT.DELETE_DOCUMENT" width="80"/>
+                        <a:toolbarButton click="EXP4010_paymentUploadFunc" text="PROMPT.UPLOAD_ATTACHMENT" width="80"/>
+                        <a:toolbarButton click="EXP4010_paymentHistoryFunc" text="PROMPT.HISTORY" width="80"/>
+                        <a:toolbarButton click="EXP4010_paymentBackFunc" text="HAP_BACK" width="80"/>
+                    </a:hBox>
+                    <a:label name="separator"/>
+                </a:formToolbar>
+                <a:box column="4" style="width:100%">
+                    <a:textField name="requisition_number" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:comboBox name="payment_req_type_name" bindTarget="EXP4010_paymentHeader_ds">
+                        <a:events>
+                            <a:event name="focus" handler="EXP4010_paymentSetHeaderReqType"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="acc_entity_name" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:datePicker name="requisition_date" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:textField name="amount" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:comboBox name="employee_name" id="EXP4010_paymentEmployee_cmp" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:comboBox name="unit_name" bindtarget="EXP4010_paymentHeader_ds"/>
+                    <a:textField name="created_by_name" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:comboBox name="currency_name" id="EXP4010_paymentCurrency_cmp" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:textField name="status_name" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:comboBox name="payment_method_name" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:comboBox name="payee_category_name" bindTarget="EXP4010_paymentHeader_ds"/>
+                    <a:lov name="payee_name" bindTarget="EXP4010_paymentHeader_ds">
+                        <a:events>
+                            <a:event name="focus" handler="EXP4010_paymentSetHeaderpayee"/>
+                        </a:events>
+                    </a:lov>
+                </a:box>
+                <a:box style="width:100%">
+                    <a:textArea name="description" id="EXP4010_paymentDescription_ta" bindtarget="EXP4010_paymentHeader_ds" calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" colspan="4" width="800"/>
+                </a:box>
+            </a:form>
+            <a:grid id="EXP4010_paymentLine_grid" bindTarget="EXP4010_paymentLine_ds" marginHeight="360" marginWidth="0" navBar="true">
+                <a:toolBar>
+                    <a:button click="EXP4010_paymentLineAddFunc" type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="line_number" align="center" prompt="EXP_REPORT_LINES.LINE_NUMBER" width="80"/>
+                    <a:column name="description" align="left" editor="CSH5010_payReqLineCreate_ta" width="200"/>
+                    <a:column name="company_name" editor="CSH5010_payReqLineCreate_lov" width="200"/>
+                    <a:column name="acc_entity_name" align="left" editor="CSH5010_payReqLineCreate_lov" width="200"/>
+                    <a:column name="csh_transaction_class_name" align="center" editor="CSH5010_payReqLineCreate_cmb" width="120"/>
+                    <a:column name="pay_requisition_line_type_desc" align="center" width="120"/>
+                    <a:column name="ref_document_id_display" align="center" width="120"/>
+                    <a:column name="payee_category_name" align="center" editor="CSH5010_payReqLineCreate_cmb" width="120"/>
+                    <a:column name="payee_name" align="center" editor="CSH5010_payReqLineCreate_lov" width="120"/>
+                    <a:column name="amount" align="right" editor="CSH5010_payReqLineCreate_nf" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="account_number" align="center" editor="CSH5010_payReqLineCreate_lov" prompt="CSH_BANK_ACCOUNTS.BANK_ACCOUNT_NUM" width="200"/>
+                    <a:column name="account_name" align="center" prompt="EXP_EMPLOYEE_ACCOUNTS.BANK_ACCOUNT_NAME" width="120"/>
+                    <a:column name="payment_method_name" align="center" editor="CSH5010_payReqLineCreate_cmb" prompt="ACP.DESCRIPTION_METHOD" width="120"/>
+                    <a:column name="need_payment_amount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="requisited_amount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="requisited_unpayment_amount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="contract_number" align="center" editorFunction="CSH5010_conNumFunction" width="120"/>
+                    <a:column name="line_number" align="left" editorFunction="CSH5010_paySchLineNumFunction" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="CSH5010_payReqLineCreate_cmb"/>
+                    <a:textArea id="CSH5010_payReqLineCreate_ta"/>
+                    <a:textField id="CSH5010_payReqLineCreate_tf"/>
+                    <a:lov id="CSH5010_payReqLineCreate_lov"/>
+                    <a:numberField id="CSH5010_payReqLineCreate_nf"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH5010_onPaymentReqLineCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            EXP4010_paymetnRequisitionInitFunc();
+        ]]></script>
+    </a:view>
+</a:screen>

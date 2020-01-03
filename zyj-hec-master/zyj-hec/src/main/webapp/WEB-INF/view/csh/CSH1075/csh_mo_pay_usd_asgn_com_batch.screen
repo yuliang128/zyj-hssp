@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    *Author: yang.cai@hand-china.com
+    *Date: 2019-2-26 20:00:00
+    *Revision: 1.0
+    *Purpose: 管理组织级-付款用途定义-分配公司-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1075_pay_usd_assign_company_batch_svc_link" url="$[/request/@context_path]/csh/mo-pay-usd-asgn-com/submit"/>
+        <script><![CDATA[
+            function CSH1075_closeAsgnBatchCreateWindow() {
+                $au('CSH1075_csh_mo_pay_usd_batch_asgn_com').close();
+            }
+            
+            function CSH1075_assignCom() {
+                var datas = $au('CSH1075_batch_asgn_company_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+
+               var data = [];
+               for (var i = 0;i<datas.length;i++){
+                   var tempData = {
+                       companyId:datas[i].companyId,
+                       paymentUsedeId: '$[/parameter/@paymentUsedesId]',
+                       enabledFlag: 'Y',
+                       __status:'add'
+                   };
+                   data.push(tempData);
+               }
+            
+                Aurora.request({lockMessage:'$[l:hap_waiting]',lockMessage:'$[l:hap_waiting]',
+                    url: $au('CSH1075_pay_usd_assign_company_batch_svc_link').getUrl(),
+                    para: data,
+                    success: CSH1075_closeAssignPage,
+                    scope: this
+                });
+            }
+            
+            function CSH1075_closeAssignPage(res) {
+                $au('CSH1075_csh_mo_pay_usd_batch_asgn_com').close();
+                $au('CSH1075_csh_mo_pay_usd_asgn_com_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1075_batch_asgn_company_ds" autoPageSize="true" autoQuery="true" model="/csh/mo-pay-usd-asgn-com" pageSize="50" queryUrl="$[/request/@context_path]/csh/mo-pay-usd-asgn-com/queryLov?magOrgId=$[/parameter/@magOrgId]&amp;paymentUsedeId=$[/parameter/@paymentUsedesId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1075_csh_mo_pay_usd_batch_asgn_com_form" column="2" title="csh_mo_pay_usd_asgn_com.batch_disp_comp">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH1075_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="CSH1075_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="usedesCodeName" bindTarget="CSH1075_csh_mo_payment_usedes_result_ds" prompt="csh_mo_payment_used.payment_used_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="CSH1075_csh_mo_payment_usedes_query_ds" prompt="exp_mo_req_types.mag_org_id" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="CSH1075_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" prompt="fnd_companies.company_code" width="160"/>
+                    <a:column name="companyShortName" prompt="fnd_companies_vl.company_short_name" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

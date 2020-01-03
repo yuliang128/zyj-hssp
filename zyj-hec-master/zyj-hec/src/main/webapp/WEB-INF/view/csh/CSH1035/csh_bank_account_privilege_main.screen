@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang05@hand-china.com
+    $Date: 2019-02-20 下午6:20:17
+    $Revision: 1.0  
+    $Purpose: 银行账户授权
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1035_csh_bank_account_privilege_select_link" url="$[/request/@context_path]/csh/CSH1035/csh_bank_account_privilege_acc_entity_select.screen"/>
+        <a:link id="CSH1035_csh_bank_account_privilege_link" url="$[/request/@context_path]/csh/CSH1035/csh_bank_account_privilege.screen"/>
+        <!--javaScript-->
+        <script><![CDATA[
+            function CSH1035_closeAccountPrivilegeCreateWindow() {
+                window.location.href = /*csh_bank_account_privilege_mag_org_select.screen*/
+                $au('CSH1035_csh_bank_account_privilege_select_link').getUrl();
+            }
+            
+            function CSH1035_queryBankAccount() {
+                $au('CSH1035_csh_bank_account_privilege_main_result_ds').query();
+            }
+            //授权-跳转
+            
+            function CSH1035_accPrivilegeRenderer(value, record, name) {
+                var bankAccountId = record.get('bankAccountId');
+                var bankCode = record.get('bankCode');
+                if (!record.isNew) {
+                    if (record.get('ajustFlag') == 'Y') {
+                        return '<a href="javascript:CSH1035_openAccPrivilegeDetail(\'' + bankAccountId + '\',\'' + bankCode + '\')">$[l:csh_bank_account_auth_hct.maintain]</a>';
+                    } else {
+                        return '<a href="javascript:CSH1035_openAccPrivilegeDetail(\'' + bankAccountId + '\',\'' + bankCode + '\')">$[l:csh_bank_account_auth_hct.ajust_flag]</a>';
+                    }
+                }
+            }
+
+            function CSH1035_openAccPrivilegeDetail(bankAccountId, bankCode) {
+                var accEntityId = $au('CSH1035_csh_bank_account_privilege_main_query_ds').getCurrentRecord().get('accEntityId');
+                if (Ext.isEmpty(accEntityId)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.acc_entity_is_null]', null, 300, 100);
+                } else {
+                    new Aurora.Window({
+                        id: 'CSH1035_csh_bank_account_privilege_window',
+                        url: /*csh_bank_account_privilege.screen*/
+                        $au('CSH1035_csh_bank_account_privilege_link').getUrl() + '?bankAccountId=' + bankAccountId + '&bankCode=' + bankCode + '&accEntityId=' + accEntityId,
+                        title: '$[l:authorize_bank_account]',
+                        fullScreen: true
+                    });
+                }
+            }
+
+            function CSH1035_FoucsQuery() {
+                $au('CSH1035_accList_ds').query();
+            }
+
+            function CSH1035_QueryUpdate(ds,record,name,value){
+                if(name=='accEntityName'){
+                    $au('CSH1035_csh_bank_account_privilege_main_result_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1035_bankAccountType_ds" autoQuery="true" fetchAll="true"
+            queryUrl="$[/request/@context_path]/common/auroraCode/bank_account_type/"/>
+            <!-- <a:dataSet id="CSH1035_accList_ds" fetchAll="true" loadData="true" model="csh.CSH1035.gld_accounting_entity_query"/> -->
+            <a:dataSet id="CSH1035_accList_ds">
+                <a:datas dataSource="gldAccountingEntityList/records"/>
+            </a:dataSet>
+            <a:dataSet id="CSH1035_csh_bank_account_privilege_main_query_ds" queryUrl="$[/request/@context_path]/csh/bank-account-privilege/query">
+                <a:fields>
+                    <a:field name="accEntityName" displayField="accEntityName" options="CSH1035_accList_ds" prompt="gld_accounting_entities.acc_entity_name" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="bankCode"/>
+                    <a:field name="bankName"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1035_QueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1035_csh_bank_account_privilege_main_result_ds" autoPageSize="true" autoQuery="false" baseUrl="/csh/bank-account-privilege" queryDataSet="CSH1035_csh_bank_account_privilege_main_query_ds" queryUrl="$[/request/@context_path]/csh/bank-account-privilege/query" selectable="true">
+                <a:fields>
+                    <a:field name="bankAccountTypeDesc" displayField="meaning" options="CSH1035_bankAccountType_ds" returnField="bankAccountType" valueField="value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="accEntityId"/>
+
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:queryForm bindTarget="CSH1035_csh_bank_account_privilege_main_query_ds" resultTarget="CSH1035_csh_bank_account_privilege_main_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="accEntityName" bindTarget="CSH1035_csh_bank_account_privilege_main_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1035_FoucsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="bankCode" bindTarget="CSH1035_csh_bank_account_privilege_main_query_ds" prompt="csh_banks.bank_code" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="CSH1035_queryBankAccount"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="bankName" bindTarget="CSH1035_csh_bank_account_privilege_main_query_ds" prompt="csh_banks.bank_name">
+                        <a:events>
+                            <a:event name="enterdown" handler="CSH1035_queryBankAccount"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1035_csh_bank_account_privilege_main_grid" bindTarget="CSH1035_csh_bank_account_privilege_main_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="bankCode" align="center" prompt="csh_banks.bank_code" width="80"/>
+                <a:column name="bankName" align="left" prompt="csh_banks.bank_name" width="120"/>
+                <!--  <a:column name="bank_alt_name" align="left" prompt="csh_banks.bank_alt_name"  width="120"/> -->
+                <a:column name="bankAccountTypeDesc" align="center" prompt="csh_bank_accounts.account_type" width="80"/>
+                <a:column name="bankAccountName" align="left" prompt="csh_prepayment_write_off.bank_account_name" width="120"/>
+                <a:column name="bankAccountNum" align="left" prompt="csh_bank_account.bank_account_num" width="120"/>
+                <a:column name="currencyName" align="center" prompt="csh_payment_requisition_hds.currency_code" width="80"/>
+                <a:column name="responsibilityCenterName" align="left" prompt="exp_org_unit.responsibility_center" width="120"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1035_privilege_cb" prompt="bgt_company_budget_items.enabled_flag" width="80"/>
+                <a:column name="accountPrivilege" align="center" renderer="CSH1035_accPrivilegeRenderer" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:checkBox id="CSH1035_privilege_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

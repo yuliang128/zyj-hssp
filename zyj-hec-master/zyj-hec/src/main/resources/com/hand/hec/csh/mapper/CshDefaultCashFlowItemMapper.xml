@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshDefaultCashFlowItemMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshDefaultCashFlowItem">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL" />
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_NAME" property="cashFlowItemName" jdbcType="VARCHAR" />
+        <result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR" />
+
+        <result column="CASH_FLOW_LINE_NUMBER" property="cashFlowLineNumber" jdbcType="DECIMAL" />
+        <result column="SET_OF_BOOKS_CODE" property="setOfBooksCode" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_CODE" property="accountCode" jdbcType="VARCHAR" />
+
+    </resultMap>
+
+
+    <select id="queryByItemId" resultType="java.util.Map">
+        SELECT
+            cdcfi.cash_flow_item_id cashFlowItemId,
+            ga.account_id accountId,
+            ga.account_code accountCode,
+            ( SELECT gat.DESCRIPTION FROM gld_account_tl gat WHERE gat.ACCOUNT_ID = ga.ACCOUNT_ID AND gat.LANG = #{request.locale} ) description,
+            cdcfi.set_of_books_id setOfBooksId,
+            cdcfi.assign_id assignId
+        FROM
+            csh_default_cash_flow_item cdcfi,
+            gld_account ga
+        WHERE
+            cdcfi.ACCOUNT_ID = ga.ACCOUNT_ID
+            AND cdcfi.SET_OF_BOOKS_ID = #{setOfBooksId}
+            AND cdcfi.CASH_FLOW_ITEM_ID = #{cashFlowItemId}
+    </select>
+
+    <select id="queryByAccount" resultType="java.util.Map">
+      SELECT
+            v.account_id accountId,
+            v.account_code accountCode,
+            ( SELECT gat.description FROM gld_account_tl gat WHERE gat.account_id = v.account_id AND gat.lang = #{request.locale} ) description,
+            concat(
+            v.account_code,
+            '-',
+            ( SELECT gat.description FROM gld_account_tl gat WHERE gat.account_id = v.account_id AND gat.lang = #{request.locale}  )
+            ) codeName
+        FROM
+            gld_account v,
+            sys_code_value_b sv,
+            sys_code_b sc,
+            gld_set_of_book g
+        WHERE
+            v.account_type = sv.VALUE
+            AND sv.code_id = sc.code_id
+            AND sc.CODE = 'FND.ACCOUNT_TYPE'
+            AND v.account_set_id = g.account_set_id
+            AND v.summary_flag = 'N'
+            AND g.set_of_books_id = #{setOfBooksId}
+            AND v.account_id NOT IN ( SELECT account_id FROM csh_cash_account )
+            AND v.account_id NOT IN ( SELECT account_id FROM csh_default_cash_flow_item)
+            <if test="accountCodeFrom!=null">
+                and v.account_code &gt;= #{accountCodeFrom}
+            </if>
+            <if test="accountCodeTo!=null">
+                and v.account_code &lt;= #{accountCodeTo}
+            </if>
+        GROUP BY
+            v.account_id,
+            v.account_code,
+        v.description
+    </select>
+
+
+</mapper>

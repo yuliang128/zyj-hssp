@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.expm.mapper.ExpPolicyPlaceMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.expm.dto.ExpPolicyPlace">
+        <result column="PLACE_ID" property="placeId" jdbcType="DECIMAL" />
+        <result column="PLACE_CODE" property="placeCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="DISTRICT_ID" property="districtId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="COUNTRY_CODE" property="countryCode" jdbcType="VARCHAR" />
+        <result column="DISTRICT_NAME" property="districtName" jdbcType="VARCHAR"/>
+        <result column="COUNTRY_NAME" property="countryName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+
+    <select id="queryPolicyPlace" resultMap="BaseResultMap">
+        SELECT
+        epp.place_id,
+        epp.place_code,
+        eppt.description,
+        epp.district_id,
+        epp.enabled_flag,
+        epd.district_code,
+        epdt.description district_name,
+        epp.country_code,
+        fcct.description country_name
+        FROM
+        exp_policy_place epp,
+        exp_policy_district epd,
+        fnd_country_code fcc,
+        exp_policy_place_tl eppt,
+        exp_policy_district_tl epdt,
+        fnd_country_code_tl fcct
+        where
+        epp.district_id = epd.district_id
+        and epp.PLACE_ID = eppt.PLACE_ID
+        and epp.country_code = fcc.country_code
+        and epd.district_id = epdt.district_id
+        and fcc.country_code_id = fcct.country_code_id
+        and fcct.lang =#{request.locale,jdbcType = VARCHAR}
+        and eppt.lang = #{request.locale,jdbcType = VARCHAR}
+        and epdt.lang = #{request.locale,jdbcType = VARCHAR}
+        <if test="placeCode!=null">
+            AND epp.place_code like concat ('%',#{placeCode},'%')
+        </if>
+        <if test="districtName!=null">
+            AND epd.description like concat('%', #{districtName},'%')
+        </if>
+        <if test="districtNameFrom!=null">
+            AND epp.district_id &gt;= #{districtNameFrom}
+        </if>
+        <if test="districtNameTo!=null">
+            AND epp.district_id &lt;= #{districtNameTo}
+        </if>
+
+        order by district_id
+    </select>
+</mapper>

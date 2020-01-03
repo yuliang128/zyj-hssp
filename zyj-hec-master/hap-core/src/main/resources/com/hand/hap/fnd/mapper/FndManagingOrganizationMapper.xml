@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.fnd.mapper.FndManagingOrganizationMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.fnd.dto.FndManagingOrganization">
+        <id column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_CODE" property="magOrgCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="MANAGING_CURRENCY_CODE" property="managingCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="managingCurrencyName" jdbcType="VARCHAR"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_CODE_NAME" property="magOrgCodeName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_NAME" property="magOrgName" jdbcType="VARCHAR"/>
+        <result column="parameter_value" property="parameterValue" jdbcType="VARCHAR"/>
+        <result column="encrypt_value_flag" property="encryptValueFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="magOrgOption" resultMap="BaseResultMap">
+        SELECT
+            fmo.mag_org_id magOrgId,
+            fmo.mag_org_code magOrgCode,
+            fmot.DESCRIPTION,
+            concat( fmo.mag_org_code, '-', fmot.DESCRIPTION ) magOrgCodeName
+        FROM
+            fnd_managing_organization fmo
+            LEFT OUTER JOIN fnd_managing_organization_tl fmot ON
+            ( fmo.MAG_ORG_ID = fmot.MAG_ORG_ID AND fmot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+            fmo.ENABLED_FLAG = 'Y'
+    </select>
+
+    <select id="queryDefaultMagOrg"
+            resultMap="BaseResultMap">
+        SELECT
+        fmov.MAG_ORG_ID,
+        fmov.MAG_ORG_CODE,
+        ft.DESCRIPTION,
+        concat(fmov.MAG_ORG_CODE,'-', ft.DESCRIPTION) magOrgCodeName
+        FROM
+        fnd_managing_organization fmov
+        LEFT OUTER JOIN fnd_managing_organization_tl ft ON
+        (fmov.MAG_ORG_ID=ft.MAG_ORG_ID AND ft.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where
+        fmov.enabled_flag = 'Y'
+       and fmov.mag_org_id = #{request.magOrgId}
+
+    </select>
+
+    <select id="queryMain" parameterType="com.hand.hap.fnd.dto.FndManagingOrganization" resultMap="BaseResultMap">
+        SELECT
+			*
+		FROM
+			(
+			SELECT
+				fmo.MAG_ORG_ID,
+				fmo.MAG_ORG_CODE,
+				fmotl.DESCRIPTION,
+				fmo.ENABLED_FLAG,
+				fmo.MANAGING_CURRENCY_CODE,
+				gc.CURRENCY_NAME
+			FROM
+				fnd_managing_organization fmo,
+				fnd_managing_organization_tl fmotl,
+				gld_currency gc
+			WHERE
+				fmotl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+				AND fmo.MAG_ORG_ID = fmotl.MAG_ORG_ID
+				AND fmo.MANAGING_CURRENCY_CODE = gc.CURRENCY_CODE
+                <if test="magOrgCode != null">
+                    AND fmo.MAG_ORG_CODE LIKE concat('%',#{magOrgCode},'%')
+                </if>
+                <if test="description != null">
+                    AND fmotl.DESCRIPTION LIKE concat('%',#{description},'%')
+                </if>
+			) fm
+			LEFT JOIN (
+			SELECT
+				magBgt.MAG_ORG_ID,
+				magBgt.REF_ID bgtRefId,
+				magBgt.BGT_ORG_ID,
+				bgt.DESCRIPTION defaultBgtOrgName
+			FROM
+				fnd_mag_org_ref_bgt_org magBgt,
+				bgt_organization bgt
+			WHERE
+				magBgt.BGT_ORG_ID = bgt.BGT_ORG_ID
+				AND magBgt.DEFAULT_FLAG = 'Y'
+			) bgt ON fm.MAG_ORG_ID = bgt.MAG_ORG_ID
+			LEFT JOIN (
+			SELECT
+				magSob.MAG_ORG_ID,
+				magSob.REF_ID sobRefId,
+				magSob.SET_OF_BOOKS_ID,
+				sob.SET_OF_BOOKS_NAME
+			FROM
+				fnd_mag_org_ref_gld_sob magSob,
+				gld_set_of_book sob
+			WHERE
+				magSob.SET_OF_BOOKS_ID = sob.SET_OF_BOOKS_ID
+				AND magSob.DEFAULT_FLAG = 'Y'
+			) sob ON fm.MAG_ORG_ID = sob.MAG_ORG_ID
+
+    </select>
+
+    <select id="queryFndManOrg" resultMap="BaseResultMap">
+        SELECT
+            *
+        FROM
+            (
+            SELECT
+                v.mag_org_id,
+                v.mag_org_code,
+                vt.description,
+                concat(v.mag_org_code,'-',vt.description) mag_org_code_name
+            FROM
+                fnd_managing_organization v
+            left join  fnd_managing_organization_tl vt
+            	on (v.MAG_ORG_ID = vt.MAG_ORG_ID and vt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+            WHERE
+                v.enabled_flag = 'Y' AND
+                v.mag_org_id = #{magOrgId} AND
+                (#{paramValue} = 'N' OR #{paramValue} is null)
+            UNION
+            SELECT
+                v.mag_org_id,
+                v.mag_org_code,
+                vt.description,
+                concat(v.mag_org_code,'-',vt.description) mag_org_code_name
+            FROM
+                fnd_managing_organization v
+            left join  fnd_managing_organization_tl vt
+            on (v.MAG_ORG_ID = vt.MAG_ORG_ID and vt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+            WHERE
+                v.enabled_flag = 'Y' AND
+                #{paramValue} = 'Y'
+            ) t
+        ORDER BY t.mag_org_id
+    </select>
+
+    <select id="defaultManageOrganizationQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            fmo.mag_org_id magOrgId,
+            fmo.mag_org_code magOrgCode,
+            fmot.DESCRIPTION,
+            concat(fmo.mag_org_code
+            ,'-'
+            ,fmot.DESCRIPTION) magOrgCodeName
+        FROM
+          fnd_managing_organization fmo
+        left join fnd_managing_organization_tl fmot on fmo.MAG_ORG_ID = fmot.MAG_ORG_ID
+        WHERE
+            fmot.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} and
+            fmo.enabled_flag = 'Y' AND
+            EXISTS
+                (SELECT 1
+                    FROM fnd_company fc
+                    WHERE fc.company_id = #{companyId} AND
+                    fc.mag_org_id = fmo.mag_org_id AND
+                    fc.start_date_active &lt;= CURRENT_TIMESTAMP AND
+                    (
+                    fc.end_date_active &gt;= CURRENT_TIMESTAMP OR
+                    fc.end_date_active IS NULL
+                    )
+                )
+    </select>
+    
+    <select id="queryByBgtOrgId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+      SELECT
+        fmo.mag_org_id,
+        fmo.mag_org_code,
+        fmot.description mag_org_name,
+        concat( fmo.mag_org_code, '-', fmot.description ) mag_org_code_name
+    FROM
+        fnd_managing_organization fmo
+        LEFT OUTER JOIN fnd_managing_organization_tl fmot ON (
+        fmo.mag_org_id = fmot.mag_org_id
+        AND fmot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+    WHERE
+        fmo.ENABLED_FLAG = 'Y'
+        AND EXISTS (
+            SELECT
+            1
+            FROM
+            fnd_mag_org_ref_bgt_org fmbo
+            WHERE
+            fmbo.mag_org_id = fmo.mag_org_id
+            AND fmbo.bgt_org_id = #{bgtOrgId}
+            AND fmbo.enabled_flag = 'Y'
+    )
+    </select>
+
+    <select id="querySystemValue" resultMap="BaseResultMap">
+        Select t1.parameter_value, t2.encrypt_value_flag
+        From sys_parameter_value t1, sys_parameter t2
+        Where t2.parameter_code = #{parameterCode}
+        And t2.start_date_active &lt;= CURRENT_DATE()
+        And (t2.end_date_active is null or t2.end_date_active &gt;=CURRENT_DATE())
+        And (t1.level_id = 103 And t1.level_value = #{request.userId,jdbcType=BIGINT,javaType=java.lang.Long})
+        And t1.parameter_id = t2.parameter_id
+        And t1.parameter_value Is Not Null
+        And t2.user_enabled_flag = 'Y'
+        Union All
+        Select t1.parameter_value, t2.encrypt_value_flag
+        From sys_parameter_value t1, sys_parameter t2
+        Where t2.parameter_code = #{parameterCode}
+        And t2.start_date_active &lt;= CURRENT_DATE()
+        And (t2.end_date_active is null or t2.end_date_active &gt;=CURRENT_DATE())
+        And (t1.level_id = 102 And t1.level_value = #{request.roleId,jdbcType=BIGINT,javaType=java.lang.Long})
+        And t1.parameter_id = t2.parameter_id
+        And t1.parameter_value Is Not Null
+        And t2.role_enabled_flag = 'Y'
+    </select>
+
+    <select id="queryMagOrg" resultMap="BaseResultMap">
+        SELECT
+        fmov.MAG_ORG_ID,
+        fmov.MAG_ORG_CODE,
+        fmovt.DESCRIPTION,
+        concat(fmov.MAG_ORG_CODE,'-',fmovt.DESCRIPTION) magOrgCodeName
+        FROM
+        fnd_managing_organization fmov,
+        fnd_managing_organization_tl fmovt
+        WHERE
+        fmov.enabled_flag = 'Y'
+        AND fmov.MAG_ORG_ID = fmovt.MAG_ORG_ID
+        AND fmovt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and #{parameterValue}='Y'
+        UNION ALL
+        SELECT
+        fmov.MAG_ORG_ID,
+        fmov.MAG_ORG_CODE,
+        fmovt.DESCRIPTION,
+        concat(fmov.MAG_ORG_CODE,'-',fmovt.DESCRIPTION) magOrgCodeName
+        FROM
+        fnd_managing_organization fmov,
+        fnd_managing_organization_tl fmovt
+        WHERE
+        fmov.enabled_flag = 'Y'
+        AND fmov.MAG_ORG_ID = fmovt.MAG_ORG_ID
+        AND fmovt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and fmov.mag_org_id = #{request.magOrgId,jdbcType=BIGINT,javaType=java.lang.Long}
+        and #{parameterValue}='N'
+    </select>
+
+    <select id="selectMagOrg" resultMap="BaseResultMap">
+        SELECT
+	fmov.mag_org_id,
+	fmov.mag_org_code,
+	fmov.DESCRIPTION
+FROM
+	fnd_managing_organization fmov,
+	fnd_managing_organization_tl fmovt
+WHERE
+	fmov.enabled_flag = 'Y'
+AND fmov.MAG_ORG_ID = fmovt.MAG_ORG_ID
+AND fmovt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+ORDER BY
+	fmov.mag_org_code
+    </select>
+
+    <select id="queryNoneByFndUomId" resultMap="BaseResultMap">
+         SELECT
+                    *
+                FROM
+                    (SELECT
+                        ov.mag_org_id,
+                        ov.mag_org_code,
+                        fmovt.DESCRIPTION as MAG_ORG_NAME
+                    FROM
+                        fnd_managing_organization ov,
+                        fnd_managing_organization_tl fmovt
+                    WHERE
+                        ov.MAG_ORG_ID = fmovt.MAG_ORG_ID
+                        AND fmovt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                        AND ov.enabled_flag = 'Y' AND
+                        NOT EXISTS
+                        (SELECT
+                            'x'
+                        FROM
+                            fnd_uom_asgn_mo am
+                        WHERE
+                            am.mag_org_id = ov.mag_org_id AND
+                            am.uom_id     = #{fndUomId}
+                        )
+                    ) v
+                <where>
+                    <if test="dto.magOrgName !=null and dto.magOrgName!=''">
+                        and v.MAG_ORG_NAME like concat('%',#{dto.magOrgName},'%')
+                    </if>
+                    <if test="dto.magOrgCode !=null and dto.magOrgCode!=''">
+                        and v.mag_org_code like concat('%',#{dto.magOrgCode},'%')
+                    </if>
+                </where>
+              order by v.mag_org_id
+    </select>
+</mapper>

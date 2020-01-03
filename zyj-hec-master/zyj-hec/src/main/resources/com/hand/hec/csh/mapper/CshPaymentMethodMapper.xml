@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentMethodMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentMethod">
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_METHOD_CODE" property="paymentMethodCode" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_NAME" property="description" jdbcType="VARCHAR"/>
+        <result column="PAY_METHOD_CODE" property="payMethodCode" jdbcType="VARCHAR"/>
+        <result column="PAY_CARRIER_CODE" property="payCarrierCode" jdbcType="VARCHAR"/>
+        <result column="POSTING_FLAG" property="postingFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="" property="paymentMethodName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryPaymentMethods" resultMap="BaseResultMap">
+        SELECT
+        cpm.payment_method_id,
+        cpm.payment_method_code,
+        cpmtl.description AS payment_method_name
+        FROM
+        csh_payment_method cpm
+        LEFT JOIN csh_payment_method_tl cpmtl ON ( cpm.PAYMENT_METHOD_ID = cpmtl.PAYMENT_METHOD_ID AND cpmtl.LANG =
+        #{request.locale,javaType=java.lang.String} )
+        LEFT JOIN csh_payment_method_asgn_mo am ON cpm.payment_method_id = am.payment_method_id
+        <if test="companyId != null">
+            LEFT JOIN csh_payment_method_asgn_com ac on am.assign_mo_id = ac.assign_mo_id
+        </if>
+        WHERE
+        am.mag_org_id = #{magOrgId}
+        AND cpm.enabled_flag = 'Y'
+        AND am.enabled_flag = 'Y'
+        <if test="companyId != null">
+            AND ac.company_id = #{companyId}
+            AND ac.enabled_flag = 'Y'
+        </if>
+        ORDER BY
+        payment_method_code
+    </select>
+
+</mapper>

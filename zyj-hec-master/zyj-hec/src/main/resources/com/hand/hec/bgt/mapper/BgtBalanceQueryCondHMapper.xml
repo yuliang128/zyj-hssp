@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBalanceQueryCondHMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtBalanceQueryCondH">
+        <result column="BALANCE_QUERY_COND_H_ID" property="balanceQueryCondHId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="BALANCE_QUERY_CONDITION_CODE" property="balanceQueryConditionCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="BUDGET_STRC_CODE" property="budgetStrcCode" jdbcType="VARCHAR"/>
+        <result column="SCENARIO_CODE" property="scenarioCode" jdbcType="VARCHAR"/>
+        <result column="VERSION_CODE" property="versionCode" jdbcType="VARCHAR"/>
+        <result column="AMOUNT_FLAG" property="amountFlag" jdbcType="VARCHAR"/>
+        <result column="QUANTITY_FLAG" property="quantityFlag" jdbcType="VARCHAR"/>
+        <result column="PERIOD_SUMMARY_FLAG" property="periodSummaryFlag" jdbcType="VARCHAR"/>
+        <result column="LAST_UPDATE_DATE" property="lastUpdateDate" jdbcType="DATE"/>
+
+        <result column="CONDITION_CODE" property="conditionCode" jdbcType="VARCHAR"/>
+        <result column="CONDITION_DESC" property="conditionDesc" jdbcType="VARCHAR"/>
+        <result column="PERIOD_QUARTER_FROM" property="periodQuarterFrom" jdbcType="VARCHAR"/>
+        <result column="PERIOD_QUARTER_TO" property="periodQuarterTo" jdbcType="VARCHAR"/>
+        <result column="PERIOD_YEAR_FROM" property="periodYearFrom" jdbcType="VARCHAR"/>
+        <result column="PERIOD_YEAR_TO" property="periodYearTo" jdbcType="VARCHAR"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="BUDGET_VERSION" property="budgetVersion" jdbcType="VARCHAR"/>
+        <result column="BUDGET_STRUCTURE" property="budgetStructure" jdbcType="VARCHAR"/>
+        <result column="BUDGET_STRUCTURE_DESC" property="budgetStructureDesc" jdbcType="VARCHAR"/>
+        <result column="BUDGET_SCENARIO" property="budgetScenario" jdbcType="VARCHAR"/>
+        <result column="BUDGET_SCENARIO_DESC" property="budgetScenarioDesc" jdbcType="VARCHAR"/>
+        <result column="PERIOD_FROM" property="periodFrom" jdbcType="VARCHAR"/>
+        <result column="PERIOD_TO" property="periodTo" jdbcType="VARCHAR"/>
+        <result column="COMPANYLID" property="companylid" jdbcType="DECIMAL"/>
+        <result column="BUDGETVERSIONLID" property="budgetversionlid" jdbcType="DECIMAL"/>
+        <result column="BUDGETSCENARIOLID" property="budgetscenariolid" jdbcType="DECIMAL"/>
+        <result column="BUDGETSTRUCTURELID" property="budgetstructurelid" jdbcType="DECIMAL"/>
+        <result column="PERIODLID" property="periodlid" jdbcType="DECIMAL"/>
+        <result column="PERIODQUARTERLID" property="periodquarterlid" jdbcType="DECIMAL"/>
+        <result column="PERIODYEARLID" property="periodyearlid" jdbcType="DECIMAL"/>
+        <result column="PERIOD_STRATEGY" property="periodStrategy" jdbcType="VARCHAR"/>
+        <result column="STRUCTURE_ID" property="structureId" jdbcType="DECIMAL"/>
+        <result column="STRUCTURE_CODE" property="structureCode" jdbcType="VARCHAR"/>
+        <result column="STRUCTURE_NAME" property="structureName" jdbcType="VARCHAR"/>
+    </resultMap>
+    
+    <select id="getBalanceQueryCondH" resultMap="BaseResultMap">
+        SELECT
+            head.*,
+            bud.structure_id,
+            bud.structure_code,
+            bud.description AS structure_name
+        FROM
+            (SELECT
+                t.balance_query_cond_h_id,
+                concat(t.balance_query_condition_code,'-', t.description) description,
+                t.balance_query_condition_code AS condition_code,
+                t.description AS condition_desc,
+                t.company_id,
+                t.amount_flag,
+                t.quantity_flag,
+                t.period_summary_flag,
+                (
+                    CASE WHEN
+                        (SELECT l.parameter_lower_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_QUARTER') IS NULL
+                    THEN
+                        ''
+                    ELSE
+                        (SELECT l.parameter_lower_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_QUARTER')
+                    END
+                ) period_quarter_from,
+                (
+                    CASE WHEN
+                        (SELECT l.parameter_upper_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_QUARTER') IS NULL
+                    THEN
+                        ''
+                    ELSE
+                        (SELECT l.parameter_upper_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_QUARTER')
+                    END
+                ) period_quarter_to,
+                (
+                    CASE WHEN
+                        (SELECT l.parameter_lower_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_YEAR') IS NULL
+                    THEN
+                        ''
+                    ELSE
+                        (SELECT l.parameter_lower_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_YEAR')
+                    END
+                ) period_year_from,
+                (
+                    CASE WHEN
+                        (SELECT l.parameter_upper_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_YEAR') IS NULL
+                    THEN
+                        ''
+                    ELSE
+                        (SELECT l.parameter_upper_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD_YEAR')
+                    END
+                ) period_year_to,
+                (SELECT
+                    l.parameter_code
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'COMPANY'
+                ) company_code,
+                (SELECT
+                    t.version_code
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_version t
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    t.version_code = l.parameter_code AND
+                    l.parameter = 'BUDGET_VERSION' AND
+                    t.bgt_org_id = #{bgtOrgId}
+                ) version_code,
+                (SELECT
+                    t.description
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_version t
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    t.version_code = l.parameter_code AND
+                    l.parameter = 'BUDGET_VERSION' AND
+                    t.bgt_org_id = #{bgtOrgId}
+                ) budget_version,
+                (SELECT
+                    l.parameter_code
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'BUDGET_STRUCTURE'
+                ) budget_structure,
+                (SELECT
+                    vl.description
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_structure vl
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    vl.structure_code = l.parameter_code AND
+                    l.parameter = 'BUDGET_STRUCTURE' AND
+                    vl.bgt_org_id = #{bgtOrgId}
+                ) budget_structure_desc,
+                (SELECT
+                    l.parameter_code
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'BUDGET_SCENARIO'
+                ) budget_scenario,
+                (SELECT
+                    vl.description
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_scenario vl
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    vl.scenario_code = l.parameter_code AND
+                    l.parameter = 'BUDGET_SCENARIO' AND
+                    vl.bgt_org_id = #{bgtOrgId}
+                ) budget_scenario_desc,
+                (
+                    CASE WHEN
+                        (SELECT l.parameter_lower_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD') IS NULL
+                    THEN
+                        1
+                    ELSE
+                        (SELECT l.parameter_lower_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD')
+                    END
+                ) period_from,
+                (
+                    CASE WHEN
+                        (SELECT l.parameter_upper_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD') IS NULL
+                    THEN
+                        1
+                    ELSE
+                        (SELECT l.parameter_upper_limit FROM bgt_balance_query_cond_l l WHERE l.balance_query_cond_h_id = t.balance_query_cond_h_id AND l.parameter = 'PERIOD')
+                    END
+                ) period_to,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'COMPANY'
+                ) companylid,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_version v
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    v.version_code = l.parameter_code AND
+                    v.bgt_org_id = #{bgtOrgId} AND
+                    l.parameter = 'BUDGET_VERSION'
+                ) budgetversionlid,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'BUDGET_SCENARIO'
+                ) budgetscenariolid,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_structure v
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    v.structure_code = l.parameter_code AND
+                    l.parameter = 'BUDGET_STRUCTURE' AND
+                    v.bgt_org_id = #{bgtOrgId}
+                ) budgetstructurelid,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'PERIOD'
+                ) periodlid,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'PERIOD_QUARTER'
+                ) periodquarterlid,
+                (SELECT
+                    l.balance_query_cond_l_id
+                FROM
+                    bgt_balance_query_cond_l l
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    l.parameter = 'PERIOD_YEAR'
+                ) periodyearlid,
+                (SELECT
+                    v.period_strategy
+                FROM
+                    bgt_balance_query_cond_l l,
+                    bgt_structure v
+                WHERE
+                    l.balance_query_cond_h_id = t.balance_query_cond_h_id AND
+                    v.structure_code = l.parameter_code AND
+                    l.parameter = 'BUDGET_STRUCTURE' AND
+                    v.bgt_org_id = #{bgtOrgId}
+                ) period_strategy
+            FROM
+                bgt_balance_query_cond_h t
+            ) head,
+            bgt_structure bud
+        WHERE
+            head.budget_structure = bud.structure_code AND
+            bud.enabled_flag = 'Y'
+    </select>
+
+    <select id="getCondHIdByConditionCode" resultType="java.lang.Long">
+        SELECT
+            h.BALANCE_QUERY_COND_H_ID
+        FROM
+            bgt_balance_query_cond_h h
+        WHERE
+            h.BALANCE_QUERY_CONDITION_CODE = #{balanceQueryConditionCode}
+    </select>
+
+</mapper>

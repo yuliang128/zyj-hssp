@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldSetOfBookMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldSetOfBook">
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR"/>
+        <result column="SET_OF_BOOKS_CODE" property="setOfBooksCode" jdbcType="VARCHAR"/>
+        <result column="PERIOD_SET_CODE" property="periodSetCode" jdbcType="VARCHAR"/>
+        <result column="FUNCTIONAL_CURRENCY_CODE" property="functionalCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SET_ID" property="accountSetId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="SET_OF_BOOKS_CODE_NAME" property="setOfBooksCodeName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SET_NAME" property="accountSetName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="SOB_ENABLED_FLAG" property="sobEnabledFlag" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR"/>
+        <result column="period_set_name" property="periodSetName" jdbcType="VARCHAR"/>
+        <result column="total_period_num" property="totalPeriodNum" jdbcType="VARCHAR"/>
+        <result column="period_set_name_display" property="periodSetNameDisplay" jdbcType="VARCHAR"/>
+        <result column="set_of_books_name_display" property="setOfBooksNameDisplay" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="QueryCountByPeriodSetCode" resultType="java.lang.Integer">
+        select count(*) from GLD_SET_OF_BOOK where PERIOD_SET_CODE = #{periodSetCode}
+    </select>
+
+    <select id="judgeUsedByAccounting" resultType="java.lang.Long" parameterType="java.lang.Long">
+        select count(*) from gld_accounting_entity where DEFAULT_SET_OF_BOOKS_ID = #{setBooksId}
+    </select>
+
+    <select id="judgeUsedByOrganization" resultType="java.lang.Long" parameterType="java.lang.Long">
+        select count(*) from fnd_managing_organization where DEFAULT_SET_OF_BOOKS_ID = #{setBooksId}
+   </select>
+    <select id="querySetOfBookByParam" resultMap="BaseResultMap">
+        SELECT
+            gsb.set_of_books_id,
+            gsb.set_of_books_code,
+            gsbt.set_of_books_name
+        FROM
+            gld_set_of_book gsb,
+            gld_set_of_book_tl gsbt,
+            fnd_mag_org_ref_gld_sob sob
+        WHERE
+            sob.set_of_books_id = gsb.set_of_books_id
+            AND gsb.set_of_books_id = gsbt.set_of_books_id
+            AND sob.mag_org_id = #{magOrgId}
+            AND #{parameterValue} = 'N'
+            AND gsb.enabled_flag = 'Y'
+            AND sob.enabled_flag = 'Y'
+            AND gsbt.lang = #{request.locale,javaType=java.lang.String,jdbcType=VARCHAR}
+        UNION ALL
+        SELECT
+            gsb.set_of_books_id,
+            gsb.set_of_books_code,
+            gsbt.set_of_books_name
+        FROM
+            gld_set_of_book gsb,
+            gld_set_of_book_tl gsbt
+        WHERE
+            gsb.ENABLED_FLAG = 'Y'
+            AND gsb.set_of_books_id = gsbt.SET_OF_BOOKS_ID
+            AND #{parameterValue,javaType=java.lang.String,jdbcType=VARCHAR} = 'Y'
+            AND gsbt.lang = #{request.locale,javaType=java.lang.String,jdbcType=VARCHAR}
+        ORDER BY
+            set_of_books_id
+    </select>
+
+    <select id="selectDefaultSobByMagOrgId" resultMap="BaseResultMap">
+        SELECT
+        g.set_of_books_id,
+        g.set_of_books_code,
+        gt.set_of_books_name,
+        concat(g.set_of_books_code,'-',gt.set_of_books_name) set_of_books_code_name
+        FROM
+        gld_set_of_book g left join
+        gld_set_of_book_tl gt on (g.set_of_books_id = gt.set_of_books_id AND gt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        left join fnd_mag_org_ref_gld_sob sob on sob.set_of_books_id = g.set_of_books_id
+        WHERE
+        g.enabled_flag = 'Y' AND
+        sob.enabled_flag = 'Y' AND
+        sob.default_flag = 'Y'
+        and sob.mag_org_id = #{request.magOrgId}
+
+    </select>
+
+    <select id="querySobByMagOrgId" resultMap="BaseResultMap" parameterType="com.hand.hec.gld.dto.GldSetOfBook">
+        SELECT
+            A.SET_OF_BOOKS_ID,
+            B.SET_OF_BOOKS_NAME AS SET_OF_BOOKS_NAME,
+            A.SET_OF_BOOKS_CODE,
+            A.PERIOD_SET_CODE,
+            A.FUNCTIONAL_CURRENCY_CODE,
+            A.ACCOUNT_SET_ID,
+            D.ACCOUNT_SET_NAME AS ACCOUNT_SET_NAME,
+            A.ENABLED_FLAG,
+            C.MAG_ORG_ID AS MAG_ORG_ID,
+            C.ENABLED_FLAG AS SOB_ENABLED_FLAG,
+            C.DEFAULT_FLAG AS DEFAULT_FLAG
+        FROM
+            gld_set_of_book A
+            INNER JOIN gld_set_of_book_TL B ON A.SET_OF_BOOKS_ID = B.SET_OF_BOOKS_ID
+            AND B.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+            LEFT OUTER JOIN fnd_mag_org_ref_gld_sob C ON A.SET_OF_BOOKS_ID = C.SET_OF_BOOKS_ID
+            LEFT OUTER JOIN gld_account_set D ON A.ACCOUNT_SET_ID = D.ACCOUNT_SET_ID
+        WHERE
+            (A.ENABLED_FLAG = #{enabledFlag,javaType=java.lang.String}
+            AND C.MAG_ORG_ID = #{magOrgId}
+            AND C.ENABLED_FLAG = #{sobEnabledFlag,javaType=java.lang.String}
+            AND C.DEFAULT_FLAG = #{defaultFlag,javaType=java.lang.String})
+        ORDER BY
+            set_of_books_id ASC
+    </select>
+
+    <sql id="querySetOfBookOptionsByParamValueSqlSegment">
+        select
+            gb.set_of_books_id  setOfBooksId,
+            gb.set_of_books_code setOfBooksCode,
+            gbtl.set_of_books_name setOfBooksName,
+            concat( gb.set_of_books_code, '-', gbtl.set_of_books_name ) setOfBooksCodeName
+        from
+            gld_set_of_book gb
+
+            join gld_set_of_book_tl gbtl on gbtl.set_of_books_id = gb.set_of_books_id
+            and gbtl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+            and gb.enabled_flag = 'Y'
+    </sql>
+
+    <select id="querySetOfBookOptionsByParamValue" resultMap="BaseResultMap"
+            parameterType="com.hand.hec.gld.dto.GldSetOfBook">
+        SELECT
+        t1.*
+        FROM (
+        <include refid="querySetOfBookOptionsByParamValueSqlSegment"></include>
+
+        join fnd_mag_org_ref_gld_sob rgs on rgs.set_of_books_id = gb.set_of_books_id
+        and rgs.enabled_flag = 'Y'
+        and rgs.mag_org_id = #{magOrgId}
+        and #{parameterValue,javaType=java.lang.String,jdbcType=VARCHAR} = 'N'
+        union all
+        <include refid="querySetOfBookOptionsByParamValueSqlSegment"></include>
+
+        and #{parameterValue,javaType=java.lang.String,jdbcType=VARCHAR} = 'Y'
+        ) t1 ORDER BY t1.setOfBooksCode
+    </select>
+
+    <select id="queryForPeriod" resultMap="BaseResultMap" parameterType="com.hand.hec.gld.dto.GldSetOfBook">
+        SELECT
+            gsob.SET_OF_BOOKS_ID,
+            gsob.SET_OF_BOOKS_CODE,
+            gsob.SET_OF_BOOKS_NAME,
+            gps.PERIOD_SET_ID,
+            gps.PERIOD_SET_CODE,
+            gps.PERIOD_SET_NAME,
+            gps.TOTAL_PERIOD_NUM,
+            gps.PERIOD_ADDITIONAL_FLAG,
+            CONCAT( gps.period_set_code, '-', gps.period_set_name ) period_set_name_display,
+            CONCAT( gsob.SET_OF_BOOKS_CODE, '-', gsob.SET_OF_BOOKS_NAME ) set_of_books_name_display
+        FROM
+            gld_period_set gps
+                INNER JOIN gld_set_of_book gsob ON gsob.PERIOD_SET_CODE = gps.PERIOD_SET_CODE
+                AND gsob.SET_OF_BOOKS_ID = #{setOfBooksId}
+    </select>
+
+    <select id="queryByMagId" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (SELECT
+        gsbv.set_of_books_id,
+        gsbv.set_of_books_code,
+        gsbv.set_of_books_name
+        FROM
+        gld_set_of_book gsbv
+        left join gld_set_of_book_tl gsbvt ON gsbv.set_of_books_id = gsbvt.set_of_books_id
+        and gsbvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        WHERE
+        gsbv.enabled_flag = 'Y' AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_gld_sob fmgs
+        WHERE
+        fmgs.set_of_books_id = gsbv.set_of_books_id
+        AND fmgs.enabled_flag = 'Y'
+        <choose>
+            <when test="magOrgId != null">
+                AND fmgs.mag_org_id = #{magOrgId}
+            </when>
+            <otherwise>
+                AND fmgs.mag_org_id = #{request.magOrgId,jdbcType = DECIMAL}
+            </otherwise>
+        </choose>
+        )
+        ) v
+        ORDER BY
+        v.set_of_books_code
+    </select>
+
+    <!-- Modify Tagin/2019.03.27 根据核算主体获取默认账套 -->
+    <select id="queryDftSetOffBookByAe" resultMap="BaseResultMap">
+        select
+        gsob.set_of_books_id,
+        gsob.set_of_books_code,
+        gsbt.set_of_books_name
+        from
+        gld_set_of_book gsob
+        left join gld_set_of_book_tl gsbt on
+        gsob.set_of_books_id = gsbt.set_of_books_id
+        and gsbt.lang = #{request.locale, jdbcType=VARCHAR, javaType=java.lang.String}
+        where exists (
+        select 'x'
+        from
+        gld_acc_entity_ref_sob gars
+        where
+        gars.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        and gars.default_flag = 'Y'
+        and gars.set_of_books_id = gsob.set_of_books_id)
+    </select>
+</mapper>

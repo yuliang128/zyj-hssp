@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscNodeAssignWorkerMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscNodeAssignWorker">
+        <result column="WORKER_ASSIGN_ID" property="workerAssignId" jdbcType="DECIMAL" />
+        <result column="NODE_ID" property="nodeId" jdbcType="DECIMAL" />
+        <result column="WORK_TEAM_ID" property="workTeamId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+        <result column="DISPATCH_BASIS_TYPE" property="dispatchBasisType" jdbcType="VARCHAR" />
+        <result column="BASIS_VALUE" property="basisValue" jdbcType="DECIMAL" />
+        <result column="MAX_DISPATCH_COUNT" property="maxDispatchCount" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="SSC_DISPATCH_BASIS_NAME" property="sscDispatchBasisName" jdbcType="VARCHAR"/>
+        <result column="WORK_TEAM_CODE_NAME" property="workTeamCodeName" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_CODE_NAME" property="employeeCodeName" jdbcType="VARCHAR"/>
+		<result column="TASK_ID" property="taskId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="querySscNodeAssignWorker" resultMap="BaseResultMap">
+        SELECT
+	t1.*
+FROM
+	(
+		SELECT
+			a.worker_assign_id,
+			a.node_id,
+			a.work_team_id,
+			(
+				SELECT
+					concat(
+						s.work_team_code,
+						'-',
+						st.DESCRIPTION
+					)
+				FROM
+					ssc_work_team s,
+					ssc_work_team_tl st
+				WHERE
+					s.work_team_id = a.work_team_id
+				AND s.WORK_TEAM_ID = st.WORK_TEAM_ID
+				AND st.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) work_team_code_name,
+			a.employee_id,
+			(
+				SELECT
+					concat(p.employee_code,'-', p. NAME)
+				FROM
+					exp_employee p
+				WHERE
+					p.employee_id = a.employee_id
+			) employee_code_name,
+			a.dispatch_basis_type,
+			(
+				SELECT
+					vt.DESCRIPTION
+				FROM
+					sys_code_b sc,
+					sys_code_value_b v,
+					sys_code_value_tl vt
+				WHERE
+					sc.CODE = 'SSC_DISPATCH_BASIS'
+				AND sc.code_id = v.code_id
+				AND v.VALUE = a.dispatch_basis_type
+				AND v.CODE_VALUE_ID = vt.CODE_VALUE_ID
+				AND vt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) AS ssc_dispatch_basis_name,
+			a.basis_value,
+			a.max_dispatch_count,
+			a.enabled_flag
+		FROM
+			ssc_node_assign_worker a
+	) t1
+        where  1=1
+        <if test="nodeId!=null">
+            AND t1.node_Id = #{nodeId}
+        </if>
+ORDER BY
+	t1.worker_assign_id
+    </select>
+
+    <select id="querySscNodeAssignWorkerByDispatch" resultMap="BaseResultMap">
+		select w.*,
+         	   r.task_id
+          from ssc_workflow_node       n,
+               ssc_task_dispatch_record r,
+               ssc_node_assign_worker  w
+         where n.node_id = r.node_id
+           and r.dispatch_record_id = #{dispatchRecordId}
+           and n.node_id = w.node_id
+           and w.enabled_flag = 'Y'
+	</select>
+
+	<select id="getAllNodeAssignWorker" resultMap="BaseResultMap">
+		select aw.*
+          from ssc_node_assign_worker aw left join
+               ssc_workflow_node      n on aw.node_id = n.node_id
+         where aw.work_team_id = #{workTeamId}
+           and (aw.employee_id = #{employeeId} or aw.employee_id is null)
+           and aw.enabled_flag = 'Y'
+           and n.manual_dispatch_flag = 'Y'
+	</select>
+
+</mapper>

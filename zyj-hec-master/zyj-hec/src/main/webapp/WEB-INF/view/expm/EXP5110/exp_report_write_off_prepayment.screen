@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-6-30 上午10:26:22  
+    $Revision: 1.0  
+    $Purpose: 报销单核销借款
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP5110_writeOffRequisitionViewLink" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="EXP5110_writeOffAcpRequisitionViewLink" url="$[/request/@context_path]/acp/ACP3100/acp_requisition_view_maintain_main.screen"/>
+        <a:link id="EXP5110_writeOffFinanceLink" url="$[/request/@context_path]/expm/EXP5110/exp_report_write_off_prepayment_finance.screen"/>
+        <a:link id="EXP5110_writeOffCreateLink" url="$[/request/@context_path]/csh/write-off/createWrite"/>
+        <script><![CDATA[
+        function EXP5110_writeHeaderQuery() {
+            $au('EXP5110_writeOffHeaderDs').query();
+        }
+
+        function EXP5110_writeDetailQuery() {
+            $au('EXP5110_unWriteOffDs').query();
+        }
+
+        function EXP5110_writeHistoryQuery() {
+            $au('EXP5110_writeOffHistoryDs').query();
+        }
+
+        function EXP5110_createWriteOff() {
+            var param = [];
+            //取出被修改的行
+            var records = $au('EXP5110_unWriteOffDs').getJsonData(false);
+            if (records.length < 1) {
+                Aurora.showErrorMessage('$[l:prompt]', '$[l:exp5110_must_input_write_amount]');
+                return;
+            }
+            for (var i = 0; i < records.length; i++) {
+                if (records[i]["amount"] != '' && records[i]["amount"]) {
+                    records[i]['writeOffDate'] = $au('EXP5110_writeOffHeaderDs').getAt(0).get('writeOffDate');
+                    param.push(records[i]);
+                }
+            }
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('EXP5110_writeOffCreateLink').getUrl(),
+                para: param,
+                success: function (resp) {
+                    EXP5110_writeHeaderQuery();
+                    EXP5110_writeDetailQuery();
+                    EXP5110_writeHistoryQuery();
+                },
+                scope: this
+            });
+        }
+
+        //校验：本次核销不能大于未核销
+
+        function writeOffAmount_change(record, name, value) {
+            if (value > record.get('unWriteOffAmount')) {
+                return '$[l:exp_prepayment_post.check3]';
+            }
+            /*Modified by Arthur.Chen Date: 2017-08-17 16:23:55 begin
+             1.添加：若校验通过，则返回true。
+             */
+            return true; /*Modified by Arthur.Chen Date: 2017-08-17 16:23:55 end */
+        }
+
+        function EXP5110_deleteWriteSuccess(dataset, record, index) {
+            EXP5110_writeHeaderQuery();
+            EXP5110_writeDetailQuery();
+            EXP5110_writeHistoryQuery();
+        }
+
+        function EXP5110_requisitionRenderer(value, record, name) {
+            var id = record.get('requisitionHeaderId');
+            var writeOffType = record.get('writeOffType');
+            if (writeOffType == 'PAYMENT_PREPAYMENT') {
+                if (id) {
+                    return '<a href = "javascript:EXP5110_requisitionWindow(' + id + ')">' + value + '</a>';
+                }
+            } else if (writeOffType == 'ACP_PREPAYMENT') {
+                if (id) {
+                    return '<a href = "javascript:EXP5110_acpRequisitionWindow(' + id + ')">' + value + '</a>';
+                }
+            }
+            return '';
+        }
+
+        function EXP5110_accountRenderer(value, record, name) {
+            var id = record.get('writeOffId');
+            if (id) {
+                return '<a href = "javascript:EXP5110_accountWindow(' + id + ')">$[l:exp_prepayment_post.financeinformationtab]</a>';
+            }
+            return '';
+        }
+
+        function EXP5110_requisitionWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_writeOffRequisitionViewLink').getUrl() + '?paymentRequisitionHeaderId=' + id,
+                id: 'CSH5010_pay_requisition_view_main_window',
+                fullScreen: true
+            }).on('close', function () {
+                EXP5110_writeDetailQuery();
+                EXP5110_writeHistoryQuery();
+            });
+        }
+
+        function EXP5110_acpRequisitionWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_writeOffAcpRequisitionViewLink').getUrl() + '?requisitionHdId=' + id,
+                id: 'CSH5010_acp_requisition_view_main_window',
+                fullScreen: true
+            }).on('close', function () {
+                EXP5110_writeDetailQuery();
+                EXP5110_writeHistoryQuery();
+            });
+        }
+
+        function EXP5110_accountWindow(id) {
+            new Aurora.Window({
+                url: $au('EXP5110_writeOffFinanceLink').getUrl() + '?writeOffId=' + id,
+                id: 'EXP5110_report_write_off_prepayment_finance_window',
+                fullScreen: true
+            }).on('close', function () {
+                EXP5110_writeDetailQuery();
+                EXP5110_writeHistoryQuery();
+            });
+        }
+
+        function EXP5110_backBtn() {
+            $au('EXP5110_exp_report_write_off_prepayment_window').close();
+        }
+
+        function resetFunction() {
+            $au('EXP5110_writePaymentQueryDs').reset();
+        }
+
+        function queryFunction() {
+            $au('EXP5110_unWriteOffDs').query();
+        }
+
+        function EXP5110_formatMoney(value, record, name) {
+            return '<div style="font-weight:bold;font-size:14px;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_writeOffHeaderDs" autoQuery="true" baseUrl="/csh/write-off"
+                       queryUrl="$[/request/@context_path]/csh/write-off/docQuery?paymentScheduleLineId=$[/parameter/@paymentScheduleLineId]">
+                <a:fields>
+                    <a:field name="writeOffDate" prompt="csh_write_off.write_off_date" required="true"/>
+                    <a:field name="requisitionNumber" prompt="exp_report_header.exp_report_number" readOnly="true"/>
+                    <a:field name="payeeCategoryName" prompt="exp_report_header.payee_category" readOnly="true"/>
+                    <a:field name="payeeName" prompt="exp_report_header.payee_id" readOnly="true"/>
+                    <a:field name="dueAmount" prompt="exp_prepayment_post.due_amount" readOnly="true"/>
+                    <a:field name="canAmount" prompt="exp_prepayment_post.exchange_rate_type" readOnly="true"/>
+                    <a:field name="contractNumber" prompt="con_contract_header.contract_number" readOnly="true"/>
+                    <a:field name="lineNumber" prompt="con_payment_schedules.payment_schedule_line_number" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_writePaymentQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="requisitionNumber" placeHolder="csh_pay_req.csh_num"/>
+                    <a:field name="dateFrom" placeHolder="exp_report_lines.date_from"/>
+                    <a:field name="dateTo" placeHolder="exp_report_lines.date_to"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_unWriteOffDs" autoQuery="true" baseUrl="/csh/write-off" queryDataSet="EXP5110_writePaymentQueryDs"
+                       queryUrl="$[/request/@context_path]/csh/write-off/unWriteQuery?paymentScheduleLineId=$[/parameter/@paymentScheduleLineId]" selectable="true">
+                <a:fields>
+                    <a:field name="transactionHeaderId"/>
+                    <a:field name="transactionLineId"/>
+                    <a:field name="requisitionHeaderId"/>
+                    <a:field name="documentHeaderId"/>
+                    <a:field name="documentLineId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="writeOffTypeName" prompt="exp_prepayment_post.write_off_type"/>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="transactionDate" prompt="csh_transaction_headers.transaction_date"/>
+                    <a:field name="transactionAmount" prompt="exp_prepayment_post.transaction_amount"/>
+                    <a:field name="unWriteOffAmount" prompt="exp_prepayment_post.unwrite_off_amount"/>
+                    <a:field name="requisitionNumber" prompt="csh_pay_req.csh_num"/>
+                    <a:field name="requisitionTypeName" prompt="csh_pay_req_type_trs_classes.pay_req_trs_class_id"/>
+                    <a:field name="amount" defaultValue="0" prompt="exp_prepayment_post.now_write_off_amount" validator="writeOffAmount_change"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_writeOffHistoryDs" autoQuery="true" baseUrl="/csh/write-off" selectable="true"
+                       queryUrl="$[/request/@context_path]/csh/write-off/writeQuery?paymentScheduleLineId=$[/parameter/@paymentScheduleLineId]"
+                       submitUrl="$[/request/@context_path]/csh/write-off/deleteWrite">
+                <a:fields>
+                    <a:field name="writeOffId"/>
+                    <a:field name="documentHeaderId"/>
+                    <a:field name="requisitionHeaderId"/>
+                    <a:field name="writeOffDate" prompt="csh_transaction_headers.write_off_completed_date"/>
+                    <a:field name="periodName" prompt="csh_transaction_headers.period_name"/>
+                    <a:field name="writeOffTypeName" prompt="exp_prepayment_post.write_off_type"/>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="requisitionNumber" prompt="csh_pay_req.csh_num"/>
+                    <a:field name="requisitionTypeName" prompt="csh_pay_req_type_trs_classes.pay_req_trs_class_id"/>
+                    <a:field name="cshWriteOffAmount" prompt="exp_pre_post_ro.csh_write_off_amount"/>
+                    <a:field name="accountInfo"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="remove" handler="EXP5110_deleteWriteSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="4" labelWidth="120" padding="6" title="exp_prepayment_post.queryfrom">
+                <a:textField name="requisitionNumber" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:datePicker name="writeOffDate" renderer="Aurora.formatDate" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:comboBox name="payeeCategoryName" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:lov name="payeeName" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:numberField name="dueAmount" allowFormat="true" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:numberField name="canAmount" allowFormat="true" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:textField name="contractNumber" bindTarget="EXP5110_writeOffHeaderDs"/>
+                <a:textField name="lineNumber" bindTarget="EXP5110_writeOffHeaderDs"/>
+            </a:form>
+            <a:form padding="0" showmargin="false" title="exp_non_write_off_record">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:textField name="requisitionNumber" bindTarget="EXP5110_writePaymentQueryDs" width="150"/>
+                    <a:datePicker name="dateFrom" bindTarget="EXP5110_writePaymentQueryDs" width="150"/>
+                    <a:datePicker name="dateTo" bindTarget="EXP5110_writePaymentQueryDs" width="150"/>
+                    <a:button click="queryFunction" text="hap.query" width="80"/>
+                    <a:button click="resetFunction" text="hap.reset" width="80"/>
+                    <a:button id="EXP5110_createWriteOffBtn" click="EXP5110_createWriteOff" text="prompt.write_off" width="80"/>
+                </a:formToolbar>
+                <a:grid id="EXP5110_unWriteOffGrid" autoAdjustHeight="true" bindTarget="EXP5110_unWriteOffDs" height="600" marginWidth="-2" navBar="true">
+                    <a:columns>
+                        <a:column name="requisitionNumber" align="center" renderer="EXP5110_requisitionRenderer" width="80"/>
+                        <a:column name="requisitionTypeName" align="center" width="150"/>
+                        <a:column name="writeOffTypeName" align="center" width="150"/>
+                        <a:column name="transactionNum" align="center" width="80"/>
+                        <a:column name="transactionDate" renderer="Aurora.formatDate" align="center" width="80"/>
+                        <a:column name="transactionAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="unWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="amount" align="right" editor="EXP5110_writeoff_numberField" renderer="EXP5110_formatMoney" width="80"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:numberField id="EXP5110_writeoff_numberField" allowNegative="false"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+            <a:form padding="0" showmargin="false" title="exp_write_off_record">
+                <a:grid id="EXP5110_writeOffHistoryGrid" autoAdjustHeight="true" bindTarget="EXP5110_writeOffHistoryDs" height="600" marginWidth="-2" navBar="true">
+                    <a:toolBar>
+                        <a:button type="delete"/>
+                    </a:toolBar>
+                    <a:columns>
+                        <a:column name="requisitionNumber" align="center" renderer="EXP5110_requisitionRenderer" width="80"/>
+                        <a:column name="requisitionTypeName" align="center" width="150"/>
+                        <a:column name="writeOffTypeName" align="center" width="150"/>
+                        <a:column name="transactionNum" align="center" width="80"/>
+                        <a:column name="writeOffDate" renderer="Aurora.formatDate" align="center" width="80"/>
+                        <a:column name="periodName" align="center" width="80"/>
+                        <a:column name="cshWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="accountInfo" align="center" renderer="EXP5110_accountRenderer" width="80"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

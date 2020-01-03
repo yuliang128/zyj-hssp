@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-08-31 10:35:33
+    $Revision: 1.0  
+    $Purpose: 付款申请类型定义-分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function ACP1135_closeAsgnComWin() {
+                $au('ACP1135_asgnComWin').close();
+            }
+            
+            function ACP1135_onAsgnComDsAdd(ds, record, idx) {
+                var rdFromPay = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                record.set('moPayReqTypeId', rdFromPay.get('moPayReqTypeId'));
+                record.getField('companyCode').setLovPara('magOrgId', rdFromPay.get('magOrgId'));
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ACP1135_asgnComShowDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="moPayReqTypeId"/>
+                    <a:field name="moPayReqTypeCode" readOnly="true"/>
+                    <a:field name="moPayReqTypeName" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="acp_mo_pay_req_tp_asgn_com_result_ds" autoQuery="true" baseUrl="/acp/mo-pay-req-tp-asgn-com" queryDataSet="ACP1135_asgnComShowDs" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="moPayReqTypeId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" autoComplete="true" autoCompleteField="companyCode" lovCode="LOV_ACP_MO_COMPANY?moPayReqTypeId=$[/parameter/@moPayReqTypeId]" prompt="fnd_company.company_code" required="true" title="company_selected">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyName" prompt="company_short_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="ACP1135_onAsgnComDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="budget_item.assign_company" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="ACP1135_asgnCom_grid" type="add" width="80"/>
+                    <a:gridButton bind="ACP1135_asgnCom_grid" type="save" width="80"/>
+                    <a:gridButton bind="ACP1135_asgnCom_grid" type="delete" width="80"/>
+                    <a:button id="companyAsign" click="ACP1135_openBatchAsgnComWin" text="hec_batch_assign" width="80"/>
+                    <a:button click="ACP1135_closeAsgnComWin" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moPayReqTypeCode" bindTarget="ACP1135_asgnComShowDs" prompt="hap.doc_type_code"/>
+                <a:textField name="moPayReqTypeName" bindTarget="ACP1135_asgnComShowDs" prompt="hap.doc_type_name"/>
+            </a:form>
+            <a:grid id="ACP1135_asgnCom_grid" bindTarget="acp_mo_pay_req_tp_asgn_com_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editor="ACP1135_asgnCom_grid_lov" width="120"/>
+                    <a:column name="companyName" align="left" width="120"/>
+                    <a:column name="enabledFlag" align="center" editor="ACP1135_asgnCom_grid_cb" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="ACP1135_asgnCom_grid_lov"/>
+                    <a:checkBox id="ACP1135_asgnCom_grid_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function initPage() {
+                var record = $au('ACP1135_asgnComShowDs').getAt(0);
+                var rdFromReq = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                record.set('moPayReqTypeCode', rdFromReq.get('moPayReqTypeCode'));
+                record.getField('moPayReqTypeCode').setReadOnly(true);
+                record.set('moPayReqTypeName', rdFromReq.get('description'));
+                record.getField('moPayReqTypeName').setReadOnly(true);
+                record.set('moPayReqTypeId', rdFromReq.get('moPayReqTypeId'));
+            }
+            initPage();
+        ]]></script>
+    </a:view>
+</a:screen>

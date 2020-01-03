@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date:2019-02-25
+    $Revision: 1.0 $
+    $Purpose: 员工定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1050_exp_employee_assign_link" url="$[/request/@context_path]/exp/EXP1050/exp_employee_assign.screen"/>
+        <a:link id="EXP1050_exp_bank_assign_link" url="$[/request/@context_path]/exp/EXP1050/exp_bank_assign.screen"/>
+        <a:link id="upload_image_link" url="$[/request/@context_path]/app/APP2000/app_employee_uploadFile.screen"/>
+        <div/>
+        <script><![CDATA[
+            function EXP1050_employeeCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'EXP1050_upper_textField';
+                }
+                return '';
+            }
+            
+            function EXP1050_employeeTypeEdit(record, name) {
+                if (record.isNew) {
+                    return 'EXP1050_comboBox';
+                }
+                return '';
+            }
+            
+            //员工分配-跳转
+            
+            function EXP1050_employeeAssign(value, record, name) {
+                var employeeId = record.get('employeeId');
+                if (employeeId) {
+                    return '<a href="javascript:EXP1050_employeeAssignInfo(' + employeeId + ')">$[l:exp_employees.employee_assign]</a>';
+                }
+            }
+            
+            function EXP1050_employeeAssignInfo(employeeId) {
+                new Aurora.Window({
+                    id: 'EXP1050_exp_employee_assigns_window',
+                    url: /*exp_employee_assign.screen*/
+                    $au('EXP1050_exp_employee_assign_link').getUrl() + '?employeeId=' + employeeId,
+                    title: '$[l:exp_employees.employee_assign]',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP1050_bankAssign(value, record, name) {
+                var employeeId = record.get('employeeId');
+                var name = record.get('name');
+                if (!record.isNew) {
+                    return '<a href="javascript:EXP1050_bankAssignInfo(' + employeeId + ',\''+name+'\')">$[l:csh_payment.bank_account_code]</a>';
+                }
+            }
+            
+            function EXP1050_bankAssignInfo(employeeId,name) {
+                new Aurora.Window({
+                    id: 'EXP1050_exp_bank_assign_window',
+                    url: $au('EXP1050_exp_bank_assign_link').getUrl() + '?employeeId=' + employeeId+'&name='+name,
+                    title: '$[l:csh_payment.bank_account_code]',
+                    fullScreen: true
+                });
+            }
+            
+            //email check
+            
+            function emailValidator(record, name, value) {
+                if (value) {
+                    var reg = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+((\.[a-zA-Z0-9_-]{2,3}){1,2})$/;
+                    if (reg.test(value) == true) {
+                        var matchString = value.match(reg);
+                        if (value == matchString[0]) {
+                            return true;
+                        } else {
+                            return "$[l:gld_coa_structure.check1]";
+                        }
+                    } else {
+                        return "$[l:gld_coa_structure.check1]";
+                    }
+                } else {
+                    return true;
+                }
+            }
+            //phone check
+            
+            function phoneValidator(record, name, value) {
+                if (value) {
+                    var reg = /^(\({0,1}\d{3,4})\){0,1}(-){0,1}(\d{7,8})$/;
+                    if (reg.test(value) == true) {
+                        var matchString = value.match(reg);
+                        if (value == matchString[0]) {
+                            return true;
+                        } else {
+                            return "$[l:phone_check]";
+                        }
+                    } else {
+                        return "$[l:phone_check]";
+                    }
+                } else {
+                    return true;
+                }
+            }
+            //mobile check
+            
+            function mobilValidator(record, name, value) {
+                if (value) {
+                    var reg = /^(\d{2,13})$/;
+                    if (reg.test(value) == true) {
+                        var matchString = value.match(reg);
+                        if (value == matchString[0]) {
+                            return true;
+                        } else {
+                            return "$[l:mobile_check]";
+                        }
+                    } else {
+                        return "$[l:mobile_check]";
+                    }
+                } else {
+                    return true;
+                }
+            }
+            
+            function uploadFile_link(value, record, name) {
+                var employeeId = record.get('employeeId');
+                return record.isNew ? '' : '<a href="javascript:uploadFile(' + employeeId + ')">$[l:prompt.upload_attachment]</a>';
+            }
+            
+            function uploadFile(employeeId) {
+                var url = $au('upload_image_link').getUrl() + '?table_name=EXP_EMPLOYEES&header_id=' + employeeId;
+                new Aurora.Window({
+                    url: url,
+                    title: '$[l:atm.upload_attachment]',
+                    id: 'upload_image_screen',
+                    width: 600,
+                    height: 400
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1050_exp_employee_type_ds" queryUrl="$[/request/@context_path]/exp/mo-employee-type/query" autoQuery="true"/>
+            <a:dataSet id="EXP1050_exp_employees_query_ds">
+                <a:fields>
+                    <a:field name="employeeCode" prompt="exp_employee.employee_code"/>
+                    <a:field name="name" prompt="exp_employee.name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1050_exp_employees_result_ds" autoPageSize="true" autoQuery="true"  queryDataSet="EXP1050_exp_employees_query_ds" selectable="true" submitUrl="$[/request/@context_path]/exp/employee/submit" queryUrl="$[/request/@context_path]/exp/employee/query">
+                <a:fields>
+                    <a:field name="employeeCode" prompt="exp_employee.employee_code" required="true"/>
+                    <a:field name="description" displayField="description" options="EXP1050_exp_employee_type_ds" prompt="exp_employee.employee_type" required="true" returnField="employeeTypeId" valueField="employeeTypeId"/>
+                    <a:field name="name"  prompt="exp_employee.name" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="exp_employee.enabled_flag"/>
+                    <a:field name="email" prompt="exp_employee.email"/>
+                    <a:field name="mobil" prompt="exp_employee.mobil"/>
+                    <a:field name="phone" prompt="exp_employee.phone"/>
+                    <a:field name="placeName"   prompt="exp_employee.permanent_ground" LovCode="EXP_POLICY_PLACE_LOV"  title="exp_policy_place.select">
+                        <a:mapping>
+                            <a:map from="placeName" to="placeName"/>
+                            <a:map from="placeId" to="placeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="idType" prompt="exp_employee.idType"/>
+                    <a:field name="idCode" prompt="exp_employee.idcode"/>
+                    <a:field name="notes" prompt="exp_employee.notes"/>
+                    <a:field name="placeId"/>
+                    <a:field name="formName"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1050_exp_employees_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1050_exp_employees_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1050_exp_employees_query_ds" resultTarget="EXP1050_exp_employees_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="employeeCode" bindTarget="EXP1050_exp_employees_query_ds"  typeCase="upper"/>
+                    <a:textField name="name" bindTarget="EXP1050_exp_employees_query_ds" />
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1050_exp_employees_grid" bindTarget="EXP1050_exp_employees_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="description" align="center" editorFunction="EXP1050_employeeTypeEdit" width="80"/>
+                <a:column name="employeeCode" align="center" editorFunction="EXP1050_employeeCodeEdit" sortable="true" width="80"/>
+                <a:column name="name" align="center" editor="EXP1050_textField" width="80"/>
+                <a:column name="placeName" align="center" editor="EXP1050_lov" width="80"/>
+                <a:column name="email" align="center" editor="EXP1050_textField" width="80"/>
+                <a:column name="mobil" align="center" editor="EXP1050_textField" width="80"/>
+                <a:column name="phone" align="center" editor="EXP1050_textField" width="80"/>
+                <a:column name="idType" align="center" editor="EXP1050_textField" width="80"/>
+                <a:column name="idCode" align="center" editor="EXP1050_textField" width="80"/>
+                <a:column name="notes" editor="EXP1050_textField" width="120"/>
+                <a:column name="enabledFlag" align="center" editor="EXP1050_checkBox" sortable="true" width="80"/>
+                <a:column name="employeeId" align="center"  renderer="EXP1050_employeeAssign" width="80"/>
+                <a:column name="bankId" align="center"  renderer="EXP1050_bankAssign" width="80"/>
+                <a:column name="uploadFile" align="center" renderer="uploadFile_link" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="EXP1050_comboBox"/>
+                <a:textField id="EXP1050_upper_textField" typeCase="upper"/>
+                <a:lov id="EXP1050_lov"/>
+                <a:textField id="EXP1050_textField"/>
+                <a:checkBox id="EXP1050_checkBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

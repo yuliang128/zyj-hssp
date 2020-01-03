@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/03/06 9:47:59 $
+    $Revision: 1.0
+    $Purpose: 只读精简行扩展
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+   <!-- <a:init-procedure>
+        <a:model-query defaultWhereClause="v.report_page_element_code = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_line_dimension_fields_query" rootPath="streamlined_line_dimensions"/>
+        <a:model-query defaultWhereClause="v.report_page_element_code = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_line_object_fields_query" rootPath="streamlined_line_objects"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP5110_exp_report_maintain_vat_invoice_link01" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_vat_invoice.screen"/>
+        <script><![CDATA[
+            
+            function EXP5110_openInvoiceDetailWindow(vatInvoiceId, vatInvoiceLineId) {
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_vat_invoice_link01').getUrl() + '?line_ds_id=EXP5110_exp_report_streamlined_line_ds&vatInvoiceId=' + vatInvoiceId + '&vatInvoiceLineId=' + vatInvoiceLineId + '&accEntityId=' + $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId'),
+                    id: 'EXP5110_exp_report_maintain_vat_invoice_window',
+                    title: '$[l:vat_invoice_info]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            
+            function EXP5110_onStreamlinedInvoiceCodeFocus(cmp) {
+                var record = cmp.binder.ds.getCurrentRecord();
+                EXP5110_openInvoiceDetailWindow((record.get('vatInvoiceId') ? record.get('vatInvoiceId') : ''), (record.get('vatInvoiceLineId') ? record.get('vatInvoiceLineId') : ''));
+            }
+            
+            function EXP5110_streamlinedPreRecord(){
+                $au('EXP5110_exp_report_streamlined_line_ds').pre();
+            }
+            
+            function EXP5110_streamlinedNextRecord(){
+                $au('EXP5110_exp_report_streamlined_line_ds').next();
+            }
+            
+            
+            function EXP5110_streamlinedExtendClose(){
+                $au('EXP5110_exp_report_maintain_streamlined_lines_extend_window').close();
+            }
+            
+            Aurora.onReady(function() {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+            	var dimFlag = false;
+            	var objFlag = false;
+            
+                for (cmpName in $A.CmpManager.cache) {
+                    if (cmpName.indexOf('EXP5110_editor_') != -1) {
+                   //     $au(cmpName)['on']('focus', EXP5110_onStreamlinedEditorFocus);
+                    }
+                    
+                    if(cmpName.indexOf('EXP5110_editor_dim') != -1){
+                        dimFlag = true;
+                    }
+                    
+                    if(cmpName.indexOf('EXP5110_editor_obj') != -1){
+                        objFlag = true;
+                    }
+                }
+            
+                if (headerRecord.get('vatInvoiceFlag') == 'N') {
+                    Ext.get('EXP5110_streamlinedVatInvoiceForm').setStyle('display', 'none');
+                }
+                
+                if(!dimFlag){
+                    Ext.get('EXP5110_streamlinedDimForm').setStyle('display', 'none');
+                }
+                
+                if(!objFlag){
+                    Ext.get('EXP5110_streamlinedObjForm').setStyle('display', 'none');
+                }
+            });
+        ]]></script>
+        <a:screenBody>
+            <a:hBox>
+                <a:button click="EXP5110_streamlinedPreRecord" text="prompt.on" width="80"/>
+                <a:button click="EXP5110_streamlinedNextRecord" text="prompt.next" width="80"/>
+                <a:button click="EXP5110_streamlinedExtendClose" skin="red" text="hap_close" width="80"/>
+            </a:hBox>
+            <a:form column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expense_news" width="980">
+                <a:numberField name="lineNumber" id="EXP5110_editor_001" allowDecimals="false" allowNegative="false" bindTarget="EXP5110_exp_report_streamlined_line_ds"  prompt="acp_acp_req_create.line_number"/>
+                <a:lov name="companyName" id="EXP5110_editor_003" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_journal_header.company_id"/>
+                <a:lov name="unitName" id="EXP5110_editor_004" bindTarget="EXP5110_exp_report_streamlined_line_ds"  prompt="bgt_journal_balance.unit_id"/>
+                <a:lov name="positionName" id="EXP5110_editor_005" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="acp_requisition.position"/>
+                <a:lov name="employeeName" id="EXP5110_editor_006" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_budget_item_mapping.employee_id"/>
+                <a:lov name="accEntityName" id="EXP5110_editor_007" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="gld_accounting_entity.acc_entity_name"/>
+                <a:lov name="respCenterName" id="EXP5110_editor_008" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_org_unit.responsibility_center"/>
+                <a:comboBox name="moExpenseTypeName" id="EXP5110_editor_009" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_expense_type.expense_type_id"/>
+                <a:lov name="moExpenseItemName" id="EXP5110_editor_010" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_expense_item.expense_item_id"/>
+                <a:lov name="placeName" id="EXP5110_editor_012" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_report_line.place_id"/>
+                <a:comboBox name="placeTypeName" id="EXP5110_editor_011" bindTarget="EXP5110_exp_report_streamlined_line_ds"  prompt="exp_report_line.place_type_id"/>
+                <a:datePicker name="dateFrom" id="EXP5110_editor_013" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_period.start_date" renderer="Aurora.formatDate"/>
+                <a:datePicker name="dateTo" id="EXP5110_editor_014" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_period.end_date" renderer="Aurora.formatDate"/>
+                <a:comboBox name="businessCurrencyName" id="EXP5110_editor_015" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="business_currency_name"/>
+                <a:numberField name="businessPrice" id="EXP5110_editor_016" bindTarget="EXP5110_exp_report_streamlined_line_ds" editorFunction="EXP5110_standardBizPriceEditorFun" prompt="business_price" renderer="Aurora.formatMoney"/>
+                <a:numberField name="primaryQuantity" id="EXP5110_editor_017" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="business_amount"/>
+                <a:lov name="periodName" id="EXP5110_editor_032" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_budget_reserve.period_name"/>
+                <a:textArea name="description" id="EXP5110_editor_002" bindTarget="EXP5110_exp_report_streamlined_line_ds" colspan="3" prompt="exp_report_headers.description" width="797"/>
+            </a:form>
+            <a:form id="EXP5110_streamlinedVatInvoiceForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="vat_invoice_info" width="980">
+                <a:lov name="invoiceCode" id="EXP5110_editor_033" bindTarget="EXP5110_exp_report_streamlined_line_ds"  prompt="vat_invoices.invoice_code">
+                    <a:events>
+                        <a:event name="focus" handler="EXP5110_onStreamlinedInvoiceCodeFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:textField name="invoiceNumber" id="EXP5110_editor_034" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="vat_invoice.invoice_number"/>
+                <a:lov name="invoiceItemName" id="EXP5110_editor_035" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_report.invoice_item"/>
+                <a:lov name="invoiceUsedeName" id="EXP5110_editor_036" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_report.invoice_usede"/>
+            </a:form>
+            <a:form id="EXP5110_streamlinedDimForm" column="3" padding="10" showmargin="0" style="margin-top:10px;"  title="dimension_information" width="980">
+                <a:placeHolder id="EXP5110_streamlinedLineDimensionEditors"/>
+            </a:form>
+            <a:form id="EXP5110_streamlinedObjForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expense_object_information" width="980">
+                <a:placeHolder id="EXP5110_streamlinedLineObjectEditors"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_streamlinedLineDimensionEditors">
+            <p:loop source="/model/streamlined_line_dimensions">
+                <c:process-config>
+                    <a:lov name="$[@displayField]" id="EXP5110_editor_dim_$[@dimensionId]" bindTarget="EXP5110_exp_report_streamlined_line_ds"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_streamlinedLineObjectEditors">
+            <p:loop source="/model/streamlined_line_objects">
+                <p:switch test="@expense_object_method">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:textField name="$[@displayField]" id="EXP5110_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt=""/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:lov name="$[@displayField]" id="EXP5110_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt=""/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

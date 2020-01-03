@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    * Author: yang.cai@hand-china.com
+    * Date: 2019-2-22 下午18:56:55
+    * Revision: 1.0
+    * Purpose: 付款方式定义-分配管理组织
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1070_csh_payment_method_asgn_com_link" url="$[/request/@context_path]/csh/CSH1070/csh_payment_method_asgn_com.screen"/>
+        <div/>
+        <script><![CDATA[
+            function CSH1070_closeAsgnMoCreateWindow() {
+                $au('CSH1070_csh_payment_method_asgn_mo').close();
+            }
+            
+            function CSH1070_asgnMoCodeEdit(record, name) {
+                if (record.isNew) {
+                    return "CSH1070_asgn_mo_lov";
+                } else {
+                    return "";
+                }
+            }
+            
+            function SH1070_asgnMoSubmit(ds) {
+                ds.query();
+            }
+            
+            //分配公司-跳转
+            
+            function CSH1070_asgnCom(value, record, name) {
+                if (!record.isNew) {
+                    var payMethodId = record.get('paymentMethodId');
+                    var asgnMoId = record.get('assignMoId');
+                    return '<a href="javascript:CSH1070_view_asgn_com(\'' + payMethodId + '\',\'' + asgnMoId + '\')">$[l:bgt_journal_type.company_id]</a>';
+                }
+            }
+            
+            function CSH1070_view_asgn_com(payMethodId, asgnMoId) {
+                new Aurora.Window({
+                    id: 'CSH1070_csh_payment_method_asgn_com',
+                    url: $au('CSH1070_csh_payment_method_asgn_com_link').getUrl() + '?paymentMethodId=' + payMethodId + '&assignMoId=' + asgnMoId,
+                    title: '$[l:bgt_journal_type.company_id]',
+                    side:'right',width:1020
+                });
+            }
+            function CSH1070_saveFunction() {
+                var records = $au('CSH1070_csh_payment_method_asgn_mo_ds').getAll();
+                var default_number = 0;
+                for (var i = 0; i < records.length; i++) {
+                    for (var j = i +1; j < records.length; j++) {
+                        if (records[i].get('magOrgId') == records[j].get('magOrgId')) {
+                            default_number++;
+                        }
+                        if (default_number > 0) {
+                            Aurora.showErrorMessage('$[l:prompt.error]', '$[l:payment_method_hasbeen_assign_error]');
+                            return;
+                        }
+                    }
+                }
+                $au('CSH1070_csh_payment_method_asgn_mo_ds').submit();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1070_csh_payment_method_asgn_mo_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-method-asgn-mo" pageSize="50" queryUrl="$[/request/@context_path]/csh/payment-method-asgn-mo/query?paymentMethodId=$[/parameter/@paymentMethodId]" selectable="false">
+                <a:fields>
+                    <a:field name="description" autoComplete="true" lovCode="LOV_FND_MANAGING_ORGANIZATION" required="true"  prompt="exp_mo_req_types.mag_org_id"  title="csh_payment_method_asgn_mo.managing_org">
+                        <a:mapping>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="description" to="description"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgCode"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="paymentMethodId" defaultValue="$[/parameter/@paymentMethodId]"/>
+                    <a:field name="assignMoId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="SH1070_asgnMoSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="csh_payment_method.managing_organization" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1070_csh_payment_method_asgn_mo_grid" type="add" width="80"/>
+                    <!--   <a:gridButton bind="CSH1070_csh_payment_method_asgn_mo_grid" type="delete" width="80"/> -->
+                    <a:gridButton bind="CSH1070_csh_payment_method_asgn_mo_grid" click="CSH1070_saveFunction" type="save" width="80"/>
+                    <a:toolbarButton click="CSH1070_closeAsgnMoCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="paymentMethodCode" bindTarget="CSH1070_csh_payment_methods_result_ds" prompt="csh_payment_method.payment_method_code" readOnly="true" typeCase="upper"/>
+                <a:textField name="description" bindTarget="CSH1070_csh_payment_methods_result_ds" prompt="csh_payment_method.payment_method_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1070_csh_payment_method_asgn_mo_grid" bindTarget="CSH1070_csh_payment_method_asgn_mo_ds" marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="description" align="center" editorFunction="CSH1070_asgnMoCodeEdit" prompt="exp_mo_req_types.mag_org_id" width="200"/>
+                    <a:column name="enabledFlag" editor="CSH1070_asgn_mo_checkBox" prompt="prompt.enabledFlag" width="100"/>
+                    <a:column name="asgnMagCompany" align="center" prompt="" renderer="CSH1070_asgnCom" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1070_asgn_mo_lov"/>
+                    <a:checkBox id="CSH1070_asgn_mo_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

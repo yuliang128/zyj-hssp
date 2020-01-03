@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: LiLiang  
+    $Date: 2018-5-17 下午4:06:34  
+    $Revision: 1.0  
+    $Purpose: 费用申请单整单关闭页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <a:model-query fetchAll="true" model="hec_util.get_current_date_and_period" rootPath="current_date"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP4010_exp_requisition_close_link" model="exp.EXP5360.exp_requestion_finance_close_query" modelaction="batch_update"/>
+        <script><![CDATA[
+            function EXP4010_comfirm_close() {
+                if (!$au("EXP4010_colose_date_ds").validate()) {
+                    return;
+                }
+                var record = $au('EXP4010_colose_date_ds').getAt(0);
+                //获取勾选行
+                var selectRecords = $au('EXP4010_queryResultDs').getSelected();
+                var para = [];
+                //封装参数
+                for (var i = 0;i < selectRecords.length;i++) {
+                    para.push({
+                        exp_requisition_header_id: selectRecords[i].get('exp_requisition_header_id'),
+                        closed_date: record.get('closed_date'),
+                        _status: 'update'
+                    });
+                }
+                //调用model执行操作
+                Aurora.request({
+                    lockMessage: '${l:HAP_HANDLE_WAITING}',
+                    url: $au('EXP4010_exp_requisition_close_link').getUrl(),
+                    para: para,
+                    success: function(resp) {
+                        EXP4010_closeWinddowClose();
+                    }
+                });
+            }
+            
+            function EXP4010_closeWinddowClose() {
+                $au('EXP4010_exp_requistion_main_close_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_colose_date_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="closed_date" defaultValue="${/model/current_date/record/@current_date}" prompt="EXP_REQUISITION_HEADERS.CLOSED_DATE" required="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form column="1" hidden="200" labelWidth="110" shrinkable="false" title="CSH1290_CHOOSE_DATE">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:toolbarButton click="EXP4010_comfirm_close" text="HAP_CLOSE" width="80"/>
+                <a:toolbarButton click="EXP4010_closeWinddowClose" text="HAP_BACK" width="80"/>
+            </a:formToolbar>
+            <a:hBox labelWidth="110">
+                <a:datePicker name="closed_date" bindTarget="EXP4010_colose_date_ds" renderer="Aurora.formatDate"/>
+            </a:hBox>
+            <a:hBox style="margin-left:47px;margin-top:20px;">
+                <font color="red"><![CDATA[${l:EXP_REQ_CLOSE_TIPS}]]></font>
+            </a:hBox>
+        </a:form>
+    </a:view>
+</a:screen>

@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '$[/parameter/@componentId]';
+            var bpm_type = '$[/parameter/@bpm_type]';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('inputDatetimepickerDs').getAt(0);
+               cmp.initRecord(record);
+               var template_flag=record.get('templateFlag');
+               if(bpm_type=='page' && record.get('tagId')){
+                    $au('datarelationbtn').enable();
+                }
+                if(bpm_type=='page' && template_flag=='Y'){
+                    record.getField('fieldName').setReadOnly(true);
+            	    record.getField('tagSequence').setReadOnly(true);
+            	    record.getField('tagCode').setReadOnly(true);
+            	    record.getField('tagTypeDesc').setReadOnly(true);
+	            	record.getField('colspan').setReadOnly(true);
+	                record.getField('rowspan').setReadOnly(true);
+	                record.getField('alignDesc').setReadOnly(true);
+	                record.getField('footerrenderer').setReadOnly(true);
+	                record.getField('lock').setReadOnly(true);
+	                record.getField('sortable').setReadOnly(true);
+	                record.getField('parentTagDesc').setReadOnly(true);
+            	}
+            	else{
+                	record.getField('fieldName').setReadOnly(false);
+                	record.getField('fieldName').setLovPara('layoutId',record.get('layoutId'));
+                	record.getField('fieldName').setLovPara('tagId',record.get('tagId'));
+                	record.getField('parentTagDesc').setLovPara('layoutId', record.get('layoutId'));
+	                var layout_view_id=record.get('layoutViewId');
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        record.getField('alignDesc').setReadOnly(true);
+			                record.getField('footerrenderer').setReadOnly(true);
+			                record.getField('lock').setReadOnly(true);
+			                record.getField('sortable').setReadOnly(true);
+			                record.getField('parentTagDesc').setReadOnly(true);
+	                        record.getField('colspan').setReadOnly(false);
+	                        record.getField('rowspan').setReadOnly(false);
+	                    }
+	                    else if(layoutCmp && layoutCmp.getCmpType()=='grid'){
+	                        record.getField('colspan').setReadOnly(true);
+	                        record.getField('rowspan').setReadOnly(true);
+	                        record.getField('alignDesc').setReadOnly(false);
+	                        record.getField('footerrenderer').setReadOnly(false);
+	                        record.getField('lock').setReadOnly(false);
+	                        record.getField('sortable').setReadOnly(false);
+	                        record.getField('parentTagDesc').setReadOnly(false);
+	                    }
+	                }
+            	}
+            	if(bpm_type=='page'){
+            	      record.getField('fieldName').setRequired(true);
+            	      record.set('dtkEnablebesidedays',true);
+            	      record.set('dtkEnablemonthbtn',true);
+            	}
+            });
+            
+            function saveDatetimePicker() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('inputDatetimepickerDs').getAt(0);
+                var url='';
+                if(bpm_type == 'page'){
+                    if(!record.isNew || record.get('tagId')){
+	                    url=$au('engineTagPageUpdateLink').getUrl();
+                    }else{
+                        url=$au('engineTagPageInsertLink').getUrl();
+                    }
+                }
+                if($au('inputDatetimepickerDs').validate()){
+	                Aurora.request({
+	                    url: url,
+	                    para: record.data,
+	                    success: function(result) {
+                            if(result.rows && result.rows[0]){
+                                for(var field in result.rows[0]){
+                                    record.set(field,result.rows[0][field]);
+                                }
+                                cmp.setAttr(record);
+                            }
+	                        toastr.remove();
+                			toastr.success("操作成功");
+	                    },
+	                    scope: this
+	                });
+                }
+            }
+            
+            function cancelDatetimePicker() {
+                $au('DateTimePicker_window').close();
+            }
+            
+            function onUpdateHandler(ds,record,name,newValue,oldValue){
+                var layout_view_id=record.get('layoutViewId');
+                if(name=='colspan'){
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        var column=layoutCmp.getColumn();
+	                        if(column){
+	                            if(newValue>column){
+	                                Aurora.showWarningMessage('', '最大值为：'+column, function(){
+	                                    newValue=column;
+	                                });
+	                            }
+	                        }
+	                    }
+	                }
+                }
+                else if(name=='tagDesc'){
+                    record.get('prompt',newValue);
+                }
+                else if(name=='fieldName'){
+                    var type=record.get('tagtype');
+                    if(layout_view_id && type && newValue){
+                        record.set('id',layout_view_id+'_'+newValue+'_'+type);
+                        record.set('name',newValue);
+                    }
+                }
+                /*else if(name=='id'){
+                    if(newValue && record.get('templateFlag')=='N'){
+	                    record.set('tagCode',newValue);
+                    }
+                }*/
+            }
+            
+             function dataGuideRenderer() {
+                var record = $au('inputDatetimepickerDs').getAt(0);
+                if (record.get('tagId')) {
+                	newDataGuideFunction(record.get('tagId'));
+                }
+            }
+
+            function newDataGuideFunction(tag_id) {
+                new Aurora.Window({
+                    id: 'bpm_page_tags_data_guide_screen',
+                    url: $au('engineBpmPageTagDataGuideLink').getUrl() + '?tagId=' + tag_id,
+                    title: '$[l:bpm_page_tag_basic.data_guide]',
+                    fullScreen: false,
+                    width:1200,
+                    height:550
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="inputDatetimepickerDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="bindtarget" prompt="bpm_page_tag_basic.bindtarget"/>
+                    <a:field name="name" prompt="bpm_page_tag_basic.name"/>
+                    <a:field name="prompt" prompt="bpm_page_group_field.desc"/>
+                    <a:field name="placeholder" prompt="prompt"/>
+                    <a:field name="defaultvalue" prompt="gl.default_value"/>
+                    <a:field name="required" checkedValue="true" defaultValue="false" prompt="bpm_tplt_tag_basic.required" uncheckedValue="false"/>
+                    <a:field name="readonly" checkedValue="true" defaultValue="false" prompt="bpm_page_tag_basic.readonly" uncheckedValue="false"/>
+                    <a:field name="layoutViewId" prompt="所属布局ID"/>
+                    <a:field name="tagSequence" prompt="bpm_page_tag_basic.tag_sequence" readOnly="true"/>
+                    <a:field name="tagCode" prompt="bpm_tplt_tag_basic.tag_code" typeCase="upper" required="true"/>
+                    <a:field name="tagDesc" prompt="bpm_page_tag_basic.tag_desc"/>
+                    <a:field name="tagTypeDesc" displayfield="meaning" options="engineTagTypeDs" prompt="bpm_tplt_tag_basic.tag_type" readOnly="true" required="true" returnField="tagType" valueField="value"/>
+                    <a:field name="tagType" readOnly="true"/>
+                    <a:field name="fieldName" lovCode="LOV_BPM_TAG_REF_FIELD" prompt="bpm_page_tag_basic.FIELD_ID" title="bpm_page_tag_basic.field_id">
+                        <a:mapping>
+                            <a:map from="fieldId" to="fieldId"/>
+                            <a:map from="fieldName" to="fieldName"/>
+                            <a:map from="fieldDesc" to="tagDesc"/>
+                            <a:map from="returnfieldDesc" to="cbReturnfieldDesc"/>
+                            <a:map from="returnfieldName" to="cbReturnfield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="fieldId"/>
+                    <a:field name="layoutId"/>
+                    <a:field name="id" prompt="bpm_page_tag_basic.id" readOnly="true"/>
+                    <a:field name="colspan" prompt="bpm_page_tag_basic.colspan"/>
+                    <a:field name="rowspan" prompt="bpm_page_tag_basic.rowspan"/>
+                    <a:field name="alignDesc" displayfield="meaning" options="engineTagAlignmentDs" prompt="bpm_page_tag_basic.align" returnField="align" valueField="value"/>
+                    <a:field name="align"/>
+                    <a:field name="footerrenderer" checkedValue="Y" defaultValue="N" prompt="bpm_page_tag_basic.footerrenderer" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="lock" checkedValue="true" defaultValue="false" prompt="bpm_page_tag_basic.lock" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="sortable" checkedValue="true" defaultValue="false" prompt="bpm_page_tag_basic.sortable" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="parentTagDesc" lovCode="LOV_BPM_PARENT_TAG" prompt="bpm_page_tag_basic.parent_tag_id" title="bpm_page_tag_basic.parent_tag_id">
+                        <a:mapping>
+                            <a:map from="tagDesc" to="parentTagDesc"/>
+                            <a:map from="tagId" to="parentTagId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentTagId"/>
+                    <a:field name="width" prompt="bpm_page_layout_basic.width"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" prompt="bpm_page_layout_basic.template_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="printable" checkedValue="true" defaultValue="true" prompt="bpm_page_tag_basic.printable" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="bpm_page_layout_basic.hidden" uncheckedValue="false"/>
+                    <a:field name="tagId"/>
+                    <a:field name="appHideFlag" checkedValue="Y" defaultValue="N" prompt="bpm_tplt_tag_basic.app_hide_flag" uncheckedValue="N"/>
+
+                    <a:field name="dtkDayrenderer" prompt="bpm_page_tag_basic.dtk_dayrenderer"/>
+                    <a:field name="dtkEnablebesidedays" checkedValue="true" defaultValue="true" prompt="bpm_page_tag_basic.dtk_enablebesidedays" uncheckedValue="false"/>
+                    <a:field name="dtkEnablemonthbtn" checkedValue="true" defaultValue="true" prompt="bpm_page_tag_basic.dtk_enablemonthbtn" uncheckedValue="false"/>
+                    <a:field name="dtkViewsize" prompt="bpm_page_tag_basic.dtk_viewsize"/>
+                    <a:field name="dtkRenderer" prompt="bpm_page_tag_basic.dtk_renderer"/>
+                    <a:field name="dtkHour" prompt="bpm_page_tag_basic.dtk_hour"/>
+                    <a:field name="dtkMinute" prompt="bpm_page_tag_basic.dtk_minute"/>
+                    <a:field name="dtkSecond" prompt="bpm_page_tag_basic.dtk_second"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdateHandler"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="DateTimePicker">
+                <a:textField name="tagSequence" bindTarget="inputDatetimepickerDs"/>
+                <a:placeHolder id="fieldnameConfig"/>
+                <a:textField name="tagDesc" bindTarget="inputDatetimepickerDs"/>
+                <a:comboBox name="tagTypeDesc" bindTarget="inputDatetimepickerDs"/>
+                <a:textField name="id" bindTarget="inputDatetimepickerDs"/>
+                <a:textField name="tagCode" bindTarget="inputDatetimepickerDs"/>
+                <a:textField name="name" bindTarget="inputDatetimepickerDs"/>
+                <a:textField name="defaultvalue" bindTarget="inputDatetimepickerDs"/>
+                <a:checkBox name="required" bindTarget="inputDatetimepickerDs"/>
+                <a:checkBox name="readonly" bindTarget="inputDatetimepickerDs"/>
+                <a:checkBox name="hidden" bindTarget="inputDatetimepickerDs"/>
+                <a:numberField name="width" bindTarget="inputDatetimepickerDs"/>
+                <a:placeHolder id="templateflagConfig"/>
+                <a:placeHolder id="formConfig"/>
+            </a:form>
+            <a:hBox>
+                <a:placeHolder id="datarelaConfig"/>
+                <a:button click="saveDatetimePicker" skin="green" text="hap_save"/>
+                <a:button click="cancelDatetimePicker" skin="red" text="hap_close"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="datarelaConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="page">
+                    <c:process-config>
+                        <a:button id="datarelationbtn" click="dataGuideRenderer" disabled="true" text="bpm_page_tag_basic.DATA_GUIDE"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="fieldnameConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="page">
+                    <c:process-config>
+                        <a:lov name="fieldName" bindTarget="inputDatetimepickerDs"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="templateflagConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="page">
+                    <c:process-config>
+                        <a:checkBox name="templateFlag" bindTarget="inputDatetimepickerDs"/>
+                        <!--<a:checkBox name="appHideFlag" bindTarget="inputDatetimepickerDs"/>-->
+                        <a:checkBox name="printable" bindTarget="inputDatetimepickerDs"/>
+                        <a:numberField name="dtkViewsize" bindTarget="inputDatetimepickerDs"/>
+                        <a:checkBox name="dtkEnablebesidedays" bindTarget="inputDatetimepickerDs"/>
+                        <a:checkBox name="dtkEnablemonthbtn" bindTarget="inputDatetimepickerDs"/>
+                        <a:numberField name="dtkHour" bindTarget="inputDatetimepickerDs"/>
+                        <a:numberField name="dtkMinute" bindTarget="inputDatetimepickerDs"/>
+                        <a:numberField name="dtkSecond" bindTarget="inputDatetimepickerDs"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="formConfig">
+            <p:switch test="/parameter/@layoutType">
+                <p:case value="form">
+                    <c:process-config>
+                        <a:numberField name="colspan" allowDecimals="false" bindTarget="inputDatetimepickerDs" min="1"/>
+                        <a:numberField name="rowspan" allowDecimals="false" bindTarget="inputDatetimepickerDs" min="1"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="grid">
+                    <c:process-config>
+                        <a:comboBox name="alignDesc" id="alignfield" bindTarget="inputDatetimepickerDs"/>
+                        <a:checkBox name="footerrenderer" bindTarget="inputDatetimepickerDs"/>
+                        <a:checkBox name="lock" bindTarget="inputDatetimepickerDs"/>
+                        <a:checkBox name="sortable" bindTarget="inputDatetimepickerDs"/>
+                        <a:lov name="parentTagDesc" bindTarget="inputDatetimepickerDs"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

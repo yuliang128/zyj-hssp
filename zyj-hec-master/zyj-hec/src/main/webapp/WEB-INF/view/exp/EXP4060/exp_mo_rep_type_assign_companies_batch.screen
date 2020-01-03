@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP4060_repTypeAssignCompanyBatchLink" url="$[/request/@context_path]/exp/mo-report-type-asgn-com/batchAssignComOneToMany"/>
+        <script><![CDATA[
+            function EXP4060_closeAsgnBatchCreateWindow() {
+                $au('EXP4060_exp_mo_report_type_batch_asgn_com').close();
+            }
+            
+            function EXP4060_assignCom() {
+                var datas = $au('EXP4060_batchAsgnCompanyDs').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.SELECT_LINE_DATE]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    datas[i]['reportType'] = [{
+                        moExpReportTypeId: '$[/parameter/@moExpReportTypeId]'
+                    }];
+                }
+                Aurora.request({
+                    lockMessage: '${l:HAP_WAITING}',
+                    url: $au('EXP4060_repTypeAssignCompanyBatchLink').getUrl(),
+                    para: datas,
+                    success: EXP4060_closeAssignPage,
+                    scope: this
+                });
+            }
+            
+            function EXP4060_closeAssignPage(res) {
+                $au('EXP4060_refAsgnCompanyDs').query();
+                $au('EXP4060_exp_mo_report_type_batch_asgn_com').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4060_batchAsgnCompanyDs" queryUrl="$[/request/@context_path]/exp/mo-report-type-asgn-com/queryCompanyInfo?moExpReportTypeId=$[/parameter/@moExpReportTypeId]&amp;magOrgId=$[/parameter/@magOrgId]" autoPageSize="true" autoQuery="true"  pageSize="50"  selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4060_expMoRepTypeBatchAsgnComForm" column="2" title="exp_mo_report_batch_assign_com.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP4060_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="EXP4060_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReportTypeCode" bindTarget="EXP4060_expMoRepTypesResultDs" prompt="exp_mo_report_type.mo_exp_report_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4060_expMoRepTypesResultDs" prompt="exp_mo_report_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP4060_batchAsgnCompanyDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" prompt="company.companycode" width="100"/>
+                    <a:column name="companyShortName" prompt="company.companyshortname" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

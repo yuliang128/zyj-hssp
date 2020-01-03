@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function EXP4020_closeExpenseDimsCreateWindow() {
+            $au('EXP4020_mo_req_ref_hd_dim_window').close();
+        }
+
+        function EXP4020_checkDimensionCellClick(grid, row, name, record) {
+            if (name == 'defaultDimValueCode') {
+                var dimensionCode = record.get('dimensionCode');
+                if (dimensionCode == null || dimensionCode == '') {
+                    Aurora.showMessage('$[l:PROMPT_MESSAGE]', '$[l:exp_mo_req_type_ref_hd_dim.chose_dimension]');
+                    return;
+                } else {
+                    var dimensionId = record.get('dimensionId');
+                    record.getMeta().getField('defaultDimValueCode').setLovPara('dimensionId', dimensionId);
+                    var systemLevel = record.get('systemLevel');
+                    var companyLevel = record.get('companyLevel');
+                    debugger;
+                    if (!(Ext.isEmpty(systemLevel) && Ext.isEmpty(companyLevel))) {
+                        if (!Ext.isEmpty(systemLevel)) {
+                            companyLevel = systemLevel;
+                        }
+                        if (companyLevel == 'BUDGET' || companyLevel == 'ACCOUNTING') {
+                            record.getMeta().getField('defaultDimValueCode').setLovPara('companyId', '$[/parameter/@mag_org_id]');
+                        } else {
+                            record.getMeta().getField('defaultDimValueCode').setLovPara('companyId', '$[/session/@company_id]');
+                        }
+                        record.getMeta().getField('defaultDimValueCode').setLovPara('companyLevel', companyLevel);
+                        record.getMeta().getField('defaultDimValueCode').setLovPara('magOrgId', '$[/parameter/@magOrgId]');
+                    }
+                }
+            }
+        }
+
+        function EXP4020_hdDimsSubmit(ds) {
+            ds.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4020_moReqTypeRefHdDimDs" autoQuery="true" baseUrl="/exp/mo-req-type-ref-hd-dim"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type-ref-hd-dim/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="dimensionCode"
+                             lovCode="LOV_DIMENSION" prompt="exp_mo_req_type_ref_hd_dim.dimension_code" required="true">
+                        <a:mapping>
+                            <a:map from="dimensionCode" to="dimensionCode"/>
+                            <a:map from="description" to="dimensionName"/>
+                            <a:map from="dimensionId" to="dimensionId"/>
+                            <a:map from="systemLevel" to="systemLevel"/>
+                            <a:map from="companyLevel" to="companyLevel"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="systemLevel"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="dimensionId"/>
+                    <a:field name="dimensionName" prompt="exp_mo_req_type_ref_hd_dim.dimension_name"/>
+                    <a:field name="layoutPriority" prompt="exp_mo_req_type_ref_hd_dim.layout_priority" required="true"/>
+                    <a:field name="defaultDimValueCode" lovCode="LOV_DOC_TYPE_DIM_VALUE"
+                             prompt="exp_mo_req_type_ref_hd_dim.default_dim_value_code">
+                        <a:mapping>
+                            <a:map from="dimensionValueCode" to="defaultDimValueCode"/>
+                            <a:map from="dimensionValueName" to="defaultDimValueName"/>
+                            <a:map from="dimensionValueId" to="defaultDimValueId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultDimValueId"/>
+                    <a:field name="defaultDimValueName" prompt="exp_mo_req_type_ref_hd_dim.default_dim_value_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="exp_mo_req_type_ref_hd_dim.enabled_flag" uncheckedValue="N"/>
+                    <a:field name="moExpReqTypeId" defaultValue="$[/parameter/@moExpReqTypeId]"/>
+                    <a:field name="refId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4020_hdDimsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4020_moReqTypeRefHdDimsForm" column="2" title="exp_mo_req_type_ref_hd_dim.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4020_moReqTypeRefHdDimsGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4020_moReqTypeRefHdDimsGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4020_moReqTypeRefHdDimsGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4020_closeExpenseDimsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReqTypeCode" bindTarget="EXP4020_moReqTypesDs"
+                             prompt="exp_mo_req_types.mo_exp_req_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4020_moReqTypesDs" prompt="exp_mo_req_types.description"
+                             readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4020_moReqTypeRefHdDimsGrid" bindTarget="EXP4020_moReqTypeRefHdDimDs"
+                    marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="dimensionCode" align="center" editor="EXP4020_hdDimLov" width="100"/>
+                    <a:column name="dimensionName" width="100"/>
+                    <a:column name="layoutPriority" align="center" editor="EXP4020_hdDimNumberField" width="80"/>
+                    <a:column name="defaultDimValueCode" align="center" editor="EXP4020_hdDimLov" width="80"/>
+                    <a:column name="defaultDimValueName" width="150"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP4020_hdDimCheckBox" width="80"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4020_checkDimensionCellClick"/>
+                </a:events>
+                <a:editors>
+                    <a:numberField id="EXP4020_hdDimNumberField"/>
+                    <a:lov id="EXP4020_hdDimLov"/>
+                    <a:comboBox id="EXP4020_hdDimCombox"/>
+                    <a:checkBox id="EXP4020_hdDimCheckBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

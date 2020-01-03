@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <a:model-query fetchAll="true" model="vat.VAT1010.vat_doc_current_ref_invoice" rootPath="current_invoice"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP5110_vat_invoice_maintain_link" url="${/request/@context_path}/modules/vat/VAT1010/vat_invoice_maintain.screen"/>
+        <a:link id="EXP5110_vat_invoice_detail_link" url="${/request/@context_path}/modules/vat/VAT1010/vat_invoice_view.screen"/>
+        <a:link id="EXP5110_exp_report_maintain_vat_invoice_reference_link" url="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_vat_invoice_reference.screen"/>
+        <script><![CDATA[
+            function EXP5110_openInvoiceDetailRenderer(value, record, name) {
+                var invoiceSource = record.get('invoice_source');
+                var submittedDocCount = record.get('submitted_doc_count');
+                //手动填写的发票，且未被已经提交的单据引用，就可以进行修改
+                if (invoiceSource == 'MANUAL' && submittedDocCount == 0) {
+                    return '<a href="javascript:EXP5110_openInvoiceCreate(' + record.get('invoice_id') + ')">${l:DETAIL}</a>';
+                } else {
+                    return '<a href="javascript:EXP5110_openInvoiceDetail(' + record.get('invoice_id') + ')">${l:DETAIL}</a>';
+                }
+            }
+            
+            function EXP5110_openInvoiceDetail(invoiceId) {
+                new Aurora.Window({
+                    url: $au('EXP5110_vat_invoice_detail_link').getUrl() + '?invoice_id=' + invoiceId,
+                    id: 'EXP5110_vat_invoice_detail_window',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP5110_openInvoiceCreate(invoiceId) {
+                //如果当前传入的不是一个数字，说明是按钮直接调用，不需要传入invoiceId字段
+                new Aurora.Window({
+                    url: $au('EXP5110_vat_invoice_maintain_link').getUrl() + (isNaN(invoiceId) ? '' : ('?invoice_id=' + invoiceId)),
+                    id: 'EXP5110_vat_invoice_maintain_window',
+                    fullScreen: true,
+                    title: '发票维护'
+                });
+            }
+            
+            function EXP5110_editCurrentInvoice() {
+                var invoiceId = $au('EXP5110_current_vat_invoice_ds').getAt(0).get('invoice_id');
+                if (!invoiceId) {
+                    Aurora.showErrorMessage('错误', '当前发票尚未保存,不能进行编辑,请先保存报销单草稿!');
+                } else {
+                    EXP5110_openInvoiceCreate(invoiceId);
+                }
+            }
+            
+            function EXP5110_viewCurrentInvoice() {
+                var invoiceId = $au('EXP5110_current_vat_invoice_ds').getAt(0).get('invoice_id');
+                if (!invoiceId) {
+                    Aurora.showErrorMessage('错误', '当前发票尚未保存,不能进行查看,请先保存报销单草稿!');
+                } else {
+                    EXP5110_openInvoiceDetail(invoiceId);
+                }
+            }
+            
+            function EXP5110_referenceInvoice() {
+                //支持报销单行关联和报销单分配行直接关联
+                if ('${/parameter/@line_ds_id}') {
+                    var lineDs = $au('${/parameter/@line_ds_id}');
+                    var lineRecord = lineDs.getCurrentRecord();
+                } else if ('${/parameter/@dist_ds_id}') {
+                    lineDs = $au('${/parameter/@dist_ds_id}');
+                    lineRecord = lineDs.getCurrentRecord();
+                } else {
+                    Aurora.showErrorMessage('错误', '请在报销单页面进行发票关联!');
+                }
+                var selectedInvoiceRecord = $au('EXP5110_vat_invoice_ds').getCurrentRecord();
+                //如果发票类型是增值税专用发票，则必须关联发票行信息
+                if (selectedInvoiceRecord.get('invoice_type') == 'VAT_SPECIAL') {
+                    //如果发票行数量为0，则不关联行
+                    //如果发票行数量为1，则默认关联对应行，如果超过1，打开页面让用户选择关联
+                    if (selectedInvoiceRecord.get('line_count') == 1) {
+                        var invoiceLineId = selectedInvoiceRecord.get('invoice_line_id');
+                    } else {
+                        new Aurora.Window({
+                            url: $au('EXP5110_exp_report_maintain_vat_invoice_reference_link').getUrl() + '?invoice_id=' + selectedInvoiceRecord.get('invoice_id') + '&line_ds_id=${/parameter/@line_ds_id}&dist_ds_id=${/parameter/@dist_ds_id}',
+                            title: '发票关联',
+                            id: 'EXP5110_exp_report_maintain_vat_invoice_reference_window',
+                            fullScreen: true
+                        });
+            
+                        return;
+                    }
+                } else {
+                    //如果发票类型是增值税普票或者其他，且当前发票只有一行，自动关联
+                    if (selectedInvoiceRecord.get('line_count') == 1) {
+                        invoiceLineId = selectedInvoiceRecord.get('invoice_line_id');
+                    }
+                }
+            
+                //设置原始数据行
+                lineRecord.set('invoice_code', selectedInvoiceRecord.get('invoice_code'));
+                lineRecord.set('invoice_number', selectedInvoiceRecord.get('invoice_number'));
+                lineRecord.set('invoice_date', selectedInvoiceRecord.get('invoice_date'));
+                //金额字段不一致
+                lineRecord.set('invoice_amount', selectedInvoiceRecord.get('amount'));
+                lineRecord.set('invoice_id', selectedInvoiceRecord.get('invoice_id'));
+                lineRecord.set('invoice_line_id', invoiceLineId);
+                //非增值税专用发票，不带出税金相关信息
+                if (selectedInvoiceRecord.get('invoice_type') == 'VAT_SPECIAL') {
+                    //计算税率，并根据相近原则自动选择税率信息带到行上
+                    var taxRate = selectedInvoiceRecord.get('tax_amount') / selectedInvoiceRecord.get('amount');
+                    //如果算出来的税率不为数字，给一个1让他自动计算
+                    if (isNaN(taxRate)) {
+                        taxRate = 1;
+                    }
+                    var totalTaxRecords = $au('EXP5110_vat_invoice_tax_rate_type_ds').getAll();
+                    //选择相近原则
+                    //使用当前税率和所有税率的比例进行相除，相除结果 - 1算绝对值，使用绝对值比较大小，最小的说明最相近
+                    var nearestTaxTypeName, nearestTaxTypeId, nearestTaxTypeRate, currentDiff, nearestDiff;
+                    for (var i = 0;i < totalTaxRecords.length;i++) {
+                        var taxRecord = totalTaxRecords[i];
+                        currentDiff = Math.abs(1 - taxRate / taxRecord.get('tax_type_rate'));
+                        if (!nearestDiff || currentDiff < nearestDiff) {
+                            nearestDiff = currentDiff;
+                            nearestTaxTypeName = taxRecord.get('tax_type_name');
+                            nearestTaxTypeId = taxRecord.get('tax_type_id');
+                            nearestTaxTypeRate = taxRecord.get('tax_type_rate');
+                        }
+                    }
+            
+                    if (nearestTaxTypeName && nearestTaxTypeId && nearestTaxTypeRate) {
+                        lineRecord.set('tax_type_name', nearestTaxTypeName);
+                        lineRecord.set('tax_type_id', nearestTaxTypeId);
+                        lineRecord.set('tax_type_rate', nearestTaxTypeRate);
+                    }
+            
+                    //为了防止自动计算的税金覆盖了发票的实际税金，将税金的带出放到后面
+                    lineRecord.set('tax_amount', selectedInvoiceRecord.get('tax_amount'));
+                }
+            
+                //设置左侧当前选中发票信息
+                var currentInvoiceRecord = $au('EXP5110_current_vat_invoice_ds').getAt(0);
+                currentInvoiceRecord.set('invoice_code', selectedInvoiceRecord.get('invoice_code'));
+                currentInvoiceRecord.set('invoice_number', selectedInvoiceRecord.get('invoice_number'));
+                currentInvoiceRecord.set('invoice_date', selectedInvoiceRecord.get('invoice_date'));
+                currentInvoiceRecord.set('amount', selectedInvoiceRecord.get('amount'));
+                currentInvoiceRecord.set('invoice_id', selectedInvoiceRecord.get('invoice_id'));
+                currentInvoiceRecord.set('purchaser_name', selectedInvoiceRecord.get('purchaser_name'));
+                currentInvoiceRecord.set('purchaser_tax_number', selectedInvoiceRecord.get('purchaser_tax_number'));
+                currentInvoiceRecord.set('seller_name', selectedInvoiceRecord.get('seller_name'));
+                currentInvoiceRecord.set('seller_tax_number', selectedInvoiceRecord.get('seller_tax_number'));
+                currentInvoiceRecord.set('save_status', selectedInvoiceRecord.get('save_status'));
+                currentInvoiceRecord.set('invoice_source', selectedInvoiceRecord.get('invoice_source'));
+            
+            	EXP5110_onInvoiceRelationReady();
+            	
+                $au('EXP5110_currentVatInvoiceLineDs').query();
+            }
+            
+            
+            
+            function EXP5110_cancelReferenceInvoice() {
+                //支持报销单行关联和报销单分配行直接关联
+                if ('${/parameter/@line_ds_id}') {
+                    var lineDs = $au('${/parameter/@line_ds_id}');
+                    var lineRecord = lineDs.getCurrentRecord();
+                } else if ('${/parameter/@dist_ds_id}') {
+                    lineDs = $au('${/parameter/@dist_ds_id}');
+                    lineRecord = lineDs.getCurrentRecord();
+                } else {
+                    Aurora.showErrorMessage('错误', '请在报销单页面进行发票关联!');
+                }
+                var selectedInvoiceRecord = $au('EXP5110_vat_invoice_ds').getCurrentRecord();
+            
+                //设置原始数据行
+                lineRecord.set('invoice_id', '');
+                lineRecord.set('invoice_line_id', '');
+                lineRecord.set('invoice_code', '');
+                lineRecord.set('invoice_number', '');
+                lineRecord.set('invoice_date', '');
+                lineRecord.set('invoice_amount', '');
+                lineRecord.set('tax_amount', '');
+                lineRecord.set('invoice_item_name', '');
+                lineRecord.set('invoice_item_id', '');
+                lineRecord.set('invoice_usede_name', '');
+                lineRecord.set('invoice_usede_id', '');
+                lineRecord.set('splitted_tax_amount', '');
+                lineRecord.set('tax_type_name', '');
+                lineRecord.set('tax_type_id', '');
+                lineRecord.set('tax_type_rate', '');
+            
+                //设置左侧当前选中发票信息
+                var currentInvoiceRecord = $au('EXP5110_current_vat_invoice_ds').getAt(0);
+                currentInvoiceRecord.set('invoice_code', '');
+                currentInvoiceRecord.set('invoice_number', '');
+                currentInvoiceRecord.set('invoice_date', '');
+                currentInvoiceRecord.set('amount', '');
+                currentInvoiceRecord.set('tax_amount', '');
+                currentInvoiceRecord.set('invoice_id', '');
+                currentInvoiceRecord.set('purchaser_name', '');
+                currentInvoiceRecord.set('purchaser_tax_number', '');
+                currentInvoiceRecord.set('seller_name', '');
+                currentInvoiceRecord.set('seller_tax_number', '');
+                currentInvoiceRecord.set('save_status', '');
+                currentInvoiceRecord.set('invoice_source', '');
+            
+            	EXP5110_onInvoiceRelationReady();
+            	
+                $au('EXP5110_currentVatInvoiceLineDs').query();
+            }
+            
+            function EXP5110_currentVatInvoiceLineRenderer(record, rowIndex) {
+                //支持报销单行关联和报销单分配行直接关联
+                if ('${/parameter/@line_ds_id}') {
+                    var lineDs = $au('${/parameter/@line_ds_id}');
+                    var lineRecord = lineDs.getCurrentRecord();
+                } else if ('${/parameter/@dist_ds_id}') {
+                    lineDs = $au('${/parameter/@dist_ds_id}');
+                    lineRecord = lineDs.getCurrentRecord();
+                } else {
+                    Aurora.showErrorMessage('错误', '请在报销单页面进行发票关联!');
+                }
+                if (record.get('invoice_line_id') == lineRecord.get('invoice_line_id')) {
+                    return 'background-color:#80c4ff;-webkit-box-shadow: 0 0 8px rgba(102, 175, 233, .6);box-shadow: 0 0 8px rgba(102, 175, 233, .6)';
+                }
+            }
+            
+            function EXP5110_onInvoiceRelationReady() {
+                var record = $au('EXP5110_current_vat_invoice_ds').getAt(0);
+                var invoiceSource = record.get('invoice_source');
+                if (invoiceSource != 'MANUAL') {
+                    $au('EXP5110_editCurrentInvoiceBtn').disable();
+                }else{
+                    $au('EXP5110_editCurrentInvoiceBtn').enable();
+                }
+            }
+            
+            Aurora.onReady(EXP5110_onInvoiceRelationReady);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_vat_invoice_tax_rate_type_ds" loadData="true" model="hec_util.fnd_tax_type_code_vl_lov"/>
+            <a:dataSet id="EXP5110_vat_invoice_type" lookupCode="VAT_INVOICE_TYPE"/>
+            <a:dataSet id="EXP5110_vat_invoice_source" lookupCode="VAT_INVOICE_SOURCE"/>
+            <a:dataSet id="EXP5110_vat_invoice_status" lookupCode="VAT_INVOICE_AUTH_STATUS"/>
+            <a:dataSet id="EXP5110_vat_invoice_query_ds">
+                <a:fields>
+                    <a:field name="invoice_code" placeHolder="VAT_INVOICES.INVOICE_CODE"/>
+                    <a:field name="invoice_number" placeHolder="VAT_INVOICES.INVOICE_NUMBER"/>
+                    <a:field name="invoice_date_from" placeHolder="VAT_INVOICES.INVOICE_DATE_FROM"/>
+                    <a:field name="invoice_date_to" placeHolder="VAT_INVOICES.INVOICE_DATE_TO"/>
+                    <a:field name="amount_from" placeHolder="VAT_INVOICES.AMOUNT_FROM"/>
+                    <a:field name="amount_to" placeHolder="VAT_INVOICES.AMOUNT_TO"/>
+                    <a:field name="purchaser_name" placeHolder="VAT_INVOICES.PURCHASER_NAME"/>
+                    <a:field name="purchaser_tax_number" placeHolder="VAT_INVOICES.PURCHASER_TAX_NUMBER"/>
+                    <a:field name="seller_name" placeHolder="VAT_INVOICES.SELLER_NAME"/>
+                    <a:field name="seller_tax_number" placeHolder="VAT_INVOICES.SELLER_TAX_NUMBER"/>
+                    <a:field name="description" placeHolder="VAT_INVOICES.DESCRIPTION"/>
+                    <a:field name="invoice_type_name" displayField="code_value_name" options="EXP5110_vat_invoice_type" placeHolder="VAT_INVOICES.INVOICE_TYPE_NAME" returnField="invoice_type" valueField="code_value"/>
+                    <a:field name="invoice_type"/>
+                    <a:field name="invoice_source_name" displayField="code_value_name" options="EXP5110_vat_invoice_source" placeHolder="VAT_INVOICES.INVOICE_SOURCE_NAME" returnField="invoice_source" valueField="code_value"/>
+                    <a:field name="invoice_source"/>
+                    <a:field name="authentication_status_name" displayField="code_value_name" options="EXP5110_vat_invoice_status" placeHolder="VAT_INVOICES.AUTHENTICATION_STATUS_NAME" returnField="authentication_status" valueField="code_value"/>
+                    <a:field name="authentication_status"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_vat_invoice_ds" autoPageSize="true" autoQuery="true" model="vat.VAT1010.vat_invoice_main_query" queryDataSet="EXP5110_vat_invoice_query_ds" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="invoice_code" prompt="VAT_INVOICES.INVOICE_CODE"/>
+                    <a:field name="invoice_number" prompt="VAT_INVOICES.INVOICE_NUMBER"/>
+                    <a:field name="invoice_date" prompt="VAT_INVOICES.INVOICE_DATE"/>
+                    <a:field name="amount" prompt="VAT_INVOICES.AMOUNT"/>
+                    <a:field name="tax_amount" prompt="VAT_INVOICES.TAX_AMOUNT"/>
+                    <a:field name="purchaser_name" prompt="VAT_INVOICES.PURCHASER_NAME"/>
+                    <a:field name="purchaser_tax_number" prompt="VAT_INVOICES.PURCHASER_TAX_NUMBER"/>
+                    <a:field name="seller_name" prompt="VAT_INVOICES.SELLER_NAME"/>
+                    <a:field name="seller_tax_number" prompt="VAT_INVOICES.SELLER_TAX_NUMBER"/>
+                    <a:field name="description" prompt="VAT_INVOICES.DESCRIPTION"/>
+                    <a:field name="invoice_type_name" prompt="VAT_INVOICES.INVOICE_TYPE_NAME"/>
+                    <a:field name="invoice_source_name" prompt="VAT_INVOICES.INVOICE_SOURCE_NAME"/>
+                    <a:field name="authentication_status_name" prompt="VAT_INVOICES.AUTHENTICATION_STATUS_NAME"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_current_vat_invoice_ds" model="vat.VAT1010.vat_doc_current_ref_invoice">
+                <a:datas dataSource="/model/current_invoice"/>
+                <a:fields>
+                    <a:field name="save_status" prompt="VAT_INVOICES.SAVE_STATUS" readOnly="true"/>
+                    <a:field name="invoice_code" prompt="VAT_INVOICES.INVOICE_CODE" readOnly="true"/>
+                    <a:field name="invoice_number" prompt="VAT_INVOICES.INVOICE_NUMBER" readOnly="true"/>
+                    <a:field name="invoice_date" prompt="VAT_INVOICES.INVOICE_DATE" readOnly="true"/>
+                    <a:field name="amount" prompt="VAT_INVOICES.AMOUNT" readOnly="true"/>
+                    <a:field name="tax_amount" prompt="VAT_INVOICES.TAX_AMOUNT" readOnly="true"/>
+                    <a:field name="purchaser_name" prompt="VAT_INVOICES.PURCHASER_NAME" readOnly="true"/>
+                    <a:field name="purchaser_tax_number" prompt="VAT_INVOICES.PURCHASER_TAX_NUMBER" readOnly="true"/>
+                    <a:field name="seller_name" prompt="VAT_INVOICES.SELLER_NAME" readOnly="true"/>
+                    <a:field name="seller_tax_number" prompt="VAT_INVOICES.SELLER_TAX_NUMBER" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_currentVatInvoiceLineDs" autoQuery="true" fetchAll="true" model="vat.VAT1010.vat_invoice_lines" queryDataSet="EXP5110_current_vat_invoice_ds">
+                <a:fields>
+                    <a:field name="without_tax_amount" prompt="VAT_INVOICE_LINES.WITHOUT_TAX_AMOUNT"/>
+                    <a:field name="tax_rate" prompt="VAT_INVOICE_LINES.TAX_RATE"/>
+                    <a:field name="tax_amount" prompt="VAT_INVOICE_LINES.TAX_AMOUNT"/>
+                    <a:field name="goods_or_taxable_service" prompt="VAT_INVOICE_LINES.GOODS_OR_TAXABLE_SERVICE" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:hBox style="width:98%;">
+            <a:form title="当前关联发票" width="220">
+                <a:formToolbar>
+                    <a:label name="separator" width="20"/>
+                    <a:button id="EXP5110_editCurrentInvoiceBtn" click="EXP5110_editCurrentInvoice" text="维护发票" width="80"/>
+                    <a:button click="EXP5110_viewCurrentInvoice" text="查看发票" width="80"/>
+                </a:formToolbar>
+                <a:box>
+                    <a:textField name="invoice_code" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:textField name="invoice_number" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:datePicker name="invoice_date" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:numberField name="amount" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:numberField name="tax_amount" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:textField name="purchaser_name" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:textField name="purchaser_tax_number" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:textField name="seller_name" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                    <a:textField name="seller_tax_number" bindTarget="EXP5110_current_vat_invoice_ds" width="280"/>
+                </a:box>
+                <a:grid bindTarget="EXP5110_currentVatInvoiceLineDs" marginHeight="431" rowRenderer="EXP5110_currentVatInvoiceLineRenderer" width="380">
+                    <a:columns>
+                        <a:column name="without_tax_amount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        <a:column name="tax_rate" align="center" width="50"/>
+                        <a:column name="tax_amount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        <a:column name="goods_or_taxable_service" align="left" editor="EXP5110_goodsTa" width="120"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:textArea id="EXP5110_goodsTa"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+            <a:form title="可选发票">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="EXP5110_cancelReferenceInvoice" text="VAT_INVOICES.CANCEL_REFERENCE_INVOICE" width="80"/>
+                    <a:button click="EXP5110_referenceInvoice" text="VAT_INVOICES.REFERENCE_INVOICE" width="80"/>
+                    <a:button click="EXP5110_openInvoiceCreate" text="VAT_INVOICES.CREATE_INVOICE" width="80"/>
+                </a:formToolbar>
+                <a:queryForm bindTarget="EXP5110_vat_invoice_query_ds" resultTarget="EXP5110_vat_invoice_ds" style="width:100%;border:none;">
+                    <a:formToolBar>
+                        <a:textField name="invoice_code" bindTarget="EXP5110_vat_invoice_query_ds" width="120"/>
+                        <a:textField name="invoice_number" bindTarget="EXP5110_vat_invoice_query_ds" width="120"/>
+                        <a:datePicker name="invoice_date_from" bindTarget="EXP5110_vat_invoice_query_ds" width="120"/>
+                        <a:datePicker name="invoice_date_to" bindTarget="EXP5110_vat_invoice_query_ds" width="120"/>
+                    </a:formToolBar>
+                    <a:formBody column="4" labelWidth="100">
+                        <a:numberField name="amount_from" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:numberField name="amount_to" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:textField name="purchaser_name" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:textField name="purchaser_tax_number" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:textField name="seller_name" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:textField name="seller_tax_number" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:textField name="description" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:comboBox name="invoice_type_name" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:comboBox name="invoice_source_name" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                        <a:comboBox name="authentication_status_name" bindTarget="EXP5110_vat_invoice_query_ds"/>
+                    </a:formBody>
+                </a:queryForm>
+                <a:grid bindTarget="EXP5110_vat_invoice_ds" marginHeight="153" marginWidth="420" navBar="true" style="margin-left:5px;">
+                    <a:columns>
+                        <a:column name="invoice_code" align="center" width="120"/>
+                        <a:column name="invoice_number" align="center" width="120"/>
+                        <a:column name="detail" align="center" prompt="HAP_DETAIL" renderer="EXP5110_openInvoiceDetailRenderer" width="80"/>
+                        <a:column name="invoice_type_name" align="center" width="120"/>
+                        <a:column name="invoice_date" align="center" renderer="Aurora.formatDate" width="80"/>
+                        <a:column name="amount" align="right" renderer="Aurora.formatMoney"/>
+                        <a:column name="tax_amount" align="right" renderer="Aurora.formatMoney"/>
+                        <a:column name="purchaser_name" width="150"/>
+                        <a:column name="purchaser_tax_number" width="150"/>
+                        <a:column name="seller_name" width="150"/>
+                        <a:column name="seller_tax_number" width="150"/>
+                        <a:column name="description" width="150"/>
+                        <a:column name="invoice_type_name" align="center"/>
+                        <a:column name="invoice_source_name" align="center"/>
+                        <a:column name="authentication_status_name" align="center"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:hBox>
+    </a:view>
+</a:screen>

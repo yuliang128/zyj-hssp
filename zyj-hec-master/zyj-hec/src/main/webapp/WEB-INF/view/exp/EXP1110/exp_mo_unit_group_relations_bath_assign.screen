@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong $
+    $Date: 2017/04/21 17:46:40 $
+    $Revision: 1.3 $
+    $Purpose ：部门组批量分配部门
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1110_exp_mo_unit_batch_assign_all_link" url="$[/request/@context_path]/exp/com-unit-gp-ref-unit/batchAssignCompany"/>
+        <script><![CDATA[
+            function EXP1110_unitGpBatchAsgnUnitFun() {
+                debugger;
+                var records = $au('EXP1110_unit_groups_batch_assign_unit_query_ds').getSelected();
+                if (records.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for(var i = 0 ; i <records.length; i++){
+                    var record = $au('EXP1110_unit_groups_batch_assign_unit_result_ds').create();
+                    record.set('unitId',records[i].get('unitId'));
+                    record.set('enabledFlag',records[i].get('enabledFlag'));
+                }
+                var datas = $au('EXP1110_unit_groups_batch_assign_unit_result_ds').getJsonData(false);
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP1110_exp_mo_unit_batch_assign_all_link').getUrl(),
+                    para: datas,
+                    success: EXP1110_unitGpBatchAsgnUnitBackFun,
+                    scope: this
+                });
+            }
+            
+            function EXP1110_unitGpBatchAsgnUnitBackFun() {
+                $au('EXP1110_exp_mo_unit_group_relations_bath_assign_window').close();
+                $au('EXP1110_unit_group_assign_unit_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1110_unit_groups_batch_assign_unit_query_ds" autoPageSize="true" autoQuery="true"  queryUrl="$[/request/@context_path]/exp/org-unit/queryAssignUnit?magOrgId=$[/parameter/@magOrgId]&amp;unitGroupComAssignId=$[/parameter/@unitGroupComAssignId]" selectable="true">
+                <a:fields>
+                    <a:field name="unitId"/>
+                    <a:field name="unitCode" prompt="exp_org_units.unit_code"/>
+                    <a:field name="description" prompt="exp_org_unit.org_unit_description"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1110_unit_groups_batch_assign_unit_result_ds" autoPageSize="true" autoQuery="false"  baseUrl="/exp/com-unit-gp-ref-unit"  selectable="true">
+                <a:fields>
+                    <a:field name="unitId"/>
+                    <a:field name="unitGroupComAssignId" defaultValue="$[/parameter/@unitGroupComAssignId]"/>
+                    <a:field name="enabledFlag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="hec_batch_assign">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="EXP1110_unitGpBatchAsgnUnitFun" text="hec_assign" width="80"/>
+                    <a:gridButton click="EXP1110_unitGpBatchAsgnUnitBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moUnitGroupCode" prompt="exp_org_unit_groups.unit_group_code" bindTarget="EXP1110_unit_groups_assign_com_info_ds"/>
+                <a:textField name="description" prompt="exp_org_unit_groups.description" bindTarget="EXP1110_unit_groups_assign_com_info_ds"/>
+            </a:form>
+            <a:grid id="EXP1110_unit_groups_batch_assign_unit_grid" bindTarget="EXP1110_unit_groups_batch_assign_unit_query_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="unitCode" align="center" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="companyCode" align="center" width="80"/>
+                    <a:column name="companyShortName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-03-15 10:13:34
+    $Revision: 1.0
+    $Purpose: 公司银行定义-分配科目
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function CSH1016_branchAccountAccBackFunc() {
+                $au('CSH1016_branch_account_acc_window').close();
+            }
+            
+            function CSH1016_branchAccountAccSuccessFunc(dataSet) {
+                dataSet.query();
+            }
+            
+            function CSH1016_branchAccountAccEditorFunc(record, name) {
+                if (record.isNew) {
+                    return 'CSH1016_branchAccountAccLov';
+                }
+                return '';
+            }
+            
+            function CSH1016_branchAccountAccCellClickFunc(grid, row, name, record) {
+                if (name == 'cashAccountCode') {
+                    record.getField('cashAccountCode').setLovPara('setOfBooksId', record.get('setOfBooksId'));
+                }
+            }
+            
+            function CSH1016_branchAccountAccUpdateFunc(ds, record, name, value, old) {
+                if (name == 'setOfBooksCode') {
+                    record.set('cashAccountId', '');
+                    record.set('cashAccountCode', '');
+                    record.set('cashAccountName', '');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1015_csh_bank_accounts_asgn_acc_ds" autoPageSize="true" autoQuery="true" submitUrl="$[/request/@context_path]/csh/bank-account-asgn-acc/submit" queryUrl="$[/request/@context_path]/csh/bank-account-asgn-acc/query?bankAccountId=$[/parameter/@bankAccountId]" selectable="true">
+                <a:fields>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="setOfBooksName" prompt="gld_set_of_book.set_of_books_name" required="true"/>
+                    <a:field name="setOfBooksCode" LovCode="GLD_SET_OF_BOOKS_ACC_ENTITY_VL_LOV?accEntityId=$[/parameter/@accEntityId]" prompt="gld_set_of_book.set_of_books_code" required="true" title="gld_set_of_book.choice">
+                        <a:mapping>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                            <a:map from="setOfBooksCode" to="setOfBooksCode"/>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cashAccountId"/>
+                    <a:field name="cashAccountName" prompt="csh_bank_account.cash_account_name" required="true"/>
+                    <a:field name="cashAccountCode"  LovCode="GLD_ACCOUNTS_ACC_ENTITY_VL_LOV?accEntityId=$[/parameter/@accEntityId]" prompt="csh_bank_account.cash_account_id" required="true" title="csh_bank_account.cash_account_id">
+                        <a:mapping>
+                            <a:map from="accountName" to="cashAccountName"/>
+                            <a:map from="accountId" to="cashAccountId"/>
+                            <a:map from="accountCode" to="cashAccountCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankAccountId" defaultValue="$[/parameter/@bankAccountId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1016_branchAccountAccUpdateFunc"/>
+                    <a:event name="submitsuccess" handler="CSH1016_branchAccountAccSuccessFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="csh_bank_accounts_line_form" column="2" labelWidth="120" title="csh_bank_account.bank_account_num">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1015_csh_bank_accounts_asgn_acc_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1015_csh_bank_accounts_asgn_acc_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1015_csh_bank_accounts_asgn_acc_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH1016_branchAccountAccBackFunc" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bankAccountName" bindTarget="CSH1016_branchAccount_ds" prompt="csh_bank_account.bank_account_name_id" readOnly="true"/>
+                <a:textField name="bankAccountNum" bindTarget="CSH1016_branchAccount_ds" prompt="csh_bank_account.bank_account_num" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1015_csh_bank_accounts_asgn_acc_grid" Width="1010" bindTarget="CSH1015_csh_bank_accounts_asgn_acc_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="setOfBooksCode" align="center" editorFunction="CSH1016_branchAccountAccEditorFunc" width="120"/>
+                    <a:column name="setOfBooksName" align="left" width="200"/>
+                    <a:column name="cashAccountCode" align="center" editor="CSH1016_branchAccountAccLov" width="120"/>
+                    <a:column name="cashAccountName" align="left" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1016_branchAccountAccLov"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH1016_branchAccountAccCellClickFunc"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

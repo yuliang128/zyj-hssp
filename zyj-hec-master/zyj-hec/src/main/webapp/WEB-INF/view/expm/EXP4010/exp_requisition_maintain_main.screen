@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <p:echo/>
+    </a:init-procedure>
+    <a:view>
+        <style><![CDATA[
+        	.layout-td-con{
+        	   padding:0!important;
+        	}
+        #req_placeholder{
+            height:45px;
+        }
+        ]]></style>
+        <script><![CDATA[
+        var headerRecord;
+        var submitFlag = false;
+        var ignoreWarningFlag;
+        var windowName = this.__host.id;
+
+        function EXP4010_onMaintainReady() {
+            var expReqHeaderNumber = $au('EXP4010_expRequisitionHeaderDs').getAt(0).get('expRequisitionNumber');
+            //var saveDiv = Ext.get('saveReqDiv');
+            if (expReqHeaderNumber == undefined || expReqHeaderNumber == '') {
+                //saveDiv.parent().setStyle('display', 'none');
+                document.getElementById("saveReqDiv").style.display = "none";
+            } else {
+                //saveDiv.parent().setStyle('display', 'table-cell');
+                document.getElementById("saveReqDiv").style.display = "block";
+            }
+            headerRecord = $au('EXP4010_expRequisitionHeaderDs').getAt(0);
+            $au('EXP4010_expRequisitionHeaderDs')['on']('beforesubmit', EXP4010_headerBeforeSubmit);
+            // Modify Tagin/2017.12.19 借款页面元素是否显示
+            if ($A.CmpManager.get('EXP4010_paymentLineMainForm')) {
+                if ('$[/model/header_info/record/@payment_flag]' == 'Y') {
+                    // 显示借款页面元素
+                    Ext.get('EXP4010_paymentLineMainForm').setStyle('display', 'block');
+                } else {
+                    Ext.get('EXP4010_paymentLineMainForm').setStyle('display', 'none');
+                }
+            }
+        }
+
+        function EXP4010_onPayCurrFocusFun() {
+            var payCurrNameField = headerRecord.getField('payment_currency_name');
+            payCurrNameField.setOptions('EXP4010_currency_ds');
+        }
+
+        function EXP4010_saveRequisition() {
+            var headerDs = $au('EXP4010_expRequisitionHeaderDs');
+            if (!headerDs.isModified()) {
+                headerDs.data[0].dirty = true;
+            }
+            $au('EXP4010_expRequisitionHeaderDs').submit();
+        }
+
+        function EXP4010_submitRequisition() {
+            //存在未保存的申请单数据，先执行保存逻辑
+            if (!submitFlag) {
+                EXP4010_saveRequisition();
+                submitFlag = true;
+                return;
+            }
+            submitFlag = false;
+            //Aurora.Masker.mask($('XXX').wrap); _ban_remind= 'Y'
+            Aurora.request({
+                lockMessage: '$[l:EXP4010_REQUISITION.SUBMITTING]',
+                url: $au('EXP4010_submit_exp_requisition_link').getUrl(),
+                para: {
+                    exp_requisition_header_id: $au('EXP4010_exp_requisition_header_ds').getAt(0).get('exp_requisition_header_id'),
+                    ignore_warning_flag: (typeof ignoreWarningFlag) == 'string' ? ignoreWarningFlag : 'N'
+                },
+                success: function(resp) {
+                    if (resp && resp.result && resp.result.error_level_code) {
+                        var errorLevelCode = resp.result.error_level_code;
+                        var errorMessage = resp.result.message_code;
+                        if (errorLevelCode == 'ALLOWED') {
+                            Aurora.showConfirm('$[l:PROMPT]', errorMessage, function() {
+                                ignoreWarningFlag = 'Y';
+                                EXP4010_forceSubmitRequisition();
+                            }, null);
+                        } else if (errorLevelCode == 'BLOCK') {
+                            Aurora.showWarningMessage('$[l:PROMPT.WARN]', errorMessage, null);
+                        }
+                    } else {
+                        EXP4010_jumpMain();
+                    }
+                },
+                failure: function(resp) {
+                    ignoreWarningFlag = 'N';
+                }
+            });
+        }
+
+        //added by zealot at 20181121 单据提交前工作流预览
+
+        function EXP4010_wflPreview() {
+            var headerRecord = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+            var transaction_type_id = headerRecord.get('mo_exp_req_type_id');
+            var company_id = headerRecord.get('company_id');
+            var auto_approve_flag = headerRecord.get('auto_approve_flag');
+            if (auto_approve_flag == 'Y') {
+                Aurora.showWarningMessage('$[l:PROMPT]', '$[l:THE_EXP_REQUISITION_IS_AUTO_APPROVE]', null, 200, 100);
+                return;
+            }
+            var instance_param = headerRecord.get('exp_requisition_header_id');
+            if (instance_param) {
+                new Aurora.Window({
+                    url: $au('EXP5110_workflow_preview_before_submit_link').getUrl() + '?transaction_category=EXP_REQUISITION&transaction_type_id=' + transaction_type_id + '&company_id=' + company_id + '&instance_param=' + instance_param,
+                    id: 'EXP5110_workflow_preview_before_submit_window',
+                    title: '$[l:WFL.PREVIEW]',
+                    fullScreen: true
+                });
+            } else {}
+        }
+
+        function EXP4010_deleteRequisition() {
+            Aurora.showConfirm('$[l:EXIT_SYSTEM]', '$[l:EXP4010_REQUISITION_DELETED]', function(resp) {
+                Aurora.request({
+                    url: $au('EXP4010_exp_requisition_deleteAll_link').getUrl(),
+                    para: {
+                        'exp_requisition_header_id': $au('EXP4010_exp_requisition_header_ds').getAt(0).get('exp_requisition_header_id')
+                    },
+                    success: function() {
+                        // Modify Tagin/2018.04.03 还原至关闭当前页 不用location
+                        $au('EXP4010_exp_requisition_maintain_main_window').close();
+                        //window.location.href = $au('EXP4010_exp_req_main_type_choice_link').getUrl();
+                    },
+                    scope: this
+                });
+                resp.close();
+            });
+        }
+
+        function EXP4010_paymentMain() {
+            var record = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+            var id = record.get('exp_requisition_header_id');
+            if (id) {
+                new Aurora.Window({
+                    url: $au('EXP4010_paymentMain_link').getUrl() + '?exp_requisition_header_id=' + id + '&employee_id=' + record.get('employee_id') + '&acc_entity_id=' + record.get('acc_entity_id'),
+                    title: '$[l:PROMPT.PAYMENT_REQUISITION]',
+                    id: 'EXP4010_paymentMain_window',
+                    fullScreen: true
+                });
+            }
+        }
+
+        function EXP4010_forceSubmitRequisition() {
+            EXP4010_submitRequisition('Y');
+        }
+
+        function EXP4010_onHeaderSubmitSuccess() {
+            if (submitFlag) {
+                EXP4010_submitRequisition();
+                submitFlag = false;
+            }
+            var dsHeader = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+            if (dsHeader.get('exp_requisition_number') != undefined) {
+                //Ext.get('saveReqDiv').parent().setStyle('display', 'table-cell');
+                document.getElementById("saveReqDiv").style.display = "block";
+            }
+        }
+
+        function EXP4010_onHeaderUpdate(dataSet, record, name, value) {
+            //修改了头上的维度同步修改行上的维度值
+            //modified by liliang 2018/10/26
+            // if (name.substr(name.length - 3) == '_id' && name.substring(0, 9) == 'dimension') {
+            // var records = $au('EXP4010_exp_requisition_page_element_ds').getAll();
+            // var line_ds;
+            // Ext.each(records, function(record) {
+            // line_ds = '';
+            // line_ds = record.data.line_ds;
+            // Ext.each($au(line_ds).data, function(data) {
+            // data.setDirty(true);
+            // }, this);
+            // }, this);
+
+            // }
+            if (name == 'payment_flag') {
+                if ($A.CmpManager.get('EXP4010_paymentLineMainForm')) {
+                    if ($A.CmpManager.get('EXP4010_paymentLineMainResult_ds')) {
+                        $au('EXP4010_paymentLineMainResult_ds').query();
+                    }
+                    if (value == 'Y') {
+                        // 显示借款页面元素
+                        Ext.get('EXP4010_paymentLineMainForm').setStyle('display', 'block');
+                    } else {
+                        Ext.get('EXP4010_paymentLineMainForm').setStyle('display', 'none');
+                    }
+                }
+            } else if (name == 'requisition_date') {
+                var headerRecord = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('EXP4010_get_period_name').getUrl(),
+                    para: {
+                        acc_entity_id: headerRecord.get('acc_entity_id'),
+                        payment_currency_code: headerRecord.get('payment_currency_code'),
+                        p_date: headerRecord.get('requisition_date')
+                    },
+                    success: function(res) {
+                        var record = res.result.record;
+                        if (record.period_name) {
+                            headerRecord.set('period_name', record.period_name);
+                            headerRecord.set('pay2fun_exchange_rate', record.pay2fun_exchange_rate);
+                            headerRecord.set('pay2mag_exchange_rate', record.pay2mag_exchange_rate);
+                        } else {
+                            Aurora.showMessage('$[l:SYS_NOT_NULL]', '$[l:CSH.PERIOD_NAME_OF_THIS_DATE_NOT_EXISTS]', null, 300, 100);
+                        }
+                    },
+                    scope: this
+                });
+            }
+        }
+
+        function EXP4010_jumpMain() {
+            window.location.href = $au('EXP4010_exp_requisition_main_link').getUrl();
+        }
+
+        function EXP4010_headerBeforeSubmit() {
+            var headerDs = $au('EXP4010_expRequisitionHeaderDs');
+            if (!headerDs.validate()) {
+                return false;
+            } else {
+                var record = headerDs.getAll()[0];
+                var expObjDatas = [];
+                for (field in headerDs.fields) {
+                    if (/^#/.test(field)) {
+                        //id值
+                        var expObjTypeId = field.replace(/^#/, '');
+                        var idValue = record.get(field);
+                        var nameValue = record.get('^' + field);
+                        var expObjData = {
+                            mo_exp_obj_type_id: expObjTypeId,
+                            mo_expense_object_id: idValue,
+                            mo_expense_object_name: nameValue
+                        };
+                        expObjDatas.push(expObjData);
+                    }
+                }
+                record['data']['expense_object_headers'] = expObjDatas;
+            }
+        }
+
+        function EXP4010_policyValidator(record, name, value) {
+            //超政策之后不允许保存
+            if (record.get('commit_flag') == 'N') {
+                if (record.get('management_price') < (record.get('lower_limit') ? record.get('lower_limit') : record.get('management_price'))) {
+                    return "$[l:EXP_LOWER_LIMIT_OF_POLICY]" + ':' + record.get('management_currency_name') + record.get('lower_limit');
+                } else if (record.get('management_price') > (record.get('upper_limit') ? record.get('upper_limit') : record.get('management_price'))) {
+                    return "$[l:EXP_UPPER_LIMIT_OF_POLICY]" + ':' + record.get('management_currency_name') + record.get('upper_limit');
+                }
+            }
+            return true;
+        }
+
+        function EXP4010_pay2funExchangeRateValidator(record, name, value) {
+            //外币支付必须存在对头核算主体本位币的汇率
+            if (!value) {
+                var payment_currency_name = record.get('payment_currency_name');
+                return "$[l:PAY2FUN_EXCHANGE_RATE_NOT_FOUND]" + payment_currency_name;
+            }
+            return true;
+        }
+
+        function EXP4010_pay2magExchangeRateValidator(record, name, value) {
+            //外币支付必须存在对管理组织本位币的汇率
+            if (!value) {
+                var payment_currency_name = record.get('payment_currency_name');
+                return "$[l:PAY2MAG_EXCHANGE_RATE_NOT_FOUND]" + payment_currency_name;
+            }
+            return true;
+        }
+
+        function EXP4010_onLinePolicyInit(record, name) {
+            //动态获取行费用数据,在行数据更新、新增的时候触发。
+            var headerRecord = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+            Aurora.request({
+                url: $au('EXP4010_get_policy_info_link').getUrl(),
+                para: {
+                    company_id: record.get('company_id'),
+                    employee_id: record.get('employee_id'),
+                    acc_entity_id: record.get('acc_entity_id'),
+                    place_id: record.get('place_id'),
+                    place_type_id: record.get('place_type_id'),
+                    position_id: record.get('position_id'),
+                    unit_id: record.get('unit_id'),
+                    vehicle_code: record.get('transportation'),
+                    requisition_date: headerRecord.get('requisition_date'),
+                    doc_category: 'EXP_REQ',
+                    doc_type_id: headerRecord.get('mo_exp_req_type_id'),
+                    mo_expense_type_id: record.get('mo_expense_type_id'),
+                    mo_req_item_id: record.get('mo_req_item_id')
+                },
+                success: function(resp) {
+                    if (resp && resp.result) {
+                        var policyData = resp.result;
+                        if (policyData.count == 1) {
+                            //需要进行数学运算的时候需要使用hecUtil中的函数
+                            var hecUtil = new HecUtil();
+                            //默认标志为Y
+                            if (policyData.default_flag == 'Y') {
+                                //当行为新增，且默认标志位Y的时候，则自动带出金额
+                                if (record.isNew) {
+                                    //获取费用标准
+                                    var expenseStandard = policyData.expense_standard;
+                                    //自动倒算当前业务币种对应的金额，计算方式为：
+                                    //管理币种金额  * (1 / (付款币种 -》 管理币种汇率)) =》 付款币种金额
+                                    //付款币种金额  * (1 / (业务币种 -》 付款币种汇率)) =》 业务币种金额
+                                    var paymentExpenseStandard = hecUtil.calExchangeAmount(expenseStandard, 1 / record.get('pay2mag_exchange_rate'), record.get('payment_currency_precision'));
+                                    var businessExpenseStandard = hecUtil.calExchangeAmount(paymentExpenseStandard, 1 / record.get('biz2pay_exchange_rate'), record.get('business_currency_precision'));
+                                    //设置金额
+                                    record.set('business_price', businessExpenseStandard);
+                                }
+                                //当默认标志位Y,且舱位有正常值的时候，用标准带出交通工具和舱位
+                                if (policyData.seat_class != '' && policyData.seat_class != null && policyData.seat_class != 'undefined') {
+                                    if (name != 'transportation_name' && name != 'transportation') {
+                                        record.set('transportation', policyData.transportation);
+                                        record.set('transportation_name', policyData.transportation_desc);
+                                    }
+                                    record.set('seat_class', policyData.seat_class);
+                                    record.set('seat_class_name', policyData.seat_class_desc);
+                                }
+                            }
+                            //获取到正常的费用数据，则设置管理币种的标准、上下限信息、是否可修改、是否可提交信息。
+                            record.set('upper_limit', policyData.upper_limit);
+                            record.set('lower_limit', policyData.lower_limit);
+                            record.set('expense_standard', policyData.expense_standard);
+                            record.set('changeable_flag', policyData.changeable_flag);
+                            record.set('commit_flag', policyData.commit_flag);
+                        } else {
+                            //没有获取到正常的费用数据则清空数据
+                            record.set('upper_limit', '');
+                            record.set('lower_limit', '');
+                            record.set('expense_standard', '');
+                            record.set('changeable_flag', '');
+                            record.set('commit_flag', '');
+                            if (name != 'transportation') {
+                                record.set('transportation', '');
+                                record.set('transportation_name', '');
+                            }
+                            record.set('seat_class', '');
+                            record.set('seat_class_name', '');
+                        }
+                    }
+                }
+            });
+        }
+
+        function EXP4010_historyBtn() {
+            var id = $au('EXP4010_exp_requisition_header_ds').getCurrentRecord().get('exp_requisition_header_id');
+            new Aurora.Window({
+                url: $au('EXP4010_exp_req_history_link').getUrl() + '?document_id=' + id + '&document_type=EXP_REQUISITION',
+                id: 'EXP4010_exp_requisition_history_window',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function EXP4010_budgetCheckBtn() {
+            var id = $au('EXP4010_exp_requisition_header_ds').getCurrentRecord().get('exp_requisition_header_id');
+            new Aurora.Window({
+                url: $au('EXP4010_exp_req_budget_check_link').getUrl() + '?document_id=' + id + '&document_type=EXP_REQUISITION',
+                id: 'BGT_budget_check_window',
+                fullScreen: true
+            });
+        }
+
+        function EXP4010_fileRequisition() {
+            var id = $au('EXP4010_exp_requisition_header_ds').getCurrentRecord().get('exp_requisition_header_id');
+            new Aurora.Window({
+                url: $au('EXP4010_uploadFile_link').getUrl() + '?table_name=EXP_REQUISITION_HEADERS&header_id=' + id + '&doc_category=EXP_REQUISITION' + '&doc_id=' + id,
+                title: '$[l:ATM.UPLOAD_ATTACHMENT]',
+                id: 'check_upload_file_screen',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function EXP4010_close() {
+            $au(windowName).close();
+        }
+
+
+        function EXP4010_headerDimensionFunc() {
+            // Modify Tagin/2018.01.19 增加维度设置查询条件 this.para.company_level
+            var record = $au('EXP4010_exp_requisition_header_ds').getAt(0);
+            var level = this.para.company_level;
+            if (level == 'BUDGET') {
+                id = record.get('bgt_entity_id');
+            } else if (level == 'ACCOUNTING') {
+                id = record.get('acc_entity_id');
+            } else if (level == 'MANAGEMENT') {
+                id = '$[/session/@company_id]';
+            }
+            record.getField(this.binder.name).setLovPara('company_id', id);
+        }
+        Aurora.onReady(EXP4010_onMaintainReady);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_expRequisitionPageElementDs">
+                <a:datas dataSource="/model/elements/records"/>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_currencyDs" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/gld-currency/getGldCurrencyOption"/>
+            <a:dataSet id="EXP4010_expRequisitionHeaderDs" autoCreate="true" submitUrl="$[/request/@context_path]/exp/requisition-header/submit">
+                <a:datas dataSource="/model/header_info/records"/>
+                <a:fields>
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="attachmentNum" prompt="exp_requisition_header.attachment_num" required="true"/>
+                    <a:field name="employeeName" prompt="exp_requisition_header.employee_id" readOnly="true" required="true"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="expRequisitionNumber" prompt="exp_requisition_header.requisition_number" readOnly="true"/>
+                    <a:field name="moExpReqTypeName" prompt="exp_requisition_header.mo_exp_req_type_name" readOnly="true" required="true"/>
+                    <a:field name="moExpReportTypeId"/>
+                    <a:field name="requisitionDate" prompt="exp_requisition_header.requisition_date" required="true"/>
+                    <a:field name="createdByName" prompt="exp_requisition_header.created_by" readOnly="true" required="true"/>
+                    <a:field name="paymentCurrencyName"  prompt="exp_requisition_header.payment_currency_name" readOnly="true" required="true"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="positionName" prompt="exp_requisition_header.position_id"/>
+                    <a:field name="pay2funExchangeTypeName" prompt="exp_report_header.pay2fun_exch_rate_name"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate" prompt="exp_report_header.pay2fun_exch_rate"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="exp_report_header.pay2mag_exch_rate_name"/>
+                    <a:field name="pay2magExchangeType"/>
+                    <a:field name="pay2magExchangeRate" prompt="exp_report_header.pay2mag_exch_rate"/>
+                    <a:field name="requisitionStatusName" prompt="exp_requisition_header.requisition_status_name" readOnly="true" required="true"/>
+                    <a:field name="description" prompt="exp_requisition_header.description"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="exp_requisition_header.acc_entity_name" readOnly="true"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="exp_requisition_header.company_name" readOnly="true"/>
+                    <a:field name="accCenterId"/>
+                    <a:field name="accCenterName"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityName"/>
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="bgtCenterName"/>
+                    <a:field name="unitId"/>
+                    <a:field name="unitName" prompt="exp_report_header.unit_id" required="true" />
+                    <a:field name="periodName"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName"/>
+                    <a:field name="paymentFlag" checkedValue="Y" defaultValue="Y" prompt="exp_requisition_header.payment_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+            <a:screenTopToolbar
+                    style="position:fixed;left:1px;right:1px;height:34px;z-index:100;border-bottom:1px solid #C7C7C7;background-color:#FFFFFF;padding-left: 10px;">
+                <div class="clearfix" style="width:100%;height:100%;">
+                <div id="saveReqDiv">
+                </div>
+                    <a:button id="EXP4010_closeBtn" click="EXP4010_close" style="margin-top:8px;margin-right:10px;float:right;" text="hap_back"/>
+                    <a:button id="EXP4010_saveBtn" click="EXP4010_saveRequisition"
+                              style="margin-top:8px;margin-right:10px;float:right;" text="hap_save_draft"/>
+                    <span style="margin-top:15px;margin-left：5px;font-size:1.05em;display:block;font-weight: 600;"><![CDATA[$[/model/header_info/records/record/@moExpReqTypeName]]]></span>
+                </div>
+            </a:screenTopToolbar>
+       <div id="req_placeholder"/>
+       <a:screenBody>
+            <a:form column="1"  title="$[/model/header_info/record/@MoExpReqTypeName]">
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="employeeName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="expRequisitionNumber" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="moExpReqTypeName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:datePicker name="requisitionDate" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="companyName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:lov name="unitName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="accEntityName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="attachmentNum" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="paymentCurrencyName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="requisitionStatusName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:textField name="createdByName" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                    <a:checkBox name="paymentFlag" bindTarget="EXP4010_expRequisitionHeaderDs"/>
+                </a:box>
+                <a:box style="width:100%;margin-top:-5px;">
+                    <a:textArea name="description" bindTarget="EXP4010_expRequisitionHeaderDs" calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" width="800"/>
+                </a:box>
+            </a:form>
+        </a:screenBody>
+        <script><![CDATA[
+
+        ]]></script>
+    </a:view>
+</a:screen>

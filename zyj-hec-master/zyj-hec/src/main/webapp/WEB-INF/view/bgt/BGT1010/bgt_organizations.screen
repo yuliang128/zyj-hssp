@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui $
+    $Date: 2018/01/28 $
+    $Revision: 1.1 $
+    $Purpose: 预算组织定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1010_bgt_org_ref_details_link" url="$[/request/@context_path]/bgt/BGT1010/bgt_org_ref_details.screen"/>
+        <script><![CDATA[
+            function BGT1010_OrganizationsQuery() {
+                $au('BGT1010_organizations_query_result_ds').query();
+            }
+
+            //来源明细-1.自定义:无明细来源 2.管理架构/核算架构：有明细来源，界面跳转
+            function BGT1010_sourceDetails(value, record, name) {
+                if (!record.isNew) {
+                    //判断当前数据集是否发生改变，若发生变化，则跳转链接隐藏。
+                    if (!$au('BGT1010_organizations_query_result_ds').isModified()) {
+                        var sourceTypeCode = record.get('sourceTypeCode');
+                        if (typeof(sourceTypeCode) == 'undefined' || Ext.isEmpty(sourceTypeCode) || sourceTypeCode == 'CUSTOMIZE') {
+                            return '';
+                        } else if (sourceTypeCode == 'MANAGEMENT' || sourceTypeCode == 'ACCOUNTING') {
+                            var url = $au('BGT1010_bgt_org_ref_details_link').getUrl() + '?bgtOrgId=' + record.get('bgtOrgId') + '&sourceTypeCode=' + record.get('sourceTypeCode');
+                            return '<a href="javascript:BGT1010_view_org_ref_details(\'' + url + '\')">' + '$[l:bgt_organization.data_detail]' + '</a>';
+                        }
+                    }
+                }
+            }
+            
+            function BGT1010_view_org_ref_details(url) {
+                new Aurora.Window({
+                    id: 'BGT1010_bgt_org_ref_details',
+                    url: url,
+                    title: '$[l:bgt_organization.data_detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function BGT1010_BgtOrgCode(record, name) {
+                if (record.isNew) {
+                    return 'BGT1010_grid_tf';
+                }
+                return '';
+            }
+            
+            function BGT1010_organizationSubmit(ds) {
+                ds.query();
+            }
+            
+            function BGT1010_onGridCellClick(grid, idx, name, record) {
+                if (name == 'periodSetDesc') {
+                    $au('BGT1010_period_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1010_period_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/bgt/period-set/query"/>
+            <a:dataSet id="BGT1010_source_type_code_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_ORG_SOURCE_TYPE/"/>
+            <a:dataSet id="BGT1010_organizations_query_ds"/>
+            <a:dataSet id="BGT1010_organizations_query_result_ds" baseUrl="/bgt/organization" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrgAll" queryDataSet="BGT1010_organizations_query_ds" selectable="false">
+                <a:fields>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="bgtOrgCode" required="true" prompt="bgtorganization.bgtorgcode"/>
+                    <a:field name="description" required="true" dto="com.hand.hec.bgt.dto.BgtOrganization" dtoId="bgtOrgId" prompt="bgt_organization.description"/>
+
+                    <a:field name="currencyName" lovCode="LOV_GLD_CURRENCY" lovAutoQuery="true" required="true" title="gld_accounting_entity.currency_choice" prompt="bgt_organization.currency_code">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                            <a:map from="currencyName" to="currencyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="currencyCode"/>
+
+                    <a:field name="sourceTypeCodeName" displayField="meaning" options="BGT1010_source_type_code_ds" required="true" returnField="sourceTypeCode" valueField="value" prompt="bgt_organization.source_type_code"/>
+                    <a:field name="sourceTypeCode"/>
+
+                    <a:field name="periodSetName" displayField="periodSetName" options="BGT1010_period_ds" required="true" returnField="periodSetId" valueField="periodSetId" prompt="bgt_organization.period_set_id"/>
+                    <a:field name="periodSetId"/>
+
+                    <a:field name="exchangeRateTypeName" lovCode="LOV_ER_TYPE" required="true" prompt="bgt_organization.exchange_rate_type_id">
+                        <a:mapping>
+                            <a:map from="typeId" to="exchangeRateTypeId"/>
+                            <a:map from="description" to="exchangeRateTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="exchangeRateTypeId"/>
+
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="bgt_organization.enabledFlag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT1010_organizationSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="BGT1010_organizations_grid" type="add" width="80"/>
+                <a:gridButton bind="BGT1010_organizations_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT1010_organizations_query_ds" resultTarget="BGT1010_organizations_query_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="bgtOrgCode" bindTarget="BGT1010_organizations_query_ds" prompt="bgt_organization.bgt_org_code"/>
+                    <a:textField name="description" bindTarget="BGT1010_organizations_query_ds" prompt="bgt_organization.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT1010_organizations_grid" bindTarget="BGT1010_organizations_query_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="bgtOrgCode" align="center" editorFunction="BGT1010_BgtOrgCode" sortable="true" width="80"/>
+                <a:column name="description" align="left" editor="BGT1010_grid_tl" width="200"/>
+                <a:column name="currencyName" align="center" editor="BGT1010_grid_lv" width="80"/>
+                <a:column name="sourceTypeCodeName" align="center" editor="BGT1010_grid_cb" width="80"/>
+                <a:column name="periodSetName" align="center" editor="BGT1010_grid_period_cb" width="80"/>
+                <a:column name="exchangeRateTypeName" align="center" editor="BGT1010_grid_lv" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="BGT1010_grid_ck" width="80"/>
+                <a:column name="sourceDetailed" align="center" renderer="BGT1010_sourceDetails" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="BGT1010_grid_tl"/>
+                <a:textField id="BGT1010_grid_tf"/>
+                <a:checkBox id="BGT1010_grid_ck"/>
+                <a:comboBox id="BGT1010_grid_cb"/>
+                <a:lov id="BGT1010_grid_lv"/>
+                <a:comboBox id="BGT1010_grid_period_cb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="BGT1010_onGridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

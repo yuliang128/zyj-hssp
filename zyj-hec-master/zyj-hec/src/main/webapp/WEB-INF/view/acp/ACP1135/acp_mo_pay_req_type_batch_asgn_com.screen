@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-08-31 10:35:33
+    $Revision: 1.0  
+    $Purpose: 付款申请类型定义-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function ACP1135_closeBatchWin() {
+                $au('ACP1135_batchAsgnComWin').close();
+            }
+            function ACP1135_asgnSubmit() {
+                var records = $au('ACP1135_showCompanyDs').getSelected();
+                var batchDs = $au('ACP1135_batchAssignCompanyDs');
+                if (records.length == 0) {
+                     new Aurora.showMessage('$[l:prompt]','$[l:prompt.select_line_date]');
+                    return;
+                }
+                if ('$[/parameter/@id]') {
+                    //从付款申请单类型定义界面调用
+                    //1.获取上一个页面ds中的所有被选中的record
+                    var rdsFromPay = $au('acp_mo_pay_req_type_result_ds').getSelected();
+                    for(var j = 0 ;j<rdsFromPay.length; j++){
+                        for(var i = 0; i<records.length;i++){
+                            var record = batchDs.create();
+                            record.set('companyId',records[i].get('companyId'));
+                            record.set('moPayReqTypeId',rdsFromPay[j].get('moPayReqTypeId'));
+                        }
+                    }
+                } else {
+                    //从付款申请单类型定义-分配公司页面调用
+                    var rdFromAsgnCom = $au('ACP1135_asgnComShowDs').getAt(0);
+                    for(var i = 0; i<records.length;i++){
+                        var record = batchDs.create();
+                        record.set('companyId',records[i].get('companyId'));
+                        record.set('moPayReqTypeId',rdFromAsgnCom.get('moPayReqTypeId'));
+                    }
+                }
+                batchDs.submit();
+                ACP1135_closeBatchWin();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ACP1135_showCompanyDs" autoQuery="true" queryUrl="$[/request/@context_path]/acp/mo-pay-req-tp-asgn-com/queryBatchCompany?magOrgId=$[/parameter/@magOrgId]" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="company_short_name"/>
+                    <a:field name="companyFullName"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="ACP1135_batchAssignCompanyDs" autoQuery="false" baseUrl="/acp/mo-pay-req-tp-asgn-com" submitUrl="$[/request/@context_path]/acp/mo-pay-req-tp-asgn-com/batchAssign">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="moPayReqTypeId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode"/>
+                    <a:field name="companyName" prompt="company_short_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="prompt.batch_disp_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="ACP1135_asgnSubmit" text="hec_assign" width="80"/>
+                    <a:button click="ACP1135_closeBatchWin" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="acp_mo_pay_req_type_query_ds" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="acp_mo_pay_req_type_query_ds" prompt="fnd_managing_organization.mag_org_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="ACP1135_showCompanyGrid" bindTarget="ACP1135_showCompanyDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" width="120"/>
+                    <a:column name="companyShortName" align="center" width="120"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

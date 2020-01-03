@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: MouseZhou
+    $Date: 2019年3月7日11:14:52
+    $Revision: 工作流监控
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="WFL2010_wfl_view_link" url="$[/request/@context_path]/wfl/public/wfl_view.screen"/>
+        <script><![CDATA[
+
+        function WFL2010_docNumberRenderer(value, record, name) {
+            var status = record.get('status');
+            return "<a href=\"javascript:WFL2010_openDoc('" + record.get('instanceId') + "')\">" + record.get("docNumber") + "</a>";
+
+        }
+
+        function WFL2010_openDoc(instanceId) {
+            new Aurora.Window({
+                url: $au('WFL2010_wfl_view_link').getUrl() + '?instanceId=' + instanceId,
+                fullScreen: true
+            });
+        }
+
+        function WFL2010_sendToRenderer(value, record, name) {
+            var status = record.get('status');
+            if (status == 'IN_PROGRESS') {
+                return "<a href=\"javascript:WFL2010_sendTo('" + record.get('instanceId') + "')\"><img valign=\"middle\" src=\"$[/request/@context_path]/resources/images/aurora/4.0/wfl/jump.png\"/></a>";
+            } else {
+                return '';
+            }
+        }
+
+        function WFL2010_sendTo(instanceId) {
+            new Aurora.Window({});
+        }
+
+        function WFL2010_stopInstanceRenderer(value, record, name) {
+            var status = record.get('status');
+            if (status == 'IN_PROGRESS') {
+                return "<a href=\"javascript:WFL2010_stopInstance('" + record.get('instanceId') + "')\"><img valign=\"middle\" src=\"$[/request/@context_path]/resources/images/aurora/4.0/wfl/stop.png\"/></a>";
+            } else {
+                return '';
+            }
+        }
+
+        function WFL2010_stopInstance(instanceId) {
+            new Aurora.Window({});
+        }
+
+        function WFL2010_interruptInstanceRenderer(value, record, name) {
+            var status = record.get('status');
+            if (status == 'IN_PROGRESS') {
+                return "<a href=\"javascript:WFL2010_interruptInstance('" + record.get('instanceId') + "')\"><img valign=\"middle\" src=\"$[/request/@context_path]/resources/images/aurora/4.0/wfl/remove.png\"/></a>";
+            } else {
+                return '';
+            }
+        }
+
+        function WFL2010_interruptInstance(instanceId) {
+            new Aurora.Window({});
+        }
+
+        function WFL2010_approveNameRenderer(value, record, name) {
+            return value;
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL2010_wflInstanceStatusDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_INSTANCE_STATUS/" autoQuery="true"/>
+            <a:dataSet id="WFL2010_fndDocCategoryDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_DOC_CATEGORY/" autoQuery="true"/>
+            <a:dataSet id="WFL2010_instanceQueryDs">
+                <a:fields>
+                    <a:field name="docNumber" prompt="wfl_monitor.doc_number"/>
+                    <a:field name="docCategoryName" prompt="wfl_monitor.doc_category_name"
+                             options="WFL2010_fndDocCategoryDs" displayField="meaning" valueField="value"
+                             returnField="docCategory"/>
+                    <a:field name="createdByName" prompt="wfl_monitor.created_by_name"/>
+                    <a:field name="statusName" placeHolder="wfl_monitor.status_name"
+                             options="WFL2010_wflInstanceStatusDs" displayField="meaning" valueField="value"
+                             returnField="status"/>
+                    <a:field name="approverName" placeHolder="wfl_monitor.approver_name"/>
+                    <a:field name="processName" placeHolder="wfl_monitor.process_name" lovCode="LOV_WFL_PROCESS">
+                        <a:mapping>
+                            <a:map from="processName" to="processName"/>
+                            <a:map from="processId" to="processId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="creationDateFrom" placeHolder="wfl_monitor.creation_date_from"/>
+                    <a:field name="creationDateTo" placeHolder="wfl_monitor.creation_date_to"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL2010_instanceDs" queryUrl="$[/request/@context_path]/wfl/monitor/select-wfl-instance"
+                       autoQuery="true">
+                <a:fields>
+                    <a:field name="instanceId"/>
+                    <a:field name="docNumber" prompt="wfl_monitor.doc_number"/>
+                    <a:field name="docCategoryName" prompt="wfl_monitor.doc_category_name"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="createdByName" prompt="wfl_monitor.created_by_name"/>
+                    <a:field name="creationDate" prompt="wfl_monitor.creation_date"/>
+                    <a:field name="statusName" prompt="wfl_monitor.status_name"/>
+                    <a:field name="status"/>
+                    <a:field name="approverName" prompt="wfl_monitor.approver_name"/>
+                    <a:field name="processName" prompt="wfl_monitor.process_name"/>
+                    <a:field name="lastApproveDate" prompt="wfl_monitor.last_approve_date"/>
+                    <a:field name="lastApproverName" prompt="wfl_monitor.last_approver_name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL2010_approveInfoDs"
+                       queryUrl="$[/request/@context_path]/wfl/monitor/select-wfl-approve-info"
+                       bindTarget="WFL2010_instanceDs" bindName="approverInfo">
+                <a:fields>
+                    <a:field name="approveDate" prompt="wfl_monitor.approve_date"/>
+                    <a:field name="approverName" prompt="wfl_monitor.approver_name"/>
+                    <a:field name="taskName" prompt="wfl_monitor.task_name"/>
+                    <a:field name="actionName" prompt="wfl_monitor.action_name"/>
+                    <a:field name="commentText" prompt="wfl_monitor.comment_text"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:queryForm bindTarget="WFL2010_instanceQueryDs" resultTarget="WFL2010_instanceDs"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="docNumber" bindTarget="WFL2010_instanceQueryDs"/>
+                    <a:comboBox name="docCategoryName" bindTarget="WFL2010_instanceQueryDs"/>
+                    <a:textField name="createdByName" bindTarget="WFL2010_instanceQueryDs"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="statusName" bindTarget="WFL2010_instanceQueryDs"/>
+                    <a:textField name="approverName" bindTarget="WFL2010_instanceQueryDs"/>
+                    <a:lov name="processName" bindTarget="WFL2010_instanceQueryDs"/>
+                    <a:datePicker name="creationDateFrom" bindTarget="WFL2010_instanceQueryDs"/>
+                    <a:datePicker name="creationDateTo" bindTarget="WFL2010_instanceQueryDs"/>
+                </a:formBody>
+            </a:queryForm>
+            <a:grid id="WFL2010_instanceGrid" bindTarget="WFL2010_instanceDs" marginHeight="390" marginWidth="23"
+                    navBar="true">
+                <a:columns>
+                    <a:column name="docNumber" align="center" lock="true"
+                              renderer="WFL2010_docNumberRenderer" width="120"/>
+                    <a:column name="wfl_operation" align="center" lock="true" prompt="wfl_monitor.operation">
+                        <a:column name="sendTo" align="center" lock="true" prompt="wfl_monitor.send_to"
+                                  renderer="WFL2010_sendToRenderer" width="50"/>
+                        <a:column name="stopInstance" align="center" lock="true" prompt="wfl_monitor.stop_instance"
+                                  renderer="WFL2010_stopInstanceRenderer" width="50"/>
+                        <a:column name="interruptInstance" align="center" lock="true"
+                                  prompt="wfl_monitor.interrupt_instance" renderer="WFL2010_interruptInstanceRenderer"
+                                  width="50"/>
+                    </a:column>
+                    <a:column name="docCategoryName" align="left"
+                              width="120"/>
+                    <a:column name="createdByName" align="left" width="80"/>
+                    <a:column name="creationDate" align="center" width="120"/>
+                    <a:column name="statusName" align="left" width="80"/>
+                    <a:column name="approverName" align="left"
+                              renderer="WFL2010_approveNameRenderer" width="220"/>
+                    <a:column name="processName" align="left" width="180"/>
+                    <a:column name="lastApproveDate" align="center"
+                              width="120"/>
+                    <a:column name="lastApproverName" align="left"
+                              width="80"/>
+                </a:columns>
+            </a:grid>
+            <a:grid id="WFL2010_approveInfoGrid" autoFocus="false" bindTarget="WFL2010_approveInfoDs" height="150"
+                    marginWidth="23"
+                    navBar="false">
+                <a:columns>
+                    <a:column name="approveDate" align="center" width="120"/>
+                    <a:column name="approverName" align="left" width="120"/>
+                    <a:column name="taskName" align="left" width="120"/>
+                    <a:column name="actionName" align="left" width="120"/>
+                    <a:column name="commentText" align="left" width="150"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

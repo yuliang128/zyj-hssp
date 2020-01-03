@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-08-31 10:35:33
+    $Revision: 1.0  
+    $Purpose: 付款申请类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="ACP1135_refUsedLink" url="$[/request/@context_path]/acp/ACP1135/acp_mo_pay_req_tp_ref_used.screen"/>
+        <a:link id="ACP1135_asgnComLink" url="$[/request/@context_path]/acp/ACP1135/acp_mo_pay_req_type_asgn_com.screen"/>
+        <a:link id="ACP1135_batchAsgnComLink" url="$[/request/@context_path]/acp/ACP1135/acp_mo_pay_req_type_batch_asgn_com.screen"/>
+        <a:link id="ACP1135_asgnReportLink" url="$[/request/@context_path]/acp/ACP1135/acp_mo_pay_req_type_asgn_report_type.screen"/>
+        <a:link id="ACP1135_asgnTrxLin" url="$[/request/@context_path]/acp/ACP1135/acp_mo_pay_req_type_asgn_trx.screen"/>
+        <a:link id="ACP1135_asgnEmpGpsLink" url="$[/request/@context_path]/acp/ACP1135/acp_mo_pay_req_type_ref_emp_gps.screen"/>
+        <script><![CDATA[
+            function ACP1135_openBatchAsgnComWin(e) {
+                debugger;
+                //add lcy 2017/12/21 16:41:21 批量分配前校验管理组织是否为空
+                if (Ext.isEmpty($au('acp_mo_pay_req_type_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                var url = $au('ACP1135_batchAsgnComLink').getUrl()+'?magOrgId='+$au('acp_mo_pay_req_type_query_ds').getAt(0).get('magOrgId');
+                var rds = $au('acp_mo_pay_req_type_result_ds').getSelected();
+                if (e.id == 'typeBatch') {
+                    //若从主界面调用批量分配，检查是否选中了行
+                    if (rds.length == 0) {
+                        new Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                        return;
+                    }
+                    url += '&id=typeBatch';
+                }
+                new Aurora.Window({
+                    id: 'ACP1135_batchAsgnComWin',
+                    title: '$[l:prompt.batch_disp_company]',
+                    url: url,
+                    width: 1020,
+                    side: 'right',
+                    fullScreen: false
+                });
+            }
+            
+            function ACP1135_closeThisWin() {
+                $au('ACP1135_acpMoPayReqTypesWin').close();
+            }
+            
+            function ACP1135_usageRenderer(value, record, name) {
+                if (record.isNew) {
+                    return;
+                }
+                var ds = $au('acp_mo_pay_req_type_result_ds');
+                var row = ds.indexOf(record);
+                return '<a href="javascript:openUsageWin(' + row + ')">$[l:exp_mo_report_type.payment_useds]</a>';
+            }
+            
+            function openUsageWin(row) {
+                var url = $au('ACP1135_refUsedLink').getUrl() + '?row=' + row;
+                new Aurora.Window({
+                    id: 'ACP1135_UsageWin',
+                    url: url,
+                    title: '$[l:exp_mo_report_type.payment_useds]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function ACP1135_asgnComRenderer(value, record, name) {
+                if (record.isNew) {
+                    return;
+                }
+                return '<a href="javascript:ACP1135_openAsgnComWin(' + record.id + ')">$[l:bgt_journal_type.company_id]</a>';
+            }
+            
+            function ACP1135_openAsgnComWin(rdId) {
+            
+                var url = $au('ACP1135_asgnComLink').getUrl() + '?rdId=' + rdId + '&moPayReqTypeId=' + $au('acp_mo_pay_req_type_result_ds').findById(rdId).get('moPayReqTypeId');
+                new Aurora.Window({
+                    id: 'ACP1135_asgnComWin',
+                    url: url,
+                    title: '$[l:bgt_journal_type.company_id]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function ACP1135_onReqTypeSubmitSuccess(ds, url, datas) {
+                ds.query();
+            }
+            
+            function ACP1135_reportRenderer(value, record, name) {
+                if (!record.isNew && record.get('paymentTypeCode') == 'REPORT') {
+                    return '<a href="javascript:ACP1135_openReportWin(' + record.id + ',\'REPORT\',\'asgn_report_type\',\'$[l:acp_mo_pay_req_type.asgn_report_type]\')">$[l:acp_mo_pay_req_type.asgn_report_type]</a>';
+                }
+                if (!record.isNew && record.get('paymentTypeCode') == 'CONTRACT') {
+                    return '<a href="javascript:ACP1135_openReportWin(' + record.id + ',\'CONTRACT\',\'asgn_contract_type\',\'$[l:acp_mo_pay_req_type.asgn_contract_type]\')">$[l:acp_mo_pay_req_type.asgn_contract_type]</a>';
+                }
+                return;
+            }
+            //add lcy 2017/12/21 17:43:13 新增title_desc参数用于title显示
+            
+            function ACP1135_openReportWin(rdId, type, title, titleDesc) {
+                var url = $au('ACP1135_asgnReportLink').getUrl() + '?rdId=' + rdId + '&documentType=' + type + '&title=' + title;
+                new Aurora.Window({
+                    id: 'ACP1135_asgnReportWin',
+                    url: url,
+                    title: titleDesc,
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function ACP1135_asgnTrxRenderer(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:ACP1135_openAsgnTrxWin(' + record.id + ')">$[l:acp_mo_pay_req_type.asgn_trx]</a>';
+            }
+            
+            function ACP1135_openAsgnTrxWin(rdId) {
+                var url = $au('ACP1135_asgnTrxLin').getUrl() + '?rdId=' + rdId;
+                new Aurora.Window({
+                    id: 'ACP1135_asgnTrxWin',
+                    url: url,
+                    title: '$[l:acp_mo_pay_req_type.asgn_trx]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function ACP1135_add(ds) {
+                var magOrgId = $au('acp_mo_pay_req_type_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function ACP1135_focus() {
+                $au('ACP1135_mange_organizationlist_ds').query();
+            }
+            
+            function ACP1135_beforeCreate() {
+                if (Ext.isEmpty($au('acp_mo_pay_req_type_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            //add lcy 2017/12/21 16:41:21 保存前校验管理组织是否为空事件
+            
+            function ACP1135_beforeSubmit() {
+                if (Ext.isEmpty($au('acp_mo_pay_req_type_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function ACP1135_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('acp_mo_pay_req_type_result_ds').query();
+                }
+            }
+            
+            function ACP1135_gridEditor(rd, name) {
+                if (name == 'paymentTypeName') {
+                    if (rd.isNew) {
+                        return 'ACP1135_grid_ccb';
+                    }
+                    return '';
+                }
+            }
+            
+            function ACP1135_codeEditor(rd, name) {
+                if (rd.isNew) {
+                    return 'code_textField';
+                }
+                return '';
+            }
+            
+            function ACP1135_asgnEmpGps(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                var moPayReqTypeId = record.get('moPayReqTypeId');
+                var magOrgId = record.get('magOrgId');
+                var url = $au('ACP1135_asgnEmpGpsLink').getUrl() + '?moPayReqTypeId=' + moPayReqTypeId + '&magOrgId=' + magOrgId;
+                return '<a href="javascript:ACP1135_openAsgnGpsWin(\'' + url + '\')">$[l:csh_mo_payment_req_type.employee_group]</a>';
+            }
+            
+            function ACP1135_openAsgnGpsWin(url) {
+                new Aurora.Window({
+                    id: 'ACP1135_acp_mo_req_ref_emp_gps',
+                    url: url,
+                    title: '$[l:csh_mo_payment_req_type.employee_group]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //add by liliang 2018/5/21
+            //新增图标字段相关功能
+            
+            function ACP1135_imagePickerFunc(value, record, name) {
+                if (value) {
+                    return '<img style="width:20px;height:20px;margin-top:8px;" src="$[/request/@context_path]/' + value + '" />';
+                }
+            }
+            function ACP1135_Oncellclick(grid, row, name, record) {
+                debugger;
+                var metadata = record.getMeta();
+                var magOrgId = $au('acp_mo_pay_req_type_query_ds').getCurrentRecord().get('magOrgId');
+                if(name=='captionDescription'){
+                    $au('ACP1135_writeCaption_ds').setQueryParameter('magOrgId',magOrgId);
+                    $au('ACP1135_writeCaption_ds').setQueryParameter('docCategoryCode','ACP_REQUISITION');
+                    $au('ACP1135_writeCaption_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ACP1135_mange_organizationlist_ds" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="ACP1135_paymentTypeCodeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/ACP_PAYMENT_TYPE_CODE/"/>
+            <a:dataSet id="ACP1135_currentListDs" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="ACP1135_writeCaption_ds" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/exp/mo-write-caption-hd/query"/>
+            <a:dataSet id="acp_mo_pay_req_type_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMagList/records/record/@magOrgId]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/defaultMagList/records/record/@description]"/>
+                    <a:field name="magOrgCode" defaultValue="$[/model/defaultMagList/records/record/@magOrgCode]"/>
+                    <a:field name="magOrgCodeName" defaultValue="$[/model/defaultMagList/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="ACP1135_mange_organizationlist_ds" prompt="bgt_budget_item_mapping.mag_org_name" required="true" returnField="magOrgId" valueField="magOrgId">
+                        <!-- modify lcy  2017/12/21  16:47:10 新增mapping值，用于批量分配时form显示 -->
+                        <a:mapping>
+                            <a:map from="magOrgName" to="magOrgName"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moPayReqTypeCode" prompt="exp_mo_exp_policy_assign.doc_type_code"/>
+                    <a:field name="description" prompt="hap.doc_type_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="ACP1135_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="acp_mo_pay_req_type_result_ds" autoQuery="true" baseUrl="/acp/mo-pay-req-type" queryDataSet="acp_mo_pay_req_type_query_ds" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="moPayReqTypeId"/>
+                    <a:field name="moPayReqTypeCode" prompt="exp_mo_exp_policy_assign.doc_type_code" required="true"/>
+                    <a:field name="magOrgId" prompt="bgt_budget_item_mapping.mag_org_name" required="true"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="currencyName" displayField="currencyName" options="ACP1135_currentListDs" prompt="exp_mo_report_type.currency_code" required="false" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="autoApproveFlag" checkedValue="Y" defaultValue="N" prompt="csh_mo_payment_req_type.auto_approve_flag" required="true" uncheckedValue="N"/>
+                    <a:field name="autoAuditFlag" checkedValue="Y" defaultValue="N" prompt="csh_mo_payment_req_type.auto_audit_flag" required="true" uncheckedValue="N"/>
+                    <a:field name="businessFlag" checkedValue="Y" defaultValue="N" prompt="acp_mo_pay_req_type.pay_req_type_business" required="true" uncheckedValue="N"/>
+                    <a:field name="paymentTypeName" displayField="meaning" options="ACP1135_paymentTypeCodeDs" prompt="acp_mo_pay_req_type.payment_type_name" required="true" returnField="paymentTypeCode" valueField="value"/>
+                    <a:field name="paymentTypeCode"/>
+                    <a:field name="reportName" prompt="csh_mo_payment_req_type.report_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="hap_enabled_flag" required="true" uncheckedValue="N"/>
+                    <a:field name="description" prompt="hap.doc_type_name" dto="com.hand.hec.acp.dto.AcpMoPayReqType" dtoId="moPayReqTypeId"/>
+                    <a:field name="icon" lovHeight="450" lovWidth="600" title="csh_mo_payment_req_type.icon"/>
+                    <a:field name="captionHdsId"/>
+                    <a:field name="captionDescription" displayField="description" options="ACP1135_writeCaption_ds" prompt="csh_mo_payment_req_type.caption_description" returnField="captionHdsId" valueField="captionHdsId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="ACP1135_onReqTypeSubmitSuccess"/>
+                    <a:event name="add" handler="ACP1135_add"/>
+                    <a:event name="beforecreate" handler="ACP1135_beforeCreate"/>
+                    <a:event name="beforesubmit" handler="ACP1135_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:gridButton bind="ACP1135_grid" text="hap_new" type="add" width="80"/>
+            <a:gridButton bind="ACP1135_grid" text="hap_save" type="save" width="80"/>
+            <a:button id="typeBatch" click="ACP1135_openBatchAsgnComWin" text="hec_batch_assign" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="acp_mo_pay_req_type_query_ds" resultTarget="acp_mo_pay_req_type_result_ds" style="margin-right:10px; width:100%;border:none;">
+            <a:formToolBar>
+                <a:comboBox name="magOrgCodeName" bindTarget="acp_mo_pay_req_type_query_ds" prompt="bgt_budget_item_mapping.mag_org_name" width="170">
+                    <a:events>
+                        <a:event name="focus" handler="ACP1135_focus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:textField name="moPayReqTypeCode" bindTarget="acp_mo_pay_req_type_query_ds"/>
+                <a:textField name="description" bindTarget="acp_mo_pay_req_type_query_ds"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <a:grid id="ACP1135_grid" bindTarget="acp_mo_pay_req_type_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moPayReqTypeCode" align="center" editorFunction="ACP1135_codeEditor" lock="true" width="120"/>
+                <a:column name="description" align="left" editor="ACP1135_grid_tld" lock="true" width="250"/>
+                <a:column name="reportName" align="left" editor="grid_id_textField_id" width="120"/>
+                <a:column name="currencyName" align="center" editor="ACP1135_grid_ccb" width="80"/>
+                <a:column name="paymentTypeName" align="center" editorFunction="ACP1135_gridEditor" width="120"/>
+                <a:column name="captionDescription" align="center" editor="ACP1135_grid_ccb" width="100"/>
+                <a:column name="autoApproveFlag" align="center" editor="ACP1135_grid_cb" width="80"/>
+                <a:column name="autoAuditFlag" align="center" editor="ACP1135_grid_cb" width="80"/>
+                <a:column name="businessFlag" align="center" editor="ACP1135_grid_cb" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="ACP1135_grid_cb" width="80"/>
+                <a:column name="icon" align="center" editor="ACP1135_imagePicker" renderer="ACP1135_imagePickerFunc" width="55"/>
+                <a:column name="report" align="center" renderer="ACP1135_reportRenderer" width="120"/>
+                <a:column name="asgnTrx" align="center" renderer="ACP1135_asgnTrxRenderer" width="120"/>
+                <a:column name="usage" align="center" renderer="ACP1135_usageRenderer" width="120"/>
+                <a:column name="asgnGps" align="center" renderer="ACP1135_asgnEmpGps" width="120"/>
+                <a:column name="asgnCom" align="center" renderer="ACP1135_asgnComRenderer" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="ACP1135_grid_tld"/>
+                <a:textField id="grid_id_textField_id"/>
+                <a:textField id="code_textField" typeCase="upper"/>
+                <a:checkBox id="ACP1135_grid_cb"/>
+                <a:comboBox id="ACP1135_grid_ccb"/>
+                <a:imagePicker id="ACP1135_imagePicker" path="resources/images/aurora/4.0/documents"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="ACP1135_Oncellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

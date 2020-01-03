@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoReportTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoReportType">
+        <result column="ADJUSTMENT_FLAG" property="adjustmentFlag" jdbcType="VARCHAR" />
+        <result column="PAYMENT_FLAG" property="paymentFlag" jdbcType="VARCHAR" />
+        <result column="REPORT_NAME" property="reportName" jdbcType="VARCHAR" />
+        <result column="AMORTIZATION_FLAG" property="amortizationFlag" jdbcType="VARCHAR" />
+        <result column="TEMPLATE_FLAG" property="templateFlag" jdbcType="VARCHAR" />
+        <result column="RESERVE_BUDGET" property="reserveBudget" jdbcType="VARCHAR" />
+        <result column="BUDGET_CONTROL_ENABLED" property="budgetControlEnabled" jdbcType="VARCHAR" />
+        <result column="DATA_REVERSE_FLAG" property="dataReverseFlag" jdbcType="VARCHAR" />
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_TYPE" property="documentType" jdbcType="VARCHAR" />
+        <result column="ICON" property="icon" jdbcType="VARCHAR" />
+        <result column="CAPTION_HDS_ID" property="captionHdsId" jdbcType="DECIMAL" />
+        <result column="APP_PAGE_CODE" property="appPageCode" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="MO_EXP_REPORT_TYPE_ID" property="moExpReportTypeId" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_REPORT_TYPE_CODE" property="moExpReportTypeCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="DOCUMENT_PAGE_TYPE" property="documentPageType" jdbcType="VARCHAR" />
+        <result column="MO_EXP_REQ_TYPE_ID" property="moExpReqTypeId" jdbcType="DECIMAL" />
+        <result column="RELATION_MODE_CODE" property="relationModeCode" jdbcType="VARCHAR" />
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR" />
+        <result column="CODING_RULE" property="codingRule" jdbcType="VARCHAR" />
+        <result column="LINE_NUMBER_BEGINNING" property="lineNumberBeginning" jdbcType="DECIMAL" />
+        <result column="STEP_LENGTH" property="stepLength" jdbcType="DECIMAL" />
+        <result column="AUTO_APPROVE_FLAG" property="autoApproveFlag" jdbcType="VARCHAR" />
+        <result column="AUTO_AUDIT_FLAG" property="autoAuditFlag" jdbcType="VARCHAR" />
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR" />
+        <result column="REQ_REQUIRED_FLAG" property="reqRequiredFlag" jdbcType="VARCHAR" />
+
+        <result column="PAYMENT_METHOD_NAME" property="paymentMethodName" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="SERVICE_NAME" property="serviceName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryExpMoReportTypeList" resultMap="BaseResultMap">
+        SELECT
+        emrt.mo_exp_report_type_code,
+        emrtt.description,
+        emrt.mo_exp_report_type_id,
+        emrt.currency_code,
+        (SELECT
+        gct.CURRENCY_NAME
+        FROM
+        gld_currency gc
+        LEFT JOIN gld_currency_tl gct
+        ON gc.CURRENCY_ID = gct.CURRENCY_ID
+        AND gct.LANG = #{request.locale}
+        WHERE gc.CURRENCY_CODE = emrt.CURRENCY_CODE) currency_name,
+        (
+        CASE
+        WHEN emrt.icon IS NULL
+        THEN '/resources/images/4.0/documents/Default.png'
+        ELSE emrt.icon
+        END
+        ) AS icon,
+        (SELECT
+        srb.url
+        FROM
+        sys_resource_b srb
+        WHERE EXISTS
+        (SELECT
+        1
+        FROM
+        exp_report_page_element pe
+        WHERE pe.service_id = srb.resource_id
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_rep_type_ref_ele e
+        WHERE e.report_page_element_id = pe.report_page_element_id
+        AND e.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        AND e.enabled_flag = 'Y'
+        AND e.doc_type_code = 'HEADER')
+        AND pe.enabled_flag = 'Y')) service_name
+        FROM
+        exp_mo_report_type emrt
+        LEFT JOIN exp_mo_report_type_tl emrtt
+        ON emrt.MO_EXP_REPORT_TYPE_ID = emrtt.MO_EXP_REPORT_TYPE_ID
+        AND emrtt.LANG = #{request.locale}
+        WHERE emrt.enabled_flag = 'Y'
+        AND emrt.document_type = 'EXP'
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_rep_type_ref_emp_gp reg
+        WHERE reg.enabled_flag = 'Y'
+        AND reg.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_emp_group eg
+        WHERE eg.mo_emp_group_id = reg.mo_emp_group_id
+        AND eg.enabled_flag = 'Y'
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_emp_group_asgn_com ac
+        WHERE ac.mo_emp_group_id = eg.mo_emp_group_id
+        AND ac.company_id = (
+        CASE
+        WHEN #{companyId} is null then #{request.companyId} else #{companyId} end
+        )
+        AND ac.enabled_flag = 'Y'
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_com_emp_group_ref_emp re
+        WHERE re.emp_group_com_assign_id = ac.assign_id
+        AND re.enabled_flag = 'Y'
+        AND re.employee_id = #{employeeId}
+        ))))
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_report_type_asgn_com etac
+        WHERE emrt.mo_exp_report_type_id = etac.mo_exp_report_type_id
+        AND etac.enabled_flag = 'Y'
+        AND etac.company_id = (
+        CASE
+        WHEN #{companyId} is null then #{request.companyId} else #{companyId} end
+        ))
+        AND
+        (SELECT
+        COUNT(1)
+        FROM
+        exp_document_authority a,
+        exp_employee_assign t,
+        exp_employee_assign t2,
+        exp_org_position p,
+        exp_org_unit u,
+        sys_user su,
+        exp_employee ee
+        WHERE a.doc_category = 'EXP_REPORT'
+        AND (
+        (
+        CASE
+        WHEN a.granted_position_id IS NULL
+        THEN t.position_id
+        ELSE a.granted_position_id
+        END
+        ) = t.position_id
+        AND t.enabled_flag = 'Y'
+        AND t.company_id = a.company_id
+        AND t.employee_id = ee.employee_id
+        )
+        AND (
+        (
+        CASE
+        WHEN a.granted_employee_id IS NULL
+        THEN ee.employee_id
+        ELSE a.granted_employee_id
+        END
+        ) = ee.employee_id
+        )
+        AND ee.employee_id = su.employee_id
+        AND su.user_id = #{request.userId}
+        AND t2.employee_id = #{employeeId}
+        AND t2.enabled_flag = 'Y'
+        AND p.enabled_flag = 'Y'
+        AND u.enabled_flag = 'Y'
+        AND p.position_id = t2.position_id
+        AND u.unit_id = p.unit_id
+        AND a.start_date_active &lt;= DATE_FORMAT(SYSDATE(), 'YYYY-MM-DD')
+        AND (
+        a.end_date_active IS NULL
+        OR a.end_date_active &gt;= DATE_FORMAT(SYSDATE(), 'YYYY-MM-DD')
+        )
+        AND (
+        a.inquire_flag = 'Y'
+        OR a.maintain_flag = 'Y'
+        )
+        AND t2.company_id = a.company_id
+        AND (
+        (
+        CASE
+        WHEN a.UNIT_ID IS NULL
+        THEN u.UNIT_ID
+        ELSE a.UNIT_ID
+        END
+        ) = u.unit_id
+        )
+        AND (
+        (
+        CASE
+        WHEN a.POSITION_ID IS NULL
+        THEN p.POSITION_ID
+        ELSE a.POSITION_ID
+        END
+        ) = p.position_id
+        )
+        AND (
+        (
+        CASE
+        WHEN a.EMPLOYEE_ID IS NULL
+        THEN t2.EMPLOYEE_ID
+        ELSE a.EMPLOYEE_ID
+        END
+        ) = t2.employee_id
+        )
+        AND a.doc_type_id IS NOT NULL) = 0
+        UNION
+        SELECT
+        emrt.mo_exp_report_type_code,
+        emrtt.description,
+        emrt.mo_exp_report_type_id,
+        emrt.currency_code,
+        (SELECT
+        gct.CURRENCY_NAME
+        FROM
+        gld_currency gc
+        LEFT JOIN gld_currency_tl gct
+        ON gc.CURRENCY_ID = gct.CURRENCY_ID
+        AND gct.LANG = #{request.locale}
+        WHERE gc.COUNTRY_CODE = emrt.CURRENCY_CODE) currency_name,
+        (
+        CASE
+        WHEN emrt.icon IS NULL
+        THEN '/resources/images/4.0/documents/Default.png'
+        ELSE emrt.icon
+        END
+        ) AS icon,
+        (SELECT
+        srb.url
+        FROM
+        sys_resource_b srb
+        WHERE EXISTS
+        (SELECT
+        1
+        FROM
+        exp_report_page_element pe
+        WHERE pe.service_id = srb.resource_id
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_rep_type_ref_ele e
+        WHERE e.report_page_element_id = pe.report_page_element_id
+        AND e.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        AND e.enabled_flag = 'Y'
+        AND e.doc_type_code = 'HEADER')
+        AND pe.enabled_flag = 'Y')) service_name
+        FROM
+        exp_mo_report_type emrt
+        LEFT JOIN exp_mo_report_type_tl emrtt
+        ON emrt.MO_EXP_REPORT_TYPE_ID = emrtt.MO_EXP_REPORT_TYPE_ID
+        AND emrtt.LANG = #{request.locale}
+        WHERE emrt.enabled_flag = 'Y'
+        AND emrt.document_type = 'EXP'
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_rep_type_ref_emp_gp reg
+        WHERE reg.enabled_flag = 'Y'
+        AND reg.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_emp_group eg
+        WHERE eg.mo_emp_group_id = reg.mo_emp_group_id
+        AND eg.enabled_flag = 'Y'
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_emp_group_asgn_com ac
+        WHERE ac.mo_emp_group_id = eg.mo_emp_group_id
+        AND ac.company_id = (
+        CASE
+        WHEN #{companyId} is null then #{request.companyId} else #{companyId} end
+        )
+        AND ac.enabled_flag = 'Y'
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_com_emp_group_ref_emp re
+        WHERE re.emp_group_com_assign_id = ac.assign_id
+        AND re.enabled_flag = 'Y'
+        AND re.employee_id = #{employeeId}
+        ))))
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_report_type_asgn_com etac
+        WHERE emrt.mo_exp_report_type_id = etac.mo_exp_report_type_id
+        AND etac.enabled_flag = 'Y'
+        AND etac.company_id = (
+        CASE
+        WHEN #{companyId} is null then #{request.companyId} else #{companyId} end
+        ))
+        AND EXISTS
+        (SELECT
+        1
+        FROM
+        exp_document_authority a,
+        exp_employee_assign t,
+        exp_employee_assign t2,
+        exp_org_position p,
+        exp_org_unit u,
+        sys_user su,
+        exp_employee ee
+        WHERE a.doc_category = 'EXP_REPORT'
+        AND (
+        (
+        CASE
+        WHEN a.granted_position_id IS NULL
+        THEN t.position_id
+        ELSE a.granted_position_id
+        END
+        ) = t.position_id
+        AND t.enabled_flag = 'Y'
+        AND t.company_id = a.company_id
+        AND t.employee_id = ee.employee_id
+        )
+        AND (
+        (
+        CASE
+        WHEN a.granted_employee_id IS NULL
+        THEN ee.employee_id
+        ELSE a.granted_employee_id
+        END
+        ) = ee.employee_id
+        )
+        AND ee.employee_id = su.employee_id
+        AND su.user_id = #{request.userId}
+        AND t2.employee_id = #{employeeId}
+        AND t2.enabled_flag = 'Y'
+        AND p.enabled_flag = 'Y'
+        AND u.enabled_flag = 'Y'
+        AND p.position_id = t2.position_id
+        AND u.unit_id = p.unit_id
+        AND a.start_date_active &lt;= DATE_FORMAT(SYSDATE(), 'YYYY-MM-DD')
+        AND (
+        a.end_date_active IS NULL
+        OR a.end_date_active &gt;= DATE_FORMAT(SYSDATE(), 'YYYY-MM-DD')
+        )
+        AND (
+        a.inquire_flag = 'Y'
+        OR a.maintain_flag = 'Y'
+        )
+        AND t2.company_id = a.company_id
+        AND (
+        (
+        CASE
+        WHEN a.UNIT_ID IS NULL
+        THEN u.UNIT_ID
+        ELSE a.UNIT_ID
+        END
+        ) = u.unit_id
+        )
+        AND (
+        (
+        CASE
+        WHEN a.POSITION_ID IS NULL
+        THEN p.POSITION_ID
+        ELSE a.POSITION_ID
+        END
+        ) = p.position_id
+        )
+        AND (
+        (
+        CASE
+        WHEN a.EMPLOYEE_ID IS NULL
+        THEN t2.EMPLOYEE_ID
+        ELSE a.EMPLOYEE_ID
+        END
+        ) = t2.employee_id
+        )
+        AND a.doc_type_id = emrt.MO_EXP_REPORT_TYPE_ID)
+    </select>
+    <!--hec_util.exp_mo_report_types_vl_lov-->
+    <select id="queryExpReportTypeByCom" resultMap="BaseResultMap">
+        SELECT
+                        emtv.mo_exp_report_type_id,
+                        emtv.mo_exp_report_type_code,
+                        emtvt.description,
+                        emtv.document_type
+                    FROM
+                        exp_mo_report_type emtv
+                        left join exp_mo_report_type_tl emtvt on emtv.mo_exp_report_type_id = emtvt.mo_exp_report_type_id
+                        and emtvt.lang = #{request.locale}
+                    WHERE
+                        emtv.enabled_flag = 'Y' AND
+                        EXISTS
+                        (SELECT
+                            1
+                        FROM
+                            exp_mo_report_type_asgn_com emac
+                        WHERE
+                            emac.mo_exp_report_type_id = emtv.mo_exp_report_type_id AND
+                            emac.company_id            = (case when #{companyId} is null then #{request.companyId} else #{companyId} end) AND
+                            emac.enabled_flag          = 'Y'
+                        )
+    </select>
+
+</mapper>

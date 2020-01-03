@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpPolicyCondLnsMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpPolicyCondLns">
+        <result column="CONDITION_LNS_ID" property="conditionLnsId" jdbcType="DECIMAL"/>
+        <result column="CONDITION_HDS_ID" property="conditionHdsId" jdbcType="DECIMAL"/>
+        <result column="CONDITION_VALUE_CODE" property="conditionValueCode" jdbcType="VARCHAR"/>
+        <result column="condition_id" property="conditionId" jdbcType="DECIMAL"/>
+        <result column="condition_value_type" property="conditionValueType" jdbcType="VARCHAR"/>
+        <result column="condition_value_name" property="conditionValueName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryPolicyCondLns" parameterType="com.hand.hec.exp.dto.ExpMoExpPolicyCondLns"
+            resultMap="BaseResultMap">
+        SELECT
+        emch.condition_id,
+        emch.condition_hds_id,
+        emcl.condition_lns_id,
+        emch.match_item_code condition_value_type,
+        emcl.condition_value_code,
+        (
+        CASE
+
+        WHEN emch.match_item_code = 'ACC_ENTITY' THEN
+        (
+        SELECT
+        DISTINCT
+        gaet.acc_entity_name
+        FROM
+        gld_accounting_entity gaev
+        LEFT OUTER JOIN gld_accounting_entity_tl gaet ON ( gaev.ACC_ENTITY_ID = gaet.ACC_ENTITY_ID AND gaet.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE gaev.acc_entity_code = emcl.condition_value_code )
+        WHEN emch.match_item_code = 'COMPANY' THEN
+        (
+        SELECT
+        DISTINCT
+        fct.company_short_name
+        FROM
+        fnd_company fcv
+        LEFT OUTER JOIN fnd_company_tl fct ON ( fcv.COMPANY_ID = fct.COMPANY_ID AND fct.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE fcv.company_code = emcl.condition_value_code )
+        WHEN emch.match_item_code = 'COUNTRY' THEN
+        (
+        SELECT
+        DISTINCT
+        fcct.description
+        FROM
+        fnd_country_code fccv
+        LEFT OUTER JOIN fnd_country_code_tl fcct ON ( fccv.COUNTRY_CODE_ID = fcct.COUNTRY_CODE_ID AND fcct.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE fccv.country_code = emcl.condition_value_code )
+        WHEN emch.match_item_code = 'EMPLOYEE_JOB' THEN
+        (
+        SELECT
+        DISTINCT
+        eejt.description
+        FROM
+        exp_employee_job eej
+        LEFT OUTER JOIN exp_employee_job_tl eejt ON (
+        eej.EMPLOYEE_JOB_ID = eejt.EMPLOYEE_JOB_ID
+        AND eejt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+
+        WHERE
+        eej.employee_job_code = emcl.condition_value_code
+        AND eej.mag_org_id = #{magOrgId}
+
+        )
+        WHEN emch.match_item_code = 'EMPLOYEE_LEVEL' THEN
+        (
+        SELECT
+        DISTINCT
+        eelt.description
+        FROM
+        exp_employee_level eelv
+        LEFT OUTER JOIN exp_employee_level_tl eelt ON ( eelv.EMPLOYEE_LEVELS_ID = eelt.EMPLOYEE_LEVELS_ID AND eelt.lang
+        = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE eelv.employee_levels_code = emcl.condition_value_code )
+        WHEN emch.match_item_code = 'PLACE' THEN
+        (
+        SELECT
+        DISTINCT
+        eppt.DESCRIPTION
+        FROM
+        exp_policy_place eppv
+        LEFT OUTER JOIN exp_policy_place_tl eppt ON ( eppv.PLACE_ID = eppt.PLACE_ID AND eppt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE eppv.place_code = emcl.condition_value_code )
+        WHEN emch.match_item_code = 'PLACE_TYPE' THEN
+        (
+        SELECT
+        DISTINCT
+        epptt.description
+        FROM
+        exp_policy_place_type eptv
+        LEFT OUTER JOIN exp_policy_place_type_tl epptt ON (
+        eptv.PLACE_TYPE_ID = epptt.PLACE_TYPE_ID
+        AND epptt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+
+        WHERE
+        eptv.place_type_code = emcl.condition_value_code
+        AND eptv.mag_org_id = #{magOrgId}
+
+        )
+        WHEN emch.match_item_code = 'POSITION' THEN
+        (
+        SELECT
+        DISTINCT
+        eopt.description
+        FROM
+        exp_org_position eopv
+        LEFT OUTER JOIN exp_org_position_tl eopt ON (
+        eopv.POSITION_ID = eopt.POSITION_ID
+        AND eopt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+
+        WHERE
+        eopv.position_code = emcl.condition_value_code
+        AND EXISTS ( SELECT 1 FROM fnd_company fc WHERE fc.company_id = eopv.company_id AND fc.mag_org_id = #{magOrgId}
+        )
+        )
+        WHEN emch.match_item_code = 'UNIT' THEN
+        (
+        SELECT
+        DISTINCT
+        eouvt.description
+        FROM
+        exp_org_unit eouv
+        LEFT OUTER JOIN exp_org_unit_tl eouvt ON (
+        eouv.unit_id = eouvt.unit_id
+        AND eouvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+
+        WHERE
+        eouv.unit_code = emcl.condition_value_code
+        AND EXISTS ( SELECT 1 FROM fnd_company fc WHERE fc.company_id = eouv.company_id AND fc.mag_org_id = #{magOrgId}
+        )
+        )
+        WHEN emch.match_item_code = 'VEHICLE' THEN
+        (
+        SELECT
+        DISTINCT
+        st.meaning
+        FROM
+        sys_code_b sc,
+        sys_code_value_b sv
+        LEFT OUTER JOIN sys_code_value_tl st ON (
+        sv.code_value_id = st.code_value_id
+        AND st.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+
+        WHERE
+        sc.code_id = sv.code_id
+        AND sc.enabled_flag = 'Y'
+        AND sv.enabled_flag = 'Y'
+        AND sc.CODE = 'TRANSPORTATION'
+        and emcl.condition_value_code = sv.value
+        )
+        END
+        ) condition_value_name
+        FROM
+        exp_mo_exp_policy_cond_lns emcl,
+        exp_mo_exp_policy_cond_hds emch
+        WHERE
+        emcl.condition_hds_id = emch.condition_hds_id
+        <if test="conditionValueType != null">
+            and emch.match_item_code = #{conditionValueType}
+        </if>
+        <if test="conditionId != null">
+            and emch.condition_id = #{conditionId}
+        </if>
+        ORDER BY emcl.condition_value_code
+    </select>
+
+</mapper>

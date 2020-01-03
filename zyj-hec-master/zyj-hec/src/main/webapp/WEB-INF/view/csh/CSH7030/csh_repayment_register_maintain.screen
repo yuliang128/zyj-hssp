@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-10-17 下午5:39:12  
+    $Revision: 1.0  
+    $Purpose: 还款申请单主页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH7030_repaymentRegisterDistLink"
+                url="$[/request/@context_path]/csh/CSH7030/csh_repayment_register_dists_maintain.screen"/>
+        <a:link id="CSH7030_repaymentRegisterCashierConfirmLink" url="$[/request/@context_path]/csh/repayment-register/cashier/confirm"/>
+        <a:link id="CSH7030_repaymentRegisterCashierRejectLink" url="$[/request/@context_path]/csh/repayment-register/cashier/reject"/>
+        <a:link id="CSH7030_repaymentRegisterCashierHistory_link"
+                url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <a:link id="CSH7030_repaymentRegisterCashierFileLink"
+                url="$[/request/@context_path]/app/APP2030/app_uploadFile.screen"/>
+        <script><![CDATA[
+        /**
+         * @return {string}
+         */
+        function CSH7030_assignDistributes(value, record, name) {
+            return '<a href="javascript:CSH7030_openDistMaintainWindow(' + record.get('registerLnsId') + ')">$[l:distribute_payment]</a>';
+        }
+
+        function CSH7030_openDistMaintainWindow(id) {
+            new Aurora.Window({
+                id: 'CSH7030_repaymentRegisterDists_maintain_window',
+                url: $au('CSH7030_repaymentRegisterDistLink').getUrl() + '?registerLnsId=' + id,
+                title: '$[l:distribute_payment]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function CSH7030_saveFunc() {
+            $au('CSH7030_repaymentRegisterHdsDs').submit();
+            $au('CSH7030_repaymentRegisterLnsDs').query();
+        }
+
+        function CSH7030_confirmFunc() {
+            if (!$au('CSH7030_repaymentRegisterLnsDs').validate()) {
+                return;
+            }
+            if ($au('CSH7030_repaymentRegisterLnsDs').isModified()) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:save_first]');
+                return;
+            }
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('CSH7030_repaymentRegisterCashierConfirmLink').getUrl() + '?registerHdsId=$[/parameter/@registerHdsId]',
+                success: function () {
+                    $au('CSH7030_repayment_register_maintain_window').close();
+                },
+                failure: function () {
+                    $au('CSH7030_repayment_register_maintain_window').close();
+                },
+                scope: this
+            });
+        }
+
+        function CSH7030_rejectFunc() {
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('CSH7030_repaymentRegisterCashierRejectLink').getUrl() + '?registerHdsId=$[/parameter/@registerHdsId]',
+                success: function () {
+                    $au('CSH7030_repayment_register_maintain_window').close();
+                },
+                failure: function () {
+                    $au('CSH7030_repayment_register_maintain_window').close();
+                },
+                scope: this
+            });
+        }
+
+        function CSH7030_afterLineLoad(dataSet) {
+            // 当系统参数：还款申请单是否需要会计确认/CSH_REPAYMENT_ACCOUNTING_FLAG 为N时，即不需要财务复核。则出纳确认节点必须填写现金流量项
+            if ('$[/model/flag]' === 'N') {
+                var records = dataSet.getAll();
+                for (var i = 0; i < records.length; i++) {
+                    records[i].getField('cashFlowItemName').setRequired(true);
+                }
+            }
+        }
+
+        function CSH7030_historyFunc() {
+            new Aurora.Window({
+                id: 'CSH7030_repayment_history_window',
+                url: $au('CSH7030_repaymentRegisterCashierHistory_link').getUrl() + '?documentId=$[/parameter/@registerHdsId]&documentType=CSH_REPAYMENT_REGISTER',
+                fullScreen: false,
+                width: 1020,
+                side: 'right',
+                title: '$[l:rec_requisition_history]'
+            });
+        }
+
+        function CSH7010_uploadFileFunc() {
+            new Aurora.Window({
+                url: $au('CSH7030_repaymentRegisterCashierFileLink').getUrl() + '?tableName=csh_repayment_register_hd&tablePkValue=$[/parameter/@registerHdsId]',
+                title: '$[l:atm.upload_attachment]',
+                id: 'CSH7030_check_upload_file_screen',
+                width: 600,
+                height: 400
+            });
+        }
+
+        function CSH7030_cellClickFunc(grid, row, name, record) {
+            if (name === 'cashFlowItemName') {
+                var dataSet = $au('CSH7030_repaymentFlowDs');
+                dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                debugger;
+                dataSet.query();
+            }
+        }
+
+        function CSH7030_backFunc() {
+            $au('CSH7030_repayment_register_maintain_window').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7030_repaymentFlowDs" queryUrl="$[/request/@context_path]/csh/cash-flow-item/getCashFlowItem"/>
+            <a:dataSet id="CSH7030_repaymentRegisterHdsDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/header/detail?registerHdsId=$[/parameter/@registerHdsId]"
+                       submitUrl="$[/request/@context_path]/csh/repayment-register/save">
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="registerNumber" prompt="csh_repayment_register_hd.register_number"
+                             readOnly="true"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="csh_repayment_register_hd.acc_entity_name" readOnly="true"/>
+                    <a:field name="repaymentDate" prompt="csh_repayment_register_hd.repayment_date" readOnly="true"/>
+                    <a:field name="amount" prompt="csh_repayment_register_hd.amount" readOnly="true"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeName" prompt="csh_repayment_register_hd.employee_name" readOnly="true"/>
+                    <a:field name="unitName" prompt="csh_repayment_register_hd.unit" readOnly="true"/>
+                    <a:field name="unitId"/>
+                    <a:field name="createdName" prompt="csh_repayment_register_hd.created_name" readOnly="true"/>
+                    <a:field name="repaymentStatus"/>
+                    <a:field name="repaymentStatusName" prompt="csh_repayment_register_hd.repayment_status"
+                             readOnly="true"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName" prompt="csh_repayment_register_hd.repayment_method"
+                             readOnly="true"/>
+                    <a:field name="bankAccountId"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="bankAccountNum" prompt="csh_repayment_register_hd.company_account_number"
+                             readOnly="true"/>
+                    <a:field name="repaymentBankNote" prompt="csh_repayment_register_ln.repayment_bank_note"
+                             readOnly="true"/>
+                    <a:field name="description" prompt="csh_repayment_register_hd.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH7030_repaymentRegisterLnsDs" bindName="lines" bindTarget="CSH7030_repaymentRegisterHdsDs"
+                       fetchAll="true"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/line/query?registerHdsId=$[/parameter/@registerHdsId]">
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="registerLnsId"/>
+                    <a:field name="lineNumber"/>
+                    <a:field name="paymentRequisitionLineId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:field name="accountName" prompt="csh_repayment_register_ln.account_name" required="true"/>
+                    <a:field name="accountNumber" prompt="csh_repayment_register_ln.account_number"/>
+                    <a:field name="amount" prompt="csh_repayment_register_ln.amount"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryName"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeName"/>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="cashFlowItemName" displayField="description"
+                             options="CSH7030_repaymentFlowDs" prompt="csh_repayment_register_ln.cash_flow_item"
+                             returnField="cashFlowItemId" valueField="cashFlowItemId"/>
+                    <a:field name="description" prompt="csh_repayment_register_ln.description"/>
+                    <a:field name="requisitionNumber" prompt="csh_repayment_register_ln.requisition_number"/>
+                    <a:field name="assignDists"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="CSH7030_afterLineLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="1" marginWidth="0" title="repayment_register_maintain">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH7030_saveFunc" text="HAP_SAVE" width="80"/>
+                    <a:toolbarButton click="CSH7030_confirmFunc" text="CONFIRM" width="80"/>
+                    <a:toolbarButton click="CSH7030_rejectFunc" text="PROMPT.REJECT" width="80"/>
+                    <a:toolbarButton click="CSH7030_historyFunc" text="PROMPT.HISTORY" width="80"/>
+                    <a:toolbarButton click="CSH7010_uploadFileFunc" text="PROMPT.UPLOAD_ATTACHMENT" width="80"/>
+                    <a:toolbarButton click="CSH7030_backFunc" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="registerNumber" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="accEntityName" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:datePicker name="repaymentDate" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:numberField name="amount" bindTarget="CSH7030_repaymentRegisterHdsDs"
+                                   renderer="Aurora.formatMoney"/>
+                    <a:comboBox name="employeeName" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="unitName" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:textField name="createdName" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="repaymentStatusName" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:lov name="bankAccountNum" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                    <a:textField name="repaymentBankNote" bindTarget="CSH7030_repaymentRegisterHdsDs"/>
+                </a:box>
+                <a:box style="width:100%;margin-top:-5px;">
+                    <a:textArea name="description" bindTarget="CSH7030_repaymentRegisterHdsDs"
+                                calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" width="800"/>
+                </a:box>
+            </a:form>
+            <a:grid id="CSH7030_repaymentRegisterGrid" autoAdjustHeight="true"
+                    bindTarget="CSH7030_repaymentRegisterLnsDs" marginHeight="335" marginWidth="0" minHeight="100"
+                    navBar="true">
+                <a:columns>
+                    <a:column name="requisitionNumber" align="center" width="80"/>
+                    <a:column name="accEntityName" align="center" width="100"/>
+                    <a:column name="accountName" align="center" width="80"/>
+                    <a:column name="accountNumber" align="center" width="120"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="cashFlowItemName" align="center" editor="CSH7030_flowItemComboBox" width="80"/>
+                    <a:column name="description" align="left" width="180"/>
+                    <a:column name="assignDists" align="center" renderer="CSH7030_assignDistributes" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="CSH7030_flowItemComboBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH7030_cellClickFunc"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

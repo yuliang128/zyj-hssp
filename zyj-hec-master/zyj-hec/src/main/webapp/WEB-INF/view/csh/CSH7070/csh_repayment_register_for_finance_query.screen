@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: majianjian  
+    $Date: 2014-11-18 下午2:39:12  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" >
+    <a:view>
+        <a:link id="repayment_register_readonly_link" url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_view_maintain_main.screen"/>
+        <script><![CDATA[
+            function CSH7010_resetFun() {
+                $au('csh_repayment_register_hds_query_ds').reset();
+            }
+            
+            function CSH7010_queryFun() {
+                $au('csh_repayment_register_hds_result_ds').query();
+            }
+            
+            
+            function CSH7010_registeroNumberRenderer(value, record, name) {
+                return '<a href="javascript:CSH7010_openRegisterReadOnlyWindow(' + record.get('registerHdsId') + ')">' + value + '</a>';
+            }
+            
+            function CSH7010_openRegisterReadOnlyWindow(registerHdsId) {
+                new Aurora.Window({
+                    id: 'CSH7020_csh_repayment_view_main_window',
+                    url: $au('repayment_register_readonly_link').getUrl() + '?registerHdsId=' + registerHdsId,
+                    title: '$[l:csh_repayment_register_view]',
+                    fullScreen: true
+                });
+            }
+            
+            function CSH7070_indexChangeFunction(ds, record) {
+                $au('pay_req_account_result_ds').setQueryParameter('registerHdsId', record.get('registerHdsId'));
+                $au('pay_req_account_result_ds').query();
+            }
+            
+            function CSH7070_formatMoney(value, record, name) {
+                return '<div style="font-weight:bold;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="pay_method_list_ds">
+                <a:datas dataSource="/model/payMethodList/records"/>
+            </a:dataSet>
+            <a:dataSet id="repayment_status_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_REPAY_REGISTER_STATUS/"/>
+            <a:dataSet id="csh_repayment_register_hds_query_ds" autoCreate="true" model="csh.CSH7070.csh_repayment_register_hds_for_finance_query">
+                <a:fields>
+                    <a:field name="employeeName"  lovCode="LOV_EMPLOYEE_BY_COM" lovWidth="500" title="bgt_budget_item_mapping.choose_employee">
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="paymentMethodName" displayField="description" options="pay_method_list_ds" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="repaymentStatusName" displayField="description" options="repayment_status_ds" returnField="repaymentStatus" valueField="value"/>
+                    <a:field name="cashierEmployeeName" lovCode="LOV_USER_EMPLOYEE" lovWidth="500" title="bgt_budget_item_mapping.choose_employee">
+                        <a:mapping>
+                            <a:map from="employeeName" to="cashierEmployeeName"/>
+                            <a:map from="userId" to="cashierUserId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountingEmployeeName"  lovCode="LOV_USER_EMPLOYEE" lovWidth="500" title="bgt_budget_item_mapping.choose_employee">
+                        <a:mapping>
+                            <a:map from="employeeName" to="accountingEmployeeName"/>
+                            <a:map from="userId" to="accountingUserId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="repaymentBankNote" placeHolder="csh_repayment_register_hds.repayment_bank_note" prompt=""/>
+                    <a:field name="description" placeHolder="csh_repayment_register_hds.description" prompt=""/>
+                    <a:field name="cashierUserId" placeHolder="csh_repayment_register_hds.cashier_confirm_employee" prompt=""/>
+                    <a:field name="accountingUserId" placeHolder="csh_repayment_register_hds.accounting_confirm_employee" prompt=""/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="csh_repayment_register_hds_result_ds" autoQuery="false" queryUrl="$[/request/@context_path]/csh/repayment-register/queryForFinance"  queryDataSet="csh_repayment_register_hds_query_ds" selectable="true" selectionModel="single">
+                <a:events>
+                    <a:event name="indexchange" handler="CSH7070_indexChangeFunction"/>
+                </a:events>
+            </a:dataSet>
+            <!--add by liliang/2018-05-11 增加还款单凭证-->
+            <a:dataSet id="pay_req_account_result_ds" queryUrl="$[/request/@context_path]/csh/repayment-register/queryAccountForFinance" >
+                <a:fields>
+                    <a:field name="description" prompt="acp_invoice_ref_dimension.description" readOnly="true"/>
+                    <a:field name="periodName" prompt="bgt_period.period_name"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="responsibilityCenterName" prompt="exp_report_lines.responsibility_center_id"/>
+                    <a:field name="currencyCode" prompt="exp_report_query.moneytype"/>
+                    <a:field name="accountCode" prompt="account_code"/>
+                    <a:field name="accountName" prompt="csh_payment_req_account.account_name"/>
+                    <a:field name="enteredAmountDr" prompt="csh_payment_req_account.functional_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="csh_payment_req_account.functional_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="csh_payment_req_account.entered_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="csh_payment_req_account.entered_amount_cr"/>
+                    <a:field name="exchangeRateTypeName" prompt="exp_report_accounts.exchange_rate_type"/>
+                    <a:field name="exchangeRate" prompt="bgt_journal_lines.exchange_rate"/>
+                    <a:field name="accountSegment1" prompt="$[/model/segmentDescs/records/record/@segment1Desc]"/>
+                    <a:field name="accountSegment2" prompt="$[/model/segmentDescs/records/record/@segment2Desc]"/>
+                    <a:field name="accountSegment3" prompt="$[/model/segmentDescs/records/record/@segment3Desc]"/>
+                    <a:field name="accountSegment4" prompt="$[/model/segmentDescs/records/record/@segment4Desc]"/>
+                    <a:field name="accountSegment5" prompt="$[/model/segmentDescs/records/record/@segment5Desc]"/>
+                    <a:field name="accountSegment6" prompt="$[/model/segmentDescs/records/record/@segment6Desc]"/>
+                    <a:field name="accountSegment7" prompt="$[/model/segmentDescs/records/record/@segment7Desc]"/>
+                    <a:field name="accountSegment8" prompt="$[/model/segmentDescs/records/record/@segment8Desc]"/>
+                    <a:field name="accountSegment9" prompt="$[/model/segmentDescs/records/record/@segment9Desc]"/>
+                    <a:field name="accountSegment10" prompt="$[/model/segmentDescs/records/record/@segment10Desc]"/>
+                    <a:field name="accountSegment11" prompt="$[/model/segmentDescs/records/record/@segment11Desc]"/>
+                    <a:field name="accountSegment12" prompt="$[/model/segmentDescs/records/record/@segment12Desc]"/>
+                    <a:field name="accountSegment13" prompt="$[/model/segmentDescs/records/record/@segment13Desc]"/>
+                    <a:field name="accountSegment14" prompt="$[/model/segmentDescs/records/record/@segment14Desc]"/>
+                    <a:field name="accountSegment15" prompt="$[/model/segmentDescs/records/record/@segment15Desc]"/>
+                    <a:field name="accountSegment16" prompt="$[/model/segmentDescs/records/record/@segment16Desc]"/>
+                    <a:field name="accountSegment17" prompt="$[/model/segmentDescs/records/record/@segment17Desc]"/>
+                    <a:field name="accountSegment18" prompt="$[/model/segmentDescs/records/record/@segment18Desc]"/>
+                    <a:field name="accountSegment19" prompt="$[/model/segmentDescs/records/record/@segment19Desc]"/>
+                    <a:field name="accountSegment20" prompt="$[/model/segmentDescs/records/record/@segment20Desc]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:queryForm bindTarget="csh_repayment_register_hds_query_ds" resultTarget="csh_repayment_register_hds_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="registerNumber" prompt="csh_repayment_register_hd.register_number" bindTarget="csh_repayment_register_hds_query_ds"/>
+                    <a:lov name="employeeName" prompt="csh_repayment_register_hd.employee" bindTarget="csh_repayment_register_hds_query_ds"/>
+                    <a:comboBox name="paymentMethodName" prompt="csh_repayment_register_hd.repayment_method" bindTarget="csh_repayment_register_hds_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:datePicker name="repaymentDateFrom" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hd.repayment_date_from"/>
+                    <a:datePicker name="repaymentDateTo" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hd.repayment_date_to"/>
+                    <a:numberField name="amountFrom" allowFormat="true" allowNegative="false" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hd.total_amount_from"/>
+                    <a:numberField name="amountTo" allowFormat="true" allowNegative="false" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hd.total_amount_to"/>
+                    <a:textField name="repaymentBankNote" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hd.repayment_bank_note"/>
+                    <a:textField name="description" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hd.description"/>
+                    <a:lov name="cashierEmployeeName" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hds.cashier_confirm_employee"/>
+                    <a:lov name="accountingEmployeeName" bindTarget="csh_repayment_register_hds_query_ds" placeHolder="csh_repayment_register_hds.accounting_confirm_employee"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form hideLabel="true" padding="0" showmargin="false" title="csh_payment_requisition_hd.document_info">
+            <a:grid id="csh_repayment_register_hds_grid" bindTarget="csh_repayment_register_hds_result_ds" marginWidth="15" navBar="true" style="box-shadow:none;">
+                <a:columns>
+                    <a:column name="registerNumber" align="center" prompt="csh_repayment_register_hd.register_number" renderer="CSH7010_registeroNumberRenderer" width="120"/>
+                    <a:column name="repaymentStatusName" align="center" prompt="csh_repayment_register_hd.repayment_status" width="100"/>
+                    <a:column name="employeeName" prompt="csh_repayment_register_hd.employee"/>
+                    <a:column name="companyName" width="120" prompt="csh_payment_requisition_ln.company_id" />
+                    <a:column name="bankAccountNum" width="120" prompt="csh_repayment_register_hds.company_account_number"/>
+                    <a:column name="paymentMethodName" align="center" width="80" prompt="csh_repayment_register_hd.repayment_method"/>
+                    <a:column name="repaymentDate" align="center" renderer="Aurora.formatDate" width="80" prompt="csh_repayment_register_hd.repayment_date"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" prompt="csh_repayment_register_hd.total_amount"/>
+                    <a:column name="repaymentBankNote" width="150" prompt="csh_repayment_register_hd.repayment_bank_note"/>
+                    <a:column name="description" width="150" prompt="csh_repayment_register_hd.description"/>
+                    <a:column name="cashierUserName" prompt="csh_repayment_register_hds.cashier_confirm_employee"/>
+                    <a:column name="cashierConfirmDate" align="center" renderer="Aurora.formatDate" width="80" prompt="csh_repayment_register_hds.cashier_confirm_date"/>
+                    <a:column name="accountingUserName" prompt="csh_repayment_register_hds.accounting_confirm_employee"/>
+                    <a:column name="accountingConfirmDate" align="center" renderer="Aurora.formatDate" width="80" prompt="csh_repayment_register_hds.accounting_confirm_date"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+        <a:form hideLabel="true" padding="0" showmargin="false" style="margin-top:5px;" title="HAP_ACC_INFORMATION">
+            <a:grid autoAdjustHeight="true" bindTarget="pay_req_account_result_ds" marginWidth="15" navBar="true" style="box-shadow:none;">
+                <a:columns>
+                    <a:column name="accEntityName" align="center" width="150"/>
+                    <a:column name="responsibilityCenterName" align="center" width="150"/>
+                    <a:column name="accountName" align="center" width="150"/>
+                    <a:column name="periodName" align="center" width="100"/>
+                    <a:column name="currencyCode" align="center" width="100"/>
+                    <a:column name="enteredAmountDr" align="right" renderer="CSH7070_formatMoney" width="100"/>
+                    <a:column name="enteredAmountCr" align="right" renderer="CSH7070_formatMoney" width="100"/>
+                    <a:column name="functionalAmountDr" align="right" renderer="CSH7070_formatMoney" width="100"/>
+                    <a:column name="functionalAmountDr" align="right" renderer="CSH7070_formatMoney" width="100"/>
+                    <a:column name="description" align="left" editor="EXP3110_accountTa" width="250"/>
+                    <a:column name="accountSegment1" align="center"/>
+                    <a:column name="accountSegment2" align="center"/>
+                    <a:column name="accountSegment3" align="center"/>
+                    <a:column name="accountSegment4" align="center"/>
+                    <a:column name="accountSegment5" align="center"/>
+                    <a:column name="accountSegment6" align="center"/>
+                    <a:column name="accountSegment7" align="center"/>
+                    <a:column name="accountSegment8" align="center"/>
+                    <a:column name="accountSegment9" align="center"/>
+                    <a:column name="accountSegment10" align="center"/>
+                    <a:column name="accountSegment11" align="center"/>
+                    <a:column name="accountSegment12" align="center"/>
+                    <a:column name="accountSegment13" align="center"/>
+                    <a:column name="accountSegment14" align="center"/>
+                    <a:column name="accountSegment15" align="center"/>
+                    <a:column name="accountSegment16" align="center"/>
+                    <a:column name="accountSegment17" align="center"/>
+                    <a:column name="accountSegment18" align="center"/>
+                    <a:column name="accountSegment19" align="center"/>
+                    <a:column name="accountSegment20" align="center"/>
+                </a:columns>
+                <a:editors>
+                    <a:textArea id="CSH3110_accountTa"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+        <script purpose="auto_resize"><![CDATA[
+            function CSH7070_initSize() {
+                var vh = this.outerHeight;
+                //设置组件的自适应宽度
+                var rightHeight = (vh - 350);
+                var autoHeight = (rightHeight - 63) / 1.45;
+                if (Aurora.CmpManager.get('csh_repayment_register_hds_grid')) {
+                    $au('csh_repayment_register_hds_grid').setHeight(autoHeight);
+                }
+            }
+            
+            CSH7070_initSize();
+        ]]></script>
+    </a:view>
+</a:screen>

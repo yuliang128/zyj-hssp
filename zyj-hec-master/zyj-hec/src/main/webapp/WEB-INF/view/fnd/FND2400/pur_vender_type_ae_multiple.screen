@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2400_venderTypeMultipleSave_link"
+                url="$[/request/@context_path]/pur/vender-type-ref-ae/multipleAssign"/>
+        <script><![CDATA[
+        function FND2400_venderTypeMultipleQueryFunc() {
+            $au('FND2400_venderTypeMultipleResult_ds').query();
+        }
+
+        function FND2400_venderTypeMultipleSave() {
+            var aeRecords = $au('FND2400_venderTypeMultipleResult_ds').getJsonData(true);
+            var vtRecords = $au('FND2400_venderTypeResult_ds').getJsonData(true);
+            if (aeRecords.length < 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                return;
+            }
+            for (var i = 0; i < aeRecords.length; i++) {
+                var rs = aeRecords[i];
+                aeRecords[i].enabled_flag = 'Y';
+                rs['venderTypeDetail'] = vtRecords;
+            }
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('FND2400_venderTypeMultipleSave_link').getUrl(),
+                para: aeRecords,
+                success: FND2400_venderTypeMultipleBack,
+                scope: this
+            });
+        }
+
+        function FND2400_venderTypeMultipleBack() {
+            $au('FND2400_venderTypeMultiple_window').close();
+            $au('FND2400_venderTypeResult_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2400_venderTypeMultipleQuery_ds" autoCreate="true" baseUrl="/gld/account-entity"
+                       queryUrl="$[/request/@context_path]/gld/account-entity/getAccEntityByVenderTypeRefAeMore?magOrgId=$[/session/@magOrgId]">
+                <a:fields>
+                    <a:field name="accEntityCodeFrom"/>
+                    <a:field name="accEntityNameFrom" autoComplete="true"
+                             lovCode="LOV_ASGN_ACC_ENTTITY_MAG_ORG_MORE?magOrgId=$[/session/@magOrgId]"
+                             prompt="gld_accounting_entity.acc_entity_from"
+                             title="gld_accounting_entity.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeFrom"/>
+                            <a:map from="accEntityName" to="accEntityNameFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCodeTo"/>
+                    <a:field name="accEntityNameTo" autoComplete="true"
+                             lovCode="LOV_ASGN_ACC_ENTTITY_MAG_ORG_MORE?magOrgId=$[/session/@magOrgId]"
+                             prompt="gld_accounting_entity.acc_entity_to"
+                             title="gld_accounting_entity.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeTo"/>
+                            <a:map from="accEntityName" to="accEntityNameTo"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2400_venderTypeMultipleResult_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       pageSize="10" selectable="true" baseUrl="/gld/account-entity"
+                       queryDataSet="FND2400_venderTypeMultipleQuery_ds"
+                       queryUrl="$[/request/@context_path]/gld/account-entity/getAccEntityByVenderTypeRefAeMore?magOrgId=$[/session/@magOrgId]">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:toolbarButton click="FND2400_venderTypeMultipleSave" text="hap_save" width="80"/>
+                    <a:toolbarButton click="FND2400_venderTypeMultipleBack" text="hap_back" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="FND2400_venderTypeMultipleQuery_ds"
+                             resultTarget="FND2400_venderTypeMultipleResult_ds" style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:lov name="accEntityNameFrom" bindTarget="FND2400_venderTypeMultipleQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2400_venderTypeMultipleQueryFunc"/>
+                            </a:events>
+                        </a:lov>
+                        <a:lov name="accEntityNameTo" bindTarget="FND2400_venderTypeMultipleQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2400_venderTypeMultipleQueryFunc"/>
+                            </a:events>
+                        </a:lov>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid id="FND2400_venderTypeMultiple_grid" bindTarget="FND2400_venderTypeMultipleResult_ds"
+                    marginHeight="150" navBar="true" width="1000">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

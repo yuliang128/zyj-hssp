@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            window.recipient_set_id = '';
+            
+            function SSC1040_nodeIndexChangeFunc(dataSet, record) {
+                window.node_id = record.get('nodeId');
+                $au('wfl_node_recipient_set_rules_recipient_result_ds').setQueryParameter('nodeId', record.get('nodeId'));
+                $au('wfl_node_recipient_set_rules_recipient_result_ds').query();
+                $au('ssc_node_assign_rules_rules_parameter_result_ds').removeAll();
+            }
+            
+            function SSC1040_recipientIndexChangeFunc(dataSet, record) {
+                window.worker_assign_id = record.get('workerAssignId');
+                var workTeamId = record.get('workTeamId');
+                record.getField('workTeamCodeName').setLovPara('nodeId', window.node_id);
+                record.getField('employeeCodeName').setLovPara('workTeamId', workTeamId);
+                $au('ssc_node_assign_rules_rules_parameter_result_ds').setQueryParameter('workerAssignId', record.get('workerAssignId'));
+                $au('ssc_node_assign_rules_rules_parameter_result_ds').query();
+            }
+            
+            function work_team_initdate(ds, record, index) {
+                record.set('nodeId', window.node_id);
+                record.getField('workTeamCodeName').setLovPara('nodeId', window.node_id);
+            }
+            
+            function setinitdate(ds, record, index) {
+                record.set('workerAssignId', window.worker_assign_id);
+            }
+            
+            function dsbeforecreate(ds) {
+                if (window.worker_assign_id == '' || window.worker_assign_id == null || window.worker_assign_id == undefined) {
+                    Aurora.showErrorMessage('$[l:prompt.error]', '请先保存数据，并选择一行!');
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+            function recipientgridcellclick(ds, row, name, record) {
+                if(name == 'employeeCodeName'){
+                    record.getMeta().getField('employeeCodeName').setLovPara('workTeamId', record.get('workTeamId'));
+                }
+            }
+            function ruleresultgridcellclick(ds, row, name, record) {
+                record.getMeta().getField('businessRuleCode').setLovPara('docCategory', '$[/parameter/@docCategory]');
+                record.getMeta().getField('businessRuleCode').setLovPara('workerAssignId', record.get('workerAssignId'));
+            }
+            
+            function update_assign_workers(ds, record, name, value) {
+                if (name == 'workTeamCodeName') {
+                    record.set('employeeCodeName', '');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="ssc_dispatch_basis_ds" loadData="true" lookupCode="SSC_DISPATCH_BASIS"/>-->
+            <a:dataSet id="ssc_dispatch_basis_ds" autoQuery="true" fetchAll="true"
+                                                queryUrl="$[/request/@context_path]/common/auroraCode/ssc_dispatch_basi/"/>
+            <a:dataSet id="ssc_wfl_workflow_node_result_ds" autoQuery="true" fetchAll="true" baseUrl="/ssc/workflow-node" queryUrl="$[/request/@context_path]/ssc/workflow-node/querySscWorkflowNode?workflowId=$[/parameter/@workflowId]">
+                <a:fields>
+                    <a:field name="nodeSequence"/>
+                    <a:field name="description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="indexchange" handler="SSC1040_nodeIndexChangeFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="wfl_node_recipient_set_rules_recipient_result_ds" autoCount="true" autoQuery="false" fetchAll="false" baseUrl="/ssc/node-assign-worker" selectable="true">
+                <a:fields>
+                    <a:field name="workerAssignId" prompt="ssc_node_assign_worker.worker_assign_id"/>
+                    <a:field name="nodeId" prompt="ssc_node_assign_worker.node_id"/>
+                    <a:field name="workTeamId" prompt="ssc_node_assign_worker.work_team_id"/>
+                    <a:field name="workTeamCodeName" lovCode="ssc_work_team" prompt="ssc_node_assign_worker.work_team_code_name" required="true" title="ssc_node_assign_worker.work_team_code_name">
+                        <a:mapping>
+                            <a:map from="workTeamCodeName" to="workTeamCodeName"/>
+                            <a:map from="workTeamId" to="workTeamId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId" prompt="ssc_node_assign_worker.employee_id"/>
+                    <a:field name="employeeCodeName" lovCode="ssc_work_team_employee" prompt="ssc_node_assign_worker.employee_code_name">
+                        <a:mapping>
+                            <a:map from="employeeCodeName" to="employeeCodeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="dispatchBasisType" prompt="ssc_node_assign_worker.dispatch_basis_type"/>
+                    <a:field name="sscDispatchBasisName" displayField="meaning" options="ssc_dispatch_basis_ds" prompt="ssc_node_assign_worker.ssc_dispatch_basis_name" required="true" returnField="dispatchBasisType" valueField="value"/>
+                    <a:field name="basisValue" prompt="ssc_node_assign_worker.basis_value" required="true"/>
+                    <a:field name="maxDispatchCount" prompt="ssc_node_assign_worker.max_dispatch_count" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_workflow_node.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="work_team_initdate"/>
+                    <a:event name="update" handler="update_assign_workers"/>
+                    <a:event name="indexchange" handler="SSC1040_recipientIndexChangeFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ssc_node_assign_rules_rules_parameter_result_ds" autoCount="true" autoQuery="false" fetchAll="false" baseUrl="/ssc/node-assign-rule" selectable="true">
+                <a:fields>
+                    <a:field name="recordId"/>
+                    <a:field name="workerAssignId"/>
+                    <a:field name="wflBusinessRuleId"/>
+                    <a:field name="businessRuleName"/>
+                    <a:field name="businessRuleCode" lovCode="ssc_wfl_business_rule" lovWidth="550" prompt="wfl_business_rule.business_rule_code" required="true" title="wfl_business_rule.business_rule_code">
+                        <a:mapping>
+                            <a:map from="businessRuleCode" to="businessRuleCode"/>
+                            <a:map from="businessRuleId" to="wflBusinessRuleId"/>
+                            <a:map from="description" to="businessRuleName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="startDate" prompt="wfl_business_rule.start_date" required="true"/>
+                    <a:field name="endDate"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="setinitdate"/>
+                    <a:event name="beforecreate" handler="dsbeforecreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:grid id="node_result_ds" autoAdjustHeight="true" bindTarget="ssc_wfl_workflow_node_result_ds" height="300" width="995">
+                <a:columns>
+                    <a:column name="nodeSequence" align="center" prompt="workflow_node.sequence_num" width="80"/>
+                    <a:column name="description" prompt="workflow_node.name" width="200"/>
+                </a:columns>
+            </a:grid>
+            <a:grid id="recipient_result_ds" autoAdjustHeight="false" bindTarget="wfl_node_recipient_set_rules_recipient_result_ds" height="500" navBar="true" width="995">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="save"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="workTeamCodeName" align="center" editor="recipient_result_lov" width="100"/>
+                    <a:column name="employeeCodeName" align="center" editor="recipient_result_lov" width="100"/>
+                    <a:column name="sscDispatchBasisName" align="center" editor="recipient_result_com" width="80"/>
+                    <a:column name="basisValue" align="center" editor="recipient_result_num" width="80"/>
+                    <a:column name="maxDispatchCount" align="center" editor="recipient_result_num" width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="recipient_result_ckbox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="recipient_result_lov"/>
+                    <a:comboBox id="recipient_result_com"/>
+                    <a:numberField id="recipient_result_num" allowDecimals="false" allowNegative="false"/>
+                    <a:checkBox id="recipient_result_ckbox"/>
+                </a:editors>
+                <a:events>
+                      <a:event name="cellclick" handler="recipientgridcellclick"/>
+                </a:events>
+            </a:grid>
+            <a:grid id="recipient_rule_result_ds" autoAdjustHeight="false" bindTarget="ssc_node_assign_rules_rules_parameter_result_ds" height="500" navBar="true" width="995">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="save"/>
+                    <a:button type="delete"/>
+                    <a:button type="clear"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="businessRuleCode" align="center" editor="rule_grid_lov" width="80"/>
+                    <a:column name="businessRuleName" prompt="wfl_business_rule.description_id" width="200"/>
+                    <a:column name="startDate" editor="datePicker_edit" renderer="Aurora.formatDate" width="80"/>
+                    <a:column name="endDate" editor="datePicker_edit" prompt="wfl_business_rule.end_date" renderer="Aurora.formatDate" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="rule_grid_lov"/>
+                    <a:datePicker id="datePicker_edit"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="ruleresultgridcellclick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

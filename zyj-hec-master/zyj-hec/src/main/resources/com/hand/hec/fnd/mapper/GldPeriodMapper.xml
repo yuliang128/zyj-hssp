@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldPeriodMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldPeriod">
+        <result column="PERIOD_ID" property="periodId" jdbcType="BIGINT"/>
+        <result column="PERIOD_SET_ID" property="periodSetId" jdbcType="BIGINT"/>
+        <result column="PERIOD_YEAR" property="periodYear" jdbcType="BIGINT"/>
+        <result column="PERIOD_NUM" property="periodNum" jdbcType="BIGINT"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="ADJUSTMENT_FLAG" property="adjustmentFlag" jdbcType="VARCHAR"/>
+        <result column="ADJUSTMENT_FLAG" property="adjustmentFlag" jdbcType="VARCHAR"/>
+        <result column="INTERNAL_PERIOD_NUM" property="internalPeriodNum" jdbcType="BIGINT"/>
+        <result column="START_DATE" property="startDate" jdbcType="TIMESTAMP"/>
+        <result column="END_DATE" property="endDate" jdbcType="TIMESTAMP"/>
+        <result column="period_set_code" property="periodSetCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="checkPeriodExists" resultType="java.lang.Integer">
+        select count(period_set_id)
+        from gld_period
+        where period_set_id = #{periodSetId}
+        and period_year between #{yearFrom} and #{yearTo}
+        <if test="internalPeriodNum!=null">
+            and internal_period_num = #{internalPeriodNum}
+        </if>
+    </select>
+
+    <select id="checkPeriodUsed" resultType="java.lang.Integer">
+        select count(*)
+        from gld_period gp,
+        gld_period_set gps,
+        gld_ae_period_status gaps
+        where gp.period_set_id = #{periodSetId}
+        and gp.period_set_id = gps.period_set_id
+        and gps.period_set_code = gaps.period_set_code
+        and gp.period_year between #{yearFrom} and #{yearTo}
+        and gp.internal_period_num = gaps.internal_period_num
+    </select>
+
+    <select id="checkPeriodInStatus" resultType="java.lang.Integer">
+        select count(gaps.period_set_code)
+                  from gld_ae_period_status gaps,
+                       gld_period_set      gps
+                 where gps.period_set_id = #{periodSetId}
+                       and gps.period_set_code = gaps.period_set_code
+                       and gaps.internal_period_num = #{internalPeriodNum}
+    </select>
+
+    <select id="periodIdQuery" resultType="java.lang.Long">
+        select period_id
+               from gld_period
+              where period_set_id = #{periodSetId}
+                and period_year = #{periodYear}
+                and period_num = #{periodNum};
+    </select>
+
+    <select id="getInternalPeriodNum" resultType="Long">
+        SELECT
+	      gp.internal_period_num
+        FROM
+	      gld_period gp
+        INNER JOIN (
+	        SELECT
+		      gps.period_set_id
+	        FROM
+		      gld_set_of_book sob
+	        LEFT JOIN gld_acc_entity_ref_sob rs ON sob.SET_OF_BOOKS_ID = rs.SET_OF_BOOKS_ID
+	        AND rs.DEFAULT_FLAG = 'Y'
+	        LEFT JOIN gld_accounting_entity ae ON rs.ACC_ENTITY_ID = ae.ACC_ENTITY_ID
+	        LEFT JOIN gld_period_set gps ON sob.period_set_code = gps.period_set_code
+	        WHERE
+		      ae.acc_entity_id = #{accEntityId,jdbcType = DECIMAL}
+        ) v ON gp.period_set_id = v.period_set_id
+        WHERE
+	      gp.PERIOD_NAME = #{periodName}
+    </select>
+
+    <!-- Modify Tagin/2019.02.20 增加获取会计期间的查询 -->
+    <select id="getPeriodName" resultType="String">
+        select
+        gp.period_name AS periodName
+        from
+        gld_period gp,
+        gld_period_set gps
+        where
+        gp.adjustment_flag = 'N'
+        and gp.period_set_id = gps.period_set_id
+        AND #{date,jdbcType=DATE,javaType=java.util.Date} between gp.start_date and gp.end_date
+        and exists (
+        select
+        1
+        from
+        gld_acc_entity_ref_sob gars,
+        gld_set_of_book gsob
+        where
+        gars.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        and gars.default_flag = 'Y'
+        and gars.set_of_books_id = gsob.set_of_books_id
+        and gsob.period_set_code = gps.period_set_code
+        )
+        <if test="status != null">
+            and exists (
+            select
+            1
+            from
+            gld_ae_period_status gaps
+            where
+            gaps.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long}
+            and gaps.period_set_code = gps.period_set_code
+            and gaps.period_name = gp.period_name
+            and gaps.period_status_code = #{status, jdbcType=VARCHAR, javaType=java.lang.String}
+            )
+        </if>
+    </select>
+
+    <select id="getFirstDate" resultType="Date">
+        SELECT
+	      gp.start_date
+        FROM
+	      gld_period gp
+        INNER JOIN (
+	        SELECT
+		      gps.period_set_id
+	        FROM
+		      gld_set_of_book sob,
+		      gld_accounting_entity ae,
+		      gld_period_set gps
+	        WHERE
+		      ae.acc_entity_id = #{accEntityId,jdbcType = DECIMAL}
+	        AND ae.default_set_of_books_id = sob.set_of_books_id
+	        AND sob.period_set_code = gps.period_set_code
+        ) v ON gp.period_set_id = v.period_set_id
+        WHERE
+	      gp.PERIOD_NAME = #{periodName}
+    </select>
+
+
+    <select id="queryGldPeriod" resultMap="BaseResultMap">
+        select
+        gp.period_id,
+        gp.period_set_id,
+        gps.period_set_code,
+        gp.period_name,
+        gp.period_year,
+        gp.period_num,
+        gp.adjustment_flag,
+        gp.internal_period_num
+
+        from gld_period gp
+        join gld_period_set gps on gps.period_set_id =gp.period_set_id
+
+        <where>
+            <if test="periodSetCode != null">
+                and gps.period_set_code = #{periodSetCode}
+            </if>
+
+            <if test="periodName != null">
+                and gp.period_name = #{periodName}
+            </if>
+
+            <if test="periodSetId != null">
+                and gps.period_set_id = #{periodSetId}
+            </if>
+
+        </where>
+
+    </select>
+    <select id="queryLastInternalPeriodNum" resultType="java.lang.Long">
+        SELECT
+        max( gp.internal_period_num ) internal_period_num
+        FROM
+        gld_period gp
+        JOIN gld_period_set gps ON gps.PERIOD_SET_ID = gp.PERIOD_SET_ID
+
+        <where>
+            <if test="periodSetCode != null">
+                and gps.period_set_code = #{periodSetCode}
+            </if>
+
+            <if test="internalPeriodNum != null">
+                and gp.internal_period_num &lt; #{internalPeriodNum}
+            </if>
+
+            <if test="periodSetId != null">
+                and gp.period_set_id = #{periodSetId}
+            </if>
+
+        </where>
+
+    </select>
+
+
+    <select id="queryNextInternalPeriodNum" resultType="java.lang.Long">
+        SELECT
+            min( gp.internal_period_num ) internal_period_num
+        FROM
+            gld_period gp
+                JOIN gld_period_set gps ON gps.PERIOD_SET_ID = gp.PERIOD_SET_ID
+                and gps.period_set_code =  #{periodSetCode}
+                and gp.internal_period_num &gt; #{internalPeriodNum}
+    </select>
+
+    <select id="queryPeriodByAccEntityAndPeriodName" resultMap="BaseResultMap">
+        select
+        gp.*
+        from
+        gld_period gp
+        where
+        exists (
+        select 'X'
+        from
+        gld_acc_entity_ref_sob gars,
+        gld_set_of_book gsob,
+        gld_period_set gps
+        where
+        gars.acc_entity_id = #{accEntityId}
+        and gars.default_flag = 'Y'
+        and gars.set_of_books_id = gsob.set_of_books_id
+        and gsob.period_set_code = gps.period_set_code
+        and gps.period_set_id = gp.period_set_id)
+        and gp.period_name = #{periodName}
+    </select>
+</mapper>

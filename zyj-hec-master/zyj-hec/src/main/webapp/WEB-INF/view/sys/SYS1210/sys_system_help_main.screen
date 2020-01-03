@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: linrz
+    $Date: 2019-08-02 10:54:43
+    $Revision: 1.0  
+    $Purpose: 系统帮助定义(多语言)
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function dateValidator(record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var startDate = record.get('startDateActive');
+                    var endDate = record.get('endDateActive');
+                    if (typeof(endDate) != 'undefined' && !Ext.isEmpty(endDate)) {
+                        if (!compareDate(startDate, endDate)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function SYS1210_imagePickerFunc(value, record, name) {
+                if (value) {
+                    return '<img style="width:20px;height:20px;margin-top:8px;" src="$[/request/@context_path]/' + value + '" />';
+                }
+            }
+            
+            function SYS1210_SubitSuccessFun() {
+                $au('SYS1210_systemHelpsResultDs').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SYS1210_systemHelpsQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="description" prompt="sys_system_help.name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SYS1210_systemHelpsResultDs" baseUrl="/sys/system-help/" autoPageSize="true" autoQuery="true" fetchAll="true" loadData="true"  queryDataSet="SYS1210_systemHelpsQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="helpId"/>
+                    <a:field name="functionCode" prompt="function.functioncode" required="true"/>
+                    <a:field name="serialNumber" prompt="coderulesline.fieldsequence" required="true" returnField="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="description" dto="com.hand.hap.sys.dto.SystemHelp" dtoId="helpId" descIdField="descriptionId" prompt="approvechainline.name" required="true" returnField="true"/>
+                    <a:field name="serviceId"/>
+                    <a:field name="serviceName" lovCode="SYS_SERVICE_LOV" autoCompleteField="serviceName"  prompt="syssystemhelp.page" required="true" title="page_select">
+                        <a:mapping>
+                            <a:map from="resourceId" to="serviceId"/>
+                            <a:map from="url" to="serviceName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="icon" lovHeight="518" lovWidth="500" prompt="hapicon"/>
+                    <a:field name="startDateActive" datatype="java.util.Date" prompt="expallocaterule.startdate" required="true" validator="dateValidator"/>
+                    <a:field name="endDateActive" datatype="java.util.Date" prompt="expallocaterule.enddate" validator="dateValidator"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="SYS1210_SubitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="SYS1210_systemHelpsGrid" type="add" width="80"/>
+                <a:gridButton bind="SYS1210_systemHelpsGrid" type="save" width="80"/>
+                <a:gridButton bind="SYS1210_systemHelpsGrid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="SYS1210_systemHelpsQueryDs" resultTarget="SYS1210_systemHelpsResultDs" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="description" bindTarget="SYS1210_systemHelpsQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="SYS1210_systemHelpsGrid" bindTarget="SYS1210_systemHelpsResultDs" marginHeight="115" marginWidth="30" navBar="true">
+            <a:columns>
+                <a:column name="serialNumber" align="center" editor="SYS1210_systemHelpsNf" width="80"/>
+                <a:column name="functionCode" align="left" editor="SYS1210_systemHelpsTf" width="150"/>
+                <a:column name="description" align="left" editor="SYS1210_systemHelpsTd" width="200"/>
+                <a:column name="serviceName" align="center" editor="SYS1210_systemHelpsLov" width="200"/>
+                <a:column name="icon" align="center" editor="SYS1210_imagePicker" renderer="SYS1210_imagePickerFunc" width="30"/>
+                <a:column name="startDateActive" align="center" editor="SYS1210_systemHelpsDp" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="endDateActive" align="center" editor="SYS1210_systemHelpsDp" renderer="Aurora.formatDate" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:datePicker id="SYS1210_systemHelpsDp"/>
+                <a:textField id = "SYS1210_systemHelpsTf"/>
+                <a:numberField id="SYS1210_systemHelpsNf" allowDecimals="false"/>
+                <a:tledit id="SYS1210_systemHelpsTd"/>
+                <a:lov id="SYS1210_systemHelpsLov"/>
+                <a:imagePicker id="SYS1210_imagePicker" path="resources/helpicon"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

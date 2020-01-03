@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+   $Author: xin.J
+    $Date: 2017/6/01 14:47:05 $
+    $Revision: 1.0
+    $Purpose: 系统级供应商主数据定义-批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND2410_pur_system_vender_ae_asgn_batch_url"
+                url="$[/request/@context_path]/pur/system-vender-ref-ae/batch-assign/multiSubmit"/>
+        <script><![CDATA[
+        function FND2410_closeAsgnBatchCreateWindow() {
+            $au('FND2410_pur_system_vender_ae_assign_batch').close();
+        }
+
+        function FND2410_assignBatchAccEntity() {
+            var venderId = [];
+            var accEntityRecordsData = $au('FND2410_batch_asgn_acc_entity_ds').getJsonData(true);
+            var typeRecordsData = $au('FND2410_pur_system_vender_result_ds').getJsonData(true);
+            if (accEntityRecordsData.length === 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            debugger;
+            for (var i = 0; i < typeRecordsData.length; i++) {
+                venderId[i] = typeRecordsData[i].venderId;
+                accEntityRecordsData[i]['vendersId'] = venderId;
+
+            }
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('FND2410_pur_system_vender_ae_asgn_batch_url').getUrl(),
+                para: accEntityRecordsData,
+                success: FND2410_closeAsgnBatchCreateWindow,
+                scope: this
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2410_batch_asgn_acc_entity_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/pur/system-vender-ref-ae"
+                       queryUrl="$[/request/@context_path]/pur/system-vender-ref-ae/batch-assign/query"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name_display"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="FND2410_assignBatchAccEntity" text="hec_assign" width="80"/>
+                <a:toolbarButton click="FND2410_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+            </a:screenTopToolbar>
+            <a:grid bindTarget="FND2410_batch_asgn_acc_entity_ds" marginHeight="150" navBar="true" showRowNumber="false"
+                    width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

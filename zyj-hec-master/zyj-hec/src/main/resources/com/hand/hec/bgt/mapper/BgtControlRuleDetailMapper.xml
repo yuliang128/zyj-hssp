@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtControlRuleDetailMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtControlRuleDetail">
+        <result column="CONTROL_RULE_ID" property="controlRuleId" jdbcType="DECIMAL"/>
+        <result column="CONTROL_RULE_DETAIL_ID" property="controlRuleDetailId" jdbcType="DECIMAL"/>
+        <result column="RULE_PARAMETER_TYPE" property="ruleParameterType" jdbcType="VARCHAR"/>
+        <result column="RULE_PARAMETER" property="ruleParameter" jdbcType="VARCHAR"/>
+        <result column="FILTRATE_METHOD" property="filtrateMethod" jdbcType="VARCHAR"/>
+        <result column="SUMMARY_OR_DETAIL" property="summaryOrDetail" jdbcType="VARCHAR"/>
+        <result column="PARAMETER_LOWER_LIMIT" property="parameterLowerLimit" jdbcType="VARCHAR"/>
+        <result column="PARAMETER_UPPER_LIMIT" property="parameterUpperLimit" jdbcType="VARCHAR"/>
+        <result column="USER_EXIT_PROCEDURE" property="userExitProcedure" jdbcType="VARCHAR"/>
+        <result column="INVALID_DATE" property="invalidDate" jdbcType="DATE"/>
+        <result column="RULE_PARAMETER_DISPLAY" property="ruleParameterDisplay" jdbcType="VARCHAR"/>
+        <result column="RULE_PARAMETER_TYPE_NAME" property="ruleParameterTypeName" jdbcType="VARCHAR"/>
+        <result column="FILTRATE_METHOD_NAME" property="filtrateMethodName" jdbcType="VARCHAR"/>
+        <result column="SUMMARY_OR_DETAIL_NAME" property="summaryOrDetailName" jdbcType="VARCHAR"/>
+
+    </resultMap>
+
+    <select id="queryByRuleId" parameterType="com.hand.hec.bgt.dto.BgtControlRuleDetail" resultMap="BaseResultMap">
+        SELECT
+            (
+        SELECT
+            fl.description AS code_value_name
+        FROM
+            fnd_dimension f
+            LEFT OUTER JOIN fnd_dimension_tl fl ON ( f.DIMENSION_ID = fl.DIMENSION_ID AND fl.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            v1.`CODE` = 'BGT_CONTROL_PARAMETER_DIM'
+            AND t.rule_parameter = f.dimension_code UNION
+        SELECT
+            vv4.MEANING AS code_value_name
+        FROM
+            sys_code_b v4
+            LEFT OUTER JOIN sys_code_value_b vv4 ON ( v4.CODE_ID = vv4.CODE_ID )
+        WHERE
+            v4.`CODE` = 'BGT_CONTROL_PARAMETER_BUDGET'
+            AND vv1.`VALUE` = 'BGT_CONTROL_PARAMETER_BUDGET'
+            AND vv4.`VALUE` = t.rule_parameter UNION
+        SELECT
+            vv5.MEANING AS code_value_name
+        FROM
+            sys_code_b v5
+            LEFT OUTER JOIN sys_code_value_b vv5 ON ( v5.CODE_ID = vv5.CODE_ID )
+        WHERE
+            v5.`CODE` = 'BGT_CONTROL_PARAMETER_ORG'
+            AND vv1.`VALUE` = 'BGT_CONTROL_PARAMETER_ORG'
+            AND vv5.`VALUE` = t.rule_parameter
+            ) AS rule_parameter_display,
+            t.control_rule_id,
+            t.control_rule_detail_id,
+            t.rule_parameter_type,
+            vv1.MEANING AS rule_parameter_type_name,
+            t.rule_parameter,
+            t.filtrate_method,
+            vv2.MEANING AS filtrate_method_name,
+            t.summary_or_detail,
+            vv3.MEANING AS summary_or_detail_name,
+            t.parameter_lower_limit,
+            t.parameter_upper_limit,
+            t.user_exit_procedure,
+            t.invalid_date
+        FROM
+            bgt_control_rule_detail t
+            LEFT OUTER JOIN sys_code_b v1 ON ( v1.`CODE` = 'BGT_RULE_PARAMETER_TYPE' )
+            LEFT OUTER JOIN sys_code_value_b vv1 ON ( v1.code_id = vv1.code_id AND vv1.`VALUE` = t.rule_parameter_type )
+            LEFT OUTER JOIN sys_code_b v2 ON ( v2.`CODE` = 'WFL_WORKFLOW_FILTRATE_METHOD' )
+            LEFT OUTER JOIN sys_code_value_b vv2 ON ( v2.code_id = vv2.code_id AND vv2.`VALUE` = t.filtrate_method )
+            LEFT OUTER JOIN sys_code_b v3 ON ( v3.`CODE` = 'BGT_CONTROL_RULE_RANGE' )
+            LEFT OUTER JOIN sys_code_value_b vv3 ON ( v3.code_id = vv3.code_id AND vv1.`VALUE` = t.summary_or_detail )
+        WHERE
+            t.control_rule_id = #{controlRuleId}
+    </select>
+
+</mapper>

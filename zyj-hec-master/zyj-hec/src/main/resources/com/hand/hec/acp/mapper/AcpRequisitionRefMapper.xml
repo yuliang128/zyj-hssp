@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.acp.mapper.AcpRequisitionRefMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.acp.dto.AcpRequisitionRef">
+        <result column="REQUISITION_REF_ID" property="requisitionRefId" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_LNS_ID" property="requisitionLnsId" jdbcType="DECIMAL"/>
+        <result column="CSH_TRANSACTION_LINE_ID" property="cshTransactionLineId" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_FLAG" property="writeOffFlag" jdbcType="VARCHAR"/>
+        <result column="WRITE_OFF_ID" property="writeOffId" jdbcType="DECIMAL"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="getPaidAmount" resultType="java.math.BigDecimal">
+        select
+        case
+        when sum(arr.amount) > 0 then sum(arr.amount)
+        else 0
+        end amount from acp_requisition_ref arr
+        where arr.requisition_lns_id = #{requisitionLnsId, jdbcType=DECIMAL, javaType=java.lang.Long}
+    </select>
+    <!-- Modify Tagin/2019.05.28 根据核销信息查询付款申请单付款记录 -->
+    <select id="queryRefByWrite" resultMap="BaseResultMap">
+        select
+        arr.*
+        from
+        acp_requisition_ref arr
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="writeOffId != null and writeOffId != ''">
+                and arr.write_off_id = #{writeOffId, javaType=java.lang.Long, jdbcType=DECIMAL}
+            </if>
+            <if test="transactionLineId != null and transactionLineId != ''">
+                and arr.csh_transaction_line_id = #{transactionLineId, javaType=java.lang.Long, jdbcType=DECIMAL}
+            </if>
+        </trim>
+    </select>
+</mapper>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_control_strategies_link" url="$[/request/@context_path]/bgt/BGT2910/bgt_control_strategy.screen"/>
+        <script><![CDATA[
+            function query() {
+                $au('bgt_result_ds').query();
+            }
+            
+            function column_detail(value, record, name) {
+                var controlStrategyGroupId = record.get('controlStrategyGroupId');
+                if (record.get('controlStrategyGroupId')) {
+                    return '<a href="javascript:column_detail_id(' + controlStrategyGroupId + ')">$[l:bgt_period_sets.detail]</a>';
+                }
+            }
+            
+            function column_detail_id(id) {
+                new Aurora.Window({
+                    id: 'new_column_detail_window',
+                    url: $au('bgt_control_strategies_link').getUrl() + '?controlStrategyGroupId=' + id,
+                    title: '$[l:bgt_period_sets.detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function control_code_editor_function(record, name) {
+                if (record.isNew) {
+                    return "editor_tf_up";
+                } else {
+                    return false;
+                }
+            }
+            
+            function BGT2910_back() {
+                window.location.href = $au('BGT2910_organizations_select_link').getUrl();
+            }
+            
+            function reset() {
+                $au('bgt_query_ds').reset();
+            }
+            
+            function BGT2910_beforeDsCreate() {
+                var bgtOrgName = $au('bgt_query_ds').getAt(0).get('bgtOrgName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$]l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function BGT2910_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('bgt_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+            
+            }
+            
+            function BGT2910_bgtOrgsDsQuery() {
+                $au('BGT2910_bgtOrgsDs').query();
+            }
+
+            function BGT2910_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgName' == name) {
+                    $au('bgt_result_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2910_bgtOrgsDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrganizationOptions"/>
+            <a:dataSet id="bgt_query_ds" baseUrl="/bgt/control-strategy-group">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT2910_bgtOrgsDs" prompt="bgt_budget_item.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2910_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/control-strategy-group" queryDataSet="bgt_query_ds" queryUrl="$[/request/@context_path]/bgt/control-strategy-group/query" selectable="true">
+                <a:fields>
+                    <a:field name="controlStrategyGroupCode" prompt="bgt_control_strategy_group.control_strategy_group_code" required="true"/>
+                    <a:field name="bgtOrgId" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                    <a:field name="controlStrategyGroupDesc" prompt="bgt_control_strategy_group.control_strategy_group_desc"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="BGT2910_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT2910_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="bgt_result_grid" type="add" width="80"/>
+                <a:gridButton bind="bgt_result_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="bgt_query_ds" resultTarget="bgt_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="bgtOrgName" bindTarget="bgt_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT2910_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="controlStrategyGroupCode" bindTarget="bgt_query_ds" prompt="bgt_control_strategy_group.control_strategy_group_code">
+                        <a:events>
+                            <a:event name="enterdown" handler="query"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="controlStrategyGroupDesc" bindTarget="bgt_query_ds" prompt="bgt_control_strategy_group.control_strategy_group_desc">
+                        <a:events>
+                            <a:event name="enterdown" handler="query"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="bgt_result_grid" bindTarget="bgt_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="controlStrategyGroupCode" width="150" align="center" editorFunction="control_code_editor_function"  sortable="true"/>
+                <a:column name="controlStrategyGroupDesc" width="350" align="left" editor="editor_tf" sortable="true"/>
+                <a:column name="enabledFlag" width="100" align="left" editor="editor_cb" sortable="true"/>
+                <a:column name="controlStrategyGroupDetail" width="150" align="center" renderer="column_detail"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="editor_tf_up" typeCase="upper"/>
+                <a:textField id="editor_tf"/>
+                <a:checkBox id="editor_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

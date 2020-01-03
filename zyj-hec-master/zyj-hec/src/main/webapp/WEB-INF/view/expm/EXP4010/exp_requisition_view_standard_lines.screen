@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <a:model-query defaultWhereClause="v.reqPageElementCode = &apos;STANDARD&apos;" model="expm.EXP4010.exp_requisition_line_dimension_fields_query" rootPath="standardLineDimensions"/>
+        <a:model-query defaultWhereClause="v.reqPageElementCode = &apos;STANDARD&apos;" model="expm.EXP4010.exp_requisition_line_object_fields_query" rootPath="standardLineObjects"/>
+        <a:model-query defaultWhereClause="erpe.reqPageElementCode = &apos;STANDARD&apos;" model="expm.EXP4010.exp_requisition_line_description_query" rootPath="standardLineDescription"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP4010_standardLineExtendLink" url="$[/request/@context_path]/expm/EXP4010/exp_requisition_view_standard_lines_extend.screen"/>
+        <script><![CDATA[
+            function EXP4010_moreRenderer(value, record, name) {
+                var content = ">>";
+                return '<a href="javascript:EXP4010_moreWindow()"> ' + content + '</a>';
+            }
+            
+            function EXP4010_moreWindow() {
+                new Aurora.Window({
+                    id: 'EXP4010_standard_line_extend_window',
+                    url: $au('EXP4010_standardLineExtendLink').getUrl() + '?moExpReqTypeId=$[/model/headerInfo/record/@moExpReqTypeId]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_standard_place_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_policy_place_types_vl_lov"/>
+            <a:dataSet id="EXP4010_standard_expense_type_ds" fetchAll="true" model="hec_util.exp_util.exp_req_mo_expense_types_vl_lov"/>
+            <a:dataSet id="EXP4010_exp_requisition_standard_line_ds" autoQuery="true" bindName="standardLines" bindTarget="EXP4010_exp_requisition_header_ds" queryUrl="$[/request/@context_path]/modules/expm/EXP4010/exp_requisition_standard_line_query.svc?expRequisitionHeaderId=$[/model/headerInfo/record/@expRequisitionHeaderId]&amp;reqPageElementCode=STANDARD&amp;_ban_remind=Y" selectable="false">
+                <a:fields>
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="expRequisitionLineId"/>
+                    <a:field name="lineNumber" prompt="hap_line_number"/>
+                    <a:field name="reqPageElementCode" defaultValue="STANDARD"/>
+                    <a:field name="description" prompt="exp_requisition_lines.description"/>
+                    <a:field name="companyName" lovCode="FND_COMPANY_LOV"  prompt="exp_requisition_lines.company_id"/>
+                    <a:field name="companyId"/>
+                    <a:field name="unitName" lovCode="EXP_ORG_UNITS_VL_LOV" prompt="exp_requisition_lines.unit_id"/>
+                    <a:field name="unitId"/>
+                    <a:field name="positionName" lovCode="EXP_ORG_POSITION_VL_LOV" prompt="exp_requisition_lines.position_id"/>
+                    <a:field name="positionId"/>
+                    <a:field name="employeeName" lovCode="EXP_EMPLOYEES_POSITION_LOV" prompt="exp_requisition_dists.employee_id"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="accEntityName" lovCode="GLD_ACCOUNTING_ENTITY_VL_LOV" prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="respCenterName" lovCode="GLD_RESPONSIBILITY_CENTER_VL_LOV" prompt="exp_requisition_lines.responsibility_center_id"/>
+                    <a:field name="respCenterId"/>
+                    <a:field name="moExpenseTypeName" displayField="moExpenseTypeName" options="EXP4010_standard_expense_type_ds" prompt="exp_requisition_lines.expense_type_id" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moReqItemName" displayField="moReqItemName" options="EXP4010_standard_item_ds" prompt="exp_requisition_lines.exp_req_item_id"/>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="placeTypeName" displayField="placeTypeName" options="EXP4010_standard_place_type_ds" prompt="exp_requisition_lines.place_type_id" returnField="placeTypeId" valueField="placeTypeId"/>
+                    <a:field name="placeTypeId"/>
+                    <a:field name="placeName" lovCode="EXP_POLICY_PLACES_AND_TYPES_VL_LOV" prompt="exp_requisition_lines.place_id"/>
+                    <a:field name="placeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="dateFrom" prompt="exp_requisition_lines.date_from" validator="EXP4010_standardDateValidator"/>
+                    <a:field name="dateTo" prompt="exp_requisition_lines.date_to" validator="EXP4010_standardDateValidator"/>
+                    <a:field name="businessCurrencyName" displayField="currencyName" options="EXP4010_currency_ds" prompt="business_currency_name"/>
+                    <a:field name="businessCurrencyCode"/>
+                    <a:field name="businessPrice" prompt="business_price" validator="EXP4010_policyValidator"/>
+                    <a:field name="biz2payExchangeTypeName" prompt="biz2pay_exchange_type_name"/>
+                    <a:field name="biz2payExchangeType"/>
+                    <a:field name="biz2payExchangeRate" prompt="biz2pay_exchange_rate"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_requisition_headers.payment_currency_name"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="pay2funExchangeTypeName" prompt="pay2fun_exchange_type_name"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate" prompt="pay2fun_exchange_rate"/>
+                    <a:field name="paymentPrice" prompt="payment_price"/>
+                    <a:field name="managementCurrencyName" prompt="fnd_companies.managing_currency"/>
+                    <a:field name="managementCurrencyCode"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="pay2mag_exchange_type_name"/>
+                    <a:field name="pay2magExchangeType"/>
+                    <a:field name="pay2magExchangeRate" prompt="pay2mag_exchange_rate"/>
+                    <a:field name="managementPrice" prompt="management_price"/>
+                    <a:field name="businessAmount" prompt="business_amount"/>
+                    <a:field name="primaryQuantity" prompt="exp_requisition_lines.primary_quantity"/>
+                    <a:field name="paymentAmount" prompt="payment_amount"/>
+                    <a:field name="managementAmount" prompt="management_amount"/>
+                    <a:field name="periodName" prompt="exp_requisition_dists.period_name"/>
+                    <a:field name="requisitionFunctionalAmount" prompt="exp_requisition_lines.requisition_functional_amount"/>
+                    <a:field name="more" prompt="hap_more"/>
+                    <a:placeHolder id="EXP4010_standardLineDimensionFields"/>
+                    <a:placeHolder id="EXP4010_standardLineObjectFields"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="0" showmargin="0" style="margin-top:10px;" title="$[/model/standardLineDescription/record/@lineDescription]">
+            <a:grid id="EXP4010_standard_lines_grid" autoAdjustHeight="true" bindTarget="EXP4010_exp_requisition_standard_line_ds" height="600" marginWidth="12" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="more" align="center" renderer="EXP4010_moreRenderer" width="20"/>
+                    <a:column name="lineNumber" align="center" width="30"/>
+                    <a:column name="description" width="200"/>
+                    <a:column name="moExpenseTypeName" align="center" width="80"/>
+                    <a:column name="moReqItemName" align="center" width="80"/>
+                    <a:column name="dateFrom" align="center" renderer="Aurora.formatDate" width="80"/>
+                    <a:column name="dateTo" align="center" renderer="Aurora.formatDate" width="80"/>
+                    <a:column name="businessPrice" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="primaryQuantity" align="right" width="80"/>
+                    <a:column name="businessAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP4010_standardLineDimensionFields">
+            <p:loop source="/model/standardLineDimensions">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@defaultDimValueName]" lovCode="FND_DIMENSION_VALUE_VL_LOV?dimensionId=$[@dimensionId]" prompt="$[@dimensionName]" title="$[@dimensionName]">
+                        <a:mapping>
+                            <a:map from="dimensionValueName" to="$[@displayField]"/>
+                            <a:map from="dimensionValueId" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@defaultDimValueId]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_standardLineDimensionColumns">
+            <p:loop source="/model/standardLineDimensions">
+                <c:process-config>
+                    <a:column name="$[@displayField]" prompt="$[@dimensionName]" width="120"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_standardLineObjectFields">
+            <p:loop source="/model/standardLineObjects">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@dftMoExpenseObjectName]" lovService="hec_util.exp_mo_expense_object_value_vl_lov?moExpObjTypeId=$[@moExpObjTypeId]" prompt="$[@moExpObjTypeName]" required="$[@requiredFlag]" title="$[@moExpObjTypeName]">
+                        <a:mapping>
+                            <a:map from="name" to="$[@displayField]"/>
+                            <a:map from="id" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@dftMoExpenseObjectId]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_standardLineObjectColumns">
+            <p:loop source="/model/standardLineObjects">
+                <p:switch test="@expenseObjectMethod">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:column name="$[@displayField]" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:column name="$[@displayField]" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

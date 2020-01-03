@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpOrgUnitLevelMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpOrgUnitLevel">
+        <result column="ORG_UNIT_LEVEL_ID" property="orgUnitLevelId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="ORG_UNIT_LEVEL_CODE" property="orgUnitLevelCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="checkExpOrgUnitLevel" resultMap="BaseResultMap">
+        select l.* from
+        exp_org_unit u,
+        exp_org_unit_level l
+        where u.org_unit_level_id = l.org_unit_level_id
+        and u.unit_id = #{unitId}
+        and
+        (
+          (
+            #{filtrateMethod} = 'INCLUDE'
+            and (#{controlUnitLevelCodeFrom} is null or l.org_unit_level_code &gt;= #{controlUnitLevelCodeFrom})
+            and (#{controlUnitLevelCodeTo} is null or l.org_unit_level_code &lt;= #{controlUnitLevelCodeTo})
+          )
+          or
+          (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (#{controlUnitLevelCodeFrom} is null or l.org_unit_level_code &lt; #{controlUnitLevelCodeFrom})
+                or (#{controlUnitLevelCodeTo} is null or l.org_unit_level_code &gt; #{controlUnitLevelCodeTo})
+            )
+          )
+        )
+        and u.enabled_flag = 'Y'
+        and l.enabled_flag = 'Y'
+    </select>
+</mapper>

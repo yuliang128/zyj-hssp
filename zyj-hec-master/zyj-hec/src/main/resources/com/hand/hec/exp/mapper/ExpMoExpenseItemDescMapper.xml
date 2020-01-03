@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpenseItemDescMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpenseItemDesc">
+        <result column="ITEM_DESC" property="itemDesc" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_REPORT_TYPE_ID" property="moExpReportTypeId" jdbcType="DECIMAL" />
+        <result column="MO_EXPENSE_TYPE_ID" property="moExpenseTypeId" jdbcType="DECIMAL" />
+        <result column="MO_EXPENSE_ITEM_ID" property="moExpenseItemId" jdbcType="DECIMAL" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+
+        <result column="MAG_ORG_DISPLAY" property="magOrgDisplay" jdbcType="VARCHAR" />
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR" />
+        <result column="COMPANY_FULL_NAME" property="companyFullName" jdbcType="VARCHAR" />
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR" />
+        <result column="MO_EXP_REPORT_TYPE_CODE" property="moExpReportTypeCode" jdbcType="VARCHAR" />
+        <result column="MO_EXP_REPORT_TYPE_NAME" property="moExpReportTypeName" jdbcType="VARCHAR" />
+        <result column="MO_EXPENSE_TYPE_CODE" property="moExpenseTypeCode" jdbcType="VARCHAR" />
+        <result column="MO_EXPENSE_TYPE_NAME" property="moExpenseTypeName" jdbcType="VARCHAR" />
+        <result column="MO_EXPENSE_ITEM_CODE" property="moExpenseItemCode" jdbcType="VARCHAR" />
+        <result column="MO_EXPENSE_ITEM_NAME" property="moExpenseItemName" jdbcType="VARCHAR" />
+
+    </resultMap>
+
+    <select id="queryAll" resultMap="BaseResultMap">
+        select emeid.item_desc,
+        emeidt.description,
+        fmo.mag_org_id,
+        concat(
+        fmo.mag_org_code,
+        '-',
+        fmot.DESCRIPTION
+        ) magOrgDisplay,
+        fc.company_id,
+        fc.company_code,
+        fct.company_full_name,
+        fct.company_short_name company_name,
+        emei.mo_expense_item_id,
+        emei.mo_expense_item_code,
+        emeit.description mo_expense_item_name,
+        emrt.mo_exp_report_type_id,
+        emrt.mo_exp_report_type_code,
+        emrtt.description mo_exp_report_type_name,
+        emet.mo_expense_type_id,
+        emet.mo_expense_type_code,
+        emett.description mo_expense_type_name
+        from
+        exp_mo_expense_item_desc emeid
+        LEFT JOIN fnd_managing_organization fmo on emeid.mag_org_id = fmo.mag_org_id
+        LEFT JOIN fnd_company fc on emeid.company_id = fc.company_id
+        LEFT JOIN exp_mo_expense_item emei on emeid.mo_expense_item_id = emei.mo_expense_item_id
+        LEFT JOIN exp_mo_report_type emrt on emeid.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        LEFT JOIN exp_mo_expense_type emet on emeid.mo_expense_type_id = emet.mo_expense_type_id
+        left join exp_mo_expense_item_desc_tl emeidt on (emeid.item_desc = emeidt.item_desc and
+        emeidt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN fnd_managing_organization_tl fmot on (fmo.MAG_ORG_ID = fmot.MAG_ORG_ID AND
+        fmot.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN fnd_company_tl fct on (fc.COMPANY_ID = fct.company_id and fct.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN exp_mo_expense_item_tl emeit on (emei.mo_expense_item_id = emeit.mo_expense_item_id
+        and emeit.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN exp_mo_report_type_tl emrtt on (emrt.mo_exp_report_type_id = emrtt.mo_exp_report_type_id and
+        emrtt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN exp_mo_expense_type_tl emett on (emet.mo_expense_type_id = emett.mo_expense_type_id
+        and emett.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+       <where>
+        <if test="magOrgId != null">
+            and fmo.mag_org_id = #{magOrgId}
+        </if>
+        <if test="companyName != null">
+            and fct.company_short_name like '%${companyName}%'
+        </if>
+        <if test="moExpenseItemName != null">
+            and emeit.description like '%${moExpenseItemName}%'
+        </if>
+        <if test="moExpReportTypeName != null">
+            and emrtt.description like '%${moExpReportTypeName}%'
+        </if>
+        <if test="moExpenseTypeName != null">
+            and emett.description like '%${moExpenseTypeName}%'
+        </if>
+       </where>
+    </select>
+
+    <select id="checkExists" resultMap="BaseResultMap">
+        select item_desc
+        from exp_mo_expense_item_desc
+        <where>
+          <choose>
+              <when test="companyId!=null">
+                  and  COMPANY_ID =  #{companyId}
+              </when>
+              <otherwise>
+                  and  COMPANY_ID is null
+              </otherwise>
+          </choose>
+            <choose>
+                <when test="magOrgId!=null">
+                    and  MAG_ORG_ID =  #{magOrgId}
+                </when>
+                <otherwise>
+                    and  MAG_ORG_ID is null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="moExpenseTypeId!=null">
+                    and  MO_EXPENSE_TYPE_ID =  #{moExpenseTypeId}
+                </when>
+                <otherwise>
+                    and  MO_EXPENSE_TYPE_ID is null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="moExpReportTypeId!=null">
+                    and  MO_EXP_REPORT_TYPE_ID =  #{moExpReportTypeId}
+                </when>
+                <otherwise>
+                    and  MO_EXP_REPORT_TYPE_ID is null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="moExpenseItemId!=null">
+                    and  MO_EXPENSE_ITEM_ID =  #{moExpenseItemId}
+                </when>
+                <otherwise>
+                    and  MO_EXPENSE_ITEM_ID is null
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+</mapper>

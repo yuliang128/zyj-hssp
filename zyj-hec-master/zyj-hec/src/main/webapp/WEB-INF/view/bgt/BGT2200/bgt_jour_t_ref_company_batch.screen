@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/09 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="BGT2200_bgt_jour_t_ref_com_link" model="bgt.BGT2200.bgt_jour_t_ref_com" modelaction="batch_update"/>
+        <script><![CDATA[
+            function BGT2200_comBatchAssgin() {
+                var datas = $au('BGT2200_company_batch_assgin_grid_ds').getJsonData(true);
+                var resultDs = $au('BGT2200_jour_t_ref_company_result_ds');
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    var record = resultDs.create();
+                    record.set('companyId',datas[i]['companyId']);
+                }
+                resultDs.submit();
+            }
+            
+            function EXP4020_closeAssignPage() {
+                $au('BGT2200_bgt_jour_t_com_batch_window').close();
+                $au('BGT2200_jour_t_ref_company_ds').query();
+            }
+            
+            function BGT2200_comBatchReturn() {
+                $au("BGT2200_bgt_jour_t_com_batch_window").close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_company_batch_assgin_grid_ds" autoPageSize="true" autoQuery="true" baseUrl="/fnd-company" selectable="true" queryUrl="$[/request/@context_path]/fnd-company/bgtJournalBatchAssign?assignMoId=$[/parameter/@assignMoId]&amp;magOrgId=$[/parameter/@magOrgId]">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2200_jour_t_ref_company_result_ds" autoPageSize="true" autoQuery="false" baseUrl="/bgt/journal-type-asgn-com">
+                <a:fields>
+                    <a:field name="bgtJournalTypeId"/>
+                    <a:field name="companyCode" />
+                    <a:field name="companyShortName" prompt="company_short_name"/>
+                    <a:field name="companyId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="bgt_budget_item_type.enabled_flag"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="bgtJournalTypeId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4020_closeAssignPage"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="prompt.batch_disp_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="BGT2200_comBatchAssgin" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="BGT2200_comBatchReturn" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="BGT2200_journal_type_company_ds" prompt="fnd_managing_organization.mag_org_code"/>
+                <a:textField name="description" bindTarget="BGT2200_journal_type_company_ds" prompt="fnd_managing_organization.description"/>
+            </a:form>
+            <a:grid bindTarget="BGT2200_company_batch_assgin_grid_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="80" prompt="fnd_company.company_code"/>
+                    <a:column name="companyShortName" width="200" prompt="company_short_name"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

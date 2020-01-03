@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-1 下午6:38:38  
+    $Revision: 1.0  
+    $Purpose:客户分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2515_ord_system_customer_ref_ae_batch_link" url="$[/request/@context_path]/fnd/FND2515/ord_system_customer_ref_ae_batch_asgn.screen"/>
+        <script><![CDATA[
+            function FND2515_closeAccEntityCreateWindow() {
+                $au('FND2515_ord_system_customer_ref_ae_window').close();
+            }
+            
+            function FND2515_batchAsgnAccEntity() {
+                var url = $au('FND2515_ord_system_customer_ref_ae_batch_link').getUrl() + '?customerId=' + '$[/parameter/@customerId]';
+                new Aurora.Window({
+                    id: 'FND2515_ord_system_customer_ref_ae_batch_window',
+                    url: url,
+                    title: '$[l:hec_batch_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close',function(){
+                    $au('FND2515_ord_system_customer_ref_ae_ds').query();
+                });
+            }
+            
+            function FND2515_refAeEdit(record) {
+                if (record.isNew) {
+                    return "FND2515_refAe_lov";
+                }
+                return '';
+            }
+            
+            function FND2515_refAeSubmit() {
+                $au('FND2515_ord_system_customer_ref_ae_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2515_ord_system_customer_ref_ae_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/ord/system-customer-ref-ae" queryUrl="$[/request/@context_path]/ord/system-customer-ref-ae/query?customerId=$[/parameter/@customerId]" selectable="false" submitUrl="$[/request/@context_path]/ord/system-customer-ref-ae/submit">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityCode" autoComplete="true" autoCompleteField="accEntityName" lovGridHeight="320" lovHeight="450"  lovCode="LOV_CUSTOMER_ASSIGN_ACC_ENTITY?customerId=$[/parameter/@customerId]" lovWidth="500" prompt="gld_accounting_entity.acc_entity_code" required="true" title="choose.accounting_distribution">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="customerId" defaultValue="$[/parameter/@customerId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2515_refAeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2515_ord_system_customer_ref_ae_form" column="2" title="ord_system_customer.asgn_acc_entity" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2515_ord_system_customer_ref_ae_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2515_ord_system_customer_ref_ae_grid" type="save" width="80"/>
+                    <a:toolbarButton click="FND2515_batchAsgnAccEntity" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="FND2515_closeAccEntityCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="customerCode" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.customer_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2515_ord_system_customer_ref_ae_grid" bindTarget="FND2515_ord_system_customer_ref_ae_ds" marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="FND2515_refAeEdit" prompt="gld_accounting_entity.acc_entity_code" width="80"/>
+                    <a:column name="accEntityName" align="left" prompt="gld_accounting_entity.acc_entity_name_display" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2515_refAe_checkBox" prompt="hap_enabled_flag" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="FND2515_refAe_checkBox"/>
+                    <a:lov id="FND2515_refAe_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

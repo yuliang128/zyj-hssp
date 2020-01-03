@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+	&author:ZhouHao
+	&date:2010.4.16
+	&purpose:借款单财务查询页面  
+	-20130301 修改链接
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure />
+    <a:view>
+        <a:link id="csh_pay_req_query_detail_link_11" url="$[/request/@context_path]/csh/public/csh_pay_req_for_finance_detail_readonly.screen"/>
+        <a:link id="csh_pay_req_query_trans_link" url="$[/request/@context_path]/csh/public/csh_pay_req_query_trans.screen"/>
+        <!--add by caoke/2018-01-29 借款单关联申请单-->
+        <a:link id="CSH3110_csh_pay_req_query_ref_req_link" url="$[/request/@context_path]/csh/public/csh_pay_req_query_ref_req.screen"/>
+        <!--add by caoke/2018-01-29 借款单核销查询-->
+        <a:link id="CSH3110_csh_pay_req_query_write_off_link" url="$[/request/@context_path]/csh/public/csh_pay_req_query_write_off.screen"/>
+        <script><![CDATA[
+        function updateEventFunction(dataSet, record, name, value) {
+            if (name == 'payeeCategory') {
+                $au('pay_req_query_ds').getAt(0).set('payeeId', '');
+                $au('pay_req_query_ds').getAt(0).set('payeeIdDisplay', '');
+                if (value != null && value != '') {
+                    record.getField('payeeIdDisplay').setLovPara('payeeCategory', value);
+                    record.getField('payeeIdDisplay').setLovCode('LOV_GLD_PAYEE');
+                    record.getField('payeeIdDisplay').setReadOnly(false);
+                } else {
+                    record.getField('payeeIdDisplay').setLovCode('');
+                    record.getField('payeeIdDisplay').setReadOnly(true);
+                }
+            }
+        }
+
+        function resetFunction() {
+            var dataSet = $au('pay_req_query_ds');
+            var record = dataSet.getCurrentRecord();
+            $au('pay_req_query_ds').getAt(0).set('payeeId', '');
+            $au('pay_req_query_ds').getAt(0).set('payeeIdDisplay', '');
+            record.getField('payeeIdDisplay').setLovService('');
+            record.getField('payeeIdDisplay').setReadOnly(true);
+            dataSet.reset();
+        }
+
+        function paymentFunction() {
+            var dataSet = $au('pay_req_result_ds');
+            var records = dataSet.getJsonData(true);
+            if (records.length != 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                return;
+            }
+            var record = records[0];
+            var headId = record.paymentRequisitionHeaderId;
+            new Aurora.Window({
+                id: 'csh_pay_req_query_trans_screen',
+                url: /*csh_pay_req_query_trans.screen*/
+                $au('csh_pay_req_query_trans_link').getUrl() + '?headerId=' + headId,
+                title: '$[l:prompt.payment_transaction]',
+                fullScreen: true
+            });
+        }
+
+        function reqNumRenFunction(value, record, name) {
+            var url = '<a href = "javascript:reqNumDispatch(' + record.get('paymentRequisitionHeaderId') + ')">' + value + '</a>';
+            return url;
+        }
+
+        function reqNumDispatch(headerId) {
+            url = $au('csh_pay_req_query_detail_link_11').getUrl() + '?paymentRequisitionHeaderId=' + headerId;
+            new Aurora.Window({
+                id: 'csh_pay_req_for_finance_query_detail_window',
+                fullScreen: true,
+                url: url,
+                title: '$[l:pur_requisition_allocate.order_details]'
+            });
+        }
+
+        function CSH3110_formatMoney(value, record, name) {
+            return '<div style="font-weight:bold;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+        }
+        //add by caoke/2018-01-29 增加查看申请
+
+        function CSH3110_viewExpRequisition() {
+            var dataSet = $au('pay_req_result_ds');
+            var records = dataSet.getJsonData(true);
+            if (records.length != 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                return;
+            }
+            var record = records[0];
+            var headId = record.paymentRequisitionHeaderId;
+            new Aurora.Window({
+                id: 'CSH3110_csh_pay_req_query_ref_req_screen',
+                url: $au('CSH3110_csh_pay_req_query_ref_req_link').getUrl() + '?paymentRequisitionHeaderId=' + headId,
+                title: '$[l:csh_payment_requisition_hd.exp_requisition]',
+                fullScreen: true
+            });
+        }
+
+        function CSH3110_viewCshWriteOff() {
+            var dataSet = $au('pay_req_result_ds');
+            var records = dataSet.getJsonData(true);
+            if (records.length != 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                return;
+            }
+            var record = records[0];
+            var headId = record.paymentRequisitionHeaderId;
+            new Aurora.Window({
+                id: 'CSH3110_csh_pay_req_query_write_off_screen',
+                url: $au('CSH3110_csh_pay_req_query_write_off_link').getUrl() + '?paymentRequisitionHeaderId=' + headId,
+                title: '$[l:csh_payment_requisition_hd.write_off_history]',
+                fullScreen: true
+            });
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="whether_included_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WHETHER_INCLUDED/"/>
+            <a:dataSet id="pay_methods_lists_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-method/query">
+            </a:dataSet>
+            <a:dataSet id="pay_obj_list_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT/">
+            </a:dataSet>
+            <a:dataSet id="cry_list_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y">
+            </a:dataSet>
+            <a:dataSet id="status_list_ds" autoQuery="true"
+                queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_REQUISITION_STATUS/">
+            </a:dataSet>
+            <a:dataSet id="pay_req_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="allCompanyFlag" defaultValue="N"/>
+                    <a:field name="allCompanyFlagDisplay" defaultValue="$[l:hap.not_included]" displayField="meaning" options="whether_included_ds" placeHolder="csh_payment_requisition_hd.contain_sub_company" returnField="allCompanyFlag" valueField="value"/>
+                    <a:field name="paymentMethodIdDisplay" displayField="description" options="pay_methods_lists_ds" placeHolder="csh_payment_requisition_hd.payment_method_name" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="documentType" lovHeight="500" lovCode="LOV_PAY_REQ_TYPE_BY_MAG" lovWidth="530" placeHolder="csh_payment_requisition_hd.payment_req_type_name" title="csh_mo_payment_req_type.payment_req_select">
+                        <a:mapping>
+                            <a:map from="typeId" to="cshPaymentRequisitionTypeId"/>
+                            <a:map from="description" to="documentType"/>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                            <a:map from="paymentMethod" to="paymentMethod"/>
+                            <a:map from="currencyName" to="currency"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cshPaymentRequisitionTypeId"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="requisitionNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeIdDisplay" autoComplete="true" autoCompleteField="nameCode" lovGridHeight="350" lovHeight="500" lovCode="LOV_EMPLOYEE_BY_COM" lovWidth="500" placeHolder="csh_payment_requisition_hd.employee_name" title="exp_employee.employee_select">
+                        <a:mapping>
+                            <a:map from="nameCode" to="employeeIdDisplay"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="requisitionDateFrom" placeHolder="csh_payment_requisition_hd.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" placeHolder="csh_payment_requisition_hd.requisition_date_to"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="currencyCodeDisplay" displayField="currencyName" options="cry_list_ds" placeHolder="csh_payment_requisition_hd.from_currency" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="status"/>
+                    <a:field name="statusDisplay" displayField="meaning" options="status_list_ds" placeHolder="csh_payment_requisition_hd.status" returnField="status" valueField="value"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryDisplay" displayField="meaning" options="pay_obj_list_ds" placeHolder="csh_payment_requisition_hd.payee_category">
+                        <a:mapping>
+                            <a:map from="value" to="payeeCategory"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeIdDisplay" autoComplete="true" autoCompleteField="payeeName" placeHolder="csh_payment_requisition_hd.payee_id" readOnly="true" title="csh_payment_requisition_hd.payee_select">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeIdDisplay"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="amountFrom" placeHolder="csh_payment_requisition_hd.amount_from"/>
+                    <a:field name="amountTo" placeHolder="csh_payment_requisition_hd.amount_to"/>
+                    <a:field name="description" placeHolder="csh_payment_requisition_hd.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="updateEventFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="pay_req_result_ds" autoPageSize="true" autoQuery="false" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryForFinance" queryDataSet="pay_req_query_ds" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="documentType" prompt="csh_payment_requisition_hd.payment_req_type_name"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="employeeName" prompt="csh_payment_requisition_hd.employee_name"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date"/>
+                    <a:field name="currencyCode" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="currencyName" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.amount"/>
+                    <a:field name="paymentedAmount" prompt="csh_payment_requisition_hd.paymented_amount"/>
+                    <a:field name="payeeCategory" prompt="csh_payment_requisition_hd.payee_category"/>
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.payee_id"/>
+                    <a:field name="journalNumber" prompt="csh_payment_requisition_hd.journal_number"/>
+                    <a:field name="statusDes" prompt="csh_payment_requisition_hd.status"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description"/>
+                    <a:field name="closedDate" prompt="csh_payment_requisition_hd.closed_date"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="pay_req_account_result_ds" bindName="account" bindTarget="pay_req_result_ds" queryUrl="$[/request/@context_path]/csh/payment-req-account/queryByHeaderId">
+                <a:fields>
+                    <a:field name="description" prompt="csh_payment_req_account.description" readOnly="true"/>
+                    <a:field name="periodName" prompt="csh_payment_req_account.period_name"/>
+                    <a:field name="accEntityName" prompt="csh_payment_req_account.acc_entity_name"/>
+                    <a:field name="responsibilityCenterName" prompt="csh_payment_req_account.responsibility_center_name"/>
+                    <a:field name="currencyCode" prompt="csh_payment_req_account.currency_code"/>
+                    <a:field name="accountCode" prompt="csh_payment_req_account.account_code"/>
+                    <a:field name="accountName" prompt="csh_payment_req_account.account_name"/>
+                    <a:field name="enteredAmountDr" prompt="csh_payment_req_account.entered_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="csh_payment_req_account.entered_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="csh_payment_req_account.functional_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="csh_payment_req_account.functional_amount_cr"/>
+                    <a:field name="exchangeRateTypeName" prompt="csh_payment_req_account.exchange_rate_type"/>
+                    <a:field name="exchangeRate" prompt="csh_payment_req_account.exchange_rate"/>
+                    <a:field name="accountSegment1" prompt="$[/model/accountSegment/records/record/@segment1Desc]"/>
+                    <a:field name="accountSegment2" prompt="$[/model/accountSegment/records/record/@segment2Desc]"/>
+                    <a:field name="accountSegment3" prompt="$[/model/accountSegment/records/record/@segment3Desc]"/>
+                    <a:field name="accountSegment4" prompt="$[/model/accountSegment/records/record/@segment4Desc]"/>
+                    <a:field name="accountSegment5" prompt="$[/model/accountSegment/records/record/@segment5Desc]"/>
+                    <a:field name="accountSegment6" prompt="$[/model/accountSegment/records/record/@segment6Desc]"/>
+                    <a:field name="accountSegment7" prompt="$[/model/accountSegment/records/record/@segment7Desc]"/>
+                    <a:field name="accountSegment8" prompt="$[/model/accountSegment/records/record/@segment8Desc]"/>
+                    <a:field name="accountSegment9" prompt="$[/model/accountSegment/records/record/@segment9Desc]"/>
+                    <a:field name="accountSegment10" prompt="$[/model/accountSegment/records/record/@segment10Desc]"/>
+                    <a:field name="accountSegment11" prompt="$[/model/accountSegment/records/record/@segment11Desc]"/>
+                    <a:field name="accountSegment12" prompt="$[/model/accountSegment/records/record/@segment12Desc]"/>
+                    <a:field name="accountSegment13" prompt="$[/model/accountSegment/records/record/@segment13Desc]"/>
+                    <a:field name="accountSegment14" prompt="$[/model/accountSegment/records/record/@segment14Desc]"/>
+                    <a:field name="accountSegment15" prompt="$[/model/accountSegment/records/record/@segment15Desc]"/>
+                    <a:field name="accountSegment16" prompt="$[/model/accountSegment/records/record/@segment16Desc]"/>
+                    <a:field name="accountSegment17" prompt="$[/model/accountSegment/records/record/@segment17Desc]"/>
+                    <a:field name="accountSegment18" prompt="$[/model/accountSegment/records/record/@segment18Desc]"/>
+                    <a:field name="accountSegment19" prompt="$[/model/accountSegment/records/record/@segment19Desc]"/>
+                    <a:field name="accountSegment20" prompt="$[/model/accountSegment/records/record/@segment20Desc]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="paymentFunction" text="prompt.payment_transaction" width="80"/>
+                <!--add by caoke/2018-01-29 增加查看申请-->
+                <a:toolbarButton click="CSH3110_viewExpRequisition" text="prompt.view_requisition" width="80"/>
+                <a:toolbarButton click="CSH3110_viewCshWriteOff" text="csh_payment_detail.write_off_history" width="80"/>
+                <a:gridButton bind="csh_payment_req_finance_query_grid" type="excel" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="pay_req_query_ds" resultTarget="pay_req_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="requisitionNumber" bindTarget="pay_req_query_ds"/>
+                    <a:lov name="documentType" bindTarget="pay_req_query_ds"/>
+                    <a:lov name="employeeIdDisplay" bindTarget="pay_req_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:datePicker name="requisitionDateFrom" bindTarget="pay_req_query_ds"/>
+                    <a:datePicker name="requisitionDateTo" bindTarget="pay_req_query_ds"/>
+                    <a:comboBox name="currencyCodeDisplay" bindTarget="pay_req_query_ds"/>
+                    <a:multiComboBox name="statusDisplay" bindTarget="pay_req_query_ds"/>
+                    <a:comboBox name="payeeCategoryDisplay" bindTarget="pay_req_query_ds"/>
+                    <a:lov name="payeeIdDisplay" bindTarget="pay_req_query_ds"/>
+                    <a:comboBox name="paymentMethodIdDisplay" bindTarget="pay_req_query_ds"/>
+                    <a:textField name="amountFrom" bindTarget="pay_req_query_ds"/>
+                    <a:textField name="amountTo" bindTarget="pay_req_query_ds"/>
+                    <a:textField name="description" bindTarget="pay_req_query_ds"/>
+                    <a:comboBox name="allCompanyFlagDisplay" bindTarget="pay_req_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form hideLabel="true" padding="0" showmargin="false" title="csh_payment_requisition_hd.document_info">
+            <a:grid id="csh_payment_req_finance_query_grid" bindTarget="pay_req_result_ds" marginWidth="15" navBar="true" style="box-shadow:none;">
+                <a:columns>
+                    <a:column name="requisitionNumber" align="center" renderer="reqNumRenFunction" sortable="true" width="120"/>
+                    <a:column name="accEntityName" align="center" width="180"/>
+                    <a:column name="documentType" align="center" width="120"/>
+                    <a:column name="employeeName" align="center" sortable="true" width="80"/>
+                    <a:column name="requisitionDate" align="center" renderer="Aurora.formatDate" sortable="true" width="80"/>
+                    <a:column name="currencyName" align="center" sortable="true" width="80"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" sortable="true" width="80"/>
+                    <a:column name="paymentedAmount" align="right" renderer="Aurora.formatMoney" sortable="true" width="80"/>
+                    <a:column name="payeeCategory" align="center" sortable="true" width="80"/>
+                    <a:column name="payeeName" align="center" sortable="true" width="120"/>
+                    <a:column name="journalNumber" align="center" width="120"/>
+                    <a:column name="description" align="left" sortable="true" width="200"/>
+                    <a:column name="statusDes" align="center" sortable="true" width="80"/>
+                    <a:column name="closedDate" align="center" renderer="Aurora.formatDate" sortable="true" width="80"/>
+                </a:columns>
+                <a:editors/>
+            </a:grid>
+        </a:form>
+        <a:form hideLabel="true" padding="0" showmargin="false" style="margin-top:5px;" title="csh_payment_req_account.account_info">
+            <a:grid autoAdjustHeight="true" bindTarget="pay_req_account_result_ds" marginWidth="15" navBar="true" style="box-shadow:none;">
+                <a:columns>
+                    <a:column name="accEntityName" align="center" width="150"/>
+                    <a:column name="responsibilityCenterName" align="center" width="150"/>
+                    <a:column name="accountName" align="center" width="150"/>
+                    <a:column name="periodName" align="center" width="100"/>
+                    <a:column name="currencyCode" align="center" width="100"/>
+                    <a:column name="enteredAmountDr" align="right" renderer="CSH3110_formatMoney" width="100"/>
+                    <a:column name="enteredAmountCr" align="right" renderer="CSH3110_formatMoney" width="100"/>
+                    <a:column name="functionalAmountDr" align="right" renderer="CSH3110_formatMoney" width="100"/>
+                    <a:column name="functionalAmountCr" align="right" renderer="CSH3110_formatMoney" width="100"/>
+                    <a:column name="description" align="left" editor="EXP3110_accountTa" width="250"/>
+                    <a:column name="accountSegment1" align="center"/>
+                    <a:column name="accountSegment2" align="center"/>
+                    <a:column name="accountSegment3" align="center"/>
+                    <a:column name="accountSegment4" align="center"/>
+                    <a:column name="accountSegment5" align="center"/>
+                    <a:column name="accountSegment6" align="center"/>
+                    <a:column name="accountSegment7" align="center"/>
+                    <a:column name="accountSegment8" align="center"/>
+                    <a:column name="accountSegment9" align="center"/>
+                    <a:column name="accountSegment10" align="center"/>
+                    <a:column name="accountSegment11" align="center"/>
+                    <a:column name="accountSegment12" align="center"/>
+                    <a:column name="accountSegment13" align="center"/>
+                    <a:column name="accountSegment14" align="center"/>
+                    <a:column name="accountSegment15" align="center"/>
+                    <a:column name="accountSegment16" align="center"/>
+                    <a:column name="accountSegment17" align="center"/>
+                    <a:column name="accountSegment18" align="center"/>
+                    <a:column name="accountSegment19" align="center"/>
+                    <a:column name="accountSegment20" align="center"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+        <script purpose="auto_resize"><![CDATA[
+        function CSH3110_initSize() {
+            var vh = this.outerHeight;
+            //设置组件的自适应宽度
+            var rightHeight = (vh - 350);
+            var autoHeight = (rightHeight - 63) / 1.45;
+            if (Aurora.CmpManager.get('csh_payment_req_finance_query_grid')) {
+                $au('csh_payment_req_finance_query_grid').setHeight(autoHeight);
+            }
+        }
+
+        CSH3110_initSize();
+        ]]></script>
+    </a:view>
+</a:screen>

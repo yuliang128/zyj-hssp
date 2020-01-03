@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: ouyangzhaochang2663 $
+    $Date: 2010/12/10 07:59:12 $
+    $Revision: 1.2 $
+    $Purpose: 用途代码定义 - 创建匹配组
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+            function check_validate(param) {
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: "$[/request/@context_path]/gld/mapping-condition-sql/execute",
+                    scope: this,
+                    para: param,
+                    success: function() {
+                        $au('gld_mapping_conds_grps_hd_insert_ds').submit();
+                    }
+                });
+            }
+            
+            function createMappingGroup() {
+                if (!($au('gld_mapping_conds_grps_hd_insert_ds').validate())) {
+                    return;
+                }
+            
+                var ds = $au('gld_mapping_conds_grps_hd_create_ds');
+                var records = ds.getSelected();
+                var mappingCodes = '';
+                var param = {};
+                if (records.length != 0) {
+                    mappingCodes = records[0].get('mappingConditionCode');
+                    param[mappingCodes] = mappingCodes;
+                    for (var i = 1;i < records.length;i++) {
+                        param[records[i].get('mappingConditionCode')] = records[i].get('mappingConditionCode');
+                        mappingCodes = mappingCodes + '*' + records[i].get('mappingConditionCode');
+                    }
+                    $au('gld_mapping_conds_grps_hd_insert_ds').getCurrentRecord().set('mappingConditionCodes', mappingCodes);
+                    //至少选择一个匹配项才能创建匹配组
+                    //modified by liliang 20180316
+                    check_validate(param);
+                } else {
+                    Aurora.showMessage('$[l:U]', '$[l:hap_must_select_one]');
+                    return;
+                }
+            
+            }
+            
+            function onSubmitSuccess(ds) {
+                // Aurora.showMessage('$[l:prompt]', '$[l:creating_success]', function(cmp) {
+                // $au('mapping_conds_grps_hd_ds').query($au('mapping_conds_grps_hd_ds').currentPage);
+                // $au('gld_mapping_conds_grps_hd_create_window').close();
+                // cmp.close();
+                // });
+                //modified by liliang 20180314 取消弹窗成功提示
+                $au('mapping_conds_grps_hd_ds').query($au('mapping_conds_grps_hd_ds').currentPage);
+                $au('gld_mapping_conds_grps_hd_create_window').close();
+            }
+            
+            function closeGrpsCreateWindow() {
+                $au('gld_mapping_conds_grps_hd_create_window').close();
+            }
+            
+            function headerValidator(record, name, value) {
+                if (name == 'groupName') {
+                    var plusReg = /\+/;
+                    if (plusReg.test(value)) {
+                        return '$[l:gld_mapping_cond.plus_error]';
+                    }
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="gld_mapping_conds_grps_hd_create_ds" autoQuery="true" fetchAll="true" baseUrl="/gld/mapping-condition-sql" queryUrl="$[/request/@context_path]/gld/mapping-condition-sql/query?usageCode=$[/parameter/@usage_code]" selectable="true" submitUrl="$[/request/@context_path]/gld/mapping-condition-sql/batch_update">
+                <a:fields>
+                    <a:field name="usageCode" defaultValue="$[/parameter/@usage_code]"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="gld_mapping_conds_grps_hd_insert_ds" autoCreate="true" baseUrl="/gld/mapping-cond-grp-hd" submitUrl="$[/request/@context_path]/gld/mapping-cond-grp-hd/batch_update">
+                <a:fields>
+                    <a:field name="usageCode" defaultValue="$[/parameter/@usage_code]"/>
+                    <a:field name="groupName" required="true" validator="headerValidator"/>
+                    <a:field name="description" dto="condGrpHdId" dtoId="com.hand.hec.gld.dto.GldUsageCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="gld_mapping_conds_grps_hd_create_form" column="2" title="gld_usage_codes.usage_codes" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="createMappingGroup" text="HAP_SAVE" width="80"/>
+                    <a:toolbarButton click="closeGrpsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="groupName" bindTarget="gld_mapping_conds_grps_hd_insert_ds" typeCase="upper" prompt="gld_mapping_conds_grps_hd.group_name"/>
+                <a:tledit name="description" bindTarget="gld_mapping_conds_grps_hd_insert_ds" prompt="gld_mapping_conds_grps_hd.mapping_conds_grps_description"/>
+                <a:numberField name="priority" allowDecimals="false" allowFormat="false" bindTarget="gld_mapping_conds_grps_hd_insert_ds" prompt="gld_mapping_conds_grps_hd.priority"/>
+            </a:form>
+            <a:grid id="gld_mapping_conds_grps_hd_create_grid" bindTarget="gld_mapping_conds_grps_hd_create_ds" marginHeight="231" navBar="true" navBarType="complex" width="1010">
+                <a:columns>
+                    <a:column name="mappingConditionCode" align="center" width="150"  prompt="gld_mapping_conditions_sql.mapping_condition_code"/>
+                    <a:column name="description" width="200" prompt="gld_mapping_conditions_sql.mapping_condtions_sql_description"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

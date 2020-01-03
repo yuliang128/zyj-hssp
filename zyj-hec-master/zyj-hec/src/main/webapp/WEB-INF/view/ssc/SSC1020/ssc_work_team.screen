@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-15 16:58:28
+    $Revision: 1.0
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="SSC1020_ssc_work_teams_assign_employee_link" url="$[/request/@context_path]/ssc/SSC1020/ssc_work_team_assign_employee.screen"/>
+        <script><![CDATA[
+            function workTeamCodeEditorFun(record, name) {
+                if (record.isNew) {
+                    return 'work_team_code_tf';
+                }
+            }
+            //分配人员
+
+            function assignEmployeeFunction(value, record, name) {
+                if (record.isNew) {
+                    return;
+                }
+                var work_team_id = record.get('workTeamId');
+                return '<a href="javascript:OpenAssignEmployee(' + work_team_id + ')">$[l:ssc_work_team_assign_employee]</a>';
+            }
+
+            function OpenAssignEmployee(work_team_id) {
+                var url = $au('SSC1020_ssc_work_teams_assign_employee_link').getUrl() + '?workTeamId=' + work_team_id;
+                new Aurora.Window({
+                    id: 'SSC1020_ssc_work_teams_assign_employee_window',
+                    url: url,
+                    title: '$[l:ssc_work_team_assign_employee]',
+                    side: 'right',
+                    width: 1020
+                });
+
+            }
+
+            function workTeamQueryUpdateFunction(dataSet, record, name, value, oldValue) {
+                if (name == 'workCenterId') {
+                    $au('ssc_work_teams_header_result_ds').query();
+                }
+
+            }
+
+            //新增行把头上的工作中心ID带入行
+            function SSC1020_workTeamsAddFunction(dataSet, record, index) {
+                var header_ds = $au('ssc_work_teams_header_query_ds').getAt(0);
+                var work_center_id = header_ds.get('workCenterId');
+                record.set('workCenterId', work_center_id);
+            }
+
+            //删除前校验头上的工作中心是否有值
+             function SSC1020_beforeRemove() {
+                var header_ds = $au('ssc_work_teams_header_query_ds').getAt(0);
+                var work_center_id = header_ds.get('workCenterId');
+                if (Ext.isEmpty(work_center_id)) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:ssc_work_team.work_center_null]');
+                    return false;
+                }
+                return true;
+            }
+              //保存前校验头上的工作中心是否有值
+             function SSC1020_beforeSubmit() {
+                var header_ds = $au('ssc_work_teams_header_query_ds').getAt(0);
+                var work_center_id = header_ds.get('workCenterId');
+                if (Ext.isEmpty(work_center_id)) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:ssc_work_team.work_center_null]');
+                    return false;
+                }
+                return true;
+            }
+            //新增前校验头上的工作中心是否有值
+            function SSC1020_beforeDsCreate() {
+                var header_ds = $au('ssc_work_teams_header_query_ds').getAt(0);
+                var work_center_id = header_ds.get('workCenterId');
+                if (Ext.isEmpty(work_center_id)) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:ssc_work_team.work_center_null]');
+                    return false;
+                }
+                return true;
+            }
+            //上级工作组新建  维护不同取值
+            function gridCellclickFunction(grid, row, name, record) {
+                if (name == 'parentWorkTeam') {
+                    var work_center_id = record.get('workCenterId');
+                    record.getField('parentWorkTeam').setLovPara('workCenterId', work_center_id);
+                    if (record.isNew) {
+                        record.getField('parentWorkTeam').setLovPara('workTeamId', '');
+                    } else {
+                        var work_team_id = record.get('workTeamId');
+                        record.getField('parentWorkTeam').setLovPara('workTeamId', work_team_id);
+                    }
+                }
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="work_team_type_ds" lookupCode="ssc_work_team_type"/>-->
+            <a:dataSet id="work_team_type_ds" autoQuery="true" fetchAll="true"
+                                    queryUrl="$[/request/@context_path]/common/auroraCode/ssc_work_team_type/"/>
+            <!--<a:dataSet id="work_center_ds" baseUrl="ssc.SSC1020.ssc_work_centers_vl" fetchAll="true" loadData="true"/>-->
+            <a:dataSet id="work_center_ds">
+                 <a:datas dataSource="sscWorkCenterList/records"/>
+            </a:dataSet>
+            <a:dataSet id="ssc_work_teams_header_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="workCenterName" displayField="workCenterCodeName" options="work_center_ds" prompt="ssc_work_team.work_center_id" required="true">
+                        <a:mapping>
+                            <a:map from="workCenterCodeName" to="workCenterName"/>
+                            <a:map from="workCenterId" to="workCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="workCenterId"/>
+                    <a:field name="workTeamCode" prompt="ssc_work_team.work_team_code"/>
+                    <a:field name="description" prompt="ssc_work_team.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="workTeamQueryUpdateFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ssc_work_teams_header_result_ds" baseUrl="/ssc/work-team" queryDataSet="ssc_work_teams_header_query_ds" queryUrl="$[/request/@context_path]/ssc/work-team/query" selectable="true">
+                <a:fields>
+                    <a:field name="workTeamId"/>
+                    <a:field name="workCenterId"/>
+                    <a:field name="workTeamCode" prompt="ssc_work_team.work_team_code" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="managerEmployeeId"/>
+                    <a:field name="managerEmployee" lovCode="EXP_EMPLOYEE" autoComplete="true" autoCompleteField="code_name"  prompt="ssc_work_team.manager_employee_id" title="exp_employee.query">
+                        <a:mapping>
+                            <a:map from="employeeId" to="managerEmployeeId"/>
+                            <a:map from="name" to="managerEmployee"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentWorkTeamId"/>
+                    <a:field name="parentWorkTeam" lovCode="SSC_PARENT_WORK_TEAM_LOV" prompt="ssc_work_team.parent_work_team_id" title="parent_work_team_choice">
+                        <a:mapping>
+                            <a:map from="workTeamId" to="parentWorkTeamId"/>
+                            <a:map from="description" to="parentWorkTeam"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="workTeamType"/>
+                    <a:field name="workTeamTypeName" displayField="meaning" options="work_team_type_ds" prompt="ssc_work_team.work_team_type" required="true" returnField="workTeamType" valueField="value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="SSC1020_beforeDsCreate"/>
+                    <a:event name="add" handler="SSC1020_workTeamsAddFunction"/>
+                    <a:event name="beforesubmit" handler="SSC1020_beforeSubmit"/>
+                    <a:event name="beforeremove" handler="SSC1020_beforeRemove"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="work_teams_grid" type="add" width="80"/>
+                <a:gridButton bind="work_teams_grid" type="save" width="80"/>
+                <a:gridButton bind="work_teams_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="ssc_work_teams_header_query_ds" resultTarget="ssc_work_teams_header_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="workCenterName" bindTarget="ssc_work_teams_header_query_ds"/>
+                    <a:textField name="workTeamCode" bindTarget="ssc_work_teams_header_query_ds"/>
+                    <a:textField name="description" bindTarget="ssc_work_teams_header_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="work_teams_grid" bindTarget="ssc_work_teams_header_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="workTeamCode" align="center" editorFunction="workTeamCodeEditorFun" width="100"/>
+                <a:column name="description" align="center" editor="description_tf" width="150" prompt="ssc_work_team.description"/>
+                <a:column name="managerEmployee" align="center" editor="manager_employee_lov" width="100"/>
+                <a:column name="parentWorkTeam" align="center" editor="work_team_lov" prompt="ssc_work_team.parent_work_team_id" width="100"/>
+                <a:column name="workTeamTypeName" align="center" editor="work_team_type_cb" width="100"/>
+                <a:column name="enabledFlag" editor="enabled_flag_cb" prompt="ssc_work_team.enabled_flag" width="80"/>
+                <a:column name="assignEmployee" align="center" prompt="" renderer="assignEmployeeFunction"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="work_team_code_tf" typeCase="upper"/>
+                <a:textField id="description_tf"/>
+                <a:lov id="manager_employee_lov"/>
+                <a:lov id="work_team_lov"/>
+                <a:comboBox id="work_team_type_cb"/>
+                <a:checkBox id="enabled_flag_cb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="gridCellclickFunction"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

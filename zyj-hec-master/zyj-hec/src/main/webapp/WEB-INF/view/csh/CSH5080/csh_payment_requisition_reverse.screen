@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="csh_pay_req_reverse_control_link" url="$[/request/@context_path]/csh/payment-requisition-hd/reverse"/>
+        <a:link id="csh_pay_req_query_detail_for_query_link" url="$[/request/@context_path]/csh/public/csh_pay_req_query_detail_for_query.screen"/>
+        <a:link id="sys_fun_get_period_name_link_10" url="$[/request/@context_path]/csh/payment-requisition-hd/getPeriodName"/>
+        <script><![CDATA[
+        function loadComplete() {
+            $au('reverse_header_ds').create();
+            $au('reverse_header_ds').getAt(0).set('batchId', $au('batch_id_ds').getAt(0).get('batchId'));
+        }
+
+        function updateFunction(dataSet, record, name, value) {
+            if (name == 'payeeCategory') {
+                record.set('payeeId', '');
+                record.set('partnerIdDisplay', '');
+                if (value != null && value != '') {
+                    record.getField('partnerIdDisplay').setLovPara('payeeCategory', value);
+                    record.getField('partnerIdDisplay').setLovCode('LOV_GLD_PAYEE');//csh.csh_vender_customer_list
+                    record.getField('partnerIdDisplay').setReadOnly(false);
+                } else {
+                    record.getField('partnerIdDisplay').setLovCode('');
+                    record.getField('partnerIdDisplay').setReadOnly(true);
+                }
+            }
+        }
+
+        function queryFunction() {
+            $au('reverse_result_ds').query();
+        }
+
+        function resetFunction(record) {
+            record = $au('reverse_header_ds').getCurrentRecord();
+            record.set('payeeId', '');
+            record.set('partnerIdDisplay', '');
+            record.getField('partnerIdDisplay').setLovService('');
+            record.getField('partnerIdDisplay').setLovCode(true);
+            $au('reverse_header_ds').reset();
+        }
+
+        function getPeriodName() {
+            var dateStr = $au('reverse_ds').getAt(0).get('reverseDate');
+            var reverseDate = dateStr.getFullYear() + '-' + (dateStr.getMonth() + 1) + '-' + dateStr.getDate();
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('sys_fun_get_period_name_link_10').getUrl() + '?reverseDate=' + reverseDate,
+                success: setPeriodName,
+                scope: this
+            });
+        }
+
+        function setPeriodName(args) {
+            var periodName = args.rows[0].periodName;
+            if (periodName) {
+                $au('reverse_ds').getAt(0).set('periodName', periodName);
+            } else {
+                Aurora.showErrorMessage('$[l:prompt]', '$[l:exp_expense_report_reverse.check1]', null, 250, 100);
+            }
+        }
+
+        function tabSelectFunction(tab, index) {
+            if (index == 1) {
+                var dataSet = $au('reverse_result_ds');
+                var records = dataSet.getJsonData(true);
+                if (records.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                    return;
+                } else {
+                    var ds = $au('reverse_finance_ds');
+                    ds.setQueryParameter('headerId', records[0]['paymentRequisitionHeaderId']);
+                    ds.query();
+                }
+            }
+        }
+
+        function reqNumRenFunction(value, record, name) {
+            var url = '<a href = "javascript:reqNumDispatch(' + record.get('paymentRequisitionHeaderId') + ')">' + value + '</a>';
+            return url;
+        }
+
+        function reqNumDispatch(headerId) {
+            // window.open( /*csh_pay_req_query_detail_for_query.screen*/
+            // $au('csh_pay_req_query_detail_for_query_link').getUrl() + '?payment_requisition_header_id=' + header_id, 'csh_pay_req_query_detail_screen', 'fullscreen=no,resizable=yes,width=1000,height=500');
+            new Aurora.Window({
+                id: 'csh_pay_req_query_detail_screen',
+                title: '$[l:csh_payment_requisition_hd.detail]',
+                url: $au('csh_pay_req_query_detail_for_query_link').getUrl() + '?paymentRequisitionHeaderId=' + headerId,// + '&userId=' + 1 + '&roleId=' + 1,
+                fullScreen: true
+            });
+        }
+
+        function reverseFunction() {
+            var reverseDs = $au('reverse_ds');
+            var reverseRecord = reverseDs.getAt(0);
+            if (!reverseDs.validate()) {
+                return;
+            }
+            var recordsData = $au('reverse_result_ds').getJsonData(true);
+            var reverse_date = reverseRecord.get('reverseDate');
+            var period_name = reverseRecord.get('periodName');
+            if ($au('reverse_result_ds').getSelected().length == 0) {
+                Aurora.showErrorMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            if (!reverse_date) {
+                Aurora.showErrorMessage('$[l:prompt]', '$[l:exp_expense_report_reverse.check2]', null, 250, 100);
+                return;
+            }
+            if (!period_name) {
+                Aurora.showErrorMessage('$[l:prompt]', '$[l:exp_expense_report_reverse.check3]', null, 250, 100);
+                return;
+            }
+            var param = [];
+            for (var i = 0;i < recordsData.length;i++) {
+                recordsData[i]['reverseDate'] = reverse_date;
+            }
+            param = recordsData;
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: /*csh_pay_req_reverse_control.svc*/
+                    $au('csh_pay_req_reverse_control_link').getUrl(),
+                para: param,
+                success: reverseSuccess,
+                scope: this
+            });
+        }
+
+        function reverseSuccess() {
+            Aurora.showInfoMessage('$[l:prompt]', '$[l:fnd_coding_rule_det.oper_suc]', forwardFunction, 250, 100);
+        }
+
+        function forwardFunction() {
+            /*var url = /!*csh_payment_requisition_reverse.screen*!/
+            $au('csh_payment_requisition_reverse_link').getUrl();
+            window.location.href = url;*/
+            $au('reverse_result_ds').query();
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="cry_list_ds" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query"/>
+            <a:dataSet id="pay_obj_list_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="batch_id_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="batch_id" defaultValue="1"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="reverse_header_ds">
+                <a:fields>
+                    <a:field name="pReject"/>
+                    <a:field name="accountP"/>
+                    <a:field name="batchId"/>
+                    <a:field name="requisitionNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeIdDisplay" autoComplete="true" lovCode="LOV_EMPLOYEE_BY_COM" placeHolder="csh_bank_contact_persons.employee_id" title="exp_employee.employee_select">
+                        <a:mapping>
+                            <a:map from="nameCode" to="employeeIdDisplay"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="requisitionDateFrom" placeHolder="csh_payment_requisition_hd.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" placeHolder="csh_payment_requisition_hd.requisition_date_to"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="currencyCodeDisplay" displayField="currencyName" options="cry_list_ds" placeHolder="gld_exchange_rates.from_currency" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="partnerCategoryDisplay" displayField="meaning" options="pay_obj_list_ds" placeHolder="exp_report_lines.payee_category" returnField="payeeCategory" valueField="value">
+                        <a:mapping>
+                            <a:map from="value" to="payeeCategory"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="partnerIdDisplay" autoComplete="true" autoCompleteField="name" lovGridHeight="350" lovHeight="500" lovWidth="500" placeHolder="csh_cash_plan_lines.partner_id" readOnly="true" title="csh_transaction_lines.partner_select">
+                        <a:mapping>
+                            <a:map from="payeeName" to="partnerIdDisplay"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="updateFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="reverse_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="reverseDate" prompt="csh_transaction_header.reversed_date" required="true"/>
+                    <a:field name="periodName" prompt="csh_payment_requisition_payment_pay.period_name" readOnly="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="getPeriodName"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="reverse_result_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryForReverse" queryDataSet="reverse_header_ds" selectable="true">
+                <a:fields>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="paymentReqTypeName" prompt="pay_req_type"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date"/>
+                    <a:field name="requisitor" prompt="csh_payment_requisition_hd.requisitor"/>
+                    <a:field name="payeeCategoryName" prompt="csh_payment_req_types.partner_category"/>
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.partner_id"/>
+                    <a:field name="currencyCode" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="currencyName" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.amount"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description"/>
+                    <a:field name="status"/>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="reverse_finance_ds" autoPageSize="true" queryUrl="$[/request/@context_path]/csh/payment-req-account/queryByHeaderId">
+                <a:fields>
+                    <a:field name="description" prompt="csh_payment_req_account.description"/>
+                    <a:field name="periodName" prompt="csh_payment_req_account.period_name"/>
+                    <a:field name="accEntityCode"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="responsibilityCenterName" prompt="gld_responsibility_center.responsibility_center_name"/>
+                    <a:field name="accountCode" prompt="gld_account.account_code"/>
+                    <a:field name="accountDesc" prompt="gld_account.account_description"/>
+                    <a:field name="enteredAmountDr" prompt="csh_payment_req_account.entered_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="csh_payment_req_account.entered_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="csh_payment_req_account.functional_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="csh_payment_req_account.functional_amount_cr"/>
+                    <a:field name="jeLineId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <!--Modified by Arthur.Chen Date:2017-08-22 17:12:15 begin
+       		1.统一页面样式
+       		2.调整宽度高度自适应
+          	-->
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="reverseFunction" text="prompt.reverse" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm id="csh5080resv_form" marginWidth="10" resultTarget="reverse_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="requisitionNumber" bindTarget="reverse_header_ds"/>
+                    <a:lov name="employeeIdDisplay" bindTarget="reverse_header_ds"/>
+                    <a:comboBox name="currencyCodeDisplay" bindTarget="reverse_header_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:datePicker name="requisitionDateFrom" bindTarget="reverse_header_ds"/>
+                    <a:datePicker name="requisitionDateTo" bindTarget="reverse_header_ds"/>
+                    <a:comboBox name="partnerCategoryDisplay" bindTarget="reverse_header_ds"/>
+                    <a:lov name="partnerIdDisplay" bindTarget="reverse_header_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form id="csh5080resv_date_fm" column="2" labelWidth="100" marginWidth="0" title="csh_pay_reverse">
+            <a:datePicker name="reverseDate" bindTarget="reverse_ds">
+            </a:datePicker>
+            <a:textField name="periodName" bindTarget="reverse_ds"/>
+        </a:form>
+        <a:tabPanel id="tab_panel" marginHeight="200" marginWidth="0" navBar="true">
+            <a:tabs>
+                <a:tab prompt="acp_invoice_reverse.documenttab" selected="true">
+                    <a:grid id="csh5070grid1" bindTarget="reverse_result_ds" marginHeight="240" marginWidth="3" navBar="true">
+                        <a:columns>
+                            <a:column name="requisitionNumber" align="center" renderer="reqNumRenFunction" sortable="true" width="100"/>
+                            <a:column name="paymentReqTypeName" align="center" sortable="true" width="100"/>
+                            <a:column name="requisitionDate" align="center" sortable="true" width="100"/>
+                            <a:column name="requisitor" align="center" sortable="true" width="100"/>
+                            <a:column name="payeeCategoryName" align="center" sortable="true" width="100"/>
+                            <a:column name="payeeName" align="center" sortable="true" width="100"/>
+                            <a:column name="currencyName" align="center" sortable="true" width="100"/>
+                            <a:column name="amount" align="right" renderer="Aurora.formatMoney" sortable="true" width="100"/>
+                            <a:column name="description" align="left" sortable="true" width="250"/>
+                        </a:columns>
+                    </a:grid>
+                </a:tab>
+                <a:tab prompt="csh_payment_detail.financetab" selected="false">
+                    <a:grid id="csh5070grid2" bindTarget="reverse_finance_ds" marginHeight="240" marginWidth="3" navBar="true">
+                        <a:columns>
+                            <a:column name="description" align="left" width="150"/>
+                            <a:column name="periodName" align="center" width="80"/>
+                            <a:column name="accEntityName" align="left" width="120"/>
+                            <a:column name="responsibilityCenterName" align="left" width="120"/>
+                            <a:column name="accountCode" align="center" width="80"/>
+                            <a:column name="accountDesc" align="left" width="150"/>
+                            <a:column name="enteredAmountDr" align="right" renderer="Aurora.formatMoney" width="100"/>
+                            <a:column name="enteredAmountCr" align="right" renderer="Aurora.formatMoney" width="100"/>
+                            <a:column name="functionalAmountDr" align="right" renderer="Aurora.formatMoney" width="100"/>
+                            <a:column name="functionalAmountCr" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        </a:columns>
+                    </a:grid>
+                </a:tab>
+            </a:tabs>
+            <a:events>
+                <a:event name="select" handler="tabSelectFunction"/>
+            </a:events>
+        </a:tabPanel>
+        <script><![CDATA[
+        //loadComplete();
+        ]]></script>
+        <!--Modified by Arthur.Chen Date:2017-08-22 17:12:15 end -->
+    </a:view>
+</a:screen>

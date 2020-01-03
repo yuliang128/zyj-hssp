@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bpm.mapper.PageLayoutMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bpm.dto.PageLayout">
+        <result column="layout_id" property="layoutId" jdbcType="BIGINT"/>
+        <result column="page_id" property="pageId" jdbcType="BIGINT"/>
+        <result column="layout_sequence" property="layoutSequence" jdbcType="BIGINT"/>
+        <result column="layout_code" property="layoutCode" jdbcType="VARCHAR"/>
+        <result column="layout_desc" property="layoutDesc" jdbcType="VARCHAR"/>
+        <result column="layout_type" property="layoutType" jdbcType="VARCHAR"/>
+        <result column="layout_type_desc" property="layoutTypeDesc" jdbcType="VARCHAR"/>
+        <result column="parent_layout_id" property="parentLayoutId" jdbcType="BIGINT"/>
+        <result column="parent_layout_desc" property="parentLayoutDesc" jdbcType="VARCHAR"/>
+        <result column="layout_level" property="layoutLevel" jdbcType="BIGINT"/>
+        <result column="dataset" property="dataset" jdbcType="VARCHAR"/>
+        <result column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="tab_group_number" property="tabGroupNumber" jdbcType="BIGINT"/>
+        <result column="width" property="width" jdbcType="BIGINT"/>
+        <result column="height" property="height" jdbcType="BIGINT"/>
+        <result column="marginwidth" property="marginwidth" jdbcType="BIGINT"/>
+        <result column="marginheight" property="marginheight" jdbcType="BIGINT"/>
+        <result column="style" property="style" jdbcType="VARCHAR"/>
+        <result column="hidden" property="hidden" jdbcType="VARCHAR"/>
+        <result column="labelwidth" property="labelwidth" jdbcType="BIGINT"/>
+        <result column="row_num" property="rowNum" jdbcType="BIGINT"/>
+        <result column="column_num" property="columnNum" jdbcType="BIGINT"/>
+        <result column="navbar" property="navbar" jdbcType="VARCHAR"/>
+        <result column="ref" property="ref" jdbcType="VARCHAR"/>
+        <result column="selected" property="selected" jdbcType="VARCHAR"/>
+        <result column="closeable" property="closeable" jdbcType="VARCHAR"/>
+        <result column="disabled" property="disabled" jdbcType="VARCHAR"/>
+        <result column="business_category" property="businessCategory" jdbcType="VARCHAR"/>
+        <result column="parent_business_category" property="parentBusinessCategory" jdbcType="VARCHAR"/>
+        <result column="ref_table" property="refTable" jdbcType="VARCHAR"/>
+        <result column="ref_field" property="refField" jdbcType="VARCHAR"/>
+        <result column="write_back_program" property="writeBackProgram" jdbcType="VARCHAR"/>
+        <result column="entity_name" property="entityName" jdbcType="VARCHAR"/>
+        <result column="entity_id" property="entityId" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryByPageId" resultMap="BaseResultMap" parameterType="com.hand.hec.bpm.dto.PageLayout">
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        A.layout_id,
+        A.page_id,
+        A.layout_sequence,
+        A.layout_code,
+        A.layout_desc,
+        A.layout_type,
+        (
+        SELECT
+        cvt.description
+        FROM
+        sys_code_b cb,
+        sys_code_value_b cvb,
+        sys_code_value_tl cvt
+        WHERE
+        cb.code = 'BPM.LAYOUT_TYPE'
+        AND cb.code_id = cvb.code_id
+        AND cvb.value = A.layout_type
+        AND cvb.code_value_id = cvt.code_value_id
+        AND cvt.lang = #{request.locale,jdbcType=VARCHAR}
+        ) layout_type_desc,
+        A.parent_layout_id,
+        ( SELECT lb.layout_desc FROM bpm_page_layout_basic lb WHERE lb.layout_id = A.parent_layout_id ) AS
+        parent_layout_desc,
+        A.layout_level,
+        A.dataset,
+        A.ID,
+        A.tab_group_number,
+        A.width,
+        A.height,
+        A.marginwidth,
+        A.marginheight,
+        A.STYLE,
+        A.hidden,
+        f.labelwidth,
+        f.row_num,
+        f.column_num,
+        G.navbar,
+        T.REF,
+        T.selected,
+        T.closeable,
+        T.disabled,
+        A.business_category,
+        A.parent_business_category,
+        A.ref_table,
+        A.ref_field,
+        a.write_back_program,
+        a.entity_id,
+        e.entity_code,
+        e.entity_name
+        FROM
+        bpm_page_layout_basic
+        A LEFT JOIN bpm_page_layout_form f ON A.layout_id = f.layout_id
+        LEFT JOIN bpm_page_layout_grid G ON A.layout_id = G.layout_id
+        LEFT JOIN bpm_page_layout_tab T ON A.layout_id = T.layout_id
+        LEFT JOIN bpm_page_group_entity e on A.entity_id = e.entity_id
+        ) v
+        <where>
+            <if test="pageId != null">
+                v.page_id = #{pageId}
+            </if>
+            <if test="layoutId != null">
+                and v.layout_id = #{layoutId}
+            </if>
+        </where>
+        ORDER BY
+        v.layout_sequence asc
+    </select>
+
+</mapper>

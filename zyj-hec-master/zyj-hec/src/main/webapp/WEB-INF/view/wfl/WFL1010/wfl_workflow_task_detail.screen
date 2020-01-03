@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw
+    $Date: 2018
+    $Revision: 工作流定义
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+
+        function WFL1010_saveTaskDetail() {
+            $au('WFL1010_taskDetailDs').submit();
+        }
+
+        function WFL1010_taskDetailReturn() {
+            $au('WFL1010_taskDetailWindow').close();
+        }
+
+        function WFL1010_onUserTaskLoadFun(ds) {
+            if (ds.getAll() == null || ds.getAll().length == 0) {
+                ds.create();
+            }
+        }
+
+        function WFL1010_onUserTaskSubmitSucessFun(ds, res) {
+            $au('WFL1010_userTaskDs').query();
+        }
+
+        function WFL1010_onUserTaskUpdateFun(ds, record, name, value, oldValue) {
+
+            //时间限制
+            if (name == "timeLimitedFlag") {
+                if (value == 1) {
+                    record.getField('limitedHours').setRequired(true);
+                } else {
+                    record.getField('limitedHours').setRequired(false);
+                }
+            }
+
+            //超时发送提醒
+            if (name == "overtimeNotityFlag") {
+                if (value == 1) {
+                    record.getField('overtimeNotifySchedulerName').setRequired(true);
+                    record.getField('overtimeNotifyMsgTpltName').setRequired(true);
+                } else {
+                    record.getField('overtimeNotifySchedulerName').setRequired(false);
+                    record.getField('overtimeNotifyMsgTpltName').setRequired(false);
+                }
+            }
+
+            //抵达任务提醒
+            if (name == "arriveNotifyFlag") {
+                if (value == 1) {
+                    record.getField('arriveMsgTpltName').setRequired(true);
+                } else {
+                    record.getField('arriveMsgTpltName').setRequired(false);
+                }
+            }
+
+            //通过任务提醒
+            if (name == "postNotifyFlag") {
+                if (value == 1) {
+                    record.getField('postMsgTpltName').setRequired(true);
+                } else {
+                    record.getField('postMsgTpltName').setRequired(false);
+                }
+            }
+        }
+
+
+        function WFL1010_onTaskReceiverSubmitSucessFun(ds, res) {
+            $au('WFL1010_taskReceiverResultDs').query();
+        }
+
+        function WFL1010_onTaskReceiverUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'receiverCategory') {
+                record.set('receiverParam1Id', '');
+                record.set('receiverParam1Code', '');
+                record.set('receiverParam2Id', '');
+                record.set('receiverParam2Code', '');
+                record.set('receiverParam3Id', '');
+                record.set('receiverParam3Code', '');
+                record.set('receiverParam4Id', '');
+                record.set('receiverParam4Code', '');
+
+                //当TAG为空时，无法出发UPDATE事件，所以在receiverCategory变更时设置required为false
+                record.getField('receiverParam1Id').setRequired(false);
+            } else if (name == 'receiverCategoryTag') {
+                if (value == 'LOV') {
+                    record.getField('receiverParam1Id').setRequired(true);
+                } else {
+                    record.getField('receiverParam1Id').setRequired(false);
+                }
+            }
+        }
+
+
+        function WFL1010_onTaskReceiverLoadFun(ds) {
+            var records = ds.getAll();
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                if (record.get('receiverCategoryTag') == 'LOV') {
+                    record.getField('receiverParam1Id').setRequired(true);
+                } else {
+                    record.getField('receiverParam1Id').setRequired(false);
+                }
+            }
+        }
+
+
+        function WFL1010_onTaskReceiverBizRuleAddFun(ds, record, index) {
+            record.set('receiverId', $au(ds.bindtarget).getCurrentRecord().get('receiverId'));
+        }
+
+        function WFL1010_beforeTaskReceiverBizRuleCreateFun(ds) {
+            if (window.receiverId == '') {
+                Aurora.showErrorMessage('$[l:hap.prompt]', '$[l:hap.save_first]');
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        function WFL1010_onTaskReceiverCellclick(grid, row, name, record) {
+            if (name == 'receiverParam1Id') {
+                if (record.get('receiverCategoryTag') == 'LOV') {
+                    record.getField('receiverParam1Id').setRequired(true);
+                    record.getField('receiverParam1Id').setLovCode('LOV_' + record.get('receiverCategory'));
+                } else {
+                    record.getField('receiverParam1Id').setRequired(false);
+                }
+            }
+        }
+
+        function taskReceiveEditFunc(record, name) {
+            if (name == 'receiverParam1Id') {
+                if (record.get('receiverCategoryTag') == 'LOV') {
+                    return 'WFL1010_taskReceiver_lov';
+                } else {
+                    return 'WFL1010_taskReceiver_tf';
+                }
+            } else {
+                return 'WFL1010_taskReceiver_tf';
+            }
+        }
+
+
+        function WFL1010_onTaskActionSubmitsuccessFun(ds, res) {
+            ds.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL11_approveTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_APPROVE_TYPE/"/>
+            <a:dataSet id="WFL1010_receiverCategoryDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_RECEIVER_CATEGORY/"/>
+            <a:dataSet id="WFL1010_taskDetailDs" autoQuery="true" baseUrl="/wfl/task"
+                       queryUrl="$[/request/@context_path]/wfl/task/query?taskId=$[/parameter/@taskId]"
+                       submitUrl="$[/request/@context_path]/wfl/task/save-detail">
+                <a:fields>
+                    <a:field name="taskCode" readOnly="true" prompt="wfl_task.task_code"/>
+                    <a:field name="taskName" readOnly="true" prompt="wfl_task.task_code"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL1010_userTaskDs" autoQuery="true" baseUrl="/wfl/user-task" selectable="true"
+                       bindTarget="WFL1010_taskDetailDs" bindName="userTask">
+                <a:fields>
+                    <a:field name="taskId" defaultValue="$[/parameter/@taskId]"/>
+                    <a:field name="approveTypeName" displayField="meaning" options="WFL11_approveTypeDs"
+                             returnField="approveType" valueField="value" prompt="wfl_user_task.approve_type_name"
+                             required="true"/>
+                    <a:field name="approveType"/>
+                    <a:field name="approveTypeParam" prompt="wfl_user_task.approve_type_param"/>
+                    <a:field name="canSubmitterRecheck" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_submitter_recheck" uncheckedValue="N"/>
+                    <a:field name="canRepeatedApprove" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_repeated_approve" uncheckedValue="N"/>
+                    <a:field name="canNoApprover" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_no_approver" uncheckedValue="N"/>
+                    <a:field name="canAddApprover" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_add_approver" uncheckedValue="N"/>
+                    <a:field name="canDeliver" checkedValue="Y" defaultValue="Y" prompt="wfl_user_task.can_deliver"
+                             uncheckedValue="N"/>
+                    <a:field name="canAddNotification" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_add_notification" uncheckedValue="N"/>
+                    <a:field name="canTakeBack" checkedValue="Y" defaultValue="Y" prompt="wfl_user_task.can_take_back"
+                             uncheckedValue="N"/>
+                    <a:field name="canGoBack" checkedValue="Y" defaultValue="Y" prompt="wfl_user_task.can_go_back"
+                             uncheckedValue="N"/>
+                    <a:field name="timeLimitedFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.time_limited_flag" uncheckedValue="N"/>
+                    <a:field name="limitedHours" prompt="wfl_user_task.limited_hours"/>
+                    <a:field name="overtimeNotifyFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.overtime_notify_flag" uncheckedValue="N"/>
+                    <a:field name="overtimeNotifySchedulerName" lovGridHeight="320" lovHeight="440"
+                             lovCode="java@??" lovWidth="500" defaultValue="1"
+                             prompt="wfl_user_task.overtime_notify_scheduler_name">
+                        <a:mapping>
+                            <a:map from="schedulerName" to="overtimeNotifySchedulerName"/>
+                            <a:map from="schedulerId" to="overtimeNotifySchedulerId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="overtimeNotifySchedulerId" defaultValue="1"/>
+                    <a:field name="overtimeNotifyMsgTpltName" lovGridHeight="320" lovHeight="440" lovCode="java@??"
+                             lovWidth="500" defaultValue="1" prompt="wfl_user_task.overtime_notify_msg_tplt_name">
+                        <a:mapping>
+                            <a:map from="schedulerName" to="overtimeNotifyMsgTpltName"/>
+                            <a:map from="schedulerId" to="overtimeNotifyMsgTpltId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="overtimeNotifyMsgTpltId" defaultValue="1"/>
+                    <a:field name="arriveNotifyFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="wfl_user_task.arrive_notify_flag"/>
+                    <a:field name="arriveMsgTpltName" lovGridHeight="320" lovHeight="440" lovCode="java@??"
+                             lovWidth="500" defaultValue="1" prompt="wfl_user_task.arrive_msg_tplt_name">
+                        <a:mapping>
+                            <a:map from="tpltName" to="arriveMsgTpltName"/>
+                            <a:map from="tpltId" to="arriveMsgTpltId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="arriveMsgTpltId" defaultValue="1"/>
+                    <a:field name="postNotifyFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="wfl_user_task.post_notify_flag"/>
+                    <a:field name="postMsgTpltName" lovGridHeight="320" lovHeight="440" lovCode="java@??"
+                             lovWidth="500" defaultValue="1" prompt="wfl_user_task.post_msg_tplt_name">
+                        <a:mapping>
+                            <a:map from="tpltName" to="postMsgTpltName"/>
+                            <a:map from="tpltId" to="postMsgTpltId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="postMsgTpltId" defaultValue="1"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="WFL1010_onUserTaskLoadFun"/>
+                    <a:event name="submitsuccess" handler="WFL1010_onUserTaskSubmitSucessFun"/>
+                    <a:event name="update" handler="WFL1010_onUserTaskUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <!--接受者信息-->
+            <a:dataSet id="WFL1010_taskReceiverResultDs" autoQuery="true" baseUrl="/wfl/task-receiver"
+                       queryUrl="$[/request/@context_path]/wfl/task-receiver/query?processId=$[/parameter/@processId]"
+                       bindTarget="WFL1010_taskDetailDs"
+                       bindName="receivers"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="taskId" defaultValue="$[/parameter/@taskId]"/>
+                    <a:field name="receiverCategoryName" displayField="meaning" options="WFL1010_receiverCategoryDs"
+                             prompt="wfl_task_receiver.receiver_category_name" required="true"
+                             returnField="receiverCategory" valueField="value">
+                        <a:mapping>
+                            <a:map from="value" to="receiverCategory"/>
+                            <a:map from="tag" to="receiverCategoryTag"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="receiverCategory"/>
+                    <a:field name="receiverCategoryTag"/>
+                    <a:field name="receiverParam1Id" prompt="wfl_task_receiver.receiver_param1_id" lovWidth="600"
+                             lovHeight="550">
+                        <a:mapping>
+                            <a:map from="id" to="receiverParam1Id"/>
+                            <a:map from="code" to="receiverParam1Code"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="receiverParam1Code" autoComplete="true" autoCompleteField="code" autoCompleteSize="1"
+                             prompt="wfl_task_receiver.receiver_param1_code"/>
+                    <a:field name="receiverParam2Id" prompt="wfl_task_receiver.receiver_param2_id" lovWidth="600"
+                             lovHeight="550">
+                        <a:mapping>
+                            <a:map from="id" to="receiverParam1Id"/>
+                            <a:map from="code" to="receiverParam1Code"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="receiverParam2Code" autoComplete="true" autoCompleteField="code" autoCompleteSize="1"
+                             prompt="wfl_task_receiver.receiver_param2_code"/>
+                    <a:field name="receiverParam3Id" prompt="wfl_task_receiver.receiver_param3_id" lovWidth="600"
+                             lovHeight="550">
+                        <a:mapping>
+                            <a:map from="id" to="receiverParam1Id"/>
+                            <a:map from="code" to="receiverParam1Code"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="receiverParam3Code" autoComplete="true" autoCompleteField="code" autoCompleteSize="1"
+                             prompt="wfl_task_receiver.receiver_param3_code"/>
+                    <a:field name="receiverParam4Id" prompt="wfl_task_receiver.receiver_param4_id" lovWidth="600"
+                             lovHeight="550">
+                        <a:mapping>
+                            <a:map from="id" to="receiverParam1Id"/>
+                            <a:map from="code" to="receiverParam1Code"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="receiverParam4Code" autoComplete="true" autoCompleteField="code" autoCompleteSize="1"
+                             prompt="wfl_task_receiver.receiver_param4_code"/>
+                    <a:field name="sequence" prompt="wfl_task_receiver.sequence" required="true" defaultValue="10"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_task_receiver.enabled_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="WFL1010_onTaskReceiverSubmitSucessFun"/>
+                    <a:event name="update" handler="WFL1010_onTaskReceiverUpdateFun"/>
+                    <a:event name="load" handler="WFL1010_onTaskReceiverLoadFun"/>
+                </a:events>
+            </a:dataSet>
+            <!--接受者权限规则-->
+            <a:dataSet id="WFL1010_taskReceiverBizRuleDs" autoQuery="true" baseUrl="/wfl/task-rcv-biz-detail"
+                       bindTarget="WFL1010_taskReceiverResultDs"
+                       bindName="receiverBizRules"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="businessRuleName" lovCode="LOV_FND_BUSINESS_RULE"
+                             prompt="wfl_task_rcv_biz_detail.business_rule_name" required="true">
+                        <a:mapping>
+                            <a:map from="businessRuleName" to="businessRuleName"/>
+                            <a:map from="businessRuleId" to="businessRuleId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="businessRuleId" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_task_rcv_biz_detail.enabled_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="WFL1010_onTaskReceiverBizRuleAddFun"/>
+                    <a:event name="beforecreate" handler="WFL1010_beforeTaskReceiverBizRuleCreateFun"/>
+                </a:events>
+            </a:dataSet>
+            <!--任务动作-->
+            <a:dataSet id="WFL1010_taskActionDs" autoQuery="true" baseUrl="/wfl/task-action"
+                       bindTarget="WFL1010_taskDetailDs"
+                       bindName="actions"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="taskId" defaultValue="$[/parameter/@taskId]"/>
+                    <a:field name="actionName" lovCode="LOV_WFL_PROCESS_ACTION?processId=$[/parameter/@processId]"
+                             prompt="wfl_task_action.action_name" required="true">
+                        <a:mapping>
+                            <a:map from="actionName" to="actionName"/>
+                            <a:map from="actionId" to="actionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="procedureName" lovCode="LOV_WFL_PROCEDURE" prompt="wfl_task_action.procedure_name">
+                        <a:mapping>
+                            <a:map from="procedureName" to="procedureName"/>
+                            <a:map from="procedureId" to="procedureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sequence" prompt="wfl_task_action.sequence" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" uncheckedValue="N" defaultValue="Y"
+                             prompt="wfl_task_action.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="WFL1010_onTaskActionSubmitsuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="WFL1010_userTaskHeadForm" column="1" title="wfl_user_task.task_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="WFL1010_saveTaskDetail" text="hap.save" width="80"/>
+                    <a:toolbarButton click="WFL1010_taskDetailReturn" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:box id="wfl_userTaskBox" column="4" labelWidth="110" style="width:100%">
+                    <a:comboBox name="approveTypeName" bindTarget="WFL1010_userTaskDs"/>
+                    <a:textField name="approveTypeParam" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canSubmitterRecheck" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canRepeatedApprove" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canNoApprover" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canAddApprover" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canDeliver" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canAddNotification" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canTakeBack" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canGoBack" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="timeLimitedFlag" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:textField name="limitedHours" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:checkBox name="overtimeNotifyFlag" bindTarget="WFL1010_userTaskDs" style="width:100%"/>
+                    <a:lov name="overtimeNotifySchedulerName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:lov name="overtimeNotifyMsgTpltName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:checkBox name="arriveNotifyFlag" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:lov name="arriveMsgTpltName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:checkBox name="postNotifyFlag" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:lov name="postMsgTpltName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                </a:box>
+            </a:form>
+            <a:tabPanel id="WFL1010_taskDetailTab" marginWidth="35" height="750">
+                <a:tabs>
+                    <a:tab prompt="wfl_task_receiver.title" width="150">
+                        <a:form marginWidth="25" padding="0" showmargin="false" title="wfl_user_task.task_receiver">
+                            <a:grid id="WFL1010_taskReceiverGrid" bindTarget="WFL1010_taskReceiverResultDs" height="300"
+                                    marginWidth="40"
+                                    navBar="true">
+                                <a:toolBar>
+                                    <a:button type="add"/>
+                                    <a:button type="delete"/>
+                                </a:toolBar>
+                                <a:columns>
+                                    <a:column name="receiverCategoryName" align="center"
+                                              editor="WFL1010_taskReceiver_cb"
+                                              width="80"/>
+                                    <!--<a:column name="sequence" align="left" editor="WFL1010_taskReceiver_nf" width="80"/>-->
+                                    <a:column name="receiverParam1Id" align="left" width="80"
+                                              editorFunction="taskReceiveEditFunc"/>
+                                    <a:column name="receiverParam1Code" align="left"
+                                              editorFunction="taskReceiveEditFunc"
+                                              width="100"/>
+                                    <a:column name="receiverParam2Id" align="left" width="80"
+                                              editorFunction="taskReceiveEditFunc"/>
+                                    <a:column name="receiverParam2Code" align="left"
+                                              editorFunction="taskReceiveEditFunc"
+                                              width="100"/>
+                                    <a:column name="receiverParam3Id" align="left" width="80"
+                                              editorFunction="taskReceiveEditFunc"/>
+                                    <a:column name="receiverParam3Code" align="left"
+                                              editorFunction="taskReceiveEditFunc"
+                                              width="100"/>
+                                    <a:column name="receiverParam4Id" align="left" width="80"
+                                              editorFunction="taskReceiveEditFunc"/>
+                                    <a:column name="receiverParam4Code" align="left"
+                                              editorFunction="taskReceiveEditFunc"
+                                              width="100"/>
+                                    <a:column name="enabledFlag" align="center" editor="WFL1010_taskReceiver_chk"/>
+                                </a:columns>
+                                <a:editors>
+                                    <a:numberField id="WFL1010_taskReceiver_nf" allowDecimals="false"
+                                                   allowNegative="false"/>
+                                    <a:textField id="WFL1010_taskReceiver_tf"/>
+                                    <a:comboBox id="WFL1010_taskReceiver_cb"/>
+                                    <a:checkBox id="WFL1010_taskReceiver_chk"/>
+                                    <a:lov id="WFL1010_taskReceiver_lov"/>
+                                </a:editors>
+                                <a:events>
+                                    <a:event name="cellclick" handler="WFL1010_onTaskReceiverCellclick"/>
+                                </a:events>
+                            </a:grid>
+                        </a:form>
+                        <a:form marginWidth="25" padding="0" showmargin="false"
+                                title="wfl_user_task.business_rule_detail"
+                                style="margin-top:10px;">
+                            <a:grid id="WFL1010_taskReceiverBizRuleGrid" bindTarget="WFL1010_taskReceiverBizRuleDs"
+                                    height="300"
+                                    marginWidth="40" navBar="true">
+                                <a:toolBar>
+                                    <a:button type="add"/>
+                                    <a:button type="delete"/>
+                                </a:toolBar>
+                                <a:columns>
+                                    <a:column name="businessRuleName" align="center" editor="WFL1010_taskReceiveBiz_lov"
+                                              width="80"/>
+                                    <a:column name="enabledFlag" align="center" editor="WFL1010_taskReceiveBiz_chk"/>
+                                </a:columns>
+                                <a:editors>
+                                    <a:checkBox id="WFL1010_taskReceiveBiz_chk"/>
+                                    <a:lov id="WFL1010_taskReceiveBiz_lov"/>
+                                </a:editors>
+                            </a:grid>
+                        </a:form>
+                    </a:tab>
+                    <a:tab prompt="wfl_task_action.title" width="150">
+                        <a:grid id="WFL1010_taskActionGrid" bindTarget="WFL1010_taskActionDs" height="300"
+                                marginWidth="40"
+                                navBar="true">
+                            <a:toolBar>
+                                <a:button type="add"/>
+                                <a:button type="delete"/>
+                            </a:toolBar>
+                            <a:columns>
+                                <a:column name="actionName" align="center" editor="WFL1010_taskAction_lov" width="80"/>
+                                <a:column name="sequence" align="center" editor="WFL1010_taskAction_nf" width="80"/>
+                                <a:column name="procedureName" align="center" editor="WFL1010_taskAction_lov"
+                                          width="120"/>
+                                <a:column name="enabledFlag" align="center" editor="WFL1010_taskAction_chk"
+                                          width="120"/>
+                            </a:columns>
+                            <a:editors>
+                                <a:checkBox id="WFL1010_taskAction_chk"/>
+                                <a:lov id="WFL1010_taskAction_lov"/>
+                                <a:numberField id="WFL1010_taskAction_nf"/>
+                            </a:editors>
+                        </a:grid>
+                    </a:tab>
+                </a:tabs>
+            </a:tabPanel>
+        </a:screenBody>
+    </a:view>
+</a:screen>

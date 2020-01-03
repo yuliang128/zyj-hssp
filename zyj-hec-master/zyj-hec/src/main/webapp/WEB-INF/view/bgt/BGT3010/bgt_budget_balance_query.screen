@@ -1,0 +1,942 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/03/13 18:23 $
+    $Revision: 1.0 $
+    $Purpose: 预算余额查询
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="bgt_budget_balance_query_results_link"
+                url="$[/request/@context_path]/bgt/BGT3010/bgt_budget_balance_query_results.screen"/>
+        <a:link id="bgt_budget_balance_budget_insert_control_link"
+                url="$[/request/@context_path]/modules/bgt/BGT3010/bgt_budget_balance_budget_insert_control.svc"/>
+        <a:link id="bgt_budget_balance_condition_delete_link"
+                url="$[/request/@context_path]/bgt/balance-query-cond-h/deleteBalanceQueryCond"/>
+        <a:link id="bgt_budget_balance_condition_l_insert_link"
+                url="$[/request/@context_path]/bgt/balance-query-cond-l/saveBalanceQueryCondL"/>
+        <a:link id="bgt_budget_balance_condition_insert_link"
+                url="$[/request/@context_path]/bgt/balance-query-cond-h/saveBalanceQueryCondH"/>
+        <script><![CDATA[
+
+        //初始化赋值
+        function BGT3010_loadComplete() {
+            var headerRecord = $au('header_ds').getAt(0);
+            headerControl(headerRecord.get('periodStrategy'));
+            var versionCombo = $au('version_combo_ds').getAll();
+            var quantityAmountCombo = $au('quantity_amount_combo_ds').getAll();
+            var versionCode = '$[/model/currentBgtVersion/records/record/@versionCode]';
+            var quantityAmount = 'AMOUNT';
+            //金额/数量
+            headerRecord.set('quantityAmountCode', quantityAmount);
+            for (var i = 0; i < quantityAmountCombo.length; i++) {
+                if (quantityAmountCombo[i].get('value') == quantityAmount) {
+                    headerRecord.set('quantityAmountDesc', quantityAmountCombo[i].get('meaning'));
+                }
+            }
+            //add by liliang 2018/11/22
+            //根据预算表定义控制预算实体的可输入情况
+            if (headerRecord.get('entityFlag') == 'N') {
+                headerRecord.getMeta().getField('bgtEntityName').setReadOnly(true);
+                headerRecord.getMeta().getField('bgtEntityName').setRequired(false);
+                headerRecord.set('bgtEntityName', '');
+                headerRecord.set('bgtEntityCode', '');
+                headerRecord.set('bgtEntityId', '');
+            } else {
+                headerRecord.getMeta().getField('bgtEntityName').setReadOnly(false);
+                headerRecord.getMeta().getField('bgtEntityName').setRequired(true);
+            }
+        }
+
+        //add by penglei 20171207 变更预算组织，将清空预算实体、币种、版本、预算表、场景的信息
+        function BGT3010_updateHandlerFun(dataSet, record, name, value) {
+            if (name == 'bgtOrgId') {
+                $au('header_ds').getAt(0).set('bgtEntityId', '');
+                $au('header_ds').getAt(0).set('bgtEntityCode', '');
+                $au('header_ds').getAt(0).set('bgtEntityName', '');
+                $au('header_ds').getAt(0).set('currencyCode', '');
+                $au('header_ds').getAt(0).set('currencyName', '');
+                $au('header_ds').getAt(0).set('versionCode', '');
+                $au('header_ds').getAt(0).set('versionName', '');
+                $au('header_ds').getAt(0).set('structureCode', '');
+                $au('header_ds').getAt(0).set('structureName', '');
+                $au('header_ds').getAt(0).set('scenarioCode', '');
+                $au('header_ds').getAt(0).set('scenarioName', '');
+            }
+        }
+
+        //方案选择选中事件
+        function balance_query_cond_select(combo, value, display, record) {
+            var headerRecord = $au('header_ds').getAt(0);
+            var periodStrategy = record.get('periodStrategy');
+            headerControl(periodStrategy);
+            headerRecord.set('conditionCode', record.get('conditionCode'));
+            headerRecord.set('conditionDesc', record.get('conditionDesc'));
+            headerRecord.set('versionCode', record.get('versionCode'));
+            headerRecord.set('version', record.get('budgetVersion'));
+            headerRecord.set('budgetStructure', record.get('budgetStructureDesc'));
+            headerRecord.set('structureCode', record.get('budgetStructure'));
+            headerRecord.set('scenario', record.get('budgetScenarioDesc'));
+            headerRecord.set('scenarioCode', record.get('budgetScenario'));
+            if (record.get('amountFlag') == 'Y') {
+                headerRecord.set('quantityAmountCode', 'AMOUNT');
+                var displayValue = getDisplayValue('AMOUNT', 'quantity_amount_combo_ds', 'value', 'meaning');
+                headerRecord.set('quantityAmountDesc', displayValue);
+            } else {
+                headerRecord.set('quantityAmountCode', 'QUANTITY');
+                var displayValue = getDisplayValue('QUANTITY', 'quantity_amount_combo_ds', 'value', 'meaning');
+                headerRecord.set('quantityAmountDesc', displayValue)
+            }
+            headerRecord.set('yearFrom', record.get('periodYearFrom'));
+            headerRecord.set('yearFrom', record.get('periodYearFrom'));
+            headerRecord.set('yearTo', record.get('periodYearTo'));
+            headerRecord.set('yearTo', record.get('periodYearFrom'));
+            headerRecord.set('quarterFrom', record.get('periodQuarterFrom'));
+            headerRecord.set('periodQuarterFrom', record.get('periodQuarterFrom'));
+            headerRecord.set('quarterTo', record.get('periodQuarterTo'));
+            headerRecord.set('periodQuarterTo', record.get('periodQuarterTo'));
+            headerRecord.set('periodFrom', record.get('periodFrom'));
+            headerRecord.set('periodFrom', record.get('periodFrom'));
+            headerRecord.set('periodTo', record.get('periodTo'));
+            headerRecord.set('periodTo', record.get('periodTo'));
+            $au('bgt_tab_ds').setQueryParameter('balanceQueryCondHId', record.get('balanceQueryCondHId'));
+            $au('bgt_tab_ds').setQueryParameter('bgtOrgId', headerRecord.get('bgtOrgId'));
+            $au('bgt_tab_ds').query();
+            $au('org_tab_ds').setQueryParameter('balanceQueryCondHId', record.get('balanceQueryCondHId'));
+            $au('org_tab_ds').query();
+            $au('dim_tab_ds').setQueryParameter('balanceQueryCondHId', record.get('balanceQueryCondHId'));
+            $au('dim_tab_ds').query();
+        }
+
+        //预算表选中事件
+        function budget_structure_select(combo, value, display, record) {
+            var periodStrategy = record.get('periodStrategy');
+            var entityFlag = record.get('entityFlag');
+            var headerRecord = $au('header_ds').getAt(0);
+            if (periodStrategy == 'YEAR') {
+                headerRecord.set('periodFrom', '');
+                headerRecord.set('periodTo', '');
+                headerRecord.set('quarterFrom', '');
+                headerRecord.set('quarterTo', '');
+                headerRecord.set('periodSummary', 'N');
+            } else if (periodStrategy == 'QUARTER') {
+                headerRecord.set('periodFrom', '');
+                headerRecord.set('periodTo', '');
+                headerRecord.set('quarterFrom', '');
+                headerRecord.set('quarterTo', '');
+                headerRecord.set('periodSummary', 'N');
+            } else if (periodStrategy == 'MONTH') {
+                headerRecord.set('periodFrom', '');
+                headerRecord.set('periodTo', '');
+                headerRecord.set('quarterFrom', '');
+                headerRecord.set('quarterTo', '');
+            } else {
+                headerRecord.set('periodFrom', '');
+                headerRecord.set('periodTo', '');
+                headerRecord.set('quarterFrom', '');
+                headerRecord.set('quarterTo', '');
+                headerRecord.set('yearFrom', '');
+                headerRecord.set('yearTo', '');
+                headerRecord.set('periodSummary', 'N');
+            }
+            headerControl(periodStrategy, entityFlag);
+        }
+
+        //编制期间确定头结构控件状态
+        function headerControl(periodStrategy, entityFlag) {
+            var headerRecord = $au('header_ds').getAt(0);
+            if (periodStrategy == 'YEAR') {
+                headerRecord.getMeta().getField('periodFrom').setReadOnly(true);
+                headerRecord.getMeta().getField('periodTo').setReadOnly(true);
+                headerRecord.getMeta().getField('quarterFrom').setReadOnly(true);
+                headerRecord.getMeta().getField('quarterTo').setReadOnly(true);
+                headerRecord.getMeta().getField('periodFrom').setRequired(false);
+                headerRecord.getMeta().getField('periodTo').setRequired(false);
+                headerRecord.getMeta().getField('quarterFrom').setRequired(false);
+                headerRecord.getMeta().getField('quarterTo').setRequired(false);
+                headerRecord.getMeta().getField('periodSummary').setReadOnly(true);
+            } else if (periodStrategy == 'QUARTER') {
+                headerRecord.getMeta().getField('periodFrom').setReadOnly(true);
+                headerRecord.getMeta().getField('periodTo').setReadOnly(true);
+                headerRecord.getMeta().getField('quarterFrom').setReadOnly(false);
+                headerRecord.getMeta().getField('quarterTo').setReadOnly(false);
+                headerRecord.getMeta().getField('periodFrom').setRequired(false);
+                headerRecord.getMeta().getField('periodTo').setRequired(false);
+                headerRecord.getMeta().getField('quarterFrom').setRequired(true);
+                headerRecord.getMeta().getField('quarterTo').setRequired(true);
+                headerRecord.getMeta().getField('yearFrom').setRequired(true);
+                headerRecord.getMeta().getField('yearTo').setRequired(true);
+                headerRecord.getMeta().getField('periodSummary').setReadOnly(true);
+            } else if (periodStrategy == 'MONTH') {
+                headerRecord.getMeta().getField('periodFrom').setReadOnly(false);
+                headerRecord.getMeta().getField('periodTo').setReadOnly(false);
+                headerRecord.getMeta().getField('quarterFrom').setReadOnly(false);
+                headerRecord.getMeta().getField('quarterTo').setReadOnly(false);
+                headerRecord.getMeta().getField('periodFrom').setRequired(true);
+                headerRecord.getMeta().getField('periodTo').setRequired(true);
+                headerRecord.getMeta().getField('quarterFrom').setRequired(false);
+                headerRecord.getMeta().getField('quarterTo').setRequired(false);
+                headerRecord.getMeta().getField('yearFrom').setRequired(false);
+                headerRecord.getMeta().getField('yearTo').setRequired(false);
+                headerRecord.getMeta().getField('periodSummary').setReadOnly(false);
+            } else {
+                headerRecord.getMeta().getField('periodFrom').setRequired(false);
+                headerRecord.getMeta().getField('periodTo').setRequired(false);
+                headerRecord.getMeta().getField('quarterFrom').setRequired(false);
+                headerRecord.getMeta().getField('quarterTo').setRequired(false);
+                headerRecord.getMeta().getField('yearFrom').setRequired(false);
+                headerRecord.getMeta().getField('yearTo').setRequired(false);
+            }
+            //add by liliang 2018/11/22
+            //根据预算表定义控制预算实体的可输入情况
+            if (entityFlag == 'N') {
+                headerRecord.getMeta().getField('bgtEntityName').setReadOnly(true);
+                headerRecord.getMeta().getField('bgtEntityName').setRequired(false);
+                headerRecord.set('bgtEntityName', '');
+                headerRecord.set('bgtEntityCode', '');
+                headerRecord.set('bgtEntityId', '');
+            } else {
+                headerRecord.getMeta().getField('bgtEntityName').setReadOnly(false);
+                headerRecord.getMeta().getField('bgtEntityName').setRequired(true);
+            }
+        }
+
+        //动态生成tab中值从/到的ComboBox
+        function bgtCellClick(grid, row, name, record) {
+            if (name == "positionCodeFromDesc" || name == "positionCodeToDesc" || name == "parameterValueCode") {
+                var parameterCode = record.get('parameterCode');
+                var companyId = '$[/session/@companyId]';
+                var bgtOrgId = $au('header_ds').getAt(0).get('bgtOrgId');
+                record.getMeta().getField('parameterValueCode').setLovPara('bgtOrgId', bgtOrgId);
+                record.getMeta().getField('parameterValueCode').setLovPara('companyId', companyId);
+                record.getMeta().getField('parameterValueCode').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('parameterValueCode').setTitle(record.get('parameterName'));
+
+                record.getMeta().getField('positionCodeFromDesc').setLovPara('bgtOrgId', bgtOrgId);
+                record.getMeta().getField('positionCodeFromDesc').setLovPara('companyId', companyId);
+                record.getMeta().getField('positionCodeFromDesc').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('positionCodeFromDesc').setTitle(record.get('parameterName'));
+
+                record.getMeta().getField('positionCodeToDesc').setLovPara('bgtOrgId', bgtOrgId);
+                record.getMeta().getField('positionCodeToDesc').setLovPara('companyId', companyId);
+                record.getMeta().getField('positionCodeToDesc').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('positionCodeToDesc').setTitle(record.get('parameterName'));
+            }
+        }
+
+        function orgCellClick(grid, row, name, record) {
+            if (name == "positionCodeFromDesc" || name == "positionCodeToDesc" || name == "parameterValueCode") {
+                var parameterCode = record.get('parameterCode');
+                var companyId = '$[/session/@companyId]';
+                record.getMeta().getField('parameterValueCode').setLovPara('companyId', companyId);
+                record.getMeta().getField('parameterValueCode').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('parameterValueCode').setTitle(record.get('parameterName'));
+
+                record.getMeta().getField('positionCodeFromDesc').setLovPara('companyId', companyId);
+                record.getMeta().getField('positionCodeFromDesc').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('positionCodeToDesc').setLovPara('companyId', companyId);
+                record.getMeta().getField('positionCodeToDesc').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('positionCodeToDesc').setTitle(record.get('parameterName'));
+                record.getMeta().getField('positionCodeFromDesc').setTitle(record.get('parameterName'));
+            }
+        }
+
+        function dimCellClick(grid, row, name, record) {
+            if (name == "positionCodeFromDesc" || name == "positionCodeToDesc" || name == "parameterValueCode") {
+                var parameterCode = record.get('parameterCode');
+                var companyLevel = record.get('companyLevel');
+                var systemLevel = record.get('systemLevel');
+                var bgtEntityId = $au('header_ds').getAt(0).get('bgtEntityId');
+
+                record.getMeta().getField('parameterValueCode').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('parameterValueCode').setTitle(record.get('parameterName'));
+
+                record.getMeta().getField('positionCodeFromDesc').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('positionCodeToDesc').setLovPara('parameterCode', parameterCode);
+                record.getMeta().getField('positionCodeToDesc').setTitle(record.get('parameterName'));
+                record.getMeta().getField('positionCodeFromDesc').setTitle(record.get('parameterName'));
+
+                //维值选择增加三大架构限制(核算主体级暂未做限制) Y.duan 2018-9-18 09:47:43
+                if (!(Ext.isEmpty(systemLevel) && Ext.isEmpty(companyLevel))) {
+                    if (!Ext.isEmpty(systemLevel)) {
+                        companyLevel = systemLevel;
+                    }
+                    if (companyLevel == 'MANAGEMENT') {
+                        record.getMeta().getField('parameterValueCode').setLovPara('companyId', '$[/session/@companyId]');
+                        record.getMeta().getField('positionCodeFromDesc').setLovPara('companyId', '$[/session/@companyId]');
+                        record.getMeta().getField('positionCodeToDesc').setLovPara('companyId', '$[/session/@companyId]');
+                    } else if (companyLevel == 'BUDGET') {
+                        if (Ext.isEmpty(bgtEntityId)) {
+                            Aurora.showErrorMessage('$[l:hap.prompt]', '$[l:bgt_journal_main.select_bgt_entity_first]', null, 250, 100);
+                            return;
+                        }
+                        record.getMeta().getField('parameterValueCode').setLovPara('companyId', bgtEntityId);
+                        record.getMeta().getField('positionCodeFromDesc').setLovPara('companyId', bgtEntityId);
+                        record.getMeta().getField('positionCodeToDesc').setLovPara('companyId', bgtEntityId);
+                    } else {
+                        companyLevel = 'ACCOUNTING';
+                    }
+                    record.getMeta().getField('parameterValueCode').setLovPara('companyLevel', companyLevel);
+                    record.getMeta().getField('positionCodeFromDesc').setLovPara('companyLevel', companyLevel);
+                    record.getMeta().getField('positionCodeToDesc').setLovPara('companyLevel', companyLevel);
+                }
+            }
+        }
+
+        //tab中行若没有选择取值范围，在修改值后默认选择全部
+        function update(ds, record, name, value, oldValue) {
+            if (name == "parameterValueFrom" || name == "parameterValueTo" || name == "parameterValueCode") {
+                if (!record.get('controlRuleRange')) {
+                    record.set('controlRuleRange', 'ALL');
+                    var displayValue = getDisplayValue('ALL', 'control_rule_range_combo_ds', 'value', 'meaning');
+                    record.set('controlRuleRangeName', displayValue);
+                }
+            }
+        }
+
+        //重置
+        function reset() {
+            location.reload();
+        }
+
+        //取得Display值
+        function getDisplayValue(value, ds, valueName, displayName) {
+            var allData = $au(ds).getAll();
+            for (var i = 0; i < allData.length; i++) {
+                if (allData[i].get(valueName) == value) {
+                    return allData[i].get(displayName);
+                }
+            }
+        }
+
+        //保存
+        function saveMethod() {
+            $au('header_ds').getAt(0).getMeta().getField('conditionCode').setRequired(true);
+            $au('header_ds').getAt(0).getMeta().getField('conditionDesc').setRequired(true);
+            if (!$au('header_ds').validate()) {
+                return false;
+            }
+
+            $au('header_ds').getAt(0).set('balanceQueryConditionCode', $au('header_ds').getAt(0).get('conditionCode'));
+            $au('header_ds').getAt(0).set('description', $au('header_ds').getAt(0).get('conditionDesc'));
+            $au('header_ds').getAt(0).set('budgetStrcCode', $au('header_ds').getAt(0).get('structureCode'));
+            if ($au('header_ds').getAt(0).get('quantityAmountCode') == 'AMOUNT') {
+                $au('header_ds').getAt(0).set('amountFlag', 'Y');
+                $au('header_ds').getAt(0).set('quantityFlag', 'N');
+            } else {
+                $au('header_ds').getAt(0).set('amountFlag', 'N');
+                $au('header_ds').getAt(0).set('quantityFlag', 'Y');
+            }
+            $au('header_ds').getAt(0).set('periodSummaryFlag', $au('header_ds').getAt(0).get('periodSummary'));
+
+            var header = $au('header_ds').getJsonData()[0];
+
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('bgt_budget_balance_condition_insert_link').getUrl(),
+                para: header,
+                success: function (arg) {
+                    var headerRecord = $au('header_ds').getAt(0);
+                    var lines = [];
+                    var company = {};
+                    var version = {};
+                    var scenario = {};
+                    var budgetStructure = {};
+                    var period = {};
+                    var periodQuarter = {};
+                    var periodYear = {};
+                    var bgtTabRecords = $au('bgt_tab_ds').getAll();
+                    var orgTabRecords = $au('org_tab_ds').getAll();
+                    var dimTabRecords = $au('dim_tab_ds').getAll();
+
+                    company['balanceQueryCondHId'] = 0;
+                    company['sessionId'] = '0';
+                    company['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    company['parameter'] = 'COMPANY';
+                    company['controlRuleRange'] = 'ALL';
+                    company['parameterCode'] = headerRecord.get('companyCode');
+                    company['parameterLowerLimit'] = headerRecord.get('companyCode');
+                    company['parameterUpperLimit'] = headerRecord.get('companyCode');
+
+                    version['balanceQueryCondHId'] = 0;
+                    version['sessionId'] = '0';
+                    version['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    version['parameter'] = 'BUDGET_VERSION';
+                    version['controlRuleRange'] = 'ALL';
+                    version['parameterCode'] = headerRecord.get('versionCode');
+                    version['parameterLowerLimit'] = headerRecord.get('versionCode');
+                    version['parameterUpperLimit'] = headerRecord.get('versionCode');
+
+                    scenario['balanceQueryCondHId'] = 0;
+                    scenario['sessionId'] = '0';
+                    scenario['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    scenario['parameter'] = 'BUDGET_SCENARIO';
+                    scenario['controlRuleRange'] = 'ALL';
+                    scenario['parameterCode'] = headerRecord.get('scenarioCode');
+                    scenario['parameterLowerLimit'] = headerRecord.get('scenarioCode');
+                    scenario['parameterUpperLimit'] = headerRecord.get('scenarioCode');
+
+                    budgetStructure['balanceQueryCondHId'] = 0;
+                    budgetStructure['sessionId'] = '0';
+                    budgetStructure['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    budgetStructure['parameter'] = 'BUDGET_STRUCTURE';
+                    budgetStructure['controlRuleRange'] = 'ALL';
+                    budgetStructure['parameterCode'] = headerRecord.get('structureCode');
+                    budgetStructure['parameterLowerLimit'] = headerRecord.get('structureCode');
+                    budgetStructure['parameterUpperLimit'] = headerRecord.get('structureCode');
+
+                    period['balanceQueryCondHId'] = 0;
+                    period['sessionId'] = '0';
+                    period['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    period['parameter'] = 'PERIOD';
+                    period['controlRuleRange'] = 'ALL';
+                    period['parameterCode'] = null;
+                    period['parameterLowerLimit'] = headerRecord.get('periodFrom');
+                    period['parameterUpperLimit'] = headerRecord.get('periodTo');
+
+                    periodQuarter['balanceQueryCondHId'] = 0;
+                    periodQuarter['sessionId'] = '0';
+                    periodQuarter['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    periodQuarter['parameter'] = 'PERIOD_QUARTER';
+                    periodQuarter['controlRuleRange'] = 'ALL';
+                    periodQuarter['parameterCode'] = null;
+                    periodQuarter['parameterLowerLimit'] = headerRecord.get('periodQuarterFrom');
+                    periodQuarter['parameterUpperLimit'] = headerRecord.get('periodQuarterTo');
+
+                    periodYear['balanceQueryCondHId'] = 0;
+                    periodYear['sessionId'] = '0';
+                    periodYear['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                    periodYear['parameter'] = 'PERIOD_YEAR';
+                    periodYear['controlRuleRange'] = 'ALL';
+                    periodYear['parameterCode'] = null;
+                    periodYear['parameterLowerLimit'] = headerRecord.get('yearFrom');
+                    periodYear['parameterUpperLimit'] = headerRecord.get('yearTo');
+
+                    lines.push(company);
+                    lines.push(version);
+                    lines.push(scenario);
+                    lines.push(budgetStructure);
+                    lines.push(period);
+                    lines.push(periodQuarter);
+                    lines.push(periodYear);
+
+                    for (var i = 0; i < bgtTabRecords.length; i++) {
+                        var bgtTabRecord = {};
+                        bgtTabRecord['balanceQueryCondHId'] = 0;
+                        bgtTabRecord['sessionId'] = '0';
+                        bgtTabRecord['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                        bgtTabRecord['parameter'] = bgtTabRecords[i].get('parameterCode');
+                        bgtTabRecord['controlRuleRange'] = bgtTabRecords[i].get('controlRuleRange');
+                        bgtTabRecord['parameterCode'] = bgtTabRecords[i].get('parameterValueCode');
+                        bgtTabRecord['parameterLowerLimit'] = bgtTabRecords[i].get('positionCodeFrom');
+                        bgtTabRecord['parameterUpperLimit'] = bgtTabRecords[i].get('positionCodeTo');
+                        lines.push(bgtTabRecord);
+                    }
+
+                    for (var i = 0; i < orgTabRecords.length; i++) {
+                        var orgTabRecord = {};
+                        orgTabRecord['balanceQueryCondHId'] = 0;
+                        orgTabRecord['sessionId'] = '0';
+                        orgTabRecord['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                        orgTabRecord['parameter'] = orgTabRecords[i].get('parameterCode');
+                        orgTabRecord['controlRuleRange'] = orgTabRecords[i].get('controlRuleRange');
+                        orgTabRecord['parameterCode'] = orgTabRecords[i].get('parameterValueCode');
+                        orgTabRecord['parameterLowerLimit'] = orgTabRecords[i].get('positionCodeFrom');
+                        orgTabRecord['parameterUpperLimit'] = orgTabRecords[i].get('positionCodeTo');
+                        lines.push(orgTabRecord);
+                    }
+
+                    for (var i = 0; i < dimTabRecords.length; i++) {
+                        var dimTabRecord = {};
+                        dimTabRecord['balanceQueryCondHId'] = 0;
+                        dimTabRecord['sessionId'] = '0';
+                        dimTabRecord['balanceQueryConditionCode'] = headerRecord.get('conditionCode');
+                        dimTabRecord['parameter'] = dimTabRecords[i].get('parameterCode');
+                        dimTabRecord['controlRuleRange'] = dimTabRecords[i].get('controlRuleRange');
+                        dimTabRecord['parameterCode'] = dimTabRecords[i].get('parameterValueCode');
+                        dimTabRecord['parameterLowerLimit'] = dimTabRecords[i].get('positionCodeFrom');
+                        dimTabRecord['parameterUpperLimit'] = dimTabRecords[i].get('positionCodeTo');
+                        lines.push(dimTabRecord);
+                    }
+
+                    Aurora.request({
+                        lockMessage: '$[l:hap_waiting]',
+                        url: $au('bgt_budget_balance_condition_l_insert_link').getUrl(),
+                        para: lines,
+                        success: function () {
+                            window.location.reload();
+                        },
+                        scope: this
+                    });
+                },
+                scope: this
+            });
+        }
+
+        //删除
+        function deleteMethod() {
+            var header = $au('header_ds').getJsonData()[0];
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('bgt_budget_balance_condition_delete_link').getUrl(),
+                para: header,
+                success: function () {
+                    window.location.reload();
+                },
+                scope: this
+            });
+        }
+
+        //查询
+        function query() {
+            $au('header_ds').submit();
+        }
+
+        function BGT3010_onHeaderVersionFocus() {
+            var record = $au('header_ds').getAt(0);
+            $au('version_combo_ds').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('version_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderScenarioFocus() {
+            var record = $au('header_ds').getAt(0);
+            $au('scenario_combo_ds').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('scenario_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderStructureFocus() {
+            var record = $au('header_ds').getAt(0);
+            $au('budget_strc_combo_ds').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('budget_strc_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderQueryCondFocus() {
+            var record = $au('header_ds').getAt(0);
+            $au('query_cond_combo_ds').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('query_cond_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderQuarterFocus() {
+            $au('period_quarter_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderYearFocus() {
+            var record = $au('header_ds').getAt(0);
+            $au('period_year_combo_ds').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('period_year_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderPeriodFocus() {
+            var record = $au('header_ds').getAt(0);
+            $au('bgt_budget_balance_period_combo_ds').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('bgt_budget_balance_period_combo_ds').query();
+        }
+
+        function BGT3010_onHeaderEntityFocus() {
+            var record = $au('header_ds').getAt(0);
+            record.getField('bgtEntityName').setLovPara('bgtOrgId', record.get('bgtOrgId'));
+        }
+
+        function BGT3010_submitsuccessHandlerFun(ds){
+            var headerReacord = ds.getCurrentRecord();
+            new Aurora.Window({
+                id: 'bgt_budget_balance_qurey_results_window',
+                url: $au('bgt_budget_balance_query_results_link').getUrl() + '?quantityAmountCode=' + headerReacord.get('quantityAmountCode') + '&companyId=' + headerReacord.get('companyId') + '&versionCode=' + headerReacord.get('versionCode') + '&structureCode=' + headerReacord.get('structureCode') + '&scenarioCode=' + headerReacord.get('scenarioCode'),
+                title: '',
+                fullScreen: true
+            });
+        }
+
+        Aurora.onReady(BGT3010_loadComplete);
+        ]]></script>
+        <a:dataSets>
+            <!--预算组织comboBox-->
+            <a:dataSet id="bgt_org_position_code_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/organization/getBgtOrgOptionForBgtQuery"/>
+            <!--预算表comboBox-->
+            <a:dataSet id="budget_strc_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/structure/getBgtStructureByBgtOrgId"/>
+            <!--场景comboBox-->
+            <a:dataSet id="scenario_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/scenario/getBgtScenarioOption"/>
+            <!--版本comboBox-->
+            <a:dataSet id="version_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/version/getBgtVersionOption"/>
+            <!-- 币种 -->
+            <a:dataSet id="BGT3010_currency_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/gld-currency/getGldCurrencyOption"/>
+            <!--金额/数量-->
+            <a:dataSet id="quantity_amount_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BUDGET_QUANTITY_AMOUNT/"/>
+            <!-- 期间    修改期间的下拉框取值范围    Y.duan  2017-8-10 09:26:18 -->
+            <a:dataSet id="bgt_budget_balance_period_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/period/getBgtPeriodOption"/>
+            <!--季度comboBox-->
+            <a:dataSet id="period_quarter_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/period/getQuarterOption"/>
+            <!--年度comboBox-->
+            <a:dataSet id="period_year_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/period/getPeriodYearOption"/>
+            <!--方案选择comboBox-->
+            <a:dataSet id="query_cond_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/balance-query-cond-h/getBalanceQueryCondH"/>
+            <!--取值范围comboBox-->
+            <a:dataSet id="control_rule_range_combo_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/bgt/balance-query-cond-l/getControlRuleRange"/>
+
+            <!--头结构-->
+            <a:dataSet id="header_ds" autoCreate="true"
+                       submitUrl="$[/request/@context_path]/bgt/balance-query/do-query">
+                <a:fields>
+                    <a:field name="companyName" defaultValue="$[/model/fndCompany/records/record/@companyShortName]"
+                             prompt="bgt_journal_balance.company_id" readOnly="true"/>
+                    <a:field name="companyId" defaultValue="$[/model/fndCompany/records/record/@companyId]"/>
+                    <a:field name="companyCode" defaultValue="$[/model/fndCompany/records/record/@companyCode]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgName]"
+                             displayField="bgtOrgName" options="bgt_org_position_code_combo_ds"
+                             prompt="bgt_journal_balance.bgt_org_id" required="true">
+                        <a:mapping>
+                            <a:map from="bgtOrgCode" to="bgtOrgCode"/>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtOrgCode" defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgCode]"/>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/bgtOrganization/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtEntityName" lovCode="LOV_BGT_ENTITY_SELECT?bgtOrgId=$[/parameter/@bgtOrgId]"
+                             prompt="bgt_entities.bgt_entity_name" required="true" title="bgt_entities.bgt_entity_name">
+                        <a:mapping>
+                            <a:map from="bgtEntityName" to="bgtEntityName"/>
+                            <a:map from="bgtEntityCode" to="bgtEntityCode"/>
+                            <a:map from="bgtEntityId" to="bgtEntityId"/>
+                            <a:map from="currencyName" to="currencyName"/>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtEntityCode"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="currencyName" displayField="currencyName" options="BGT3010_currency_ds"
+                             prompt="bgt_journal_balance.currency_code" required="true" returnField="currencyCode"
+                             valueField="currencyCode"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="balanceQueryCond" displayField="description" options="query_cond_combo_ds"
+                             prompt="method_choose" returnField="balanceQueryCondHId" valueField="balanceQueryCondHId"/>
+                    <a:field name="balanceQueryCondHId"/>
+                    <a:field name="conditionCode" prompt="bgt_solution.method_code"/>
+                    <a:field name="conditionDesc" prompt="bgt_solution.method_desc"
+                             dto="com.hand.hec.bgt.dto.BgtBalanceQueryCondH" dtoId="balanceQueryCondHId"/>
+                    <a:field name="versionName" defaultValue="$[/model/currentBgtVersion/records/record/@description]"
+                             displayField="description" options="version_combo_ds"
+                             prompt="bgt_balance_query_cond_h.version_code" required="true">
+                        <a:mapping>
+                            <a:map from="versionCode" to="versionCode"/>
+                            <a:map from="versionId" to="versionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="versionId" defaultValue="$[/model/currentBgtVersion/records/record/@versionId]"/>
+                    <a:field name="versionCode" defaultValue="$[/model/currentBgtVersion/records/record/@versionCode]"/>
+                    <a:field name="structureName" defaultValue="$[/model/bgtStructure/records/record/@description]"
+                             displayField="description" options="budget_strc_combo_ds"
+                             prompt="bgt_balance_query_cond_h.budget_strc_code" required="true"
+                             returnField="structureCode" valueField="structureCode">
+                        <a:mapping>
+                            <a:map from="entityFlag" to="entityFlag"/>
+                            <a:map from="centerFlag" to="centerFlag"/>
+                            <a:map from="structureId" to="structureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entityFlag" defaultValue="$[/model/bgtStructure/records/record/@entityFlag]"/>
+                    <a:field name="structureId" defaultValue="$[/model/bgtStructure/records/record/@structureId]"/>
+                    <a:field name="structureCode" defaultValue="$[/model/bgtStructure/records/record/@structureCode]"/>
+                    <a:field name="periodStrategy"
+                             defaultValue="$[/model/bgtStructure/records/record/@periodStrategy]"/>
+                    <a:field name="scenarioName" defaultValue="$[/model/bgtScenario/records/record/@description]"
+                             displayField="description" options="scenario_combo_ds"
+                             prompt="bgt_balance_query_cond_h.scenario_code" required="true">
+                        <a:mapping>
+                            <a:map from="scenarioCode" to="scenarioCode"/>
+                            <a:map from="scenarioId" to="scenarioId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="scenarioId" defaultValue="$[/model/bgtScenario/records/record/@scenarioId]"/>
+                    <a:field name="scenarioCode" defaultValue="$[/model/bgtScenario/records/record/@scenarioCode]"/>
+                    <a:field name="amountOrQuantity" displayField="meaning" options="quantity_amount_combo_ds"
+                             prompt="quantity_amount" required="true" returnField="quantityAmountCode"
+                             defaultValue="$[l:exp_report_header.payment_amount]" valueField="value"/>
+                    <a:field name="quantityAmountCode" defaultValue="AMOUNT"/>
+                    <a:field name="periodFrom" displayField="periodName"
+                             options="bgt_budget_balance_period_combo_ds" prompt="gld_exchange_rate.period_from"
+                             returnField="internalPeriodNumFrom" valueField="internalPeriodNum" />
+                    <a:field name="internalPeriodNumFrom"/>
+                    <a:field name="periodTo" displayField="periodName" options="bgt_budget_balance_period_combo_ds"
+                             prompt="prompt.period_name_to" returnField="internalPeriodNumTo" valueField="internalPeriodNum"/>
+                    <a:field name="internalPeriodNumTo"/>
+                    <a:field name="periodSummary" checkedValue="Y" defaultValue="N"
+                             prompt="bgt_balance_query_cond_h.period_summary_flag" uncheckedValue="N"/>
+                    <a:field name="quarterFrom" displayField="quarterNum" options="period_quarter_combo_ds"
+                             prompt="prompt.period_quarter_from" returnField="periodQuarterFrom"
+                             valueField="quarterNum"/>
+                    <a:field name="quarterTo" displayField="quarterNum" options="period_quarter_combo_ds"
+                             prompt="prompt.period_quarter_to" returnField="periodQuarterTo" valueField="quarterNum"/>
+                    <a:field name="yearFrom" displayField="periodYear" options="period_year_combo_ds"
+                             prompt="gld_period_create.year_from" returnField="yearFrom" valueField="periodYear"/>
+                    <a:field name="yearTo" displayField="periodYear" options="period_year_combo_ds"
+                             prompt="gld_period_create.year_to" returnField="yearTo" valueField="periodYear"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT3010_updateHandlerFun"/>
+                    <a:event name="submitsuccess" handler="BGT3010_submitsuccessHandlerFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_tab_ds" autoQuery="true" bindTarget="header_ds" bindName="bgtConditions"
+                       queryUrl="$[/request/@context_path]/bgt/balance-query-cond-l/getBalanceQueryCondLBgt">
+                <a:fields>
+                    <a:field name="parameterName" prompt="wfl_business_rule_parameter.parameter_id"/>
+                    <a:field name="controlRuleRangeName" displayField="meaning"
+                             options="control_rule_range_combo_ds" prompt="bgt_control_rule_detail.summary_or_detail"
+                             returnField="controlRuleRange" valueField="value"/>
+                    <a:field name="controlRuleRange"/>
+                    <a:field name="parameterValueCode" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_PARA" prompt="bgt_ctrl_strategy_mp_cond.value" title=" ">
+                        <a:mapping>
+                            <a:map from="code" to="parameterValueCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionCodeFromDesc" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_PARA" prompt="prompt.from" title=" ">
+                        <a:mapping>
+                            <a:map from="description" to="positionCodeFromDesc"/>
+                            <a:map from="code" to="parameterValueFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parameterValueFrom"/>
+                    <a:field name="positionCodeToDesc" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_PARA" prompt="prompt.to" title=" ">
+                        <a:mapping>
+                            <a:map from="description" to="positionCodeToDesc"/>
+                            <a:map from="code" to="parameterValueTo"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parameterValueTo"/>
+                    <a:field name="parameterCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="org_tab_ds" autoQuery="true" bindTarget="header_ds" bindName="orgConditions"
+                       queryUrl="$[/request/@context_path]/bgt/balance-query-cond-l/getBalanceQueryCondLOrg">
+                <a:fields>
+                    <a:field name="parameterName" prompt="wfl_business_rule_parameter.parameter_id"/>
+                    <a:field name="controlRuleRangeName" displayField="meaning"
+                             options="control_rule_range_combo_ds" prompt="bgt_control_rule_detail.summary_or_detail"
+                             returnField="controlRuleRange" valueField="value"/>
+                    <a:field name="controlRuleRange"/>
+                    <a:field name="parameterValueCode" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_PARA" prompt="bgt_ctrl_strategy_mp_cond.value" title=" ">
+                        <a:mapping>
+                            <a:map from="code" to="parameterValueCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionCodeFromDesc" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_PARA" prompt="prompt.from" title=" ">
+                        <a:mapping>
+                            <a:map from="description" to="positionCodeFromDesc"/>
+                            <a:map from="code" to="parameterValueFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parameterValueFrom"/>
+                    <a:field name="positionCodeToDesc" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_PARA" prompt="prompt.to" title=" ">
+                        <a:mapping>
+                            <a:map from="description" to="positionCodeToDesc"/>
+                            <a:map from="code" to="parameterValueTo"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parameterValueTo"/>
+                    <a:field name="parameterCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="dim_tab_ds" autoQuery="true" bindTarget="header_ds" bindName="dimConditions"
+                       queryUrl="$[/request/@context_path]/bgt/balance-query-cond-l/getBalanceQueryCondLDim">
+                <a:fields>
+                    <a:field name="parameterName" prompt="wfl_business_rule_parameter.parameter_id"/>
+                    <a:field name="controlRuleRangeName" displayField="meaning"
+                             options="control_rule_range_combo_ds" prompt="bgt_control_rule_detail.summary_or_detail"
+                             returnField="controlRuleRange" valueField="value"/>
+                    <a:field name="controlRuleRange"/>
+                    <a:field name="parameterValueCode" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_DIM" prompt="bgt_ctrl_strategy_mp_cond.value" title=" ">
+                        <a:mapping>
+                            <a:map from="code" to="parameterValueCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionCodeFromDesc" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_DIM" prompt="prompt.from" title=" ">
+                        <a:mapping>
+                            <a:map from="description" to="positionCodeFromDesc"/>
+                            <a:map from="code" to="parameterValueFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parameterValueFrom"/>
+                    <a:field name="positionCodeToDesc" autoComplete="true" autoCompleteField="des"
+                             lovCode="LOV_BGT_BALANCE_QUERY_DIM" prompt="prompt.to" title=" ">
+                        <a:mapping>
+                            <a:map from="description" to="positionCodeToDesc"/>
+                            <a:map from="code" to="parameterValueTo"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parameterValueTo"/>
+                    <a:field name="parameterCode"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="systemLevel"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="update"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form id="bgt_balance_query_head_form" column="1" marginWidth="3" title="budget_balance_query">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:toolbarButton id="queryBtn" click="query" text="hap_query" width="80"/>
+                <a:toolbarButton click="reset" text="hap.reset" width="80"/>
+                <a:toolbarButton click="saveMethod" text="hap.save_method" width="80"/>
+                <a:toolbarButton click="deleteMethod" text="hap.delete_method" width="80"/>
+            </a:formToolbar>
+            <a:box id="bgt_balance_query_normal_box" column="4" style="width:100%">
+                <a:textField name="companyName" bindTarget="header_ds"/>
+                <a:comboBox name="bgtOrgName" bindTarget="header_ds"/>
+                <a:comboBox name="structureName" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderStructureFocus"/>
+                        <a:event name="select" handler="budget_structure_select"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="scenarioName" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderScenarioFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="versionName" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderVersionFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:lov name="bgtEntityName" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderEntityFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:comboBox name="currencyName" bindTarget="header_ds"/>
+                <a:comboBox name="amountOrQuantity" bindTarget="header_ds"/>
+                <a:comboBox name="periodFrom" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderPeriodFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="periodTo" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderPeriodFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:checkBox name="periodSummary" bindTarget="header_ds"/>
+                <a:comboBox name="quarterFrom" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderQuarterFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="quarterTo" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderQuarterFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="yearFrom" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderYearFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="yearTo" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderYearFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="balanceQueryCond" bindTarget="header_ds">
+                    <a:events>
+                        <a:event name="focus" handler="BGT3010_onHeaderQueryCondFocus"/>
+                        <a:event name="select" handler="balance_query_cond_select"/>
+                    </a:events>
+                </a:comboBox>
+                <a:textField name="conditionCode" bindTarget="header_ds"/>
+                <a:tledit name="conditionDesc" bindTarget="header_ds"/>
+            </a:box>
+        </a:form>
+        <a:tabPanel marginWidth="0" minHeight="500" style="margin-top:5px;">
+            <a:tabs>
+                <a:tab prompt="budget_parameter" width="120">
+                    <a:grid id="budget_parameter_grid" autoAdjustHeight="false" bindTarget="bgt_tab_ds" marginWidth="3"
+                            minHeight="470" navBar="true">
+                        <a:columns>
+                            <a:column name="parameterName" align="center" width="200"/>
+                            <a:column name="controlRuleRangeName" align="center" editor="bgt_combo" width="150"/>
+                            <a:column name="parameterValueCode" align="left" editor="bgt_lov" width="150"/>
+                            <a:column name="positionCodeFromDesc" align="center" editor="bgt_lov" width="150"/>
+                            <a:column name="positionCodeToDesc" align="center" editor="bgt_lov" width="150"/>
+                        </a:columns>
+                        <a:editors>
+                            <a:comboBox id="bgt_combo"/>
+                            <a:lov id="bgt_lov"/>
+                            <a:textField id="bgt_tx"/>
+                        </a:editors>
+                        <a:events>
+                            <a:event name="cellclick" handler="bgtCellClick"/>
+                        </a:events>
+                    </a:grid>
+                </a:tab>
+                <a:tab prompt="organization_relevant" width="120">
+                    <a:grid id="organization_relevant_grid" autoAdjustHeight="false" bindTarget="org_tab_ds"
+                            marginWidth="3" minHeight="470" navBar="true">
+                        <a:columns>
+                            <a:column name="parameterName" align="center" width="200"/>
+                            <a:column name="controlRuleRangeName" align="center" editor="org_combo" width="150"/>
+                            <a:column name="parameterValueCode" align="left" editor="org_lov" width="150"/>
+                            <a:column name="positionCodeFromDesc" align="center" editor="org_lov" width="150"/>
+                            <a:column name="positionCodeToDesc" align="center" editor="org_lov" width="150"/>
+                        </a:columns>
+                        <a:editors>
+                            <a:comboBox id="org_combo"/>
+                            <a:textField id="org_tx"/>
+                            <a:lov id="org_lov"/>
+                        </a:editors>
+                        <a:events>
+                            <a:event name="cellclick" handler="orgCellClick"/>
+                        </a:events>
+                    </a:grid>
+                </a:tab>
+                <a:tab prompt="dimension_relevant" width="120">
+                    <a:grid id="dimension_relevant_grid" autoAdjustHeight="false" bindTarget="dim_tab_ds"
+                            marginWidth="3" minHeight="470" navBar="true">
+                        <a:columns>
+                            <a:column name="parameterName" align="center" width="200"/>
+                            <a:column name="controlRuleRangeName" align="center" editor="dim_combo" width="150"/>
+                            <a:column name="parameterValueCode" align="left" editor="dim_lov" width="150"/>
+                            <a:column name="positionCodeFromDesc" align="center" editor="dim_lov" width="150"/>
+                            <a:column name="positionCodeToDesc" align="center" editor="dim_lov" width="150"/>
+                        </a:columns>
+                        <a:editors>
+                            <a:comboBox id="dim_combo"/>
+                            <a:textField id="dim_tx"/>
+                            <a:lov id="dim_lov"/>
+                        </a:editors>
+                        <a:events>
+                            <a:event name="cellclick" handler="dimCellClick"/>
+                        </a:events>
+                    </a:grid>
+                </a:tab>
+            </a:tabs>
+        </a:tabPanel>
+    </a:view>
+</a:screen>

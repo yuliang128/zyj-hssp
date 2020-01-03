@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BPM102_pageTagDataGuideBatchAddLink"
+                url="$[/request/@context_path]/modules/bpm/BPM1020/bpm_page_tags_data_guide_batch_add.screen"/>
+        <script><![CDATA[
+        function BPM102_doTagDataGuideSave() {
+            $au('BPM102_pageTagDataGuideResultDs').submit();
+        }
+
+        function BPM102_doTagDataGuideBack() {
+            $au('bpm_page_tags_data_guide_screen').close();
+        }
+
+        function BPM102_onDataGuideUpdate(dataSet, record, name, value, oldValue) {
+            if (name == 'triggerConditionDesc') {
+                var condField = record.getMeta().getField('triggerConditionDesc');
+                var valueField = record.getMeta().getField('conditionValue');
+                valueField.setReadOnly(false);
+                valueField.setRequired(true);
+                if (!value) {
+                    valueField.setRequired(false);
+                    record.set('conditionValue', '');
+                }
+            } else if (name == 'targetLayoutId') {
+                if (value) {
+                    record.getMeta().getField('targetTagDesc').setLovPara('layoutId', value);
+                    record.set('targetTagDesc', '');
+                    record.set('targetTagId', '');
+                }
+                record.set('clearFlagDesc', '');
+                record.set('requiredFlagDesc', '');
+                record.set('readonlyFlagDesc', '');
+                record.set('clearFlag', '');
+                record.set('requiredFlag', '');
+                record.set('readonlyFlag', '');
+            }
+        }
+
+        function BPM102_onDataGuideAdd(ds, record, index) {
+            var lineNum = 0;
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('guideSequence') > lineNum) {
+                    lineNum = records[i].get('guideSequence');
+                }
+            }
+            record.set('guideSequence', (Math.floor(lineNum / 10) + 1) * 10);
+        }
+
+        function BPM102_onDataGuideLoad(ds) {
+            var records = ds.getAll();
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('targetLayoutId')) {
+                    records[i].getField('targetTagDesc').setLovPara('layoutId', records[i].get('targetLayoutId'));
+                }
+            }
+        }
+
+        function BPM102_doDataTagPreview() {
+            window.open('$[/request/@context_path]/' + $au('BPM102_pageGroupResultDs').getCurrentRecord().get('templateScreen') + '?pageId=' + $au('BPM102_pageResultDs').getCurrentRecord().get('pageId') + '&refreshCache=Y');
+        }
+
+        function BPM102_dataGuideEditorFun(record, name) {
+            if (name == 'targetTagDesc') {
+                if (record.get('targetLayoutId')) {
+                    return 'BPM102_dataGuideLov';
+                } else {
+                    return '';
+                }
+            } else if (name == 'triggerConditionDesc') {
+                return 'BPM102_dataGuideCb';
+            } else if (name == 'conditionValue') {
+                return 'BPM102_dataGuideTf';
+            } else if (name == 'readonlyFlagDesc' || name == 'requiredFlagDesc') {
+                if (record.get('targetLayoutId') != '$[/model/layout/records/record/@layoutId]') {
+                    return '';
+                } else {
+                    return 'BPM102_dataGuideCb';
+                }
+            } else if (name == 'filterName') {
+                return 'BPM102_dataGuideTf';
+            } else if (name == 'clearFlagDesc') {
+                return 'BPM102_dataGuideCb';
+            }else if (name == 'formula'){
+                return 'BPM102_dataGuideTa';
+            }
+        }
+
+        function BPM102_batchAdd() {
+            var tagId = '$[/parameter/@tagId]';
+
+            var lineNum = 0;
+            var records = $au('BPM102_pageTagDataGuideResultDs').getAll();
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('guideSequence') > lineNum) {
+                    lineNum = records[i].get('guideSequence');
+                }
+            }
+
+            lineNum = (Math.floor(lineNum / 10)) * 10;
+
+            new Aurora.Window({
+                id: 'bpm_page_tags_data_guide_batch_add_screen',
+                url: $au('BPM102_pageTagDataGuideBatchAddLink').getUrl() + '?tagId=' + tagId + '&lineNum=' + lineNum,
+                title: '$[l:bpm_page_tag_combobox.mapper]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_onDataGuideSubmitSuccess(ds, res) {
+            ds.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_triggerTypeDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.DATA_TRIGGER_TYPE/" autoQuery="true"
+                       fetchAll="true"/>
+            <a:dataSet id="BPM102_logicTypeDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.DATABASE_LOGICTYPE/" autoQuery="true"
+                       fetchAll="true"/>
+            <a:dataSet id="BPM102_triggerConditionDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.DATA_TRIGGER_CONDITION/"
+                       autoQuery="true" fetchAll="true"/>
+            <a:dataSet id="BPM102_showableDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_SHOWABLE/" autoQuery="true"
+                       fetchAll="true"/>
+            <a:dataSet id="BPM102_readableDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_READABLE/" autoQuery="true"
+                       fetchAll="true"/>
+            <a:dataSet id="BPM102_requirableDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_REQUIRABLE/" autoQuery="true"
+                       fetchAll="true"/>
+            <a:dataSet id="BPM102_clearDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_CLEAR/" autoQuery="true"
+                       fetchAll="true"/>
+            <a:dataSet id="BPM102_pageTagDataGuideResultDs" autoQuery="true"
+                       pageSize="20"
+                       baseUrl="/bpm/pageTagDataGuide"
+                       queryUrl="$[/request/@context_path]/bpm/pageTagDataGuide/query?tagId=$[/parameter/@tagId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="guideId"/>
+                    <a:field name="tagId" defaultValue="$[/parameter/@tagId]"/>
+                    <a:field name="guideSequence" prompt="bpm_page_tag_data_guide.guide_sequence"/>
+                    <a:field name="currentLogicTypeDesc" displayField="description"
+                             options="BPM102_logicTypeDs" prompt="bpm_page_tag_data_guide.current_logic_type"
+                             returnField="currentLogicType" valueField="value"/>
+                    <a:field name="currentLogicType"/>
+                    <a:field name="triggerTypeDesc" displayField="description" options="BPM102_triggerTypeDs"
+                             prompt="bpm_page_tag_data_guide.trigger_type" required="true" returnField="triggerType"
+                             valueField="value"/>
+                    <a:field name="triggerType"/>
+                    <a:field name="triggerConditionDesc" displayField="description"
+                             options="BPM102_triggerConditionDs" prompt="bpm_page_tag_data_guide.trigger_condition"
+                             returnField="triggerCondition" valueField="value"/>
+                    <a:field name="triggerCondition"/>
+                    <a:field name="conditionValue" prompt="bpm_page_tag_data_guide.condition_value"/>
+                    <a:field name="readonlyFlagDesc" displayField="description" options="BPM102_readableDs"
+                             returnField="readonlyFlag" valueField="value"
+                             prompt="bpm_page_tag_data_guide.readonly_flag_desc"/>
+                    <a:field name="readonlyFlag"/>
+                    <a:field name="requiredFlagDesc" displayField="description" options="BPM102_requirableDs"
+                             returnField="requiredFlag" valueField="value"
+                             prompt="bpm_page_tag_data_guide.required_flag_desc"/>
+                    <a:field name="requiredFlag"/>
+                    <a:field name="hiddenFlagDesc" displayField="description" options="BPM102_showableDs"
+                             returnField="hiddenFlag" valueField="value"
+                             prompt="bpm_page_tag_data_guide.hidden_flag_desc"/>
+                    <a:field name="hiddenFlag"/>
+                    <a:field name="targetValue"/>
+                    <a:field name="filterName" prompt="bpm_page_tag_data_guide.filter_name"/>
+                    <a:field name="targetTagDesc" lovGridHeight="300" lovHeight="460"
+                             lovCode="LOV_BPM_TAG" lovWidth="500"
+                             prompt="bpm_page_tag_data_guide.target_tag_id"
+                             title="bpm_page_tag_data_guide.target_tag_id">
+                        <a:mapping>
+                            <a:map from="tagDesc" to="targetTagDesc"/>
+                            <a:map from="tagId" to="targetTagId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="targetTagId"/>
+                    <a:field name="targetLayoutDesc" lovGridHeight="300" lovHeight="460"
+                             lovCode="LOV_BPM_LAYOUT?pageId=$[/model/layout/records/record/@pageId]"
+                             lovWidth="500" prompt="bpm_page_tag_data_guide.target_layout_id"
+                             title="bpm_page_tag_data_guide.target_layout_id">
+                        <a:mapping>
+                            <a:map from="layoutDesc" to="targetLayoutDesc"/>
+                            <a:map from="layoutId" to="targetLayoutId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="targetLayoutId"/>
+                    <a:field name="clearFlagDesc" displayField="description" options="BPM102_clearDs"
+                             returnField="clearFlag" valueField="value"
+                             prompt="bpm_page_tag_data_guide.clear_flag_desc"/>
+                    <a:field name="clearFlag"/>
+                    <a:field name="formula" prompt="bpm_page_tag_data_guide.formula"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="BPM102_onDataGuideLoad"/>
+                    <a:event name="add" handler="BPM102_onDataGuideAdd"/>
+                    <a:event name="update" handler="BPM102_onDataGuideUpdate"/>
+                    <a:event name="submitsuccess" handler="BPM102_onDataGuideSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" column="3" title="bpm_page_tag_basic.data_guide" style="width:100%">
+                <!--<a:label name="groupTypeDesc" bindTarget="BPM102_pageGroupResultDs"-->
+                         <!--prompt="bpm_page_group.group_type"/>-->
+                <!--<a:label name="groupCode" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_code"/>-->
+                <!--<a:label name="groupDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_desc"/>-->
+                <!--<a:label name="pageTypeDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_type"/>-->
+                <!--<a:label name="pageCode" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_code"/>-->
+                <!--<a:label name="pageDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_desc"/>-->
+                <!--<a:label name="layoutTypeDesc" bindTarget="BPM102_pageLayoutBasicDs"-->
+                         <!--prompt="bpm_page_layout_basic.layout_type"/>-->
+                <a:label name="layoutCode" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_code"/>
+                <a:label name="layoutDesc" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_desc"/>
+                <a:label name="tagTypeDesc" bindTarget="BPM102_pageTagBasicResultDs"
+                         prompt="bpm_page_tag_basic.tag_type"/>
+                <a:label name="tagCode" bindTarget="BPM102_pageTagBasicResultDs"
+                         prompt="bpm_page_tag_basic.tag_code"/>
+                <a:label name="tagDesc" bindTarget="BPM102_pageTagBasicResultDs"
+                         prompt="bpm_page_tag_basic.tag_desc"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doTagDataGuideSave" text="hap.save"/>
+                <a:button click="BPM102_doDataTagPreview" text="hap.preview"/>
+                <a:button click="BPM102_doTagDataGuideBack" text="hap.back"/>
+                <!--<a:button click="BPM102_batchAdd" text="bpm_page_tag_data_guide.BATCH_ADD"/>-->
+            </a:hBox>
+            <a:grid bindTarget="BPM102_pageTagDataGuideResultDs" height="350" marginHeight="240" marginWidth="40"
+                    navBar="true" width="1000">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="guideSequence" align="center" editor="BPM102_dataGuideNf" width="80"/>
+                    <a:column name="currentLogicTypeDesc" align="center" editor="BPM102_dataGuideCb" width="80"/>
+                    <a:column name="triggerTypeDesc" align="center" editor="BPM102_dataGuideCb" width="80"/>
+                    <a:column name="triggerConditionDesc" align="center" editorFunction="BPM102_dataGuideEditorFun"
+                              width="80"/>
+                    <a:column name="formula" align="center" editorFunction="BPM102_dataGuideEditorFun" width="80"/>
+                    <a:column name="conditionValue" align="center" editorFunction="BPM102_dataGuideEditorFun"
+                              width="80"/>
+                    <a:column name="targetLayoutDesc" align="center" editor="BPM102_dataGuideLov" width="80"/>
+                    <a:column name="targetTagDesc" align="center" editorFunction="BPM102_dataGuideEditorFun"
+                              width="80"/>
+                    <a:column name="clearFlagDesc" align="center" editorFunction="BPM102_dataGuideEditorFun"
+                              width="80"/>
+                    <a:column name="hiddenFlagDesc" align="center" editor="BPM102_dataGuideCb" width="80"/>
+                    <a:column name="readonlyFlagDesc" align="center" editorFunction="BPM102_dataGuideEditorFun"
+                              width="80"/>
+                    <a:column name="requiredFlagDesc" align="center" editorFunction="BPM102_dataGuideEditorFun"
+                              width="80"/>
+                    <a:column name="filterName" align="center" editorFunction="BPM102_dataGuideEditorFun" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BPM102_dataGuideTf"/>
+                    <a:numberField id="BPM102_dataGuideNf" allowDecimals="false"/>
+                    <a:checkBox id="BPM102_dataGuideCk"/>
+                    <a:comboBox id="BPM102_dataGuideCb"/>
+                    <a:lov id="BPM102_dataGuideLov"/>
+                    <a:textArea id="BPM102_dataGuideTa" />
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

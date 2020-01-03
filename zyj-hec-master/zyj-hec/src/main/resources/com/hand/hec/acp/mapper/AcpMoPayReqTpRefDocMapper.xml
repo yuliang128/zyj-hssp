@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.acp.mapper.AcpMoPayReqTpRefDocMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.acp.dto.AcpMoPayReqTpRefDoc">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="MO_PAY_REQ_TYPE_ID" property="moPayReqTypeId" jdbcType="DECIMAL"/>
+        <result column="DOCUMENT_TYPE" property="documentType" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_TYPE_ID" property="documentTypeId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_TYPE_CODE" property="documentTypeCode" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_TYPE_NAME" property="documentTypeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryBymoPayReqType" parameterType="com.hand.hec.acp.dto.AcpMoPayReqTpRefDoc" resultMap="BaseResultMap">
+        SELECT
+        amrd.ref_id,
+        amrd.mo_pay_req_type_id,
+        amrd.document_type,
+        amrd.document_type_id,
+        ( CASE amrd.document_type WHEN 'REPORT' THEN em.mo_exp_report_type_code WHEN 'CONTRACT' THEN
+        cm.mo_contract_type_code END ) document_type_code,
+        ( CASE amrd.document_type WHEN 'REPORT' THEN eml.description WHEN 'CONTRACT' THEN cml.description END )
+        document_type_name,
+        amrd.enabled_flag
+        FROM
+        acp_mo_pay_req_tp_ref_doc amrd
+        LEFT OUTER JOIN con_mo_contract_type cm ON ( amrd.document_type_id = cm.MO_CONTRACT_TYPE_ID )
+        LEFT OUTER JOIN con_mo_contract_type_tl cml ON ( cm.MO_CONTRACT_TYPE_ID = cml.MO_CONTRACT_TYPE_ID AND cml.lang =
+        #{request.locale,jdbcType=VARCHAR} )
+        LEFT OUTER JOIN exp_mo_report_type em ON ( amrd.document_type_id = em.mo_exp_report_type_id )
+        LEFT OUTER JOIN exp_mo_report_type_tl eml ON ( em.mo_exp_report_type_id = eml.mo_exp_report_type_id AND eml.lang
+        = #{request.locale,jdbcType=VARCHAR} )
+        <where>
+            <if test="moPayReqTypeId!=null">
+                and amrd.mo_pay_req_type_id = #{moPayReqTypeId}
+            </if>
+            <if test="refId!=null">
+                and amrd.ref_id = #{refId}
+            </if>
+        </where>
+
+    </select>
+
+
+</mapper>

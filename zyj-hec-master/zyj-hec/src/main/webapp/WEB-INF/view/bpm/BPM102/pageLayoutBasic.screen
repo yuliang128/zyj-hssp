@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="BPM102_pageLayoutEventLink" url="$[/request/@context_path]/bpm/BPM102/pageLayoutEvent.screen"/>
+        <a:link id="BPM102_pageLayoutButtonLink" url="$[/request/@context_path]/bpm/BPM102/pageLayoutButton.screen"/>
+        <a:link id="BPM102_pageTagLink" url="$[/request/@context_path]/bpm/BPM102/pageTag.screen"/>
+        <script><![CDATA[
+
+        function BPM102_layoutBtnRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            if (record.get('layoutType') == 'grid' || record.get('layoutType') == 'table') {
+                var url = '<a href="javascript:BPM102_newLayoutBtnFunction(' + record.get('layoutId') + ')">' + '$[l:bpm_page_layout_basic.grid_btn]' + '</a>';
+                return url;
+            } else {
+                return '';
+            }
+        }
+
+        function BPM102_newLayoutBtnFunction(layoutId) {
+            new Aurora.Window({
+                id: 'BPM102_pageLayoutButtonScreen',
+                url: $au('BPM102_pageLayoutButtonLink').getUrl() + '?layoutId=' + layoutId,
+                title: '$[l:bpm_page_layout_button]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_layoutEventRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            if (record.get('layoutType') == 'grid' || record.get('layoutType') == 'table') {
+                var url = '<a href="javascript:BPM102_newLayoutEventFunction(' + record.get('layoutId') + ')">' + '$[l:bpm_page_layout_basic.grid_event]' + '</a>';
+                return url;
+            } else {
+                return '';
+            }
+        }
+
+        function BPM102_newLayoutEventFunction(layoutId) {
+            new Aurora.Window({
+                id: 'BPM102_pageLayoutEventScreen',
+                url: $au('BPM102_pageLayoutEventLink').getUrl() + '?layoutId=' + layoutId,
+                title: '$[l:bpm_page_layout_event]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_tagDetailRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM102_newTagDetailFunction(' + record.get('layoutId') + ',\'' + record.get('layoutType') + '\')">' + '$[l:bpm_page_layout_basic.tag_detail]' + '</a>';
+            return url;
+        }
+
+        function BPM102_newTagDetailFunction(layoutId, layoutType) {
+            new Aurora.Window({
+                id: 'BPM102_pageTagScreen',
+                url: $au('BPM102_pageTagLink').getUrl() + '?layoutId=' + layoutId + '&layoutType=' + layoutType,
+                title: '$[l:bpm_page_tag_basic]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_doLayoutSave() {
+            $au('BPM102_pageLayoutBasicDs').submit();
+        }
+
+        function BPM102_doLayoutBack(templateId) {
+            $au('BPM102_pageLayoutBasicScreen').close();
+        }
+
+        function BPM102_onLayoutUpdate(dataSet, record, name, value, oldValue) {
+            if (name == 'layoutType') {
+                record.set('tabGroupNumber', '');
+                record.set('labelwidth', '');
+                record.set('title', '');
+                record.set('rowNum', '');
+                record.set('columnNum', '');
+                record.set('navbar', '');
+                record.set('ref', '');
+                record.set('selected', '');
+                record.set('closeable', '');
+                record.set('disabled', '');
+            }
+        }
+
+        function BPM102_onLayoutLoad(ds) {
+            var records = ds.getAll();
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('layoutType') == 'form' || records[i].get('layoutType') == 'box' || records[i].get('layoutType') == 'fieldSet') {
+                    records[i].getField('title').setReadOnly(false);
+                    records[i].getField('labelwidth').setReadOnly(false);
+                    records[i].getField('rowNum').setReadOnly(false);
+                    records[i].getField('columnNum').setReadOnly(false);
+                    records[i].getField('width').setReadOnly(false);
+                    records[i].getField('margintop').setReadOnly(false);
+                    records[i].getField('marginleft').setReadOnly(false);
+                } else if (records[i].get('layoutType') == 'hBox' || records[i].get('layoutType') == 'vBox') {
+                    records[i].getField('title').setReadOnly(false);
+                    records[i].getField('labelwidth').setReadOnly(false);
+                    records[i].getField('width').setReadOnly(false);
+                    records[i].getField('margintop').setReadOnly(false);
+                    records[i].getField('marginleft').setReadOnly(false);
+                } else if (records[i].get('layoutType') == 'tab') {
+                    records[i].getField('ref').setReadOnly(false);
+                    records[i].getField('selected').setReadOnly(false);
+                    records[i].getField('closeable').setReadOnly(false);
+                    records[i].getField('disabled').setReadOnly(false);
+                } else if (records[i].get('layoutType') == 'grid' || records[i].get('layoutType') == 'table') {
+                    records[i].getField('navbar').setReadOnly(false);
+                }
+                records[i].getField('parentLayoutDesc').setLovPara('templateId', records[i].get('templateId'));
+            }
+        }
+
+        function BPM102_layoutPreview() {
+            window.open('$[/request/@context_path]/' + $au('BPM102_pageGroupResultDs').getCurrentRecord().get('templateScreen') + '?pageId=' + $au('BPM102_pageResultDs').getCurrentRecord().get('pageId') + '&refreshCache=Y');
+        }
+
+        function BPM102_layoutEditorFunction(record, name) {
+            if (record.get('layoutType') == 'form' || record.get('layoutType') == 'box' || record.get('layoutType') == 'fieldSet') {
+                if (name == 'title') {
+                    return 'BPM102_layoutTf';
+                } else if (name == 'labelwidth') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'rowNum') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'columnNum') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'width') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'margintop') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'marginleft') {
+                    return 'BPM102_layoutNf';
+                }
+            } else if (record.get('layoutType') == 'hBox' || record.get('layoutType') == 'vBox') {
+                if (name == 'title') {
+                    return 'BPM102_layoutTf';
+                } else if (name == 'labelwidth') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'width') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'margintop') {
+                    return 'BPM102_layoutNf';
+                } else if (name == 'marginleft') {
+                    return 'BPM102_layoutNf';
+                }
+            } else if (record.get('layoutType') == 'tab') {
+                if (name == 'ref') {
+                    return 'BPM102_layoutTf';
+                } else if (name == 'disabled') {
+                    return 'BPM102_layoutCk';
+                } else if (name == 'selected') {
+                    return 'BPM102_layoutCk';
+                } else if (name == 'closeable') {
+                    return 'BPM102_layoutCk';
+                }
+            } else if (record.get('layoutType') == 'grid' || record.get('layoutType') == 'table') {
+                if (name == 'navbar') {
+                    return 'BPM102_layoutCk';
+                }
+            } else {
+                return '';
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_layoutTypeDs">
+                <a:datas dataSource="layoutType/records"></a:datas>
+            </a:dataSet>
+            <a:dataSet id="BPM102_pageLayoutBasicDs" autoQuery="true"
+                       baseUrl="/bpm/pageLayoutBasic"
+                       queryUrl="$[/request/@context_path]/bpm/pageLayoutBasic/query?pageId=$[/parameter/@pageId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="layoutId"/>
+                    <a:field name="pageId" defaultValue="$[/parameter/@pageId]"/>
+                    <a:field name="layoutSequence" readOnly="true"/>
+                    <a:field name="layoutCode" readOnly="true"/>
+                    <a:field name="layoutDesc" readOnly="true"/>
+                    <a:field name="layoutTypeDesc" displayfield="code_value_name" options="BPM102_layoutTypeDs"
+                             readOnly="true" required="true" returnField="layoutType" valueField="code_value"/>
+                    <a:field name="layoutType"/>
+                    <a:field name="parentLayoutDesc" lovGridHeight="300" lovHeight="460"
+                             lovService="java@bpmTpltLayoutBasicController@queryParentTagsLov" lovWidth="500"
+                             prompt="bpm_page_layout_basic.parent_layout_id" readOnly="true"
+                             title="bpm_page_layout_basic.parent_layout_id">
+                        <a:mapping>
+                            <a:map from="layoutDesc" to="parentLayoutDesc"/>
+                            <a:map from="layoutId" to="parentLayoutId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentLayoutId"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="dataset"/>
+                    <a:field name="id"/>
+                    <a:field name="tabGroupNumber" readOnly="true"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="marginwidth"/>
+                    <a:field name="marginheight"/>
+                    <a:field name="margintop"/>
+                    <a:field name="marginleft"/>
+                    <a:field name="style"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="prompt" readOnly="true"/>
+                    <a:field name="title" readOnly="true"/>
+                    <a:field name="labelwidth"/>
+                    <a:field name="labelseparator"/>
+                    <a:field name="rowNum"/>
+                    <a:field name="columnNum"/>
+                    <a:field name="navbar" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="ref" readOnly="true"/>
+                    <a:field name="selected" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="closeable" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="tabstyle"/>
+                    <a:field name="bodystyle"/>
+                    <a:field name="writeBackProgram"/>
+                    <a:field name="entityName" lovCode="LOV_BPM_PAGE_GROUP_ENTITY?groupId=$[/parameter/@groupId]"
+                             prompt="关联实体">
+                        <a:mapping>
+                            <a:map from="entityName" to="entityName"/>
+                            <a:map from="entityId" to="entityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entityId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="BPM102_onLayoutLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" column="3" title="bpm_page_layout_basic" style="width:100%">
+                <a:label name="groupTypeDesc" bindTarget="BPM102_pageGroupResultDs"
+                         prompt="bpm_page_group.group_type"/>
+                <a:label name="groupCode" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_code"/>
+                <a:label name="groupDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_desc"/>
+                <a:label name="pageTypeDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_type"/>
+                <a:label name="pageCode" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_code"/>
+                <a:label name="pageDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_desc"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doLayoutSave" text="hap.save"/>
+                <a:button click="BPM102_layoutPreview" text="hap.preview"/>
+                <a:button click="BPM102_doLayoutBack" text="hap.back"/>
+            </a:hBox>
+            <a:grid bindTarget="BPM102_pageLayoutBasicDs" height="340" marginHeight="230" marginWidth="40" navBar="true"
+                    width="1200">
+                <a:columns>
+                    <a:column name="layoutCode" align="center" lock="true" prompt="bpm_page_layout_basic.layout_code"
+                              width="150"/>
+                    <a:column name="layoutDesc" align="center" lock="true" prompt="bpm_page_layout_basic.layout_desc"
+                              width="150"/>
+                    <a:column name="layoutTypeDesc" align="center" lock="true"
+                              prompt="bpm_page_layout_basic.layout_type" width="80"/>
+                    <a:column name="entityName" align="center" editor="BPM102_layoutLov"/>
+                    <a:column name="tag_detail" align="center" prompt="bpm_page_layout_basic.tag_detail" lock="true"
+                              renderer="BPM102_tagDetailRenderer" width="80"/>
+                    <a:column name="writeBackProgram" align="left" lock="true" prompt="数据回写程序"
+                              editor="BPM102_layoutTa"/>
+                    <a:column name="tabGroupNumber" align="center" prompt="bpm_page_layout_basic.tab_group_number"
+                              width="80"/>
+                    <a:column name="layoutSequence" align="center" prompt="bpm_page_layout_basic.layout_sequence"
+                              width="80"/>
+                    <a:column name="business_category" align="left" prompt="bpm_page_layout_basic.business_category"
+                              width="150"/>
+                    <a:column name="parent_business_category" align="left"
+                              prompt="bpm_page_layout_basic.parent_business_category" width="150"/>
+                    <a:column name="ref_table" align="left" prompt="bpm_page_layout_basic.ref_table" width="150"/>
+                    <a:column name="ref_field" align="left" prompt="bpm_page_layout_basic.ref_field" width="150"/>
+                    <a:column name="parentLayoutDesc" align="center" prompt="bpm_page_layout_basic.parent_layout_id"
+                              width="80"/>
+                    <a:column name="templateFlag" align="center" prompt="bpm_page_layout_basic.template_flag"
+                              width="80"/>
+                    <a:column name="hidden" align="center" editor="BPM102_layoutCk"
+                              prompt="bpm_page_layout_basic.hidden"
+                              width="80"/>
+                    <a:column name="form_display" align="center" prompt="bpm_page_layout_basic.form_disp" width="80">
+                        <a:column name="title" align="center" BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.title" width="80"/>
+                        <a:column name="labelwidth" align="center"
+                                  BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.labelwidth" width="80"/>
+                        <a:column name="rowNum" align="center"
+                                  BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.row_num" width="80"/>
+                        <a:column name="columnNum" align="center"
+                                  BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.column_num" width="80"/>
+                        <a:column name="width" align="center" BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.width" width="80"/>
+                    </a:column>
+                    <a:column name="tab_display" align="center" prompt="bpm_page_layout_basic.tab_disp" width="80">
+                        <a:column name="ref" align="center" BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.ref" width="80"/>
+                        <a:column name="disabled" align="center"
+                                  BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.disabled" width="80"/>
+                        <a:column name="selected" align="center"
+                                  BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.selected" width="80"/>
+                        <a:column name="closeable" align="center"
+                                  BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.closeable" width="80"/>
+                    </a:column>
+                    <a:column name="grid_display" align="center" prompt="bpm_page_layout_basic.grid_disp" width="80">
+                        <a:column name="navbar" align="center" BPM102_layoutEditorFunction="BPM102_layoutEditorFunction"
+                                  prompt="bpm_page_layout_basic.navbar" width="80"/>
+                        <a:column name="grid_btn" align="center" prompt="bpm_page_layout_basic.grid_btn"
+                                  renderer="BPM102_layoutBtnRenderer" width="80"/>
+                        <a:column name="grid_event" align="center" prompt="bpm_page_layout_basic.grid_event"
+                                  renderer="BPM102_layoutEventRenderer" width="80"/>
+                    </a:column>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BPM102_layoutLov"/>
+                    <a:comboBox id="BPM102_layoutCb"/>
+                    <a:checkBox id="BPM102_layoutCk"/>
+                    <a:textField id="BPM102_layoutTf"/>
+                    <a:numberField id="BPM102_layoutNf" allowDecimals="false"/>
+                    <a:textArea id="BPM102_layoutTa"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw 
+    $Date: 2018
+    $Revision: 工作流网关权限规则分配
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+        function WFL1010_return() {
+            $au('WFL1010_gatewayBizRulesWindow').close();
+        }
+
+        function textUpperFunc(record, name) {
+            if (record.isNew) {
+                return 'WFL1010_gatewayBizRuleGroup_tf_edit';
+            }
+
+            return '';
+        }
+
+        function WFL1010_onGatewayBizRuleGroupCellClick(grid, row, name, record) {
+            //window.group_id = record.get('group_id');
+            //$au('WFL1010_gatewayBizRuleDetailDs').setQueryParameter('group_id', record.get('group_id'));
+            //$au('WFL1010_gatewayBizRuleDetailDs').query();
+        }
+
+        function WFL1010_onGatewayBizRuleDetailAddFun(ds, record, index) {
+            record.set('groupId', window.groupId);
+        }
+
+        function WFL1010_beforeGatewayBizRuleDetailCreateFun(ds) {
+            if (window.groupId == '') {
+                Aurora.showErrorMessage('$[l:hap.prompt]', '$[l:hap.save_first]');
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        function WFL1010_onGatewayBizRuleGroupSubmitSuccessFun(ds, res) {
+            $au('WFL1010_gatewayBizRuleGroupDs').query();
+            WFL1010_onGatewayBizRuleGroupIndexChangeFun();
+        }
+
+        function WFL1010_onGatewayBizRuleGroupIndexChangeFun(ds, record) {
+            var groupId = record.get('groupId');
+            window.groupId = record.get('groupId');
+            $au('WFL1010_gatewayBizRuleDetailDs').setQueryParameter('groupId', groupId);
+            $au('WFL1010_gatewayBizRuleDetailDs').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL1010_adjustTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_BUSINESS_RULE_ADJUST_TYPE/"/>
+            <a:dataSet id="WFL1010_gatewayBizRuleHeaderDs">
+                <a:datas dataSource="gatewayInfo/records"/>
+                <a:fields>
+                    <a:field name="gatewayCode" prompt="wfl_gateway.gateway_code" readOnly="true"/>
+                    <a:field name="gatewayName" prompt="wfl_gateway.gateway_name" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL1010_gatewayBizRuleGroupDs" autoQuery="true" baseUrl="/wfl/gateway-biz-rule-group"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="groupId"/>
+                    <a:field name="gatewayId" defaultValue="$[/model/gatewayInfo/records/record/@gatewayId]"/>
+                    <a:field name="groupCode" prompt="wfl_gateway_biz_rule_group.group_code" required="true"/>
+                    <a:field name="groupName" descIdField="groupNameId" prompt="wfl_gateway_biz_rule_group.group_name"
+                             required="true"/>
+                    <a:field name="groupNameId"/>
+                    <a:field name="sequence" prompt="wfl_gateway_biz_rule_group.sequence" required="true"/>
+                    <a:field name="adjustTypeName" displayField="meaning" options="WFL1010_adjustTypeDs"
+                             prompt="wfl_gateway_biz_rule_group.adjust_type_name" required="true"
+                             returnField="adjustType" valueField="value"/>
+                    <a:field name="adjustType"/>
+                    <a:field name="flowName"
+                             lovCode="LOV_WFL_FLOW?processId=$[/model/gatewayInfo/records/record/@processId]"
+                             prompt="wfl_gateway_biz_rule_group.flow_name" required="true">
+                        <a:mapping>
+                            <a:map from="flowName" to="flowName"/>
+                            <a:map from="flowId" to="flowId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_gateway_biz_rule_group.enabled_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="WFL1010_onGatewayBizRuleGroupSubmitSuccessFun"/>
+                    <a:event name="indexchange" handler="WFL1010_onGatewayBizRuleGroupIndexChangeFun"/>
+                </a:events>
+
+            </a:dataSet>
+            <a:dataSet id="WFL1010_gatewayBizRuleDetailDs" autoQuery="true" baseUrl="/wfl/gateway-biz-rule-detail"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="groupId"/>
+                    <a:field name="businessRuleName" lovCode="LOV_FND_BUSINESS_RULE"
+                             prompt="wfl_gateway_biz_rule_detail.business_rule_name" required="true">
+                        <a:mapping>
+                            <a:map from="businessRuleName" to="businessRuleName"/>
+                            <a:map from="businessRuleId" to="businessRuleId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_gateway_biz_rule_detail.enabled_flag" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="WFL1010_onGatewayBizRuleDetailAddFun"/>
+                    <a:event name="beforecreate" handler="WFL1010_beforeGatewayBizRuleDetailCreateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="WFL1010_return" text="hap.back" width="80"/>
+            </a:screenTopToolbar>
+            <a:form column="2" title="wfl_gateway.business_detail" style="width:100%">
+                <a:textField name="gatewayCode" bindTarget="WFL1010_gatewayBizRuleHeaderDs"/>
+                <a:textField name="gatewayName" bindTarget="WFL1010_gatewayBizRuleHeaderDs"/>
+            </a:form>
+            <a:form marginWidth="12" padding="0" showmargin="false" title="wfl_gateway.business_rule_group">
+                <a:grid id="WFL1010_gatewayBizRuleGroupGrid" bindTarget="WFL1010_gatewayBizRuleGroupDs" height="300"
+                        marginWidth="23" navBar="true">
+                    <a:toolBar>
+                        <a:button type="add"/>
+                        <a:button type="save"/>
+                        <a:button type="delete"/>
+                    </a:toolBar>
+                    <a:columns>
+                        <a:column name="groupCode" align="left" editorFunction="textUpperFunc" width="40"/>
+                        <a:column name="groupName" align="left" editor="WFL1010_gatewayBizRuleGroup_tld" width="60"/>
+                        <a:column name="sequence" align="left" editor="WFL1010_gatewayBizRuleGroup_nf" width="64"/>
+                        <a:column name="adjustTypeName" align="center" editor="WFL1010_gatewayBizRuleGroup_cb"
+                                  width="60"/>
+                        <a:column name="flowName" align="center" editor="WFL1010_gatewayBizRuleGroup_lov" width="60"/>
+                        <a:column name="enabledFlag" align="center" editor="WFL1010_gatewayBizRuleGroup_cb" width="40"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:textField id="WFL1010_gatewayBizRuleGroup_tf"/>
+                        <a:textField id="WFL1010_gatewayBizRuleGroup_tf_edit" typeCase="upper"/>
+                        <a:checkBox id="WFL1010_gatewayBizRuleGroup_chk"/>
+                        <a:lov id="WFL1010_gatewayBizRuleGroup_lov"/>
+                        <a:numberField id="WFL1010_gatewayBizRuleGroup_nf" allowDecimals="false" allowNegative="false"/>
+                        <a:comboBox id="WFL1010_gatewayBizRuleGroup_cb"/>
+                        <a:tledit id="WFL1010_gatewayBizRuleGroup_tld"/>
+                    </a:editors>
+
+                    <a:events>
+                        <a:event name="cellclick" handler="WFL1010_onGatewayBizRuleGroupCellClick"/>
+                    </a:events>
+                </a:grid>
+            </a:form>
+            <a:form marginWidth="12" padding="0" showmargin="false" title="wfl_gateway.business_rule_detail"
+                    style="margin-top:10px;">
+                <a:grid id="WFL1010_gatewayBizRuleDetailGrid" bindTarget="WFL1010_gatewayBizRuleDetailDs" height="300"
+                        marginWidth="23" navBar="true">
+                    <a:toolBar>
+                        <a:button type="add"/>
+                        <a:button type="save"/>
+                        <a:button type="delete"/>
+                    </a:toolBar>
+                    <a:columns>
+                        <a:column name="businessRuleName" align="left" editor="WFL1010_gatewayBizRuleDetail_lov"
+                                  width="80"/>
+                        <a:column name="enabledFlag" align="center" editor="WFL1010_gatewayBizRuleDetail_chk"
+                                  width="80"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:checkBox id="WFL1010_gatewayBizRuleDetail_chk"/>
+                        <a:lov id="WFL1010_gatewayBizRuleDetail_lov"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscWorkCenterMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscWorkCenter">
+        <result column="WORK_CENTER_ID" property="workCenterId" jdbcType="DECIMAL" />
+        <result column="WORK_CENTER_CODE" property="workCenterCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="MANAGER_TYPE" property="managerType" jdbcType="VARCHAR" />
+        <result column="MANAGER_ID" property="managerId" jdbcType="DECIMAL" />
+        <result column="PROCESS_MODEL" property="processModel" jdbcType="VARCHAR" />
+        <result column="AUDIT_TYPE" property="auditType" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        
+        <result column="WORK_CENTER_CODE_NAME" property="workCenterCodeName" jdbcType="VARCHAR"/>
+        <result column="MANAGER_NAME" property="managerName" jdbcType="VARCHAR"/>
+		<result column="WORK_TEAM_NAME" property="workTeamName" jdbcType="VARCHAR"/>
+		<result column="WORK_TEAM_CODE_NAME" property="workTeamCodeName" jdbcType="VARCHAR"/>
+		<result column="EMPLOYEE_CODE_NAME" property="employeeCodeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    
+    <select id="querySscWorkCenter" resultMap="BaseResultMap">
+SELECT
+	swc.work_center_id,
+	swc.work_center_code,
+	swct.DESCRIPTION,
+	CONCAT(
+		swc.work_center_code,
+		'-',
+		swct.description
+	) work_center_code_name,
+	swc.manager_type,
+	swc.manager_id,
+	CASE swc.manager_type
+WHEN 'EMPLOYEE' THEN
+	(
+		SELECT
+			emp. NAME
+		FROM
+			exp_employee emp
+		WHERE
+			emp.employee_id = swc.manager_id
+	)
+WHEN 'POSITION' THEN
+	(
+		SELECT
+			ejvt.description
+		FROM
+			exp_employee_job ejv,
+			exp_employee_job_tl ejvt
+		WHERE
+			ejv.employee_job_id = swc.manager_id
+		AND ejv.employee_job_id = ejvt.employee_job_id
+		and ejvt.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	)
+END manager_name,
+ swc.process_model,
+ swc.audit_type,
+ swc.enabled_flag
+FROM
+	ssc_work_center swc,
+	ssc_work_center_tl swct
+WHERE
+	swc.WORK_CENTER_ID = swct.WORK_CENTER_ID
+and swct.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        <if test="workCenterCode!=null">
+            and swc.work_center_code like concat('%',#{workCenterCode},'%')
+        </if>
+        <if test="description!=null">
+            AND swct.DESCRIPTION like concat('%',#{description},'%')
+        </if>
+order by swc.work_center_code
+</select>
+
+	<select id="selectSscWorkCenter" resultMap="BaseResultMap">
+		SELECT
+	swcv.work_center_id,
+	swcv.work_center_code,
+	swcvt.DESCRIPTION,
+	concat(
+		swcv.work_center_code,
+		'-',
+		swcvt.DESCRIPTION
+	) AS work_center_code_name,
+	swtv.work_team_id,
+	swtv.work_team_code,
+	swtvt.DESCRIPTION AS work_team_name,
+	concat(
+		swtv.work_team_code,
+		'-',
+		swtvt.DESCRIPTION
+	) AS work_team_code_name,
+	ee.employee_id,
+	ee.employee_code,
+	ee. NAME,
+	concat(
+		ee.employee_code,
+		'-',
+		ee. NAME
+	) AS employee_code_name
+FROM
+	ssc_work_center swcv,
+	ssc_work_center_tl swcvt,
+	ssc_work_team swtv,
+	ssc_work_team_tl swtvt,
+	ssc_worker sw,
+	exp_employee ee
+WHERE
+	swcv.work_center_id = swtv.work_center_id
+AND swtv.work_team_id = sw.work_team_id
+AND sw.employee_id = ee.employee_id
+AND swcv.enabled_flag = 'Y'
+AND swtv.enabled_flag = 'Y'
+AND sw.enabled_flag = 'Y'
+AND ee.enabled_flag = 'Y'
+AND swcvt.WORK_CENTER_ID = swcv.WORK_CENTER_ID
+AND swcvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+AND swtvt.WORK_TEAM_ID = swtv.WORK_TEAM_ID
+AND swtvt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+<if test="description!=null">
+			AND swcvt.DESCRIPTION like concat('%',#{description},'%')
+		</if>
+		<if test="name!=null">
+			AND ee.name like concat('%',#{name},'%')
+		</if>
+		<if test="workTeamName!=null">
+			AND swtvt.DESCRIPTION like concat('%',#{workTeamName},'%')
+		</if>
+ORDER BY
+	swcv.work_center_code,
+	swtv.work_team_code,
+	ee.employee_code
+	</select>
+
+	
+	<select id="queryCenterByUser" resultMap="BaseResultMap">
+		SELECT
+		  *
+		FROM
+		(
+			SELECT
+				swcv.work_center_id,
+				swcv.work_center_code,
+				swcv.description work_center_name,
+				concat(swcv.work_center_code,'-',swcv.description) work_center_code_name
+			FROM
+				ssc_work_center swcv
+			WHERE
+				swcv.enabled_flag = 'Y'
+				AND EXISTS (
+					SELECT
+						1
+					FROM
+						ssc_work_team swtv
+					WHERE
+						swtv.enabled_flag = 'Y'
+						AND swtv.manager_employee_id = (select su.employee_id from sys_user su where su.user_id = #{request.userId} )
+						AND swtv.work_center_id = swcv.work_center_id
+				)
+		) v
+		where
+		1=1
+		<if test = "workCenterCode != null">
+			AND v.work_center_code LIKE '%${workCenterCode}%'
+		</if>
+		<if test = "workCenterName != null">
+			AND v.work_center_name LIKE '%${workCenterName}%'
+		</if>
+		ORDER BY
+		v.work_center_code
+	</select>
+
+</mapper>

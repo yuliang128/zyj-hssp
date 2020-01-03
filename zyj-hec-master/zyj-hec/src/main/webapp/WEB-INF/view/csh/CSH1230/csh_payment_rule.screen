@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: weikun.wang
+    $Date: 2019-3-4
+    $Revision: 1.0  
+    $Purpose: 支付权限规则定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH1230_csh_payment_rules_mag_org_select_link" url="$[/request/@context_path]/modules/csh/CSH1230/csh_payment_rules_mag_org_select.screen"/>
+        <a:link id="CSH1230_csh_payment_rules_details_link" url="$[/request/@context_path]/csh/CSH1230/csh_payment_rule_detail.screen"/>
+        <script><![CDATA[
+            function CSH1230_closePaymentRulesCreateWindow() {
+                var url = $au('CSH1230_csh_payment_rules_mag_org_select_link').getUrl();
+                window.location.href = url;
+            }
+            
+            function CSH1230_ruleCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1230_textField_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH1230_update(dataSet, record, name, value, oldvalue) {
+                if (name == 'businessTypeDesc') {
+                    record.set('documentTypeId', '');
+                    record.set('documentTypeCode', '');
+                    record.set('documentTypeDesc', '');
+                }
+            }
+            
+            function dateValidator(record, name, value) { //日期校验方法
+                if (name == 'startDate' || name == 'endDate') {
+                    var date_from = record.get('startDate');
+                    var date_to = record.get('endDate');
+                    if ( !! date_to) {
+                        if (!compareDate(date_from, date_to)) {
+                            return '$[l:TIME_ERROR]'; //校验不通过返回字符串
+                        }
+                    }
+                    return true; //校验通过返回true
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH1230_Submit(ds) {
+                ds.query();
+            }
+            
+            function CSH1230_columnDetail(value, record, name) {
+                var ruleId = record.get('ruleId');
+                if (record.isNew) {
+                    return '';
+                } else {
+                    return '<a href="javascript:CSH1230_openDetail(' + ruleId + ')">' + '$[l:csh_payment_rule.rule_detail]' + '</a>';
+                }
+            }
+            
+            function CSH1230_openDetail(id) {
+                var mag_org_id = $au('CSH1230_csh_payment_rules_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1230_csh_payment_rules_details_link').getUrl() + '?ruleId=' + id + '&magOrgId=' + mag_org_id;
+                new Aurora.Window({
+                    id: 'CSH1230_csh_payment_rules_details_window',
+                    url: url,
+                    title: '$[l:csh_payment_rule.detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            function CSH1230_add(ds){
+                var mag_org_id = $au('CSH1230_csh_payment_rules_query_ds').getCurrentRecord().get('magOrgId');
+                if (mag_org_id != '' && mag_org_id != null && mag_org_id != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', mag_org_id);
+                }
+            }
+            function CSH1230_focus(){
+                $au('CSH1230_csh_payment_rules_magOrgList_ds').query();
+            }
+            function CSH1230_QueryUpdate(ds,record,name,value){
+                if(name=='magOrgId'){
+                    $au('CSH1230_csh_payment_rules_result_ds').query();
+                }
+            }
+            function CSH1230_BeforeCreate(){
+                if (Ext.isEmpty($au('CSH1230_csh_payment_rules_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            //add lcy 2017/12/27 15:14:34 保存前校验管理组织
+             function CSH1230_beforeSubmit(){
+                if (Ext.isEmpty($au('CSH1230_csh_payment_rules_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1230_csh_business_type_ds" loadData="true" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY/" />
+            <a:dataSet id="CSH1230_csh_payment_rules_magOrgList_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="CSH1230_csh_payment_rules_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="ruleCodeFrom"/>
+                    <a:field name="ruleCodeTo"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/fndManagingOrganizationList/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1230_csh_payment_rules_magOrgList_ds" prompt="EXP_MO_REQ_TYPES.MAG_ORG_ID" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/fndManagingOrganizationList/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1230_QueryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1230_csh_payment_rules_result_ds" autoCreate="true" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-rule" queryDataSet="CSH1230_csh_payment_rules_query_ds" queryUrl="$[/request/@context_path]/csh/payment-rule/query" selectable="true">
+                <a:fields>
+                    <a:field name="ruleCodeFrom"/>
+                    <a:field name="ruleCodeTo"/>
+                    <a:field name="magOrgName"/>
+                    <a:field name="ruleCode" required="true" prompt="csh_payment_rule.rule_code"/>
+                    <a:field name="businessType"/>
+                    <a:field name="businessTypeName" displayField="meaning" options="CSH1230_csh_business_type_ds" prompt="csh_payment_trx_rule.business_type" required="true" returnField="businessType" valueField="value"/>
+                    <a:field name="description" required="true" prompt="csh_payment_rule.description" dto="com.hand.hec.csh.dto.CshPaymentRule" dtoId="ruleId"/>
+                    <a:field name="startDate" required="true" validator="dateValidator" prompt="csh_payment_rule.start_date"/>
+                    <a:field name="endDate" validator="dateValidator"  prompt="csh_payment_rule.end_date"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_types.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1230_update"/>
+                    <a:event name="submitsuccess" handler="CSH1230_Submit"/>
+                    <a:event name="add" handler="CSH1230_add"/>
+                    <a:event name="beforecreate" handler="CSH1230_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="CSH1230_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1230_csh_payment_rules_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1230_csh_payment_rules_grid" type="save" width="80"/>
+                <a:gridButton bind="CSH1230_csh_payment_rules_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm  resultTarget="CSH1230_csh_payment_rules_result_ds" bindTarget="CSH1230_csh_payment_rules_query_ds"  style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="CSH1230_csh_payment_rules_query_ds" prompt="EXP_MO_REQ_TYPES.MAG_ORG_ID" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1230_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="ruleCodeFrom" bindTarget="CSH1230_csh_payment_rules_query_ds" prompt="csh_payment_rule.rule_code_from"/>
+                    <a:textField name="ruleCodeTo" bindTarget="CSH1230_csh_payment_rules_query_ds" prompt="csh_payment_rule.rule_code_to"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1230_csh_payment_rules_grid" bindTarget="CSH1230_csh_payment_rules_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="ruleCode" align="center" editorFunction="CSH1230_ruleCodeEdit" width="120"/>
+                <a:column name="description" editor="CSH1230_textField" width="200"/>
+                <a:column name="businessTypeName" align="center" editor="CSH12230_comboBox"/>
+                <a:column name="startDate" editor="CSH1230_dateTimePicker" renderer="Aurora.formatDate"  width="120"/>
+                <a:column name="endDate" editor="CSH1230_dateTimePicker" renderer="Aurora.formatDate"  width="120"/>
+                <a:column name="ruleDetail" align="center" prompt="" renderer="CSH1230_columnDetail" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="CSH1230_textField"/>
+                <a:textField id="CSH1230_textField_upper" typeCase="upper"/>
+                <a:dateTimePicker id="CSH1230_dateTimePicker"/>
+                <a:comboBox id="CSH12230_comboBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

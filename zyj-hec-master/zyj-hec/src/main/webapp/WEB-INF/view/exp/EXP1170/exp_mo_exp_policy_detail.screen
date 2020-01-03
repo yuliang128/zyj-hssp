@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/02/20 15:22
+    $Revision: 1.0  
+    $Purpose: 政策标准明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1170_condition_link" url="$[/request/@context_path]/exp/EXP1170/exp_mo_exp_policy_condition.screen"/>
+        <script><![CDATA[
+            function EXP1170_closeExpPolicyCreateWindow() {
+                $au('EXP1170_exp_mo_exp_policy_detail_window').close();
+            }
+            
+            function EXP1170_policyDetailCodeEdit(record) {
+                if (record.isNew) {
+                    return 'EXP1170_exp_policy_tf';
+                }
+                return '';
+            }
+            
+            function EXP1170_dateValidator(record, name, value) { //日期校验方法
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if ( typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) { //由于结束日期非必填，只有在结束日期填了才进行比较
+                        if (!EXP1170_compareDate(start_date, end_date)) {
+                            return '$[l:start_greater_than_end]'; //校验不通过返回字符串
+                        }
+                    }
+                    return true; //校验通过返回true
+                }
+            }
+            
+            function EXP1170_compareDate(start, end) {
+                if (new Date(start) > new Date(end)) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP1170_onAddResultDs(dataSet, record, index) {
+                record.set('defaultFlag', 'Y');
+                record.set('defaultFlagDesc', '是');
+                record.set('changeableFlag', 'Y');
+                record.set('changeableFlagDesc', '是');
+                record.set('commitFlag', 'Y');
+                record.set('commitFlagDesc', '是');
+            }
+            
+            function EXP1170_onUpdateResultDs(dataSet, record, name, value, oldValue) {
+                if (name == 'defaultFlag') {
+                    record.set('changeableFlag', '');
+                    record.set('changeableFlagDesc', '');
+                    if (value == 'N') {
+                        record.set('changeableFlag', 'Y');
+                        record.set('changeableFlagDesc', '是');
+                        record.getMeta().getField('changeableFlagDesc').setReadOnly(true);
+                    } else {
+                        record.getMeta().getField('changeableFlagDesc').setReadOnly(false);
+                    }
+                } else if (name == 'changeableFlag') {
+                    if (value == 'Y') {
+                        record.getMeta().getField('lowerLimit').setReadOnly(false);
+                        record.getMeta().getField('upperLimit').setReadOnly(false);
+                    } else {
+                        record.set('lowerLimit', '');
+                        record.set('upperLimit', '');
+                        record.getMeta().getField('lowerLimit').setReadOnly(true);
+                        record.getMeta().getField('upperLimit').setReadOnly(true);
+                    }
+                    //add by caoke/2018-04-10 交通工具查询席别
+                } else if (name == 'transportation') {
+                    record.set('seatClass', '');
+                    record.set('seatClassDesc', '');
+            
+                }
+            }
+            
+            function EXP1170_expensePolicyCellClickFun(grid, row, name, record) {
+                if (name == 'currencyName') {
+                    var expenseStd = record.get('expenseStandard');
+                    var lowerLmt = record.get('lowerLimit');
+                    var upperLmt = record.get('upperLimit');
+                    if ((typeof(expenseStd) == 'undefined' || Ext.isEmpty(expenseStd)) && (typeof(lowerLmt) == 'undefined' || Ext.isEmpty(lowerLmt)) && (typeof(upperLmt) == 'undefined' || Ext.isEmpty(upperLmt))) {
+                        record.getMeta().getField('currencyName').setRequired(false);
+                        record.getMeta().getField('currencyName').setReadOnly(true);
+                    } else {
+                        record.getMeta().getField('currencyName').setRequired(true);
+                        record.getMeta().getField('currencyName').setReadOnly(false);
+                    }
+                } else if (name == 'seatClassDesc') {
+                    $au('EXP1170_seatClassDs').setQueryParameter('transportation', record.get('transportation'));
+                    $au('EXP1170_seatClassDs').query();
+                }
+            }
+            
+            function EXP1170_onSubmitSuccessResultDs(ds) {
+                ds.query();
+            }
+            
+            //明细条件-跳转
+
+            function EXP1170_expensePolicyDetailRenderer(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:EXP1170_openPolicyDetail(\'' + record.get('detailId') + '\')">$[l:exp_mo_exp_policy_detail.detail_condition]</>';
+            }
+            
+            function EXP1170_openPolicyDetail(id) {
+                new Aurora.Window({
+                    id: 'EXP1170_exp_mo_exp_policy_condition_window',
+                    url: $au('EXP1170_condition_link').getUrl() + '?detailId=' + id + '&magOrgId=$[/parameter/@magOrgId]',
+                    title: '$[l:exp_mo_exp_policy_detail.detail_condition]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP1170_exp_mo_exp_policy_detail_result_ds').query();
+                });
+            }
+            
+            function limit_policystandard(record, name, value) {
+                //超政策之后不允许保存
+                var lowerLimit = record.get('lowerLimit');
+                var upperLimit = record.get('upperLimit');
+                var expenseStandard = record.get('expenseStandard');
+            
+                if (expenseStandard > 0) {
+                    if (lowerLimit > 0) {
+                        if (expenseStandard < lowerLimit) {
+                            return '费用标准不能小于下限值！';
+                        }
+                    }
+                    if (upperLimit > 0) {
+                        if (expenseStandard > upperLimit) {
+                            return '费用标准不能大于上限值！';
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            function limit_policyValidator1(record, name, value) {
+                //超政策之后不允许保存
+                var lowerLimit = record.get('lowerLimit');
+                var upperLimit = record.get('upperLimit');
+                var expenseStandard = record.get('expenseStandard');
+                if (lowerLimit > 0) {
+                    if (upperLimit > 0) {
+                        if (lowerLimit > upperLimit) {
+                            return '下限值不能大于上限值！';
+                        }
+                    }
+                }
+            
+            
+                return true;
+            }
+            
+            function limit_policyValidator2(record, name, value) {
+                //超政策之后不允许保存
+                var lowerLimit = record.get('lowerLimit');
+                var upperLimit = record.get('upperLimit');
+                var expenseStandard = record.get('expenseStandard');
+            
+                if (upperLimit > 0) {
+                    if (lowerLimit > 0) {
+                        if (upperLimit < lowerLimit) {
+                            return '上限值不能小于下限值！';
+                        }
+                    }
+                }
+            
+                return true;
+            }
+            function EXP1170_queryAllseatClass() {
+                $au('EXP1170_seatClassDs').setQueryParameter('transportation', null);
+                $au('EXP1170_seatClassDs').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1170_transportationDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/TRANSPORTATION"/>
+            <a:dataSet id="EXP1170_roomTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/ROOM_TYPE"/>
+            <a:dataSet id="EXP1170_yesOrNoDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/YES_NO"/>
+            <a:dataSet id="EXP1170_seatClassDs"  loadData="true" queryUrl="$[/request/@context_path]/exp/mo-exp-policy-detail/querySeatClass"/>
+
+            <a:dataSet id="EXP1170_exp_mo_exp_policy_detail_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="detailCode" prompt="exp_mo_exp_policy_detail.detail_code"/>
+                    <a:field name="description" prompt="exp_mo_exp_policy_detail.description"/>
+                    <a:field name="expenseStandard" prompt="exp_mo_exp_policy_detail.expense_standard"/>
+                    <a:field name="lowerLimit" placeHolder="exp_mo_exp_policy_detail.lower_limit" />
+                    <a:field name="upperLimit" placeHolder="exp_mo_exp_policy_detail.upper_limit"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1170_exp_mo_exp_policy_detail_result_ds" autoCount="true" autoQuery="true"   queryDataSet="EXP1170_exp_mo_exp_policy_detail_query_ds" queryUrl="$[/request/@context_path]/exp/mo-exp-policy-detail/query?expensePolicyId=$[/parameter/@expensePolicyId]" selectable="false" submitUrl="$[/request/@context_path]/exp/mo-exp-policy-detail/submit">
+                <a:fields>
+                    <a:field name="detailId"/>
+                    <a:field name="expensePolicyId" defaultValue="$[/parameter/@expensePolicyId]"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="priority" required="true" prompt="exp_mo_exp_policy_detail.priority"/>
+                    <a:field name="detailCode" required="true" prompt="exp_mo_exp_policy_detail.detail_code"/>
+                    <a:field name="description" dto="com.hand.hec.exp.dto.ExpMoExpPolicyDetail" dtoId="detailId" required="true" prompt="exp_mo_exp_policy_detail.description"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="defaultFlagDesc" displayField="meaning" options="EXP1170_yesOrNoDs" prompt="exp_mo_exp_policy_detail.default_flag" required="true" returnField="defaultFlag" valueField="value"/>
+                    <a:field name="defaultFlag"/>
+                    <a:field name="changeableFlagDesc" displayField="meaning" options="EXP1170_yesOrNoDs" prompt="exp_mo_exp_policy_detail.changeable_flag" required="true" returnField="changeableFlag" valueField="value"/>
+                    <a:field name="changeableFlag"/>
+                    <a:field name="expenseStandard" validator="limit_policystandard" prompt="exp_mo_exp_policy_detail.expense_standard"/>
+                    <a:field name="lowerLimit" validator="limit_policyValidator1" prompt="exp_mo_exp_policy_detail.lower_limit"/>
+                    <a:field name="upperLimit" validator="limit_policyValidator2" prompt="exp_mo_exp_policy_detail.upper_limit"/>
+                    <a:field name="currencyName" LovCode="GLD_CURRENCY_LOV" prompt="exp_mo_exp_policy_detail.currency_code" title="exp_mo_exp_policy_detail.currency_code">
+                        <a:mapping>
+                            <a:map from="currencyName" to="currencyName"/>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="currencyCode"/>
+                    <a:field name="commitFlagDesc"  prompt="exp_mo_exp_policy_detail.commit_flag" displayField="meaning" options="EXP1170_yesOrNoDs" returnField="commitFlag" valueField="value"/>
+                    <a:field name="commitFlag"/>
+                    <a:field name="transportationDesc" prompt="exp_mo_exp_policy_detail.transportation" displayField="meaning" options="EXP1170_transportationDs" returnField="transportation" valueField="value"/>
+                    <a:field name="transportation"/>
+                    <a:field name="seatClassDesc" prompt="exp_mo_exp_policy_detail.seat_class" displayField="meaning" options="EXP1170_seatClassDs" returnField="seatClass" valueField="value"/>
+                    <a:field name="seatClass"/>
+                    <a:field name="roomTypeDesc" prompt="exp_mo_exp_policy_detail.room_type" displayField="meaning" options="EXP1170_roomTypeDs" returnField="roomType" valueField="value"/>
+                    <a:field name="roomType"/>
+                    <a:field name="eventNameDesc" prompt="exp_mo_exp_policy_detail.event_name" lovService="expm.evt_event_query" title="EXP_MO_EXP_POLICY_DETAIL.eventName">
+                        <a:mapping>
+                            <a:map from="eventDesc" to="eventNameDesc"/>
+                            <a:map from="eventName" to="eventName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="eventName"/>
+                    <a:field name="upperStdEventNameDesc" prompt="exp_mo_exp_policy_detail.upper_std_event_name" lovService="expm.evt_event_query" title="EXP_MO_EXP_POLICY_DETAIL.upperStdEventName">
+                        <a:mapping>
+                            <a:map from="eventDesc" to="upperStdEventNameDesc"/>
+                            <a:map from="eventName" to="upperStdEventName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="upperStdEventName"/>
+                    <a:field name="startDateActive" prompt="exp_mo_exp_policy_detail.start_date_active" datatype="dataTime"  required="true" validator="EXP1170_dateValidator"/>
+                    <a:field name="endDateActive" prompt="exp_mo_exp_policy_detail.end_date_active" datatype="dataTime" validator="EXP1170_dateValidator"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="query" handler="EXP1170_queryAllseatClass"/>
+                    <a:event name="add" handler="EXP1170_onAddResultDs"/>
+                    <a:event name="update" handler="EXP1170_onUpdateResultDs"/>
+                    <a:event name="submitsuccess" handler="EXP1170_onSubmitSuccessResultDs"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:gridButton bind="EXP1170_exp_mo_exp_policy_detail_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1170_exp_mo_exp_policy_detail_grid" type="save" width="80"/>
+                    <a:toolbarButton click="EXP1170_closeExpPolicyCreateWindow" text="HAP_BACK" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="EXP1170_exp_mo_exp_policy_detail_query_ds" resultTarget="EXP1170_exp_mo_exp_policy_detail_result_ds" style="width:100%;border:none">
+                    <a:formToolBar labelWidth="120">
+                        <a:textField name="detailCode" bindTarget="EXP1170_exp_mo_exp_policy_detail_query_ds" />
+                        <a:textField name="description" bindTarget="EXP1170_exp_mo_exp_policy_detail_query_ds" />
+                        <a:numberField name="expenseStandard" bindTarget="EXP1170_exp_mo_exp_policy_detail_query_ds"/>
+                    </a:formToolBar>
+                    <a:formBody>
+                        <a:numberField name="lowerLimit" bindTarget="EXP1170_exp_mo_exp_policy_detail_query_ds" />
+                        <a:numberField name="upperLimit" bindTarget="EXP1170_exp_mo_exp_policy_detail_query_ds" />
+                    </a:formBody>
+                </a:queryForm>
+            </span>
+            <a:grid id="EXP1170_exp_mo_exp_policy_detail_grid" bindTarget="EXP1170_exp_mo_exp_policy_detail_result_ds" marginHeight="150" marginWidth="20" navBar="true">
+                <a:columns>
+                    <a:column name="priority" align="center" editor="EXP1170_exp_policy_tf" lock="true" width="50"/>
+                    <a:column name="detailCode" align="center" editorFunction="EXP1170_policyDetailCodeEdit" lock="true" width="120"/>
+                    <a:column name="description" editor="EXP1170_exp_policy_tl" lock="true" width="200"/>
+                    <a:column name="defaultFlagDesc" align="center" editor="EXP1170_exp_policy_cb" width="80"/>
+                    <a:column name="changeableFlagDesc" align="center" editor="EXP1170_exp_policy_cb" width="80"/>
+                    <a:column name="expenseStandard" align="right" editor="EXP1170_exp_policy_nf" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="lowerLimit" align="right" editor="EXP1170_exp_policy_nf" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="upperLimit" align="right" editor="EXP1170_exp_policy_nf" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="currencyName" align="center" editor="EXP1170_exp_policy_lov" width="80"/>
+                    <a:column name="commitFlagDesc" align="center" editor="EXP1170_exp_policy_cb" width="80" />
+                    <a:column name="transportationDesc" align="center" editor="EXP1170_exp_policy_cb"  width="80"/>
+                    <a:column name="seatClassDesc"  align="center" editor="EXP1170_exp_policy_cb"  width="80"/>
+                    <a:column name="roomTypeDesc" align="center" editor="EXP1170_exp_policy_cb"  width="80"/>
+                    <a:column name="eventNameDesc" align="center" editor="EXP1170_exp_policy_lov"  width="150"/>
+                    <a:column name="upperStdEventNameDesc" align="center" editor="EXP1170_exp_policy_lov"  width="150"/>
+                    <a:column name="startDateActive" align="center" editor="EXP1170_exp_policy_dp" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="endDateActive" align="center" editor="EXP1170_exp_policy_dp" renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="asgnCondition" align="center" renderer="EXP1170_expensePolicyDetailRenderer" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="EXP1170_exp_policy_cb"/>
+                    <a:lov id="EXP1170_exp_policy_lov"/>
+                    <a:numberField id="EXP1170_exp_policy_nf" allowDecimals="true"/>
+                    <a:textField id="EXP1170_exp_policy_tf"/>
+                    <a:tledit id="EXP1170_exp_policy_tl"/>
+                    <a:dateTimePicker id="EXP1170_exp_policy_dp"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP1170_expensePolicyCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

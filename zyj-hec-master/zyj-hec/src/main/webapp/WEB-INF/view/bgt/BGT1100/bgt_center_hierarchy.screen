@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-30 上午10:50:36
+    $Revision: 1.0  
+    $Purpose:预算中心-分配明細
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1100_bgt_center_hierarchy_batch_link" url="$[/request/@context_path]/bgt/BGT1100/bgt_center_hierarchy_batch.screen"/>
+        <script><![CDATA[
+            function BGT1100_bgtCenterHierarchyBackFun() {
+                $au('BGT1100_bgt_center_hierarchy_window').close();
+                $au('BGT1100_bgt_centers_result_ds').query();
+            }
+            
+            function BGT1100_bgtCenterHierarchyEditFun(record, name) {
+                if (name == 'centerCode') {
+                    if (record.isNew) {
+                        return 'BGT1100_bgt_centers_hierarchy_code_lov';
+                    } else {
+                        return '';
+                    }
+                }
+                return '';
+            }
+            
+            function BGT1100_bgtCenterHierarchyBatchFun() {
+                new Aurora.Window({
+                    id: 'BGT1100_bgt_center_hierarchy_batch_window',
+                    url: $au('BGT1100_bgt_center_hierarchy_batch_link').getUrl() + '?parentCenterId=' + '$[/parameter/@centerId]' + '&bgtOrgId=' + '$[/parameter/@bgtOrgId]',
+                    title: '$[l:bgt_center.assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('BGT1100_bgt_centers_hierarchy_result_ds').query();
+                });
+            }
+            
+            function BGT1100_bgtCenterHierarchySubSuccessFun() {
+                $au('BGT1100_bgt_centers_hierarchy_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1100_bgt_centers_hierarchy_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/center-hierarchy" queryUrl="$[/request/@context_path]/bgt/center-hierarchy/query?parentCenterId=$[/parameter/@centerId]" selectable="true">
+                <a:fields>
+                    <a:field name="hierarchyId"/>
+                    <a:field name="centerCode" lovCode="LOV_CENTER_ASGN_DETAILS?centerId=$[/parameter/@centerId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]" required="true" prompt="bgt_center.center_code">
+                        <a:mapping>
+                            <a:map from="centerCode" to="centerCode"/>
+                            <a:map from="centerId" to="centerId"/>
+                            <a:map from="description" to="description"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="centerId"/>
+                    <a:field name="description" prompt="bgt_center.description"/>
+                    <a:field name="parentCenterId" defaultValue="$[/parameter/@centerId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="bgt_center.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT1100_bgtCenterHierarchySubSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_center.center_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton id="BGT1100_bgt_centers_batch_add" bind="BGT1100_bgt_centers_hierarchy_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT1100_bgt_centers_hierarchy_grid" type="save" width="80"/>
+                    <a:toolbarButton id="BGT1100_bgt_centers_hierarchy_batch" click="BGT1100_bgtCenterHierarchyBatchFun" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="BGT1100_bgtCenterHierarchyBackFun" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="centerCode" bindTarget="BGT1100_bgt_centers_result_ds" prompt="bgt_center.center_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="BGT1100_bgt_centers_result_ds" prompt="bgt_center.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="BGT1100_bgt_centers_hierarchy_grid" bindTarget="BGT1100_bgt_centers_hierarchy_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="centerCode" align="center" editorFunction="BGT1100_bgtCenterHierarchyEditFun" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editorFunction="BGT1100_bgtCenterHierarchyEditFun" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT1100_bgt_centers_hierarchy_code_lov"/>
+                    <a:checkBox id="BGT1100_bgt_centers_hierarchy_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

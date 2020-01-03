@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-30 上午10:50:36
+    $Revision: 1.0  
+    $Purpose: 预算中心-分配预算实体-批量分配预算实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="BGT1100_bgt_centers_batch_entity_link" url="$[/request/@context_path]/bgt/center-ref-bgt-entity/submit"/>
+        <script><![CDATA[
+            function BGT1100_AsgnEntity() {
+                var entityRecordsData = $au('bgt_center_batch_assign_bgt_entities_ds').getJsonData(true);
+                if (entityRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < entityRecordsData.length;i++) {
+                    entityRecordsData[i]['__status'] = 'add';
+                    entityRecordsData[i]['centerId'] = '$[/parameter/@centerId]';
+                    entityRecordsData[i]['enabledFlag'] = 'Y';
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('BGT1100_bgt_centers_batch_entity_link').getUrl(),
+                    para: entityRecordsData,
+                    success: BGT110_closeAsgnEntityWin,
+                    scope: this
+                });
+            }
+            
+            function BGT110_closeAsgnEntityWin() {
+                $au('BGT1100_bgt_centers_assign_Entity').close();
+                $au('bgt_center_ref_bgt_entities_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="bgt_center_batch_assign_bgt_entities_ds" autoQuery="true" baseUrl="/bgt/center-ref-bgt-entity" queryUrl="$[/request/@context_path]/bgt/center-ref-bgt-entity/queryEntityCanAsgn?centerId=$[/parameter/@centerId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="entityId"/>
+                    <a:field name="entityCode" prompt="bgt_entity.entity_code"/>
+                    <a:field name="description" prompt="bgt_entity.entity_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_center.bgt_entity_batch_assign">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="BGT1100_AsgnEntity" text="hec_assign" width="80"/>
+                    <a:button click="BGT110_closeAsgnEntityWin" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="centerCode" bindTarget="BGT1100_bgt_centers_result_ds" prompt="bgt_center.center_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="BGT1100_bgt_centers_result_ds" prompt="bgt_center.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="BGT1100_BatchEntityGrid" bindTarget="bgt_center_batch_assign_bgt_entities_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="entityCode" align="center" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

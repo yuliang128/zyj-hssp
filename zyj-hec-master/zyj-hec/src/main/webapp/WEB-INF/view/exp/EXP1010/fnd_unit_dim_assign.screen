@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-7-8 下午2:26:58  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1010_fnd_unit_dim_value_assign_link" url="$[/request/@context_path]/exp/EXP1010/fnd_unit_dim_value_assign.screen"/>
+        <script><![CDATA[
+            function EXP1010_fndUnitDimAssignBackFun() {
+                $au('EXP1010_fnd_unit_dim_assign_window').close();
+                $au('EXP1010_exp_org_unit_result_ds').query();
+            }
+            
+            function EXP1010_onFndUnitDimAsgnSubSuccessFun() {
+                $au('EXP1010_fnd_unit_dim_assign_ds').query();
+            }
+            
+            function EXP1010_onFndUnitDimAsgnUpdateFun(ds, record, name, value, old_value) {
+                if (name == 'dimensionId') {
+                    if (value != null && value != '') {
+                        record.set('defaultDimensionValueCode', '');
+                        record.set('defaultDimensionValueDesc', '');
+                        record.set('defaultDimensionValueId', '');
+                        record.getField('defaultDimensionValueCode').setLovPara('dimensionId', value);
+                        record.getField('defaultDimensionValueCode').setLovPara('companyId', '$[/session/@companyId]');
+                        record.getField('defaultDimensionValueCode').setLovCode('LOV_UNIT_DIMENSION_VALUE');
+                        record.getField('defaultDimensionValueCode').setReadOnly(false);
+                        record.getField('defaultDimensionValueCode').setRequired(true);
+                    }
+                } else if (!value) {
+                    record.set('defaultDimensionValueCode', '');
+                    record.set('defaultDimensionValueDesc', '');
+                    record.set('defaultDimensionValueId', '');
+                    record.getField('defaultDimensionValueCode').setLovPara('dimensionId', '');
+                    record.getField('defaultDimensionValueCode').setLovService('');
+                    record.getField('defaultDimensionValueCode').setReadOnly(true);
+                    record.getField('defaultDimensionValueCode').setRequired(false);
+                }
+            }
+            
+            function EXP1010_onFndUnitDimAsgnLoadFun(ds) {
+                var records = ds.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i].get('dimensionId')) {
+                        records[i].getField('defaultDimensionValueCode').setLovPara('dimensionId', records[i].get('dimensionId'));
+                        records[i].getField('defaultDimensionValueCode').setLovPara('companyId', '$[/session/@companyId]');
+                        records[i].getField('defaultDimensionValueCode').setLovCode('LOV_UNIT_DIMENSION_VALUE');
+                        records[i].getField('defaultDimensionValueCode').setReadOnly(false);
+                        records[i].getField('defaultDimensionValueCode').setRequired(true);
+                    }
+            
+                }
+            
+            }
+            
+            function EXP1010_dimensionValueAssign(value, record, name) {
+                var assignId = record.get('assignId');
+                var dimensionId = record.get('dimensionId');
+                if (!record.isNew) {
+                    return '<a href="javascript:EXP1010_dimensionValueAssignView(\'' + assignId + '\',\'' + dimensionId + '\')">$[l:exp_org_unit.dimension_value_assign]</a>';
+                }
+            }
+            
+            function EXP1010_dimensionValueAssignView(assignId, dimensionId) {
+                new Aurora.Window({
+                    id: 'EXP1010_fnd_unit_dim_value_assign_window',
+                    url: $au('EXP1010_fnd_unit_dim_value_assign_link').getUrl() + '?assignId=' + assignId + '&dimensionId=' + dimensionId + '&unitId=' + '$[/parameter/@unitId]',
+                    title: '$[l:exp_org_unit.dimension_value_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP1010_fnd_unit_dim_assign_ds').query();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1010_fnd_unit_dim_info_ds" autoQuery="true" baseUrl="/exp/org-unit" queryUrl="$[/request/@context_path]/exp/org-unit/query?unitId=$[/parameter/@unitId]">
+                <a:fields>
+                    <a:field name="unitId" readOnly="true"/>
+                    <a:field name="unitCode"  readOnly="true" prompt="exp_org_units.unit_code"/>
+                    <a:field name="description"  readOnly="true" prompt="exp_org_unit.org_unit_description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1010_fnd_unit_dim_assign_ds" autoPageSize="true" autoQuery="true" baseUrl="/fnd/unit-dim-assign" queryUrl="$[/request/@context_path]/fnd/unit-dim-assign/queryByUnit?unitId=$[/parameter/@unitId]" selectable="true">
+                <a:fields>
+                    <a:field name="dimensionSequence"/>
+                    <a:field name="dimensionCode" autoComplete="true" autoCompleteField="description" lovGridHeight="320" lovHeight="450" lovCode="LOV_UNIT_DIMENSION" lovWidth="500" required="true" title="fnd_dimension.dimension" prompt="fnd_dimension.dimension_code">
+                        <a:mapping>
+                            <a:map from="dimensionCode" to="dimensionCode"/>
+                            <a:map from="dimensionSequence" to="dimensionSequence"/>
+                            <a:map from="description" to="dimensionDesc"/>
+                            <a:map from="dimensionId" to="dimensionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="dimensionId"/>
+                    <a:field name="dimensionDesc" prompt="fnd_dimension.description"/>
+                    <a:field name="defaultDimensionValueCode" autoComplete="true" autoCompleteField="description" lovGridHeight="320" lovHeight="450" lovWidth="500" readOnly="true" title="fnd_dim_value_hierarchy.dim_value_id" prompt="fnd_unit_dim_assign.default_dimension_value_code" >
+                        <a:mapping>
+                            <a:map from="dimensionValueCode" to="defaultDimensionValueCode"/>
+                            <a:map from="description" to="defaultDimensionValueDesc"/>
+                            <a:map from="dimensionValueId" to="defaultDimensionValueId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultDimensionValueDesc" prompt="fnd_unit_dim_assign.default_dimension_value_desc"/>
+                    <a:field name="defaultDimensionValueId"/>
+                    <a:field name="unitId" defaultValue="$[/parameter/@unitId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1010_onFndUnitDimAsgnUpdateFun"/>
+                    <a:event name="load" handler="EXP1010_onFndUnitDimAsgnLoadFun"/>
+                    <a:event name="submitsuccess" handler="EXP1010_onFndUnitDimAsgnSubSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1010_dim_assign_form" column="2" title="exp_org_unit.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1010_dim_assign_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1010_dim_assign_grid" type="save" width="80"/>
+                    <a:gridButton bind="EXP1010_dim_assign_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP1010_fndUnitDimAssignBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="unitCode" bindTarget="EXP1010_fnd_unit_dim_info_ds" />
+                <a:textField name="description" bindTarget="EXP1010_fnd_unit_dim_info_ds"/>
+            </a:form>
+            <a:grid id="EXP1010_dim_assign_grid" bindTarget="EXP1010_fnd_unit_dim_assign_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="dimensionCode" align="center" editor="EXP1010_dim_assign_lov" width="80"/>
+                    <a:column name="dimensionDesc" align="left" width="200"/>
+                    <a:column name="defaultDimensionValueCode" align="center" editor="EXP1010_dim_assign_lov" width="80"/>
+                    <a:column name="defaultDimensionValueDesc" align="left" width="200"/>
+                    <a:column name="dimensionValueAssign" align="center" renderer="EXP1010_dimensionValueAssign" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1010_dim_assign_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

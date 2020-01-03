@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.expm.mapper.ExpPolicyPlcTpRefPlcMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.expm.dto.ExpPolicyPlcTpRefPlc">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL"/>
+        <result column="PLACE_ID" property="placeId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+		<result column="place_code" property="placeCode" jdbcType="VARCHAR"/>
+		<result column="place_desc" property="placeDesc" jdbcType="VARCHAR"/>
+		<result column="district_desc" property="districtDesc" jdbcType="VARCHAR"/>
+	</resultMap>
+    <select id="queryAll" resultMap="BaseResultMap" parameterType="com.hand.hec.expm.dto.ExpPolicyPlcTpRefPlc">
+SELECT
+	b.place_id,
+	b.place_code,
+	bt.DESCRIPTION place_desc,
+	ct.DESCRIPTION district_desc,
+	a.enabled_flag,
+	a.ref_id,
+	a.assign_id
+FROM
+	exp_policy_plc_tp_ref_plc a
+	LEFT JOIN exp_policy_place b
+	LEFT JOIN exp_policy_place_tl bt ON (
+	b.place_id = bt.place_id
+	AND bt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+	LEFT JOIN exp_policy_district c
+	LEFT JOIN exp_policy_district_tl ct ON (
+	c.DISTRICT_ID = ct.DISTRICT_ID
+	AND ct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+	ON b.district_id = c.district_id ON b.place_id = a.place_id
+WHERE
+	b.enabled_flag = 'Y'
+	AND a.assign_id = #{assignId}
+
+ORDER BY
+	district_desc,
+	place_desc
+    </select>
+	<select id="queryRemainPolicyPlace" parameterType="com.hand.hec.expm.dto.ExpPolicyPlcTpRefPlc" resultMap="BaseResultMap">
+		SELECT
+		a.place_id,
+		a.place_code,
+		bt.DESCRIPTION place_desc,
+		ct.DESCRIPTION district_desc
+		FROM
+		exp_policy_place a
+		LEFT JOIN exp_policy_place_tl bt ON (
+		a.place_id = bt.place_id
+		AND bt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+		left join exp_policy_district b 	LEFT JOIN exp_policy_district_tl ct ON (
+		b.DISTRICT_ID = ct.DISTRICT_ID
+		AND ct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})  on (a.district_id = b.district_id and b.enabled_flag  = 'Y')
+
+		WHERE
+		a.enabled_flag = 'Y'
+		AND NOT EXISTS ( SELECT 1 FROM exp_policy_plc_tp_ref_plc p WHERE p.PLACE_ID = a.PLACE_ID AND p.ASSIGN_ID = #{assignId}
+		)
+		<if test = "placeFromId != null">
+			and a.place_id &gt;=#{placeFromId}
+		</if>
+		<if test = "placeToId != null">
+			and a.place_id &lt;=#{placeToId}
+		</if>
+		<if test = "districtFromId != null">
+			and b.district_id &gt;=#{districtFromId}
+		</if>
+		<if test = "districtToId != null">
+			and a.district_id &lt;=#{districtToId}
+		</if>
+		ORDER BY
+		a.place_id,b.district_id
+	</select>
+</mapper>

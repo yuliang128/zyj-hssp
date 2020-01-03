@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/03/08 13:47:59
+    $Revision: 1.0
+    $Purpose: 申请单-差旅行程扩展行
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+  <!--  <a:init-procedure>
+        <a:model-query defaultWhereClause="v.req_pageElementCode = &apos;TRAVEL_DISTANCE_LINES&apos;" model="expm.EXP4010.exp_requisition_line_dimension_fields_query" rootPath="streamlined_line_dimensions"/>
+        <a:model-query defaultWhereClause="v.req_pageElementCode = &apos;TRAVEL_DISTANCE_LINES&apos;" model="expm.EXP4010.exp_requisition_line_object_fields_query" rootPath="streamlined_line_objects"/>
+    </a:init-procedure>-->
+    <a:view>
+        <script><![CDATA[
+            function EXP4010_onStreamlinedEditorFocus(cmp) {
+                var name = cmp.binder.name;
+                var record = cmp.binder.ds.getCurrentRecord();
+                if (name == 'unitName') {
+                    record.getField('unitName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'positionName') {
+                    record.getField('positionName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'employeeName') {
+                    record.getField('employeeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'accEntityName') {
+                    record.getField('accEntityName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCenterName') {
+                    record.getField('respCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else if (name == 'placeName') {
+                    record.getField('placeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP4010_travel_distance_expense_type_ds').setQueryParameter('moExpReqTypeId', '$[/parameter/@moExpReqTypeId]');
+                    $au('EXP4010_travel_distance_expense_type_ds').setQueryParameter('pageElementCode', 'TRAVEL_DISTANCE_LINES');
+                    $au('EXP4010_travel_distance_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP4010_travel_distance_expense_type_ds').query();
+                } else if (name == 'moReqItemName') {
+                    /*Modified by Arthur.Chen Date:2017-09-20 19:42:31
+                     1.动态获取moReqItemName字段的options
+                     */
+                    $au('EXP4010_travel_distance_item_ds').setQueryParameter('moExpReqTypeId', '$[/parameter/@moExpReqTypeId]');
+                    $au('EXP4010_travel_distance_item_ds').setQueryParameter('moExpenseTypeId', record.get('moExpenseTypeId'));
+                    $au('EXP4010_travel_distance_item_ds').setQueryParameter('pageElementCode', 'TRAVEL_DISTANCE_LINES');
+                    $au('EXP4010_travel_distance_item_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP4010_travel_distance_item_ds').query();
+                } else if (name == 'businessCurrencyName') {
+                    // Modify Tagin/2018.04.02 增加业务币种-支付币种获取汇率逻辑
+                    var dataSet = $au('EXP4010_currency_ds');
+                    dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                    dataSet.setQueryParameter('toCurrency', record.get('paymentCurrencyCode'));
+                    dataSet.query();
+                } else if (name == 'departurePlace') {
+                    record.getField('departurePlace').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'arrivalPlace') {
+                    record.getField('arrivalPlace').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'seatClassName') {
+                    var transportation = record.get('transportation');
+                    // alert(transportation);
+                    //高铁/动车
+                    if (transportation == 'SEATS_HSR_EMU') {
+                        record.getField(name).setOptions('seats_hsr_emu_ds');
+                        $au('seats_hsr_emu_ds').query();
+                    } else if (transportation == 'SEATS_PLANE') {
+                        record.getField(name).setOptions('seats_plane_ds');
+                        $au('seats_plane_ds').query();
+                    } else if (transportation == 'SEATS_SHIPS') {
+                        record.getField(name).setOptions('seats_ships_ds');
+                        $au('seats_ships_ds').query();
+                    } else if (transportation == 'SEATS_TRAIN') {
+                        record.getField(name).setOptions('seats_train_ds');
+                        $au('seats_train_ds').query();
+                    } else if (transportation == 'SEATS_CAR') {
+                        record.getField(name).setOptions('seats_car_ds');
+                        $au('seats_car_ds').query();
+                    }
+                }
+                if (/dimension/.test(name)) { // 设置维度查询条件【Tips：若涉及多维度则需要判断维度对应的级别，不同级别对应的组织架构不同】
+                    var id = '';
+                    var fieldName = name.replace('name', 'level');
+                    var level = record.get(fieldName);
+                    if (level == 'BUDGET') {
+                        id = record.get('bgtEntityId');
+                    } else if (level == 'ACCOUNTING') {
+                        id = record.get('accEntityId');
+                    } else if (level == 'MANAGEMENT') {
+                        id = '$[/session/@companyId]';
+                    }
+                    record.getField(name).setLovPara('companyId', id);
+                }
+            }
+            
+            function EXP4010_streamlinedPreRecord() {
+                $au('EXP4010_exp_requisition_travel_distance_line_ds').pre();
+            }
+            
+            function EXP4010_streamlinedNextRecord() {
+                $au('EXP4010_exp_requisition_travel_distance_line_ds').next();
+            }
+            
+            function EXP4010_streamlinedNewRecord() {
+                EXP4010_travelLineAdd();
+            }
+            
+            function EXP4010_streamlinedExtendClose() {
+                $au(this.__host.id).close();
+            }
+            
+            function EXP4010_streamlinedSaveRequisition() {
+                EXP4010_saveRequisition();
+            }
+            
+            Aurora.onReady(function() {
+                var dimFlag = false;
+                var objFlag = false;
+                for (cmpName in $A.CmpManager.cache) {
+                    if (cmpName.indexOf('EXP4010_distance_editor_') != -1) {
+                        $au(cmpName)['on']('focus', EXP4010_onStreamlinedEditorFocus);
+                    }
+                    if (cmpName.indexOf('EXP4010_distance_editor_dim') != -1) {
+                        $au(cmpName)['on']('focus', EXP4010_onStreamlinedEditorFocus);
+                        dimFlag = true;
+                    }
+                    if (cmpName.indexOf('EXP4010_distance_editor_obj') != -1) {
+                        objFlag = true;
+                    }
+                }
+                if (!dimFlag) {
+                    Ext.get('EXP4010_distancelinedDimForm').setStyle('display', 'none');
+                }
+                if (!objFlag) {
+                    Ext.get('EXP4010_distancelinedObjForm').setStyle('display', 'none');
+                }
+            });
+        ]]></script>
+        <a:screenBody>
+            <a:form showmargin="0" title="exp_requisition_header.travel_distance_line" width="1010">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="EXP4010_streamlinedPreRecord" text="hap_previous" width="70"/>
+                    <a:button click="EXP4010_streamlinedNextRecord" text="hap_next" width="70"/>
+                    <a:button click="EXP4010_streamlinedNewRecord" text="hap.new" width="70"/>
+                    <a:button click="EXP4010_streamlinedSaveRequisition" text="hap_save" width="70"/>
+                    <a:button click="EXP4010_streamlinedExtendClose" text="hap_back" width="70"/>
+                </a:formToolbar>
+                <a:box column="3" padding="10" style="width:100%;">
+                    <a:numberField name="lineNumber" id="EXP4010_distance_editor_001" allowDecimals="false" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="hap_line_number" readOnly="true"/>
+                    <a:lov name="companyName" id="EXP4010_distance_editor_002" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="acp_acp_requisition_hds.company_id"/>
+                    <a:lov name="unitName" id="EXP4010_distance_editor_003" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="acp_acp_requisition_hds.unit_id"/>
+                    <a:lov name="positionName" id="EXP4010_distance_editor_004" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="acp_acp_requisition_hds.position_id"/>
+                    <a:lov name="employeeName" id="EXP4010_distance_editor_005" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="acp_acp_requisition_hds.employee_id"/>
+                    <a:lov name="accEntityName" id="EXP4010_distance_editor_006" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="csh_offer_format.acc_entity"/>
+                    <a:lov name="respCenterName" id="EXP4010_distance_editor_007" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="acp_invoice_line.responsibility_center_id"/>
+                    <a:comboBox name="moExpenseTypeName" id="EXP4010_distance_editor_008" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_expense_item_type.expense_type_id"/>
+                    <a:comboBox name="moReqItemName" id="EXP4010_distance_editor_009" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="con_payment_schedules.req_item_id"/>
+                    <a:comboBox name="transportationName" id="EXP4010_distance_editor_010" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_travel_plan_line.transportation"/>
+                    <a:comboBox name="seatClassName" id="EXP4010_distance_editor_011" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_ticket_request_line.seat_class"/>
+                    <a:lov name="departurePlaceName" id="EXP4010_distance_editor_012" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_report_travel_line.departure_place"/>
+                    <a:dateTimePicker name="departureDate" id="EXP4010_distance_editor_013" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_travel_plan_line.departure_date" renderer="Aurora.formatDateTime"/>
+                    <a:lov name="arrivalPlaceName" id="EXP4010_distance_editor_014" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_report_travel_line.arrival_place"/>
+                    <a:dateTimePicker name="arrivalDate" id="EXP4010_distance_editor_015" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_report_travel_line.arrival_date" renderer="Aurora.formatDateTime"/>
+                    <a:lov name="peerPeopleName" id="EXP4010_distance_editor_016" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="exp_ticket_request_line.passenger"/>
+                    <a:comboBox name="businessCurrencyName" id="EXP4010_distance_editor_017" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="business_currency_name"/>
+                    <a:numberField name="businessPrice" id="EXP4010_distance_editor_018" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="business_price" renderer="Aurora.formatMoney"/>
+                    <a:numberField name="primaryQuantity" id="EXP4010_distance_editor_026" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="acp_invoice_line.quantity"/>
+                    <a:numberField name="businessAmount" id="EXP4010_distance_editor_027" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="business_amount" readOnly="true" renderer="Aurora.formatMoney"/>
+                    <a:numberField name="requisitionFunctionalAmount" id="EXP4010_distance_editor_030" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="bgt_budget_reserves.functional_amount" readOnly="true" renderer="Aurora.formatMoney"/>
+                    <a:lov name="periodName" id="EXP4010_distance_editor_031" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="bgt_budget_reserve.period_name" readOnly="true"/>
+                </a:box>
+                <a:box style="width:100%">
+                    <a:textArea name="description" id="EXP4010_distance_editor_032" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" colspan="3" prompt="exp_requisition_lines.description" width="800"/>
+                </a:box>
+            </a:form>
+            <a:form id="EXP4010_distancelinedDimForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="dimension_information" width="1010">
+                <a:placeHolder id="EXP4010_distancelinedLineDimensionEditors"/>
+            </a:form>
+            <a:form id="EXP4010_distancelinedObjForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expense_object_information" width="1010">
+                <a:placeHolder id="EXP4010_distancelinedLineObjectEditors"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP4010_distancelinedLineDimensionEditors">
+            <p:loop source="/model/streamlined_line_dimensions">
+                <c:process-config>
+                    <a:lov name="$[@displayField]" id="EXP4010_distance_editor_dim_$[@dimensionId]" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="$[@dimensionName]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_distancelinedLineObjectEditors">
+            <p:loop source="/model/streamlined_line_objects">
+                <p:switch test="@expense_object_method">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:textField name="$[@displayField]" id="EXP4010_distance_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="$[@moExpObjTypeName]"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:lov name="$[@displayField]" id="EXP4010_distance_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP4010_exp_requisition_travel_distance_line_ds" prompt="$[@moExpObjTypeName]"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/01/25 15:35 $
+    $Revision: 1.0 $
+    $Purpose: 归口管理定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <div/>
+        <script><![CDATA[
+
+        function FND1130_companyCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'FND1130_lov';
+            }
+            return '';
+        }
+
+        function FND1130_gridCellClick(grid, row, name, record) {
+            if (name == 'companyCode') {
+                var magOrgId = $au('FND1130_fnd_centralized_managing_query_ds').getCurrentRecord().get('magOrgId');
+                record.getField('companyCode').setLovPara('magOrgId', record.get('magOrgId'));
+            } else if (name == 'conditionTypeName') {
+                var companyCode = record.get('companyCode');
+                if (typeof(companyCode) == 'undefined' || Ext.isEmpty(companyCode)) {
+                    //若未选择管理公司，归口条件类型字段不可编辑，并给予提示'请选择管理公司'
+                    record.getField('conditionTypeName').setReadOnly(true);
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_fnd_company]');
+                    return;
+                } else {
+                    //若选择了管理公司，归口条件类型字段可编辑
+                    record.getField('conditionTypeName').setReadOnly(false);
+                }
+            } else if (name == 'conditionValueCode') {
+                var conditionType = record.get('conditionType');
+                if (typeof(conditionType) == 'undefined' || Ext.isEmpty(conditionType)) {
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_condition_type]');
+                    return;
+                } else {
+                    if (conditionType == 'REQ_ITEMS') {
+                        //申请项目
+                        record.getField('conditionValueCode').setLovCode('LOV_MO_REQ_ITEMS?magOrgId=$[/parameter/@magOrgId]');
+                        record.getField('conditionValueCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        record.getField('conditionValueCode').setMapping([{
+                            from: 'moReqItemId',
+                            to: 'conditionValueId'
+                        }, {
+                            from: 'moReqItemCode',
+                            to: 'conditionValueCode'
+                        }, {
+                            from: 'description',
+                            to: 'conditionValueDesc'
+                        }]);
+                    } else if (conditionType == 'REP_ITEMS') {
+                        //费用项目
+                        record.getField('conditionValueCode').setLovCode('LOV_MO_EXPENSE_ITEMS?magOrgId=$[/parameter/@magOrgId]');
+                        record.getField('conditionValueCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        record.getField('conditionValueCode').setMapping([{
+                            from: 'moExpenseItemId',
+                            to: 'conditionValueId'
+                        }, {
+                            from: 'moExpenseItemCode',
+                            to: 'conditionValueCode'
+                        }, {
+                            from: 'description',
+                            to: 'conditionValueDesc'
+                        }]);
+                    } else if (conditionType == 'BGT_ITEMS') {
+                        //预算项目
+                        record.getField('conditionValueCode').setLovCode('LOV_BUDGET_ITEMS?magOrgId=$[/parameter/@magOrgId]');
+                        record.getField('conditionValueCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        record.getField('conditionValueCode').setMapping([{
+                            from: 'budgetItemId',
+                            to: 'conditionValueId'
+                        }, {
+                            from: 'budgetItemCode',
+                            to: 'conditionValueCode'
+                        }, {
+                            from: 'description',
+                            to: 'conditionValueDesc'
+                        }]);
+                    }
+                }
+            } else if (name == 'centralizedMagValueCode') {
+                var centralizedMagType = record.get('centralizedMagType');
+                if (typeof(centralizedMagType) == 'undefined' || Ext.isEmpty(centralizedMagType)) {
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_centralized_mag_type]');
+                    return;
+                } else {
+                    if (centralizedMagType == 'EMPLOYEE') {
+                        //员工
+                        record.getField('centralizedMagValueCode').setLovCode('LOV_EMPLOYEE_CENTRALIZED?magOrgId=$[/parameter/@magOrgId]');
+                        record.getField('centralizedMagValueCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        record.getField('centralizedMagValueCode').setMapping([{
+                            from: 'employeeId',
+                            to: 'centralizedMagValueId'
+                        }, {
+                            from: 'employeeCode',
+                            to: 'centralizedMagValueCode'
+                        }, {
+                            from: 'name',
+                            to: 'centralizedMagValueDesc'
+                        }]);
+                    } else if (centralizedMagType == 'POSITION') {
+                        //岗位
+                        record.getField('centralizedMagValueCode').setLovCode('LOV_POSITION_CENTRALIZED?magOrgId=$[/parameter/@magOrgId]');
+                        record.getField('centralizedMagValueCode').setLovPara('magOrgId', record.get('magOrgId'));
+                        record.getField('centralizedMagValueCode').setMapping([{
+                            from: 'positionId',
+                            to: 'centralizedMagValueId'
+                        }, {
+                            from: 'positionCode',
+                            to: 'centralizedMagValueCode'
+                        }, {
+                            from: 'description',
+                            to: 'centralizedMagValueDesc'
+                        }, {
+                            from: 'employeeJobId',
+                            to: 'employeeJobId'
+                        }, {
+                            from: 'employeeJobCode',
+                            to: 'employeeJobCode'
+                        }, {
+                            from: 'employeeJobName',
+                            to: 'employeeJobName'
+                        }]);
+                    }
+                }
+            }
+        }
+
+        function FND1130_update(dataSet, record, name, value, oldvalue) {
+            if (name == 'conditionTypeName') {
+                record.set('conditionValueId', '');
+                record.set('conditionValueCode', '');
+                record.set('conditionValueDesc', '');
+            } else if (name == 'centralizedMagTypeName') {
+                record.set('centralizedMagValueId', '');
+                record.set('centralizedMagValueCode', '');
+                record.set('centralizedMagValueDesc', '');
+            }
+        }
+
+        function FND1130_submit(ds) {
+            ds.query();
+        }
+
+        function FND1130_add(ds) {
+            var magOrgId = $au('FND1130_fnd_centralized_managing_query_ds').getCurrentRecord().get('magOrgId');
+            if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function FND1130_focus() {
+            $au('FND1130_fnd_centralized_managing_magOrgList_ds').query();
+        }
+
+        function FND1130_queryUpdate(ds, record, name, value) {
+            if (name == 'magOrgId') {
+                var magOrgId = $au('FND1130_fnd_centralized_managing_query_ds').getCurrentRecord().get('magOrgId');
+                record.getField('companyCode').setLovPara('magOrgId', magOrgId);
+                $au('FND1130_fnd_centralized_managing_result_ds').query();
+            }
+        }
+
+        function FND1130_beforeCreate() {
+            var magOrgId = $au('FND1130_fnd_centralized_managing_query_ds').getAt(0).get('magOrgId');
+            if (Ext.isEmpty(magOrgId)) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            $au('FND1130_fnd_centralized_managing_query_ds').getAt(0).getField('companyCode').setLovPara('magOrgId', magOrgId);
+            return true;
+        }
+
+        function FND1130_comFocus() {
+            var magOrgId = $au('FND1130_fnd_centralized_managing_query_ds').getCurrentRecord().get('magOrgId');
+            $au('FND1130_fnd_centralized_managing_query_ds').getCurrentRecord().getField('companyCode').setLovPara('magOrgId', magOrgId);
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1130_fnd_centralized_managing_magOrgList_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="FND1130_approveType_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_CENTRALIZED_APPROVE_TYPE/"/>
+            <a:dataSet id="FND1130_conditionType_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_CENTRALIZED_CONDITION_TYPE/"/>
+            <a:dataSet id="FND1130_magType_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_CENTRALIZED_MAG_TYPE/"/>
+            <a:dataSet id="FND1130_fnd_centralized_managing_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgName"
+                             defaultValue="$[/model/managingOrganization/records/record/@magOrgCodeName]"
+                             displayField="magOrgCodeName" options="FND1130_fnd_centralized_managing_magOrgList_ds"
+                             prompt="exp_mo_req_type.mag_org_id" required="true" returnField="magOrgId"
+                             valueField="magOrgId"/>
+                    <a:field name="magOrgId"
+                             defaultValue="$[/model/managingOrganization/records/record/@magOrgId]"/>
+                    <a:field name="companyCode" lovAutoQuery="true" autoComplete="true"
+                             lovCode="LOV_COMPANY_SELECT?magOrgId=$[/parameter/@magOrgId]"
+                             title="fnd_centralized_managing.company_id" prompt="fnd_centralized_managing.company_id">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="magOrgDesc" to="magOrgDesc"/>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="conditionTypeName" displayField="meaning" options="FND1130_conditionType_ds"
+                             valueField="value" returnField="conditionType"/>
+                    <a:field name="conditionType"/>
+                    <a:field name="centralizedMagTypeName" displayField="meaning" options="FND1130_magType_ds"
+                             valueField="value" returnField="centralizedMagType"/>
+                    <a:field name="centralizedMagType"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1130_queryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="FND1130_fnd_centralized_managing_result_ds" autoPageSize="true" autoQuery="true"
+                       fetchAll="false" baseUrl="/fnd/centralized-managing" selectable="true"
+                       queryDataSet="FND1130_fnd_centralized_managing_query_ds">
+                <a:fields>
+                    <a:field name="magOrgId" prompt="exp_mo_req_type.mag_org_id" required="true"/>
+                    <a:field name="centralizedMagId"/>
+                    <a:field name="companyCode" lovAutoQuery="true" autoComplete="true"
+                             lovCode="LOV_COMPANY_SELECT?magOrgId=$[/parameter/@magOrgId]" required="true"
+                             title="fnd_centralized_managing.company_id"
+                             prompt="fnd_centralized_managing.company_id">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="magOrgDesc" to="magOrgDesc"/>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="approveTypeName" displayField="meaning" options="FND1130_approveType_ds"
+                             valueField="value" returnField="approveType"/>
+                    <a:field name="approveType"/>
+                    <a:field name="conditionTypeName" displayField="meaning" options="FND1130_conditionType_ds"
+                             valueField="value" returnField="conditionType"/>
+                    <a:field name="conditionType"/>
+                    <a:field name="conditionValueCode" title="fnd_centralized_managing.condition_value"/>
+                    <a:field name="conditionValueId"/>
+                    <a:field name="conditionValueDesc"/>
+                    <a:field name="centralizedMagTypeName" displayField="meaning" options="FND1130_magType_ds"
+                             returnField="centralizedMagType" valueField="value"/>
+                    <a:field name="centralizedMagType"/>
+                    <a:field name="centralizedMagValueCode"
+                             title="fnd_centralized_managing.centralized_mag_value_code"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1130_update"/>
+                    <a:event name="submitsuccess" handler="FND1130_submit"/>
+                    <a:event name="add" handler="FND1130_add"/>
+                    <a:event name="beforecreate" handler="FND1130_beforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND1130_fnd_centralized_managing_grid" type="add" width="80"/>
+                <a:gridButton bind="FND1130_fnd_centralized_managing_grid" type="save" width="80"/>
+                <a:gridButton bind="FND1130_fnd_centralized_managing_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1130_fnd_centralized_managing_query_ds"
+                         resultTarget="FND1130_fnd_centralized_managing_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="FND1130_fnd_centralized_managing_query_ds"
+                                prompt="exp_mo_req_type.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="FND1130_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:lov name="companyCode" bindTarget="FND1130_fnd_centralized_managing_query_ds"
+                           prompt="fnd_centralized_managing.company_id">
+                        <a:events>
+                            <a:event name="focus" handler="FND1130_comFocus"/>
+                        </a:events>
+                    </a:lov>
+                    <a:comboBox name="centralizedMagTypeName" bindTarget="FND1130_fnd_centralized_managing_query_ds"
+                                prompt="fnd_centralized_managing.centralized_mag_type"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:comboBox name="conditionTypeName" bindTarget="FND1130_fnd_centralized_managing_query_ds"
+                                placeHolder="fnd_centralized_managing.match_type"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1130_fnd_centralized_managing_grid" bindTarget="FND1130_fnd_centralized_managing_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="companyCode" align="center" editorFunction="FND1130_companyCodeEdit"
+                          prompt="fnd_centralized_managing.company_code" width="120"/>
+                <a:column name="companyShortName" align="center" prompt="fnd_centralized_managing.company_name"
+                          width="200"/>
+                <a:column name="approveTypeName" align="center" editor="FND1130_comboBox"
+                          prompt="fnd_centralized_managing.approve_type" width="120"/>
+                <a:column name="conditionTypeName" align="center" editor="FND1130_comboBox"
+                          prompt="fnd_centralized_managing.condition_type" width="120"/>
+                <a:column name="conditionValueCode" align="center" editor="FND1130_lov"
+                          prompt="fnd_centralized_managing.condition_value_code" width="120"/>
+                <a:column name="conditionValueDesc" align="center"
+                          prompt="fnd_centralized_managing.condition_value_desc" width="200"/>
+                <a:column name="centralizedMagTypeName" align="center" editor="FND1130_comboBox"
+                          prompt="fnd_centralized_managing.centralized_mag_type" width="120"/>
+                <a:column name="centralizedMagValueCode" align="center" editor="FND1130_lov"
+                          prompt="fnd_centralized_managing.centralized_mag_value_code" width="120"/>
+                <a:column name="centralizedMagValueDesc" align="center"
+                          prompt="fnd_centralized_managing.centralized_mag_value_desc" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="FND1130_lov"/>
+                <a:comboBox id="FND1130_comboBox"/>
+                <a:textField id="FND1130_textField"/>
+                <a:checkBox id="FND1130_checkBox"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="FND1130_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

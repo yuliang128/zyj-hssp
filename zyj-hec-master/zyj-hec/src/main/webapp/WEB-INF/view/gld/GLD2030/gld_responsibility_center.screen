@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Description: 核算主体级成本中心主页面
+ * Version: 1.0
+ * Author: rui.shi@hand-china.com
+ * Copyright Hand China Co.,Ltd.
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <!--<p:echo/>-->
+        <!--<a:model-query model="hec_util.get_company_default_acc_entity" rootPath="dftAccEntityList"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="GLD2030_fndRespCentersHierarchyLink" url="$[/request/@context_path]/gld/GLD2030/gld_resp_center_hierarchy.screen"/>
+        <a:link id="GLD2030_respCentersCefBgtEntityLink" url="$[/request/@context_path]/gld/GLD2030/gld_resp_center_ref_bc.screen"/>
+        <script><![CDATA[
+            function GLD2030_respResultAddFunc(dataSet) {
+                var accEntity = $au('GLD2030_responsibilityCentersQueryDs').getCurrentRecord().get('accEntityId');
+                if (!Ext.isEmpty(accEntity)) {
+                    dataSet.getCurrentRecord().set('accEntityId', accEntity);
+                }
+            }
+            
+            function GLD2030_setSubResbonsibilitys(value, record, name) {
+                var responsibilityId = record.get('responsibilityCenterId');
+                if (responsibilityId && record.get('summaryFlag') == 'Y') {
+                    return '<a href="javascript:GLD2030_setSubResbonsibilitysInfo(' + responsibilityId + ')">$[l:gld_responsibility_center.child_center_def]</a>';
+                }
+            }
+            
+            function GLD2030_setSubResbonsibilitysInfo(responsibilityId) {
+                var accEntityId = $au('GLD2030_responsibilityCentersQueryDs').getCurrentRecord().get('accEntityId');
+                if (Ext.isEmpty(accEntityId)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.acc_entity_is_null]');
+                } else {
+                    new Aurora.Window({
+                        id: 'GLD2010_responsibilityCenterDetailWindow',
+                        url: $au('GLD2030_fndRespCentersHierarchyLink').getUrl() + '?responsibilityCenterId=' + responsibilityId + '&accEntityId=' + accEntityId,
+                        title: '$[l:gld_responsibility_center.child_center_def]',
+                        side: 'right',
+                        width: 1020
+                    });
+                }
+            }
+            
+            function GLD2030_responsibilityCenterEditFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'responsibilityCenterCode') {
+                        return 'GLD2030_gridTf';
+                    }
+                    if (name == 'summaryFlag') {
+                        return 'GLD2030_gridCx';
+                    }
+                }
+                return '';
+            }
+            
+            function GLD2030_dateValidator(record, name, value) {
+                if (name == "startDateActive" || name == "endDateActive") {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                        if (!GLD2030_compareDate(start_date, end_date)) {
+                            return '$[l:fnd_resposibility_centers.date_validate]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function GLD2030_compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function GLD2030_respResultSuccessFunc() {
+                $au('GLD2030_responsibilityCentersResultDs').query();
+            }
+            
+            function GLD2030_backResponsibilityCenters() {
+                window.history.go(-1);
+            }
+            
+            function GLD2030_respQueryUpdateFunc(ds, record, name, value) {
+                if (name == 'accEntityId') {
+                    $au('GLD2030_responsibilityCentersResultDs').query();
+                }
+            }
+            
+            function GLD2030_respResultCheckFunc() {
+                var accEntity = $au('GLD2030_responsibilityCentersQueryDs').getCurrentRecord().get('accEntityId');
+                if (Ext.isEmpty(accEntity)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.acc_entity_is_null]', null, 300, 100);
+                    return false;
+                    // 首次开发时可使用默认值，便于开发
+                    // accEntity=100001;
+                    // $au('GLD2030_responsibilityCentersQueryDs').getCurrentRecord().set('accEntityId', accEntity);
+
+
+                }
+                return true;
+            }
+            
+            function GLD2030_AssignBgtEntityRender(value, record, name) {
+               var accEntityId = $au('GLD2030_responsibilityCentersQueryDs').getAt(0).get('accEntityId');
+
+                var respCenterId = record.get('responsibilityCenterId');
+                if (!record.isNew) {
+                    return '<a href="javascript:GLD2030_AssignBgtEntityFun(' + accEntityId + ',' + respCenterId + ')">$[l:prompt.budget_distribution]</a>';
+                }
+                return '';
+            }
+            
+            function GLD2030_AssignBgtEntityFun(acc_id,resp_id) {
+                new Aurora.Window({
+                    id: 'BGT2030_AssignBgtEntity_win',
+                    title:'$[l:prompt.budget_distribution]',
+                    url: $au('GLD2030_respCentersCefBgtEntityLink').getUrl() + '?accEntityId=' + acc_id + '&respCenterId=' + resp_id,
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2030_respCenterTypeCodeDs" autoQuery="true" fetchAll="true"  queryUrl="$[/request/@context_path]/common/auroraCode/GLD.RESP_CENTER_TYPE/"/>
+
+            <!--<a:dataSet id="GLD2030_accEntityDs" autoQuery="true" fetchAll="true"  queryUrl="$[/request/@context_path]/gld/accountEntity/query">-->
+                <!--<a:fields>-->
+                    <!--<a:field name="accEntityId"/>-->
+                    <!--<a:field name="accEntityName"/>-->
+                <!--</a:fields>-->
+            <!--</a:dataSet>-->
+
+            <a:dataSet id="GLD2030_accEntityDs">
+                <a:datas dataSource="gldAccountingEntityList/records"/>
+            </a:dataSet>
+
+            <!--<a:dataSet id="GLD2030_accEntityDs" fetchAll="true" loadData="true" model="hec_util.gld_acc_entity_company_vl_lov"/>-->
+
+
+            <!--<a:dataSet id="GLD2030_respCenterTypeCodeDs" autoQuery="true" fetchAll="true" baseUrl="/gld/responsibility-center" queryUrl="$[/request/@context_path]/gld-coa-structure/query">-->
+                <!--<a:fields>-->
+                    <!--<a:field name="responsibilityCenterId"/>-->
+                    <!--<a:field name="respCenterTypeCode"/>-->
+                <!--</a:fields>-->
+            <!--</a:dataSet>-->
+
+
+            <a:dataSet id="GLD2030_responsibilityCentersQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityNameDisplay" defaultValue="$[/model/defaultAccEntity/records/record/@accEntityName]" displayField="accEntityName" options="GLD2030_accEntityDs" prompt="gld_accounting_entities.acc_entity_name_display" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="accEntityId" defaultValue="$[/model/defaultAccEntity/records/record/@accEntityId]"  />
+                    <a:field name="responsibilityCenterCode" prompt="gld_responsibility_center.responsibility_center_code"/>
+                    <a:field name="responsibilityCenterName" prompt="gld_responsibility_center.responsibility_center_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD2030_respQueryUpdateFunc"/>
+                </a:events>
+            </a:dataSet>
+
+            <a:dataSet id="GLD2030_responsibilityCentersResultDs" autoQuery="true" fetchAll="true" baseUrl="/gld/responsibility-center" queryDataSet="GLD2030_responsibilityCentersQueryDs" queryUrl="$[/request/@context_path]/gld/responsibility-center/query">
+                <a:fields>
+                    <a:field name="responsibilityCenterId"/>
+                    <a:field name="responsibilityCenterCode" required="true" prompt="gld_responsibility_center.responsibility_center_code"/>
+                    <a:field name="responsibilityCenterName" required="true" prompt="gld_responsibility_center.responsibility_center_name" dto="com.hand.hec.gld.dto.GldResponsibilityCenter" dtoId="responsibilityCenterId"/>
+                    <a:field name="respCenterTypeCode"/>
+                    <a:field name="respCenterTypeCodeDisplay" displayField="meaning" options="GLD2030_respCenterTypeCodeDs" prompt="gld_responsibility_center.resp_center_type_code_display" required="true" valueField="value" returnField="respCenterTypeCode" />
+                    <a:field name="startDateActive" prompt="gld_responsibility_center.start_date_active" required="true" validator="GLD2030_dateValidator"/>
+                    <a:field name="endDateActive" prompt="gld_responsibility_center.end_date_active" validator="GLD2030_dateValidator"/>
+                    <a:field name="summaryFlag" checkedValue="Y" defaultValue="N" prompt="gld_responsibility_center.summary_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="GLD2030_respResultAddFunc"/>
+                    <a:event name="beforecreate" handler="GLD2030_respResultCheckFunc"/>
+                    <a:event name="beforesubmit" handler="GLD2030_respResultCheckFunc"/>
+                    <a:event name="submitsuccess" handler="GLD2030_respResultSuccessFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="GLD2030_responsibilityCentersGrid" type="add" width="80"/>
+                <a:gridButton bind="GLD2030_responsibilityCentersGrid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="GLD2030_responsibilityCentersQueryDs" resultTarget="GLD2030_responsibilityCentersResultDs" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="accEntityNameDisplay" bindTarget="GLD2030_responsibilityCentersQueryDs"/>
+                    <a:textField name="responsibilityCenterCode" bindTarget="GLD2030_responsibilityCentersQueryDs" typeCase="upper"/>
+                    <a:textField name="responsibilityCenterName" bindTarget="GLD2030_responsibilityCentersQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="GLD2030_responsibilityCentersGrid" bindTarget="GLD2030_responsibilityCentersResultDs" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="responsibilityCenterCode" align="center" editor="GLD2030_gridTf" editorFunction="GLD2030_responsibilityCenterEditFun" sortable="true" width="80"/>
+                <a:column name="responsibilityCenterName" align="left" editor="GLD2030_responsibilityCenterNameTld" width="200"/>
+                <a:column name="respCenterTypeCodeDisplay" align="center" editor="GLD2030_gridCb" width="80"/>
+                <a:column name="startDateActive" align="center" editor="GLD2030_gridDp" renderer="Aurora.formatDateTime" width="80"/>
+                <a:column name="endDateActive" align="center" editor="GLD2030_gridDp" renderer="Aurora.formatDateTime" width="80"/>
+                <a:column name="summaryFlag" align="center" editor="GLD2030_gridCx" editorFunction="GLD2030_responsibilityCenterEditFun" width="80"/>
+                <a:column name="assignBgtEntity" align="center" renderer="GLD2030_AssignBgtEntityRender" width="80"/>
+                <a:column name="childResponsibilityCenter" align="center" renderer="GLD2030_setSubResbonsibilitys" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="GLD2030_gridTf" typeCase="upper"/>
+                <a:checkBox id="GLD2030_gridCx"/>
+                <a:comboBox id="GLD2030_gridCb"/>
+                <a:dateTimePicker id="GLD2030_gridDp"/>
+                <a:tledit id="GLD2030_responsibilityCenterNameTld"/>
+            </a:editors>
+        </a:grid>
+        <script>
+            Aurora.onReady(function (){
+                //console.log('1111111111111111');
+                // console.log('$[/model/@magOrgId]');
+                // console.log('$[/model/@magOrgCodeName]');
+               // console.log('$[/model/gldAccountingEntityList/records/record/@accEntityName]');
+            });
+        </script>
+    </a:view>
+</a:screen>

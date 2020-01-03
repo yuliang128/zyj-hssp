@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-04-164 下午03:01:44  
+    $Revision: 1.0  
+    $Purpose: 管理组织级部门组定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1110_exp_mo_unit_group_assgin_company_link" url="$[/request/@context_path]/exp/EXP1110/exp_mo_unit_group_assgin_company.screen"/>
+        <div/>
+        <script><![CDATA[
+            function EXP1110_expMoUnitGroupsBackFun() {
+                history.go(-1);
+            }
+            
+            function EXP110_groupCodeEditFun(record, name) {
+                if (record.isNew) {
+                    return 'EXP1110_org_mo_unit_group_code_grid_tf';
+                }
+                return '';
+            }
+            
+            function EXP1110_AssignCompanyFun(value, record, name) {
+                var orgUnitGroupId = record.get('moUnitGroupId');
+                if (orgUnitGroupId) {
+            
+                    return '<a href="javascript:EXP1110_AssignCompanyInfo(' + orgUnitGroupId + ')">$[l:exp_mo_unit_groups.assign_company]</a>';
+                }
+            }
+            
+            function EXP1110_AssignCompanyInfo(orgUnitGroupId) {
+                var magOrgId = $au('EXP1110_exp_mo_unit_groups_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP1110_exp_mo_unit_group_assgin_company_window',
+                    url: $au('EXP1110_exp_mo_unit_group_assgin_company_link').getUrl() + '?moUnitGroupId=' + orgUnitGroupId + '&magOrgId=' + magOrgId,
+                    title: '$[l:exp_mo_unit_groups.assign_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function EXP1110_expMoUnitGroupSubSuccessFun() {
+                $au('EXP1110_exp_mo_unit_groups_result_ds').query();
+            }
+            
+            function EXP1110_add(ds) {
+                var magOrgId = $au('EXP1110_exp_mo_unit_groups_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            function EXP1110_focus(){
+                $au('EXP1110_mange_organizationlist_ds').query();
+            }
+            function EXP1110_update(ds,record,name,value){
+                if(name=='magOrgId'){
+                    $au('EXP1110_exp_mo_unit_groups_result_ds').query();
+                }
+            }
+            function EXP1110_BeforeCreate(){
+                if (Ext.isEmpty($au('EXP1110_exp_mo_unit_groups_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1110_mange_organizationlist_ds" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP1110_exp_mo_unit_groups_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="moUnitGroupCode" prompt="exp_org_unit_groups.unit_group_code"/>
+                    <a:field name="description" prompt="exp_org_unit_groups.description"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/defaultMagList/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP1110_mange_organizationlist_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMagList/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1110_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1110_exp_mo_unit_groups_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/exp/mo-unit-group" queryDataSet="EXP1110_exp_mo_unit_groups_query_ds" queryUrl="$[/request/@context_path]/exp/mo-unit-group/query" selectable="false">
+                <a:fields>
+                    <a:field name="magOrgId" prompt="exp_mo_req_types.mag_org_id" required="true"/>
+                    <a:field name="moUnitGroupCode" prompt="exp_org_unit_groups.unit_group_code" required="true"/>
+                    <a:field name="description" prompt="exp_org_unit_groups.description" required="true" dto="com.hand.hec.exp.dto.ExpMoUnitGroup" dtoId="moUnitGroupId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1110_expMoUnitGroupSubSuccessFun"/>
+                    <a:event name="add" handler="EXP1110_add"/>
+                    <a:event name="beforecreate" handler="EXP1110_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1110_exp_mo_unit_groups_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1110_exp_mo_unit_groups_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1110_exp_mo_unit_groups_query_ds" resultTarget="EXP1110_exp_mo_unit_groups_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelwidth="100">
+                    <a:comboBox name="magOrgName" bindTarget="EXP1110_exp_mo_unit_groups_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1110_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moUnitGroupCode" bindTarget="EXP1110_exp_mo_unit_groups_query_ds" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="EXP1110_exp_mo_unit_groups_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1110_exp_mo_unit_groups_grid" bindTarget="EXP1110_exp_mo_unit_groups_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moUnitGroupCode" align="center" editorFunction="EXP110_groupCodeEditFun" width="120"/>
+                <a:column name="description" align="left" editor="EXP1110_description_grid_tld" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP1110_fnd_calendar_grid_cb" sortable="true" width="80"/>
+                <a:column name="moUnitGroupId" align="center" renderer="EXP1110_AssignCompanyFun" width="120"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP1110_org_mo_unit_group_code_grid_tf" typeCase="upper"/>
+                <a:tledit id="EXP1110_description_grid_tld"/>
+                <a:checkBox id="EXP1110_fnd_calendar_grid_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

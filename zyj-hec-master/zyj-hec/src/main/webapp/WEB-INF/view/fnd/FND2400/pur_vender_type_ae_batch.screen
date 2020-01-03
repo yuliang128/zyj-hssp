@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/01/30 9:54 $
+    $Revision: 1.0 $
+    $Purpose: 供应商类型定义-分配核算主体-批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+        function FND2400_closeBatchWindow() {
+            $au('FND2400_venderTypeAeBatch_window').close();
+            $au('FND2400_venderTypeAeResult_ds').query();
+        }
+
+        function FND2400_venderTypeAeBatchSave() {
+            var records = $au('FND2400_venderTypeAeBatchResult_ds').getSelected();
+            if (records.length < 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                return;
+            }
+            for (var i = 0; i < records.length; i++) {
+                var record = $au('FND2400_venderTypeAeBatchResult_ds').create();
+                record.set('venderTypeId', '$[/parameter/@venderTypeId]');
+                record.set('accEntityId', records[i].get('accEntityId'));
+                record.set('accEntityCode', records[i].get('accEntityCode'));
+                record.set('accEntityName', records[i].get('accEntityName'));
+                record.set('enabledFlag', 'Y');
+                record.set('_status', 'insert');
+            }
+            if ($au('FND2400_venderTypeAeBatchResult_ds').validate()) {
+                $au('FND2400_venderTypeAeBatchResult_ds').submit();
+            }
+        }
+
+        function FND2400_venderTypeAeBatchBack() {
+            $au('FND2400_venderTypeAeBatch_window').close();
+        }
+
+        function FND2400_venderTypeAeQuery() {
+            $au('FND2400_venderTypeAeBatchResult_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2400_venderTypeAeBatchQuery_ds" autoCreate="true" autoQuery="true" fetchAll="false"
+                       queryUrl="$[/request/@context_path]/gld/account-entity/getAccEntityByVenderTypeRefAe?venderTypeId=$[/parameter/@venderTypeId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityCodeFrom"/>
+                    <a:field name="accEntityNameFrom" autoComplete="true"
+                             lovCode="LOV_ASGN_ACC_ENTTITY_MAG_ORG?venderTypeId=$[/parameter/@venderTypeId]&amp;magOrgId=$[/session/@magOrgId]"
+                             prompt="gld_accounting_entity.acc_entity_from"
+                             title="gld_accounting_entity.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeFrom"/>
+                            <a:map from="accEntityName" to="accEntityNameFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCodeTo"/>
+                    <a:field name="accEntityNameTo" autoComplete="true"
+                             lovCode="LOV_ASGN_ACC_ENTTITY_MAG_ORG?venderTypeId=$[/parameter/@venderTypeId]&amp;magOrgId=$[/session/@magOrgId]"
+                             prompt="gld_accounting_entity.acc_entity_to"
+                             title="gld_accounting_entity.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeTo"/>
+                            <a:map from="accEntityName" to="accEntityNameTo"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2400_venderTypeAeBatchResult_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       pageSize="10" baseUrl="/gld/account-entity" queryDataSet="FND2400_venderTypeAeBatchQuery_ds"
+                       queryUrl="$[/request/@context_path]/gld/account-entity/getAccEntityByVenderTypeRefAe?venderTypeId=$[/parameter/@venderTypeId]"
+                       submitUrl="$[/request/@context_path]/pur/vender-type-ref-ae/submit"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2400_closeBatchWindow"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:toolbarButton click="FND2400_venderTypeAeBatchSave" text="hap_save" width="80"/>
+                    <a:toolbarButton click="FND2400_venderTypeAeBatchBack" text="hap_back" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="FND2400_venderTypeAeBatchQuery_ds"
+                             resultTarget="FND2400_venderTypeAeBatchResult_ds" style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:lov name="accEntityNameFrom" bindTarget="FND2400_venderTypeAeBatchQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2400_venderTypeAeQuery"/>
+                            </a:events>
+                        </a:lov>
+                        <a:lov name="accEntityNameTo" bindTarget="FND2400_venderTypeAeBatchQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2400_venderTypeAeQuery"/>
+                            </a:events>
+                        </a:lov>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid id="FND2400_venderTypeAeBatch_grid" bindTarget="FND2400_venderTypeAeBatchResult_ds"
+                    marginHeight="200" navBar="true" width="1000">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

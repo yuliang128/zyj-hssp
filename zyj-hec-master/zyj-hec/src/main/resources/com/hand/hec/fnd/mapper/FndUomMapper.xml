@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndUomMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndUom">
+        <result column="UOM_ID" property="uomId" jdbcType="DECIMAL" />
+        <result column="UOM_TYPE_ID" property="uomTypeId" jdbcType="DECIMAL" />
+        <result column="UOM_CODE" property="uomCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="PRECISION" property="precision" jdbcType="DECIMAL" />
+        <result column="META_CONVERSION_RATE" property="metaConversionRate" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="uom_type_desc" property="uomTypeDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="select" resultMap="BaseResultMap">
+        select * from
+        (select
+        fu.UOM_ID,
+        UOM_TYPE_ID,
+        UOM_CODE,
+        fut.DESCRIPTION,
+        `PRECISION`,
+        META_CONVERSION_RATE,
+        ENABLED_FLAG,
+        (select concat (fut.uom_type_code ,'-',futt.DESCRIPTION)
+        from fnd_uom_type fut left join fnd_uom_type_tl futt
+        on (fut.UOM_TYPE_ID = futt.UOM_TYPE_ID and futt.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where fut .UOM_TYPE_ID = fu.UOM_TYPE_ID) as uom_type_desc
+        From fnd_uom fu
+        left join fnd_uom_tl fut
+        on (fu.UOM_ID = fut.uom_id and fut.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        ) v
+        <where>
+          <if test="uomCode!='' and uomCode!=null">
+              and v.uom_code like concat('%',#{uomCode},'%')
+          </if>
+          <if test="description!=null and description!=''">
+              and v.description like concat('%',#{description},'%')
+          </if>
+          <if test="uomId!=null and uomId!=''">
+              and v.UOM_ID  = #{uomId}
+          </if>
+      </where>
+      order by v.UOM_ID
+    </select>
+</mapper>

@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhangyi2652 $
+    $Date: 2010/11/22 08:05:29 $
+    $Revision: 1.7 $
+    $Purpose: 工作流节点定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[
+    ]]></a:init-procedure>
+    <a:view>
+        <div/>
+        <script><![CDATA[
+        function WFL1010_saveTask() {
+            $au('WFL1010_userTaskDs').dirty = "true";
+            $au('WFL1010_userTaskDs').submit();
+        }
+
+        function WFL1010_taskReturn() {
+            $au('WFL1010_userTaskWindow').close();
+        }
+
+        function WFL1010_onUserTaskSubmitSucessFun() {
+            $au('WFL1010_userTaskDs').query();
+        }
+
+        //更新触发事件
+        function WFL1010_onUserTaskUpdateFun(ds, record, name, value) {
+            //时间限制
+            if (name == "timeLimitedFlag") {
+                if (value == 1) {
+                    record.getField('limitedHours').setRequired(true);
+                } else {
+                    record.getField('limitedHours').setRequired(false);
+                }
+            }
+
+            //超时发送提醒
+            if (name == "overtimeNotityFlag") {
+                if (value == 1) {
+                    record.getField('overtimeNotifySchedulerName').setRequired(true);
+                    record.getField('overtimeNotifyMsgTpltName').setRequired(true);
+                } else {
+                    record.getField('overtimeNotifySchedulerName').setRequired(false);
+                    record.getField('overtimeNotifyMsgTpltName').setRequired(false);
+                }
+            }
+
+            //抵达任务提醒
+            if (name == "arriveNotifyFlag") {
+                if (value == 1) {
+                    record.getField('arriveMsgTpltName').setRequired(true);
+                } else {
+                    record.getField('arriveMsgTpltName').setRequired(false);
+                }
+            }
+
+            //通过任务提醒
+            if (name == "postNotifyFlag") {
+                if (value == 1) {
+                    record.getField('postMsgTpltName').setRequired(true);
+                } else {
+                    record.getField('postMsgTpltName').setRequired(false);
+                }
+            }
+        }
+
+        function WFL1010_onUserTaskLoadFun(ds) {
+            if (ds.getAll() == null || ds.getAll().length == 0) {
+                ds.create();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL11_approveTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_APPROVE_TYPE/"/>
+            <a:dataSet id="WFL1010_userTaskDs" autoQuery="true" baseUrl="/wfl/user-task" selectable="true">
+                <a:fields>
+                    <a:field name="taskId" defaultValue="$[/parameter/@taskId]"/>
+                    <a:field name="approveTypeName" displayField="meaning" options="WFL11_approveTypeDs"
+                             returnField="approveType" valueField="value" prompt="wfl_user_task.approve_type_name"
+                             required="true"/>
+                    <a:field name="approveType"/>
+                    <a:field name="approveTypeParam" prompt="wfl_user_task.approve_type_param"/>
+                    <a:field name="canSubmitterRecheck" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_submitter_recheck" uncheckedValue="N"/>
+                    <a:field name="canRepeatedApprove" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_repeated_approve" uncheckedValue="N"/>
+                    <a:field name="canNoApprover" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_no_approver" uncheckedValue="N"/>
+                    <a:field name="canAddApprover" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_add_approver" uncheckedValue="N"/>
+                    <a:field name="canDeliver" checkedValue="Y" defaultValue="Y" prompt="wfl_user_task.can_deliver"
+                             uncheckedValue="N"/>
+                    <a:field name="canAddNotification" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.can_add_notification" uncheckedValue="N"/>
+                    <a:field name="canTakeBack" checkedValue="Y" defaultValue="Y" prompt="wfl_user_task.can_take_back"
+                             uncheckedValue="N"/>
+                    <a:field name="canGoBack" checkedValue="Y" defaultValue="Y" prompt="wfl_user_task.can_go_back"
+                             uncheckedValue="N"/>
+                    <a:field name="timeLimitedFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.time_limited_flag" uncheckedValue="N"/>
+                    <a:field name="limitedHours" prompt="wfl_user_task.limited_hours"/>
+                    <a:field name="overtimeNotifyFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="wfl_user_task.overtime_notify_flag" uncheckedValue="N"/>
+                    <a:field name="overtimeNotifySchedulerName" lovGridHeight="320" lovHeight="440"
+                             lovCode="java@??" lovWidth="500" defaultValue="1"
+                             prompt="wfl_user_task.overtime_notify_scheduler_name">
+                        <a:mapping>
+                            <a:map from="schedulerName" to="overtimeNotifySchedulerName"/>
+                            <a:map from="schedulerId" to="overtimeNotifySchedulerId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="overtimeNotifySchedulerId" defaultValue="1"/>
+                    <a:field name="overtimeNotifyMsgTpltName" lovGridHeight="320" lovHeight="440" lovCode="java@??"
+                             lovWidth="500" defaultValue="1" prompt="wfl_user_task.overtime_notify_msg_tplt_name">
+                        <a:mapping>
+                            <a:map from="schedulerName" to="overtimeNotifyMsgTpltName"/>
+                            <a:map from="schedulerId" to="overtimeNotifyMsgTpltId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="overtimeNotifyMsgTpltId" defaultValue="1"/>
+                    <a:field name="arriveNotifyFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="wfl_user_task.arrive_notify_flag"/>
+                    <a:field name="arriveMsgTpltName" lovGridHeight="320" lovHeight="440" lovCode="java@??"
+                             lovWidth="500" defaultValue="1" prompt="wfl_user_task.arrive_msg_tplt_name">
+                        <a:mapping>
+                            <a:map from="tpltName" to="arriveMsgTpltName"/>
+                            <a:map from="tpltId" to="arriveMsgTpltId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="arriveMsgTpltId" defaultValue="1"/>
+                    <a:field name="postNotifyFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="wfl_user_task.post_notify_flag"/>
+                    <a:field name="postMsgTpltName" lovGridHeight="320" lovHeight="440" lovCode="java@??"
+                             lovWidth="500" defaultValue="1" prompt="wfl_user_task.post_msg_tplt_name">
+                        <a:mapping>
+                            <a:map from="tpltName" to="postMsgTpltName"/>
+                            <a:map from="tpltId" to="postMsgTpltId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="postMsgTpltId" defaultValue="1"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="WFL1010_onUserTaskLoadFun"/>
+                    <a:event name="submitsuccess" handler="WFL1010_onUserTaskSubmitSucessFun"/>
+                    <a:event name="update" handler="WFL1010_onUserTaskUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="WFL1010_userTaskHeadForm" column="1" title="wfl_user_task.task_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="WFL1010_saveTask" text="hap.save" width="80"/>
+                    <a:toolbarButton click="WFL1010_taskReturn" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:box id="wfl_userTaskBox" column="4" labelWidth="110" style="width:100%">
+                    <a:comboBox name="approveTypeName" bindTarget="WFL1010_userTaskDs"/>
+                    <a:textField name="approveTypeParam" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canSubmitterRecheck" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canRepeatedApprove" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canNoApprover" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canAddApprover" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canDeliver" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canAddNotification" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canTakeBack" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="canGoBack" bindTarget="WFL1010_userTaskDs"/>
+                    <a:checkBox name="timeLimitedFlag" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:textField name="limitedHours" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:checkBox name="overtimeNotifyFlag" bindTarget="WFL1010_userTaskDs" style="width:100%"/>
+                    <a:lov name="overtimeNotifySchedulerName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:lov name="overtimeNotifyMsgTpltName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:checkBox name="arriveNotifyFlag" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:lov name="arriveMsgTpltName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:checkBox name="postNotifyFlag" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                    <a:lov name="postMsgTpltName" bindTarget="WFL1010_userTaskDs" style="width:50%"/>
+                </a:box>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

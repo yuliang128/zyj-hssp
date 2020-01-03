@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script">
+    <a:init-procedure>
+<!--        <a:model-query model="fnd.fnd_attachment_preview" rootPath="fnd_attachmentPreview_list"/>-->
+    </a:init-procedure>
+    <a:view>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/jquery.media.js" type="text/javascript"/>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/jquery-browser.js" type="text/javascript"/>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/jquery.imageView.js" type="text/javascript"/>
+        <style><![CDATA[
+	        .attachment_preview_left{
+            width: 20%;
+            height: 100%;
+            float: left;
+            background-color: #EEEEEE;
+            /*border-left: 2px solid #9B9B9B;
+            border-right: 2px solid #9B9B9B;*/
+            border: 1px solid #9B9B9B;
+            overflow: auto;
+        }
+
+        .attachment_preview_left #attachment_detail{
+            width: 100%;
+        }
+
+        .attachment_preview_left #attachment_detail .detail{
+            border-bottom: 1px solid #9B9B9B;
+            cursor: pointer;
+            background-color: transparent;
+            padding: 5px;
+        }
+        
+        /* .attachment_preview_left #attachment_detail .detail:hover{
+            background-color: #FFF;
+            opcaity: 1;
+        }
+        
+        .attachment_preview_left #attachment_detail .detail.active{
+            background-color: #FFF;
+        } */
+        
+        .attachment_preview_left #attachment_detail .detail .detail_wrap{
+            width: 100%;
+		    /* margin: 0 10px;
+		    padding: 20px 0; */
+        }
+
+        .attachment_preview_left #attachment_detail .detail_wrap .attachment_name{
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative;
+            height: 100px;
+        }
+        
+        .attachment_preview_left #attachment_detail .detail_wrap .attachment_name .file_name{
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25px;
+            color: #fff;
+            background: #000;
+            background: rgba(0,0,0,.6);
+            filter:Alpha(opacity=60);
+            text-align: center;
+            line-height: 25px;
+           /*  display: none; */
+        }
+        
+        /* .attachment_preview_left #attachment_detail .detail_wrap .attachment_name:hover .file_name{
+            display: block;
+        } */
+        
+        .attachment_preview_left #attachment_detail .detail_wrap .attachment_name .black_box{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 0.1;
+            filter:Alpha(opacity=10)
+        }
+        
+		.attachment_preview_left #attachment_detail .detail_wrap .attachment_name img{
+		    display: block;
+		    margin: 0 auto;
+		}
+		
+		.attachment_preview_left #attachment_detail .detail.active .attachment_name .black_box{
+		    opacity: 0;
+		    filter:Alpha(opacity=0);
+        }
+		
+		 .attachment_preview_left #attachment_detail .detail_wrap .attachment_name .black_box:hover{
+            opacity: 0;
+            filter:Alpha(opacity=0);
+        }
+        
+        .attachment_preview_left .attachment_detail .detail .detail_wrap .attachment_size_date{
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            height: 100%;
+        }
+
+        .attachement_preview_right{
+            width: 79%;
+            height: 100%;
+            float: right;
+            position: relative;
+        }
+        
+        #attachment_preview{
+            margin: 0 auto;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            background: #525659;
+        }
+		#attachement_preview_operation{
+		    position: absolute;
+		    bottom: 50px;
+		    right: 50px;
+		    display: none;
+		}
+		#attachement_preview_operation span{
+		    display: block;
+		    width: 40px;
+		    height: 40px;
+		    margin-bottom: 15px;
+		}
+		.rot1 {
+            -moz-transform: rotate(90deg);
+            -webkit-transform: rotate(90deg);
+            transform: rotate(90deg);
+            filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
+            -ms-filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
+        }
+
+        .rot2 {
+            -moz-transform: rotate(180deg);
+            -webkit-transform: rotate(180deg);
+            transform: rotate(180deg);
+            filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2);
+            -ms-filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2);
+        }
+
+        .rot3 {
+            -moz-transform: rotate(270deg);
+            -webkit-transform: rotate(270deg);
+            transform: rotate(270deg);
+            filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+            -ms-filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+        }
+    	]]></style>
+        <script><![CDATA[
+        	window.onload = function () {
+        	    var records = $au("preview_ds").getAll();
+                s = [];
+        	    for(var i = 0;i < records.length;i++){
+        	        var record_id = records[i].data.attachmentId,
+        	        	record_div_id =  records[i].data.divId,
+        	        	record_type = records[i].data.fileType,
+        	        	record_name = records[i].data.fileName;
+        	        if(isOrNotImag(record_type)){
+        	            s.push("<div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/fnd/atm-attachment/preview?attachmentId="+record_id+"' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div>");
+        	        }else if(record_type =="pdf"){
+        	            s.push("<div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/pdf.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div>");
+        	        }else if(record_type =="doc"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/doc.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="docx"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/docx.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="xls"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/xls.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="xlsx"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/xlsx.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="ppt"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/ppt.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="pptx"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/pptx.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="zip"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/zip.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="rar"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/rar.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else if(record_type =="txt"){
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/txt.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }else{
+        	            s.push("<a class='file_name' target='_self' title='"+record_name+"'><div id ='"+record_div_id+"' class='detail' type='"+record_type+"'><div class='detail_wrap'><div class='attachment_name'><img src='$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/other.png' onload='changeSize(this);'><div class='file_name'>"+record_name+"</div><div class='black_box'></div></div></div></div></a>");
+        	        }
+        	    }
+        	    $("#attachment_detail").html(s);
+        	    var attachment_first_id = "$[/model/fnd_attachmentPreview_list/records/record/@divId]";
+        	    attachment_first_id = attachment_first_id.substring(attachment_first_id.indexOf("_")+1, attachment_first_id.length);
+        	    var attachment_first_type = "$[/model/fnd_attachmentPreview_list/records/record/@fileType]";
+        	    $('#attachment_preview_wrap').height(Aurora.getViewportHeight()-20);
+        	    attachmentPreview(attachment_first_id,attachment_first_type);
+        	    attachment_detail_selected =Ext.get("detail_" + attachment_first_id) ;
+        	    Ext.get("attachment_detail")['on']("click",function (e) {
+	                if((childElement = (Ext.get(e.target).parent('div.detail') || Ext.get(e.target)))){
+	                    if(attachment_detail_selected != null){
+	                        attachment_detail_selected.removeClass("active");
+	                    }
+	                    childElement.addClass("active");
+	                    attachment_detail_selected = childElement;
+	                    var attachment_id = childElement.id.substring(childElement.id.indexOf("_")+1, childElement.id.length);
+	                    var type = childElement.getAttribute('type');
+	                    attachmentPreview(attachment_id,type);
+	                }
+	            },this);
+	            if(!Ext.isIE8){
+	                $(".attachment_preview_left").niceScroll();
+	            }
+	            var attachmentPreview1 = document.getElementById("attachment_preview");
+	            if (attachmentPreview1.addEventListener) attachmentPreview1.addEventListener('DOMMouseScroll', wheel, false);
+				attachmentPreview1.onmousewheel = wheel;
+	            
+        	};
+        	// if (window.addEventListener) window.addEventListener('DOMMouseScroll', wheel, false);
+				// window.onmousewheel = document.onmousewheel = wheel;
+			function wheel(event){
+			    var delta = 0;
+			    if (!event) event = window.event;
+			    if (event.wheelDelta) {//IE、chrome浏览器使用的是wheelDelta，并且值为“正负120”
+			        delta = event.wheelDelta/120; 
+			        if (window.opera) delta = -delta;//因为IE、chrome等向下滚动是负值，FF是正值，为了处理一致性，在此取反处理
+			    } else if (event.detail) {//FF浏览器使用的是detail,其值为“正负3”
+			        delta = -event.detail/3;
+			    }
+			    if (delta)
+			        handle(delta);
+			}
+			//上下滚动时的具体处理函数
+			function handle(delta) {
+			        if (delta <0){//向下滚动
+			            imgToSize(-40);
+			        }else{//向上滚动
+			            imgToSize(40);
+			        }
+			    }
+        	function changeSize(obj){
+        	    var leftW = $(".attachment_name").width();
+        	    var leftH = $(".attachment_name").height();
+        	    var smallImgW = obj.width;
+        	    var smallImgH = obj.height;
+        	    // if(smallImgW > smallImgH){
+        	        // obj.width = leftW;
+    	        	// obj.height = leftW/smallImgW*smallImgH;
+        	    // }else{
+        	        obj.width = leftH/smallImgH*smallImgW;
+    	        	obj.height = leftH;
+        	    // }
+        	    if(!Ext.isIE8){
+    	        	$(".attachment_preview_left").getNiceScroll().resize();
+        	    }
+        	}
+        	function attachmentPreview(id,type){
+        	    Ext.get("detail_" + id).addClass("active");
+        	    var previewOperat = document.getElementById("attachement_preview_operation");
+                if(isOrNotImag(type)){
+                    previewOperat.style.display = "block";
+                }else{
+                    previewOperat.style.display = "none";
+                }
+                if(!(isOrNotImag(type) || type=="pdf")){
+                    var tpl = '<div style="height:100%;border:#525659 10px solid;position:absolute;top:0;left:0;"><img style="width:100%;height:100%;" src="$[/request/@context_path]/resources/images/aurora/hap/attachment_icon/attachment-tip.png"><div style="position:absolute;width:100%;text-align:center;top:52%;font-size:16px;">$[l:attachment_preview_left] <a href="$[/request/@context_path]/fnd/atm-attachment/download?attachmentId='+id+'">$[l:hap.download]</a> $[l:attachment_preview_right]</div></div>';
+                    $('div#attachment_preview').append(tpl);
+                }else{
+                    $('div#attachment_preview').html('');
+                }
+                $('div#attachment_preview').media({
+                    type: type,
+                    // width: '100%',
+                    // height: '100%',
+                    autoplay: true,
+                    src: '$[/request/@context_path]/fnd/atm-attachment/preview?attachmentId=' + id
+                });
+                loadImg('$[/request/@context_path]/fnd/atm-attachment/preview?attachmentId=' + id,call);
+                if(isOrNotImag(type)){
+                    $("#attachment_preview img").css({"position":"absolute","cursor:":"move"});
+                    var param = {
+				        right: document.getElementById("rotRight"),
+				        left: document.getElementById("rotLeft"),
+				        rot: 0
+				    };
+				
+				    var fun = {
+				        right: function () {
+				            param.rot -= 1;
+				            if (param.rot === -1 || param.rot < -1) {
+				                param.rot = 3;
+				            }
+				            // param.img.className = "rot" + param.rot;
+				            $("#attachment_preview img").attr("class","rot" + param.rot);
+				            
+				        },
+				        left: function () {
+				            param.rot += 1;
+				            $("#attachment_preview img").attr("class","rot" + param.rot);
+				            if (param.rot > 3 || param.rot === 3) {
+				                param.rot = -1;
+				            }
+				        }
+				    };
+				    param.right.onclick = function () {
+				        fun.right();
+				        return false;
+				    };
+				    param.left.onclick = function () {
+				        fun.left();
+				        return false;
+				    };
+                }
+        	}
+        	function loadImg(url,callback){
+        	    var img = new Image();
+        	    img.onload = function(){
+        	        img.onload = null;
+        	        callback(img);
+        	    };
+        	    img.src = url;
+        	}
+        	function call(img){
+        	    var imgW = $("#attachment_preview img").width();
+        	    var imgH = $("#attachment_preview img").height();
+        	    var apWidth = $("#attachment_preview").width();
+		        var apHeight = $("#attachment_preview").height();
+		        if(imgW < apWidth && imgH < apHeight){
+		            $("#attachment_preview img").css({"top":parseInt((apHeight-imgH))/2,"left":parseInt((apWidth-imgW))/2});
+		        }else{
+		            if(imgW > apWidth && imgH < apHeight || imgH == apHeight){
+		                var newH = imgH - (apWidth/imgW)*imgH;
+		                $("#attachment_preview img").css({"width":apWidth,"height":newH,"top":parseInt((apHeight-newH)/2)});
+		            }else if(imgW > apWidth && imgH > apHeight){
+		                var poorW = imgW - apWidth,
+		                	poorH = imgH - apHeight,
+		                	smallW = (apHeight/imgH)*imgW,
+		                	smallH = (apWidth/imgW)*imgH;
+	                	if(smallW > apWidth && smallH < apHeight){
+	                	    $("#attachment_preview img").css({"width":apWidth,"height":smallH,"top":parseInt((apHeight-smallH)/2)});
+	                	}else if(smallW < apWidth && smallH > apHeight){
+	                	    $("#attachment_preview img").css({"width":smallW,"height":apHeight,"left":parseInt((apWidth-smallW)/2)});
+	                	}else{
+	                	    $("#attachment_preview img").css({"width":smallW,"height":smallH,"top":parseInt((apHeight-smallH)/2),"left":parseInt((apWidth-smallW)/2)});
+	                	}
+		            }else if(imgW < apWidth && imgH > apHeight || imgW == apWidth){
+		                $("#attachment_preview img").css({"width":(apHeight/imgH)*imgW,"height":apHeight,"left":parseInt((apWidth-(apHeight/imgH)*imgW)/2)});
+		            }
+		        }
+        	    var imgHeight = $("#attachment_preview img").height();
+			    var imgWidth = $("#attachment_preview img").width();
+			    $('#attachment_preview').imageView({ width: imgWidth, height: imgHeight }); 
+        	}
+        	function isOrNotImag(type){
+        	    if(type=="jpg" || type=="jpeg" || type=="bmp" || type=="gif" || type=="png" || type=="tif" || type=="tiff" || type=="jpe"){
+        	        return true;
+        	    }
+        	}
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="preview_ds">
+                <a:datas dataSource="/model/fnd_attachmentPreview_list/records"/>
+            </a:dataSet>
+        </a:dataSets>
+        <div id="attachment_preview_wrap">
+            <div class="attachment_preview_left">
+                <div id="attachment_detail">
+                    <![CDATA[
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                ]]></div>
+            </div>
+            <div class="attachement_preview_right">
+                <div id="attachment_preview" style="width:100%,height:100%;"/>
+                <div id="attachement_preview_operation">
+                    <span onclick="imgToSize(60)">
+                        <img src="$[/request/@context_path]/resources/images/aurora/hap/amplification.png"/>
+                    </span>
+                    <span onclick="imgToSize(-60);">
+                        <img src="$[/request/@context_path]/resources/images/aurora/hap/narrow.png"/>
+                    </span>
+                    <span id="rotLeft">
+                        <img src="$[/request/@context_path]/resources/images/aurora/hap/Clockwise-rotation.png"/>
+                    </span>
+                    <span id="rotRight">
+                        <img src="$[/request/@context_path]/resources/images/aurora/hap/Counterclockwise-rotation.png"/>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <script><![CDATA[
+		    var size = 0;
+		    //放大缩小图片
+		    n = 0;
+		    function imgToSize(size) {
+		        var img = $("#attachment_preview img");
+		        var oWidth = img.width(); //取得图片的实际宽度
+		        var oHeight = img.height(); //取得图片的实际高度
+		        var apWidth = $("#attachment_preview").outerWidth();
+		        var apHeight = $("#attachment_preview").outerHeight();
+				if(size<0){
+					if(oWidth <= Math.abs(size*2) || oHeight <= Math.abs(size*2)){
+						return false;
+					}else{
+						img.width(oWidth + size);
+						img.height(oHeight + size / oWidth * oHeight);
+						var newWidth = img.width();
+						var newHeight = img.height();
+						$("img").css({"top":parseInt((apHeight-newHeight))/2,"left":parseInt((apWidth-newWidth))/2});
+					}
+				}else{
+					img.width(oWidth + size);
+					img.height(oHeight + size / oWidth * oHeight);
+					var newWidth = img.width();
+					var newHeight = img.height();
+					$("img").css({"top":parseInt((apHeight-newHeight))/2,"left":parseInt((apWidth-newWidth))/2});
+				}
+		    }
+        ]]></script>
+        <a:label style="display:none;"/>
+    </a:view>
+</a:screen>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-17 09:37:14
+    $Revision: 1.0  
+    $Purpose: 核算主体定义-分配科目
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="GLD2020_batchAsgnAccount_link" url="$[/request/@context_path]/gld/GLD2020/gld_acc_entity_batch_assign_account.screen"/>
+        <script><![CDATA[
+            function GLD2020_closeAccCreateWindow() {
+                $au('GLD2020_gld_acc_entity_account_win').close();
+            }
+            //add lcy 2017/12/26 16:18:26  新增批量分配科目
+            
+            function GLD2020_AccAssignFun() {
+            
+                var accEntityId = $[/parameter/@accEntityId];
+                var setOfBooksId = $[/parameter/@setOfBooksId];
+                var url = $au('GLD2020_batchAsgnAccount_link').getUrl() + '?accEntityId=' + accEntityId + '&setOfBooksId=' + setOfBooksId;
+                new Aurora.Window({
+                    id: 'GLD2020_batchAsgnAccount_window',
+                    url: url,
+                    title: '$[l:gld.batch_assign_account]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function GLD2020_assignAccount(ds) {
+                ds.query();
+            }
+            
+            function accountCodeEditorFun(record, name) {
+                if (name == 'accountCode') {
+                    if (record.isNew) {
+                        return 'account_code_lov';
+                    }
+                    return false;
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_gld_acc_entity_account_ds" autoCount="true" autoPageSize="true" autoQuery="true" baseUrl="/gld/acc-entity-ref-account" queryUrl="$[/request/@context_path]/gld/acc-entity-ref-account/query?accEntityId=$[/parameter/@accEntityId]&amp;setOfBooksId=$[/parameter/@setOfBooksId]">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/parameter/@setOfBooksId]"/>
+                    <a:field name="accEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+                    <a:field name="accountId"/>
+                    <a:field name="accountCode" lovCode="LOV_ACCOUNT?accEntityId=$[/parameter/@accEntityId]&amp;setOfBooksId=$[/parameter/@setOfBooksId]" prompt="gld_account.account_code" required="true" title="gld_account.choice">
+                        <a:mapping>
+                            <a:map from="accountId" to="accountId"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="description" to="description"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="description" prompt="gld_account.account_description"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="gld_acc_entity_ref_account.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_assignAccount"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="gld_accouning_entity.acc">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD2020_gld_grid" type="add" width="80"/>
+                    <a:gridButton bind="GLD2020_gld_grid" type="save" width="80"/>
+                    <a:toolbarButton click="GLD2020_AccAssignFun" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="GLD2020_closeAccCreateWindow" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_code" readOnly="true"/>
+                <a:textField name="accEntityName" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="GLD2020_gld_grid" bindTarget="GLD2020_gld_acc_entity_account_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" editorFunction="accountCodeEditorFun" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="GLD2020_checkbox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="GLD2020_checkbox"/>
+                    <a:lov id="account_code_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

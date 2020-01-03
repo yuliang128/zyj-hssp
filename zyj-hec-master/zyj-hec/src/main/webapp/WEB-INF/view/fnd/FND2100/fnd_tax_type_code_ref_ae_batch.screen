@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: weikun.Wang
+    $Date: 2019/02/25 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 税率定义-核算主体批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND2100_fnd_batch_assign_tax_entity_link" url="$[/request/@context_path]/fnd/tax-type-code-ref-ae/submit"/>
+        <script><![CDATA[
+            function FND2100_batchAssignAccEntityReturnFun() {
+                $au('FND2100_tax_type_code_ref_ae_batch_window').close();
+                $au('FND2100_tax_type_code_ref_ae_ds').query();
+            }
+
+            function FND2100_batchAssignAccEntityFun() {
+                var records = $au('FND2100_batch_assign_tax_entity_result_ds').getSelected();
+                if (records.length <= 0) {
+                    $A.showMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT_ONE]');
+                    return;
+                }
+                var data=[]
+                for (var i = 0;i < records.length;i++) {
+                    var detailData = {
+                        accEntityId: records[i].get('accEntityId'),
+                        taxTypeId: '$[/parameter/@tax_type_id]',
+                        enabledFlag: 'Y',
+                        __status:'add'
+                    };
+                    data.push(detailData);
+                }
+                /*console.log(data);*/
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('FND2100_fnd_batch_assign_tax_entity_link').getUrl(),
+                    para: data,
+                    success: function() {
+                        $au('FND2100_tax_type_code_ref_ae_batch_window').close();
+                        $au('FND2100_tax_type_code_ref_ae_ds').query();
+                    }
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2100_batch_assign_tax_entity_result_ds" autoQuery="true" baseUrl="/gld/account-entity" queryUrl="$[/request/@context_path]/gld/account-entity/taxTypeQuery?taxTypeId=$[/parameter/@tax_type_id]" selectable="true"/>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="GLD_SOB_RULE.ACC_ENTITY_BATCH">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="FND2100_batchAssignAccEntityFun" text="HEC_ASSIGN" width="80"/>
+                    <a:gridButton click="FND2100_batchAssignAccEntityReturnFun" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="taxTypeCode" bindTarget="fnd_tax_type_codes_result_ds" prompt="fnd_tax_type_code.tax_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="fnd_tax_type_codes_result_ds" prompt="fnd_tax_type_code.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2100_tax_entity_grid" Width="1010" bindTarget="FND2100_batch_assign_tax_entity_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" prompt="csh_pay_batch_rule_asgn.acc_entity_code" width="80"/>
+                    <a:column name="accEntityName" align="left" prompt="csh_pay_batch_rule_asgn.acc_entity_name" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

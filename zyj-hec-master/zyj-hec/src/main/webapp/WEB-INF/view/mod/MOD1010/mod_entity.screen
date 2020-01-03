@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: 周皓
+    $Date: 2019年6月4日15:44:03
+    $Revision: 1.0
+    $Purpose: 工作中心定义
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc"
+          xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="MOD1010_fieldLink" url="$[/request/@context_path]/mod/MOD1010/mod_field.screen"/>
+        <a:link id="MOD1010_entityRelationLink" url="$[/request/@context_path]/mod/MOD1010/mod_entity_relation.screen"/>
+        <script><![CDATA[
+
+        function MOD1010_saveEntity() {
+
+            var records = $au('MOD1010_entityDs').getAll();
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                record.dirty = true;
+            }
+            $au('MOD1010_entityDs').submit();
+        }
+
+        function MOD1010_fieldConfigRenderer(value, record, name) {
+            if (record.get('entityId')) {
+                return '<a href="javascript:MOD1010_fieldConfig(' + record.get('entityId') + ')">字段配置</a>'
+            }
+        }
+
+        function MOD1010_fieldConfig(entityId) {
+            new Aurora.Window({
+                id: 'MOD1010_fieldWindow',
+                url: $au('MOD1010_fieldLink').getUrl() + '?entityId=' + entityId,
+                fullScreen: true
+            });
+        }
+
+        function MOD1010_addChildEntityRenderer(value, record, name) {
+            if (record.get('entityCode')) {
+                return '<a href="javascript:MOD1010_addChildEntity(\'' + record.get('entityCode') + '\')">添加子实体</a>'
+            }
+        }
+
+        function MOD1010_addChildEntity(entityCode) {
+            /**
+             * 找到父节点为当前实体的子实体的最后一个的位置，将本次新增的子实体插入其后
+             */
+            var ds = $au('MOD1010_entityDs');
+            var records = $au('MOD1010_entityDs').getAll();
+            var maxChildIndex = 0;
+            var parentIndex = 0;
+            var parentRecord = null;
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i]
+                if (record.get('entityCode') == entityCode) {
+                    parentIndex = ds.indexOf(record)
+                    parentRecord = record
+                }
+
+                if (record.get('parentEntityCode') == entityCode && ds.indexOf(record) > maxChildIndex) {
+                    maxChildIndex = ds.indexOf(record)
+                }
+            }
+
+            var entityLevel = parentRecord.get('entityLevel') ? parentRecord.get('entityLevel') + 1 : 2;
+
+            ds.create({parentEntityCode: entityCode, entityLevel: entityLevel}, maxChildIndex + 1)
+        }
+
+        function MOD1010_deleteEntityRenderer(value, record, name) {
+            return '<a href="javascript:MOD1010_deleteEntity(\'' + record.id + '\')">删除实体</a>'
+        }
+
+        function MOD1010_deleteEntity(recordId) {
+            var ds = $au('MOD1010_entityDs')
+            var records = ds.getAll()
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                if (record.id == recordId) {
+                    MOD1010_deleteChildEntity(ds, record, true);
+                    return
+                }
+            }
+        }
+
+        function MOD1010_deleteChildEntity(ds, record, rootFlag) {
+            var records = ds.getAll()
+            /**
+             * 如果当前记录的entityCode为空，暂时不进行子实体的删除
+             */
+            if (record.get('entityCode')) {
+                for (var i = 0; i < records.length; i++) {
+                    var currentRecord = records[i]
+                    if (currentRecord.get('parentEntityCode') == record.get('entityCode')) {
+                        MOD1010_deleteChildEntity(ds, currentRecord, false)
+                    }
+                }
+            }
+
+            //如果是根节点的删除，那么执行remove，否则执行removeLocal操作
+            if (rootFlag) {
+                ds.remove(record);
+            } else {
+                ds.removeLocal(record);
+            }
+        }
+
+        function MOD1010_relationConfigRenderer(value, record, name) {
+            if (record.get('entityId')) {
+                return '<a href="javascript:MOD1010_relationConfig(' + record.get('entityId') + ')">实体关联</a>'
+            }
+        }
+
+        function MOD1010_relationConfig(entityId) {
+            new Aurora.Window({
+                id: 'MOD1010_entityRelationWindow',
+                url: $au('MOD1010_entityRelationLink').getUrl() + '?entityId=' + entityId,
+                fullScreen: true
+            });
+        }
+
+        function MOD1010_entityLevelRenderer(value, record, name) {
+            if (!value) {
+                value = 1
+            }
+
+            return '<span style="font-weight:bold;color:#ff0000;padding-right:10px;">Level' + value + '</span>'
+        }
+
+        function MOD1010_onEntityUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'entityCode') {
+                if (value && oldValue) {
+                    var records = ds.getAll()
+                    for (var i = 0; i < records.length; i++) {
+                        if (records[i].get('parentEntityCode') == oldValue) {
+                            records[i].set('parentEntityCode', value)
+                        }
+                    }
+                }
+            }
+        }
+
+        function MOD1010_relationTypeValidator(record, name, value) {
+            if (record.get('parentEntityCode') && !value) {
+                return '子实体必须填写实体关系字段！'
+            }
+
+            return true;
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="MOD1010_relationTypeDs"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/MOD_RELATION_TYPE" autoQuery="true"/>
+            <a:dataSet id="MOD1010_entityDs" baseUrl="/mod/entity"
+                       queryUrl="$[/request/@context_path]/mod/entity/query?modelId=$[/parameter/@modelId]"
+                       selectable="true"
+                       autoQuery="true">
+                <a:fields>
+                    <a:field name="modelId" defaultValue="$[/parameter/@modelId]"/>
+                    <a:field name="entityCode" prompt="实体代码" required="true"/>
+                    <a:field name="entityName" prompt="实体名称" required="true"/>
+                    <a:field name="entityLevel" prompt="实体级别"/>
+                    <a:field name="entitySeq" prompt="实体顺序" required="true"/>
+                    <a:field name="enabledFlag" prompt="启用" checkedValue="Y" uncheckedValue="N"
+                             defaultValue="Y"></a:field>
+                    <a:field name="parentEntityCode" prompt="父实体代码"/>
+                    <a:field name="relationTypeName" prompt="关联类型"/>
+                    <a:field name="relationTypeName" options="MOD1010_relationTypeDs" displayField="meaning"
+                             valueField="value" returnField="relationType" validator="MOD1010_relationTypeValidator"/>
+                    <a:field name="relationType"/>
+                    <a:field name="refTable" prompt="关联表"/>
+                    <a:field name="refDto" prompt="关联DTO"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="MOD1010_onEntityUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="模型" marginWidth="23" column="2">
+                <a:label name="modelCode" bindTarget="MOD1010_modelDs" prompt="模型代码"/>
+                <a:label name="modelName" bindTarget="MOD1010_modelDs" prompt="模型名称"/>
+            </a:form>
+            <a:treeGrid bindTarget="MOD1010_entityDs" idField="entityCode" parentField="parentEntityCode"
+                        marginHeight="180" marginWidth="23" navBar="true" showCheckBox="false" expandField="expand">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="save" click="MOD1010_saveEntity"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="entityLevel" align="left" renderer="MOD1010_entityLevelRenderer"/>
+                    <a:column name="entityCode" align="center" editor="MOD1010_entityTf"/>
+                    <a:column name="entityName" align="center" editor="MOD1010_entityTf"/>
+                    <a:column name="refTable" editor="MOD1010_entityTf"/>
+                    <a:column name="refDto" editor="MOD1010_entityTf"/>
+                    <a:column name="entitySeq" editor="MOD1010_entityNf" width="80"/>
+                    <a:column name="fieldConfig" align="center" prompt="字段配置" renderer="MOD1010_fieldConfigRenderer"/>
+                    <a:column name="addChildEntity" align="center" prompt="新增子实体"
+                              renderer="MOD1010_addChildEntityRenderer"/>
+                    <a:column name="removeEntity" align="center" prompt="删除实体" renderer="MOD1010_deleteEntityRenderer"/>
+                    <a:column name="parentEntityCode" align="center" prompt="父实体代码"/>
+                    <a:column name="relationTypeName" align="center" editor="MOD1010_entityCb"/>
+                    <a:column name="relationConfig" align="center" prompt="关联配置"
+                              renderer="MOD1010_relationConfigRenderer"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="MOD1010_entityTf"/>
+                    <a:numberField id="MOD1010_entityNf"/>
+                    <a:comboBox id="MOD1010_entityCb"/>
+                </a:editors>
+            </a:treeGrid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/06 $
+    $Revision: 1.1 $
+    $Purpose: 预算期间规则
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="bgt_period_create_link" url="$[/request/@context_path]/bgt/BGT1070/bgt_period_create.screen"/>
+        <script><![CDATA[
+            function BGT1070_MonthValidator(record, name, value) {
+                if (name == 'monthFrom' || name == 'monthTo') {
+                    if (value < 1 || value > 12) {
+                        return '$[l:incorrect_month_entered]';
+                    }
+                }
+                return true;
+            }
+            
+            function BGT1070_DateValidator(record, name, value) {
+                var array = new Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+                if (name == 'dateFrom' || name == 'dateTo') {
+                    var month = 1;
+                    if (name == 'dateFrom') {
+                        month = record.get('monthFrom');
+                    } else {
+                        month = record.get('monthTo');
+                    }
+                    if (value < 1 || value > array[month - 1]) {
+                        return '$[l:date_entered_incorrectly]';
+                    }
+                }
+                return true;
+            }
+            
+            function BGT1070_AddValidator(record, name, value) {
+                if (!value) {
+                    return true;
+                }
+                var addreg = /^(0?[[1-9]|1[0-2])$/;
+                if (!addreg.test(value)) {
+                    return '期间名附加必须为01-12的月份！';
+                }
+                return true;
+            }
+            
+            function onRuleUpdate(ds, record, name, value) {
+                if (name == 'monthFrom' || name == 'monthTo') {
+                    record.validate((name == 'monthFrom') ? 'dateFrom' : 'dateTo');
+                }
+            }
+            
+            function periodSetCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'period_set_code_grid_tf';
+                } else {
+                    return '';
+                }
+            }
+            
+            function BGT1070_QuarterNumValidator(record, name, value) {
+                if (value > 4 || value < 1) {
+                    return '$[l:quarterly_input_error]';
+                }
+                return true;
+            }
+            
+            function validateRules() {
+                $au('BGT1070_period_rules_ds').validate();
+            
+                // var totalPeriodNum = $au('gld_period_set_info_ds').getCurrentRecord().get('total_period_num');
+                var records = $au('BGT1070_period_rules_ds').getAll();
+                if (records == '' || records == null) {
+                    Aurora.showMessage('$[l:PROMPT]', '$[l:during_the_rule_definition_is_not_complete]');
+                    return false;
+                } else {
+                    for (var i = 1;i <= records.length;i++) {
+                        var currentRecord = records[i];
+                        var currentDateFrom = new Date(2017, currentRecord.get('monthFrom') - 1, currentRecord.get('dateFrom'));
+                        var currentDateTo = new Date(2017, currentRecord.get('monthTo') - 1, currentRecord.get('dateTo'));
+                        for (var j = 0;j < i;j++) {
+                            var compareRecord = records[j];
+                            var compareDateFrom = new Date(2017, compareRecord.get('monthFrom') - 1, compareRecord.get('dateFrom'));
+                            var compareDateTo = new Date(2017, compareRecord.get('monthTo') - 1, compareRecord.get('dateTo'));
+                            if (currentDateFrom > compareDateFrom && currentDateFrom < compareDateTo || currentDateTo > compareDateFrom && currentDateTo < compareDateTo) {
+                                Aurora.showMessage('$[l:PROMPT]', '$[l:gld_period_rule_ro.time]' + parseInt(i + 1) + '$[l:line]' + '$[l:during_the_rule_definition_is_not_complete]');
+                                return false;
+                            }
+                        }
+                        currentRecord.set('periodNum', i + 1);
+                    }
+                    records[0].set('periodNum', 1);
+                    return true;
+                }
+            }
+            
+            function BGT1070_PeriodRulesSubmit() {
+                var periodSetRecord = $au('BGT1070_period_rule_query_ds').getCurrentRecord();
+                var records = $au('BGT1070_period_rules_ds').getAll();
+                if(records.length == periodSetRecord.get("totalPeriodNum")){
+                    for (var i = 0;i < records.length;i++) {
+                        records[i].set('periodNum', i + 1);
+                    }
+                    if ($au('BGT1070_period_rules_ds').validate()) {
+                        $au('BGT1070_period_rules_ds').submit();
+                    }
+                }else{
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:during_the_rule_definition_is_not_complete]', null, 300, 150);
+                    return;
+                }
+
+            }
+            
+            //修改创建期间页面的高度   Y.duan   2017-8-10 13:34:33
+            
+            function BGT1070_NewPeriod() {
+                var records = $au('BGT1070_period_rules_ds').getNewRecords();
+                if ($au('BGT1070_period_rules_ds').isModified()) {
+                    Aurora.showMessage('$[l:PROMPT]', '$[l:bgt_solution.save_first]');
+                    return;
+                }
+                if ($au('BGT1070_period_rules_ds').validate()) {
+                    new Aurora.Window({
+                        id: 'bgt_period_create_window',
+                        url: $au('bgt_period_create_link').getUrl() + '?periodSetId=' + $au('BGT1070_period_rules_ds').getCurrentRecord().get('periodSetId'),
+                        title: '$[l:bgt_period_create_period]',
+                        height: 180,
+                        width: 725
+                    });
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1070_period_rule_query_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/bgt/period-set" queryUrl="$[/request/@context_path]/bgt/period-set/query?periodSetId=$[/parameter/@periodSetId]" >
+                <a:fields>
+                    <a:field name="periodSetId"/>
+                    <a:field name="periodSetCode" required="true" prompt="bgt_period.bgt_period_code"/>
+                    <a:field name="periodSetName" required="true" prompt="bgt_budget_item.description"/>
+                    <a:field name="totalPeriodNum" required="true" prompt="	gld_period_set.total_period_num"/>
+                    <a:field name="periodAdditionalFlag" prompt="gld_period_set.period_additional_flag"/>
+                    <a:field name="periodAdditionalFlagDesc" prompt="gld_period_set.period_additional_flag" displayField="meaning" options="BGT1070_period_additional_flag_ds" required="true" returnField="periodAdditionalFlag" valueField="value"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT1070_period_rules_ds" autoQuery="true" fetchAll="false" baseUrl="/bgt/period-rule" pageSize="12" queryUrl="$[/request/@context_path]/bgt/period-rule/query?periodSetId=$[/parameter/@periodSetId]" selectable="true" >
+                <a:fields>
+                    <a:field name="periodSetCode" defaultValue="$[/parameter/@periodSetCode]"/>
+                    <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+                    <a:field name="periodAdditionalName" required="true" validator="BGT1070_AddValidator" prompt="gld_period_rule.period_additional_name"/>
+                    <a:field name="monthFrom" required="true" validator="BGT1070_MonthValidator" prompt="gld_period_rule.month_from"/>
+                    <a:field name="monthTo" required="true" validator="BGT1070_MonthValidator" prompt="gld_period_rule.month_to"/>
+                    <a:field name="dateFrom" required="true" validator="BGT1070_DateValidator" prompt="gld_period_rule.date_from"/>
+                    <a:field name="dateTo" required="true" validator="BGT1070_DateValidator" prompt="gld_period_rule.date_to"/>
+                    <a:field name="quarterNum" required="true" validator="BGT1070_QuarterNumValidator" prompt="gld_period_rule.quarter_num"/>
+                    <a:field name="periodNum"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onRuleUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <!--修改form和grid的自适应高度和宽度   Y.duan  2017-8-10 13:31:16-->
+        <a:screenBody>
+            <a:form column="2" marginWidth="10" title="bgt_period_create_rule">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT1070_periodRules_grid" type="add" width="80"/>
+                    <a:toolbarButton click="BGT1070_PeriodRulesSubmit" text="hap_save" width="80"/>
+                    <a:gridButton bind="BGT1070_periodRules_grid" type="clear" width="80"/>
+                    <a:toolbarButton click="BGT1070_NewPeriod" text="gld_period_rule_ro.create_period" width="80"/>
+                </a:formToolbar>
+                <a:textField name="periodSetCode" bindTarget="BGT1070_period_rule_query_ds" prompt="bgt_period.bgt_period_code" readOnly="true"/>
+                <a:textField name="periodSetName" bindTarget="BGT1070_period_rule_query_ds" prompt="bgt_period.bgt_period_desc" readOnly="true"/>
+                <a:textField name="totalPeriodNum" bindTarget="BGT1070_period_rule_query_ds" prompt="bgt_period_set.total_period_num" readOnly="true"/>
+                <a:textField name="periodAdditionalFlagDesc" bindTarget="BGT1070_period_rule_query_ds" prompt="gld_period_set.period_additional_flag" readOnly="true"/>
+            </a:form>
+            <a:grid id="BGT1070_periodRules_grid" bindTarget="BGT1070_period_rules_ds" marginHeight="231" marginWidth="0" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="periodAdditionalName" align="center" editor="BGT1070_grid_rules_tf" width="100"/>
+                    <a:column name="monthFrom" align="center" editor="BGT1070_grid_rules_nf" width="100"/>
+                    <a:column name="monthTo" align="center" editor="BGT1070_grid_rules_nf" width="100"/>
+                    <a:column name="dateFrom" align="center" editor="BGT1070_grid_rules_nf" width="100"/>
+                    <a:column name="dateTo" align="center" editor="BGT1070_grid_rules_nf" width="100"/>
+                    <a:column name="quarterNum" align="center" editor="BGT1070_grid_rules_nf" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BGT1070_grid_rules_tf"/>
+                    <a:numberField id="BGT1070_grid_rules_nf" allowDecimals="false" allowNegative="false"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

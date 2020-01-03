@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-10-18 下午2:47:12  
+    $Revision: 1.0  
+    $Purpose: 还款申请会计确认
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH7040_repaymentRegisterMainLink"
+                url="$[/request/@context_path]/csh/CSH7040/csh_repayment_register_maintain.screen"/>
+        <script><![CDATA[
+        /**
+         * @return {string}
+         */
+        function CSH7040_repaymentNumberRenderer(value, record, name) {
+            return '<a href="javascript:CSH7040_openRegisterAccountingWindow(' + record.get('registerHdsId') + ')">' + value + '</a>';
+        }
+
+        function CSH7040_openRegisterAccountingWindow(id) {
+            new Aurora.Window({
+                id: 'repayment_register_accounting_window',
+                url: $au('CSH7040_repaymentRegisterMainLink').getUrl() + '?registerHdsId=' + id,
+                fullScreen: true
+            }).on('close', function () {
+                $au('CSH7040_repaymentResultDs').query();
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7040_paymentMethodDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?companyId=$[/session/@companyId]&amp;magOrgId=$[/session/@magOrgId]"/>
+            <a:dataSet id="CSH7040_repaymentStatusDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/CSH_REPAY_REGISTER_STATUS/"/>
+            <a:dataSet id="CSH7040_repaymentQueryDs" autoCreate="true"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/accounting/query">
+                <a:fields>
+                    <a:field name="registerNumber" prompt="csh_repayment_register_hd.register_number"/>
+                    <a:field name="employeeName" lovGridHeight="320" lovHeight="450"
+                             lovService="hec_util.exp_employees_lov" lovWidth="500"
+                             prompt="csh_repayment_register_hd.employee_id" title="exp_employees.exp_employees_choose">
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="repaymentBankNote" placeHolder="csh_repayment_register_hd.repayment_bank_note"/>
+                    <a:field name="description" placeHolder="csh_repayment_register_hd.description"/>
+                    <a:field name="paymentMethodName" displayField="description"
+                             options="CSH7040_paymentMethodDs" returnField="paymentMethodId"
+                             valueField="paymentMethodId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH7040_repaymentResultDs" autoPageSize="true" autoQuery="true"
+                       baseUrl="/csh/repayment-register/accounting" queryDataSet="CSH7040_repaymentQueryDs">
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="bankAccountNum"/>
+                    <a:field name="repaymentStatusName" displayField="meaning"
+                             options="CSH7040_repaymentStatusDs" returnField="repaymentStatus" valueField="value"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:queryForm bindTarget="CSH7040_repaymentQueryDs" resultTarget="CSH7040_repaymentResultDs"
+                     style="width:100%;border:none">
+            <a:formToolBar labelWidth="100">
+                <a:textField name="register_number" bindTarget="CSH7040_repaymentQueryDs"/>
+                <a:lov name="employee_name" bindTarget="CSH7040_repaymentQueryDs"/>
+                <a:comboBox name="payment_method_name" bindTarget="CSH7040_repaymentQueryDs"/>
+            </a:formToolBar>
+            <a:formBody column="4" labelWidth="100">
+                <!--将prompt改为placeHolder  Y.duan  2017-9-30 15:02:18-->
+                <a:datePicker name="repaymentDateFrom" bindTarget="CSH7040_repaymentQueryDs"
+                              placeHolder="csh_repayment_register_hd.repayment_date_from"/>
+                <a:datePicker name="repayment_date_to" bindTarget="CSH7040_repaymentQueryDs"
+                              placeHolder="csh_repayment_register_hd.repayment_date_to"/>
+                <a:numberField name="totalAmountFrom" allowFormat="true" allowNegative="false"
+                               bindTarget="CSH7040_repaymentQueryDs"
+                               placeHolder="csh_repayment_register_hd.total_amount_from"/>
+                <a:numberField name="totalAmountTo" allowFormat="true" allowNegative="false"
+                               bindTarget="CSH7040_repaymentQueryDs"
+                               placeHolder="csh_repayment_register_hd.total_amount_to"/>
+                <a:textField name="repaymentBankNote" bindTarget="CSH7040_repaymentQueryDs"
+                             placeHolder="csh_repayment_register_hd.repayment_bank_note"/>
+                <a:textField name="description" bindTarget="CSH7040_repaymentQueryDs"
+                             placeHolder="csh_repayment_register_hd.description"/>
+            </a:formBody>
+        </a:queryForm>
+        <a:grid id="CSH7040_repaymentMainGrid" bindTarget="CSH7040_repaymentResultDs" marginHeight="115" marginWidth="3"
+                navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="registerNumber" align="center" renderer="CSH7040_repaymentNumberRenderer" width="100"
+                          prompt="csh_repayment_register_hd.register_number"/>
+                <a:column name="repaymentStatusName" align="center" width="80"
+                          prompt="csh_repayment_register_hd.repayment_status"/>
+                <a:column name="employeeName" align="center" width="80"
+                          prompt="csh_repayment_register_hd.employee_name"/>
+                <a:column name="accEntityName" align="center" width="100"
+                          prompt="csh_repayment_register_hd.acc_entity_name"/>
+                <a:column name="companyName" align="center" width="100"
+                          prompt="csh_repayment_register_hd.company_name"/>
+                <a:column name="bankAccountNum" align="center" width="100"
+                          prompt="csh_repayment_register_hd.company_account_number"/>
+                <a:column name="paymentMethodName" align="center" width="80"
+                          prompt="csh_repayment_register_hd.payment_method_name"/>
+                <a:column name="repaymentDate" align="center" renderer="Aurora.formatDate" width="80"
+                          prompt="csh_repayment_register_hd.repayment_date"/>
+                <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"
+                          prompt="csh_repayment_register_hd.amount"/>
+                <a:column name="repaymentBankNote" width="200" prompt="csh_repayment_register_hd.repayment_bank_note"/>
+                <a:column name="description" width="200" prompt="csh_repayment_register_hd.description"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpPositionGroupMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpPositionGroup">
+        <result column="POSITION_GROUP_ID" property="positionGroupId" jdbcType="DECIMAL"/>
+        <result column="POSITION_GROUP_CODE" property="positionGroupCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkExpPositionGroup" resultMap="BaseResultMap">
+    select pg.*
+      from exp_position_group          pg,
+           exp_position_group_relation gr
+     where pg.position_group_id = gr.position_group_id
+           and gr.position_id = #{positionId}
+           and
+            (
+              (
+                #{filtrateMethod} = 'INCLUDE'
+                and (#{controlPositionGroupCodeFrom} is null or pg.position_group_code &gt;= #{controlPositionGroupCodeFrom})
+                and (#{controlPositionGroupCodeTo} is null or pg.position_group_code &lt;= #{controlPositionGroupCodeTo})
+               )
+              or
+              (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (#{controlPositionGroupCodeFrom} is null or pg.position_group_code &lt; #{controlPositionGroupCodeFrom})
+                    or (#{controlPositionGroupCodeTo} is null or pg.position_group_code &gt; #{controlPositionGroupCodeTo})
+                )
+              )
+            )
+           and pg.enabled_flag = 'Y'
+    </select>
+    
+    <select id="getPositionGroupListForQuery" resultMap="BaseResultMap">
+        SELECT
+            pg.*,
+            gr.position_id
+        FROM
+            exp_position_group pg
+            LEFT JOIN exp_position_group_relation gr ON pg.position_group_id = gr.position_group_id
+        WHERE
+            pg.company_id = #{request.companyId}
+            AND pg.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR pg.position_group_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR pg.position_group_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR pg.position_group_code &lt;= #{parameterUpperLimit})
+    </select>
+
+</mapper>

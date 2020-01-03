@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-30 上午10:50:36
+    $Revision: 1.0  
+    $Purpose:预算中心-分配明細-批量分配明細
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1100_bgt_center_hierarchy_batch_asgn_link" url="$[/request/@context_path]/bgt/center-hierarchy/submit"/>
+        <script><![CDATA[
+            function BGT1100_bgtCenterHierarchyBatchBackFun() {
+                $au('BGT1100_bgt_center_hierarchy_batch_window').close();
+                $au('BGT1100_bgt_centers_hierarchy_result_ds').query();
+            }
+            
+            function BGT1100_bgtCenterHierarchyBatchAssignFun() {
+                var datas = $au('BGT1100_bgt_centers_hierarchy_batch_result_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    datas[i]['__status'] = 'add';
+                    datas[i]['parentCenterId'] = '$[/parameter/@parentCenterId]';
+                    datas[i]['enabledFlag'] = 'Y';
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('BGT1100_bgt_center_hierarchy_batch_asgn_link').getUrl(),
+                    para: datas,
+                    success: BGT1100_bgtCenterHierarchyBatchBackFun,
+                    scope: this
+                });
+
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1100_bgt_centers_hierarchy_batch_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/center-hierarchy" queryUrl="$[/request/@context_path]/bgt/center-hierarchy/queryDetailsCanAsgn?parentCenterId=$[/parameter/@parentCenterId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="centerId"/>
+                    <a:field name="description" prompt="bgt_center.description"/>
+                    <a:field name="centerCode" prompt="bgt_center.center_code"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_center.assign">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="BGT1100_bgtCenterHierarchyBatchAssignFun" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="BGT1100_bgtCenterHierarchyBatchBackFun" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="centerCode" bindTarget="BGT1100_bgt_centers_result_ds" prompt="bgt_center.center_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="BGT1100_bgt_centers_result_ds" prompt="bgt_center.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="BGT1100_bgt_centers_hierarchy_batch_grid" bindTarget="BGT1100_bgt_centers_hierarchy_batch_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="centerCode" align="center" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

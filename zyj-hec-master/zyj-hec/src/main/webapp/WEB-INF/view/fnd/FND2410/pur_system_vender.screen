@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J
+    $Date: 2017/5/31 11:47:05 $
+    $Revision: 1.0
+    $Purpose: 系统级供应商主数据定义
+
+    $Author: jialin.xing
+    $Date: 2019/2/20 11:47:05 $
+    -->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc" trace="true">
+    <a:init-procedure>
+        <p:echo/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="FND2410_pur_system_vender_ae_assign_batch_link"
+                url="$[/request/@context_path]/fnd/FND2410/pur_system_vender_batch_assign_acc_entity.screen"/>
+        <a:link id="FND2410_pur_system_vender_ref_ae_link"
+                url="$[/request/@context_path]/fnd/FND2410/pur_system_vender_ref_ae.screen"/>
+        <a:link id="FND2410_pur_vender_accounts_link"
+                url="$[/request/@context_path]/fnd/FND2410/pur_vender_account.screen"/>
+        <a:link id="FND2410_pur_vender_tax_link"
+                url="$[/request/@context_path]/fnd/FND2410/pur_vender_tax.screen"/>
+        <script><![CDATA[
+        function FND2410_querySystemVender() {
+            $au('FND2410_pur_system_vender_result_ds').query();
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND2410_gridEditorFunction(record, name) {
+            if (name === 'venderTypeName') {
+                if (record.isNew) {
+                    return 'FND2410_systemVender_cb';
+                }
+            } else if (name === 'venderCode') {
+                if (record.isNew) {
+                    return 'FND2410_systemVender_tf_upper';
+                }
+            }
+            return '';
+        }
+
+        //批量分配
+
+        function FND2410_batchAssignAccountEntity() {
+            var lineDs = $au('FND2410_pur_system_vender_result_ds');
+            var lineData = lineDs.getJsonData(true);
+            if (lineData.length === 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            var record = lineDs.getAll();
+            var currentRecord = lineDs.getAt(record.length - 1);
+            if (currentRecord.isNew) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.data_check_failure]', null, 250, 100);
+                return;
+            }
+            new Aurora.Window({
+                id: 'FND2410_pur_system_vender_ae_assign_batch',
+                url: $au('FND2410_pur_system_vender_ae_assign_batch_link').getUrl(),
+                title: '$[l:fnd_sys_vender.batch_disp_account_entity]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        //供应商代码校验
+
+        /**
+         * @return {string}
+         */
+        function FND2410_venderCodeValidator(record, name, value) {
+            var allRecords = $au('FND2410_pur_system_vender_result_ds').getAll();
+            for (var i = 0; i < allRecords.length; i++) {
+                var r = allRecords[i];
+                if (r !== record) {
+                    if (r.get('venderCode') === value) {
+                        return '$[l:vender_code_duplicate]';
+                    }
+                }
+            }
+            return true;
+        }
+
+        //分配核算主体-跳转
+
+        /**
+         * @return {string}
+         */
+        function FND2410_assignAccEntity(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:FND2410_openAssignAe(' + record.get('venderId') + ')">$[l:gld_accounting_entity.acc_entity_name]</>';
+        }
+
+        function FND2410_openAssignAe(id) {
+            new Aurora.Window({
+                id: 'FND2410_pur_system_vender_ref_ae_window',
+                url: $au('FND2410_pur_system_vender_ref_ae_link').getUrl() + '?venderId=' + id,
+                title: '$[l:pur_system_vender.asgn_acc_entity]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        //银行账号-跳转
+
+        /**
+         * @return {string}
+         */
+        function FND2410_assignAccount(value, record, name) {
+            var venderId = record.get('venderId');
+            if (venderId) {
+                return '<a href="javascript:FND2410_assignAccountInfo(' + venderId + ')">$[l:csh_payment.bank_account_code]</a>';
+            }
+        }
+
+        function FND2410_assignAccountInfo(venderId) {
+            new Aurora.Window({
+                id: 'FND2410_pur_vender_accounts_window',
+                url: $au('FND2410_pur_vender_accounts_link').getUrl() + '?venderId=' + venderId,
+                title: '$[l:csh_payment.bank_account_code]',
+                fullScreen: true
+            });
+        }
+
+        //税务信息-跳转
+
+        /**
+         * @return {string}
+         */
+        function FND2410_assignTax(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:FND2410_assignTaxInfo(' + record.get('venderId') + ')">$[l:pur_vender_tax.info]</>';
+        }
+
+        function FND2410_assignTaxInfo(id) {
+            new Aurora.Window({
+                id: 'FND2410_pur_vender_tax_window',
+                url: /*pur_vender_tax.screen*/
+                    $au('FND2410_pur_vender_tax_link').getUrl() + '?venderId=' + id,
+                title: '$[l:pur_vender_tax.info]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function FND2410_systemVenderSubmit(ds) {
+            ds.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="payment_method_ds">
+                <a:datas dataSource="paymentMethodList/records"/>
+            </a:dataSet>
+            <a:dataSet id="tax_type_ds">
+                <a:datas dataSource="taxTypeList/records"/>
+            </a:dataSet>
+            <a:dataSet id="pur_system_vender_type_ds">
+                <a:datas dataSource="venderTypeList/records"/>
+            </a:dataSet>
+            <a:dataSet id="FND2410_pur_system_vender_query_ds">
+                <a:fields>
+                    <a:field name="venderTypeName" displayField="description" options="pur_system_vender_type_ds"
+                             returnField="venderTypeId" valueField="venderTypeId"/>
+                    <a:field name="venderCode"/>
+                    <a:field name="description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2410_pur_system_vender_result_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/pur/system-vender" queryDataSet="FND2410_pur_system_vender_query_ds"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="venderId"/>
+                    <a:field name="venderTypeName" displayField="description" options="pur_system_vender_type_ds"
+                             prompt="pur_system_vender.vender_type" required="true" returnField="venderTypeId"
+                             valueField="venderTypeId"/>
+                    <a:field name="venderCode" prompt="pursystemvender.vendercode" required="true"
+                             validator="FND2410_venderCodeValidator"/>
+                    <a:field name="description" required="true" dto="com.hand.hec.pur.dto.PurSystemVender"
+                             dtoId="venderId"/>
+                    <a:field name="address"/>
+                    <a:field name="artificialPerson"/>
+                    <a:field name="taxIdNumber"/>
+                    <a:field name="bankBranchCode"/>
+                    <a:field name="bankAccountCode"/>
+                    <!--将description改为payment_term_name,解决Lov确定后无法映射的问题    Y.duan  2017-8-28 14:40:24-->
+                    <a:field name="paymentTermName" autoComplete="true" autoCompleteField="paymentTermCodeName"
+                             lovCode="LOV_PAYMENT_TERM">
+                        <a:mapping>
+                            <a:map from="paymentTermId" to="paymentTermId"/>
+                            <a:map from="paymentTermCode" to="paymentTermCode"/>
+                            <a:map from="paymentTermName" to="paymentTermName"/>
+                        </a:mapping>
+                    </a:field>
+                    <!--修改displayField对应字段名称以及相应的映射字段名称  解决下拉框无值问题   Y.duan 2017-8-15 10:02:36  -->
+                    <a:field name="paymentMethodName" displayField="description" options="payment_method_ds">
+                        <a:mapping>
+                            <a:map from="description" to="paymentMethodName"/>
+                            <a:map from="paymentMethodCode" to="paymentMethod"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="paymentMethod"/>
+                    <a:field name="currencyCodeName" autoComplete="true" autoCompleteField="code_name"
+                             lovCode="LOV_GLD_CURRENCY" title="gld_accounting_entity.currency_choice">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                            <a:map from="currencyName" to="currencyCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="currencyCode"/>
+                    <a:field name="taxTypeName" displayField="description" options="tax_type_ds">
+                        <a:mapping>
+                            <a:map from="taxTypeId" to="taxTypeId"/>
+                            <a:map from="description" to="taxTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledItemFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="approvedVenderFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitSuccess" handler="FND2410_systemVenderSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND2410_pur_system_vender_grid" type="add" width="80"/>
+                <a:gridButton bind="FND2410_pur_system_vender_grid" type="save" width="80"/>
+                <a:toolbarButton click="FND2410_batchAssignAccountEntity" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND2410_pur_system_vender_query_ds"
+                         resultTarget="FND2410_pur_system_vender_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="venderTypeName" bindTarget="FND2410_pur_system_vender_query_ds"
+                                prompt="pur_system_vender.vender_type">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND2410_querySystemVender"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="venderCode" bindTarget="FND2410_pur_system_vender_query_ds"
+                                 prompt="pursystemvender.vendercode" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND2410_querySystemVender"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND2410_pur_system_vender_query_ds"
+                                 prompt="pur_system_vender.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND2410_querySystemVender"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND2410_pur_system_vender_grid" bindTarget="FND2410_pur_system_vender_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="venderTypeName" align="center" editorFunction="FND2410_gridEditorFunction"
+                          prompt="pur_system_vender.vender_type" width="120"/>
+                <a:column name="venderCode" align="center" editorFunction="FND2410_gridEditorFunction"
+                          prompt="pursystemvender.vendercode" width="120"/>
+                <a:column name="description" align="left" editor="FND2410_systemVender_tl"
+                          prompt="pur_system_vender.description" width="200"/>
+                <a:column name="artificialPerson" align="center" editor="FND2410_systemVender_tf"
+                          prompt="pur_system_vender.artificial_person" width="120"/>
+                <a:column name="paymentTermName" align="center" editor="FND2410_systemVender_lov"
+                          prompt="pur_system_vender.payment_term_name" width="120"/>
+                <a:column name="paymentMethodName" align="center" editor="FND2410_systemVender_cb"
+                          prompt="pur_system_vender.payment_method" width="120"/>
+                <a:column name="currencyCodeName" align="center" editor="FND2410_systemVender_lov"
+                          prompt="pur_system_vender.currency_code" width="120"/>
+                <a:column name="taxTypeName" align="center" editor="FND2410_systemVender_cb"
+                          prompt="pur_system_vender.tax_type" width="120"/>
+                <a:column name="enabledItemFlag" align="center" editor="FND2410_systemVender_ckb"
+                          prompt="pur_system_vender.enabled_item_flag" width="100"/>
+                <a:column name="approvedVenderFlag" align="center" editor="FND2410_systemVender_ckb"
+                          prompt="pur_system_vender.approved_vender_flag" width="100"/>
+                <a:column name="enabledFlag" align="center" editor="FND2410_systemVender_ckb"
+                          prompt="pur_system_vender.enabled_flag" width="100"/>
+                <a:column name="asgnAccEntity" align="center" prompt="" renderer="FND2410_assignAccEntity"
+                          width="100"/>
+                <a:column name="asgnBank" align="center" prompt="" renderer="FND2410_assignAccount" width="100"/>
+                <a:column name="asgnTax" align="center" prompt="" renderer="FND2410_assignTax" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="FND2410_systemVender_cb"/>
+                <a:textField id="FND2410_systemVender_tf"/>
+                <a:tledit id="FND2410_systemVender_tl"/>
+                <a:textField id="FND2410_systemVender_tf_upper" typeCase="upper"/>
+                <a:lov id="FND2410_systemVender_lov"/>
+                <a:checkBox id="FND2410_systemVender_ckb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

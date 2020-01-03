@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei 7207 
+    $Date: 2017-11-24 上午11:00:00  
+    $Revision: 1.1
+    $Purpose: 【确认按钮】 逻辑梳理及调整。
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP5201_paymentDocConfirm_link" url="$[/request/@context_path]/csh/doc-pay-acc-entity/submit"/>
+        <a:link id="EXP5201_paymentDocViewRpt_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="EXP5201_paymentDocViewPay_link" url="$[/request/@context_path]/csh/public/csh_pay_req_for_finance_detail_readonly.screen"/>
+        <a:link id="EXP5201_paymentDocViewAcp_link" url="$[/request/@context_path]/acp/ACP3100/acp_requisition_view_maintain_main.screen"/>
+        <script><![CDATA[
+            function EXP5021_confirmFunction() {
+                var dataSet = $au('EXP5201_paymentDocConfirmResult_ds');
+                //验证是否保存后操作
+                if (dataSet.isModified()) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:sys_alert_rules.save_first]', null, 250, 100);
+                    return;
+                }
+                var records = dataSet.getJsonData(true);
+                //验证是否选了某一行数据
+                if (records.length < 1) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i]['paymentStatus'] == 'ALLOWED') {
+                        Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.exp5201_confirm_status_error]', null, 250, 100);
+                        return;
+                    } else {
+                        records[i]['paymentStatus'] = 'ALLOWED';
+                    }
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP5201_paymentDocConfirm_link').getUrl(),
+                    para: records,
+                    success: function() {
+                        $au('EXP5201_paymentDocConfirmResult_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            
+            function EXP5021_cancelconfirmFunction() {
+                var dataSet = $au('EXP5201_paymentDocConfirmResult_ds');
+                if (dataSet.isModified()) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:sys_alert_rules.save_first]', null, 250, 100);
+                    return;
+                }
+                var records = dataSet.getJsonData(true);
+                if (records.length < 1) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i]['paymentStatus'] == 'PENDING') {
+                        Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.exp5201_cancel_status_error]', null, 250, 100);
+                        return;
+                    } else {
+                        records[i]['paymentStatus'] = 'PENDING';
+                    }
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP5201_paymentDocConfirm_link').getUrl(),
+                    para: records,
+                    success: function() {
+                        $au('EXP5201_paymentDocConfirmResult_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            
+            function EXP5021_docConfirmUpdateFunc(dataSet, record, name, value) {
+                if (name == 'payeeCategory') {
+                    record.set('payeeName', '');
+                    record.set('payeeId', '');
+                    // Modify Tagin/2017.12.28 设置收款方查询条件
+                    if (value) {
+                        record.getField('payeeName').setLovPara('payeeCategory', value);
+                        record.getField('payeeName').setReadOnly(false);
+                    } else {
+                        record.getField('payeeName').setReadOnly(true);
+                    }
+                }
+                if (name == 'paymentAccEntityName') {
+                    EXP5201_docConfirmQueryFunc();
+                }
+            }
+            
+            function EXP5021_expRepNumRenderer(value, record, name) {
+                var id = record.get('docHeaderId');
+                var docCategory = record.get('docCategory');
+                return '<a href="javascript:EXP5021_detailNewWindow(' + id + ',\'' + docCategory + '\');">' + value + '</a>';
+            }
+            
+            function EXP5021_detailNewWindow(id, docCategory) {
+                if ('EXP_REPORT' == docCategory) {
+                    url = $au('EXP5201_paymentDocViewRpt_link').getUrl() + '?expReportHeaderId=' + id;
+                    formId = 'exp_report_view_main_screen';
+                }
+                if ('PAYMENT_REQUISITION' == docCategory) {
+                    url = $au('EXP5201_paymentDocViewPay_link').getUrl() + '?paymentRequisitionHeaderId=' + id;
+                    formId = 'csh_payment_requisition_view_main_window';
+                }
+                if ('ACP_REQUISITION' == docCategory) {
+                    url = $au('EXP5201_paymentDocViewAcp_link').getUrl() + '?requisitionHdsId=' + id;
+                    formId = 'ACP3100_acp_requisition_view_main_window';
+                }
+                new Aurora.Window({
+                    id: formId,
+                    url: url,
+                    fullScreen: true
+                });
+            }
+            
+            //保存成功后查询
+            
+            function EXP5201_docConfirmQueryFunc() {
+                $au('EXP5201_paymentDocConfirmResult_ds').query();
+            }
+            
+            function EXP5201_paymentEntityEditFun(record, name) {
+                //确认状态的单据不允许修改核算主体
+                if (record.get('paymentStatus') == 'ALLOWED') {
+                    return '';
+                }
+                return 'EXP5201_comboBoxEditor';
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5201_docCategory_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY"/>
+            <a:dataSet id="EXP5201_payeeCategory_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="EXP5201_accEntity_ds">
+                <a:datas dataSource="accEntityList/records"/>
+            </a:dataSet>
+            <a:dataSet id="EXP5201_paymentStatus_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/EXP_PENDING_PAYMENT_STATUS"/>
+            <a:dataSet id="EXP5201_currencyList_ds" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query"/>
+            <a:dataSet id="EXP5201_paymentDocConfirmQuery_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="docCategoryName"  displayField="meaning" options="EXP5201_docCategory_ds" returnField="docCategory" valueField="value" prompt="exp_report_header.expense_report_type_code"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="paymentAccEntityName" defaultValue="$[/model/dftAcc/records/record/@accEntityName]" displayField="accEntityCodeName" options="EXP5201_accEntity_ds" returnField="payment_acc_entity_id" valueField="accEntityId" prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:field name="paymentAccEntityId" defaultValue="$[/model/dftAcc/records/record/@accEntityId]"/>
+                    <a:field name="docNumber" prompt="exp_report_headers.exp_report_number"/>
+                    <!-- Tagin/2017.12.28 先取消合同信息，待后续增加后启用
+                    <a:field name="contract_number"/>
+                    -->
+                    <a:field name="scheduleDueDateFrom" placeHolder="exp_report_payment_query.schedule_due_date_from"/>
+                    <a:field name="scheduleDueDateTo" placeHolder="exp_report_payment_query.schedule_due_date_to"/>
+                    <a:field name="payeeName" autoComplete="true" autoCompleteField="payee_code" lovCode="LOV_GLD_PAYEE" placeHolder="csh_cash_plan_lines.partner_id" readOnly="true" title="csh_transaction_lines.partner_select">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="EXP5201_payeeCategory_ds" placeHolder="exp_report_lines.payee_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="currencyName" displayField="currencyName" options="EXP5201_currencyList_ds" placeHolder="exp_report_header.currency_code" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="paymentStatusName" displayField="meaning" options="EXP5201_paymentStatus_ds" placeHolder="csh_doc_payment_company.payment_status" returnField="paymentStatus" valueField="value"/>
+                    <a:field name="paymentStatus"/>
+                    <a:field name="docDateFrom" placeHolder="to_be_paid_doc_cfm.doc_date_from"/>
+                    <a:field name="docDateTo" placeHolder="to_be_paid_doc_cfm.doc_date_to"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5021_docConfirmUpdateFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5201_paymentDocConfirmResult_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/csh/doc-pay-acc-entity/queryPayment" queryDataSet="EXP5201_paymentDocConfirmQuery_ds" selectable="true" submitUrl="$[/request/@context_path]/csh/doc-pay-acc-entity/submit">
+                <a:fields>
+                    <a:field name="docCategory"/>
+                    <a:field name="docHeaderId"/>
+                    <a:field name="docLineId"/>
+                    <a:field name="docNumber"/>
+                    <a:field name="docDate"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="paymentAccEntityId"/>
+                    <a:field name="paymentAccEntityName" displayField="accEntityName" options="EXP5201_accEntity_ds" returnField="paymentAccEntityId" valueField="accEntityId"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCodeName"/>
+                    <a:field name="scheduleDueDate"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="paymentStatus"/>
+                    <a:field name="paymentStatusName"/>
+                    <a:field name="paymentAmount"/>
+                    <a:field name="payedAmount"/>
+                    <a:field name="needPaymentAmount"/>
+                    <!-- Tagin/2017.12.28 先取消合同信息，待后续增加后启用
+                    <a:field name="contract_number"/>
+                    <a:field name="payment_schedule_line_id"/>
+                    <a:field name="line_number"/>
+                    -->
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP5201_docConfirmQueryFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP5201_confirm_result_grid" type="save" width="80"/>
+                <a:toolbarButton click="EXP5021_confirmFunction" text="hap.confirm" width="80"/>
+                <a:toolbarButton click="EXP5021_cancelconfirmFunction" text="cancel_confirm" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP5201_paymentDocConfirmQuery_ds" resultTarget="EXP5201_paymentDocConfirmResult_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="paymentAccEntityName" bindTarget="EXP5201_paymentDocConfirmQuery_ds"/>
+                    <a:comboBox name="docCategoryName" bindTarget="EXP5201_paymentDocConfirmQuery_ds" />
+                    <a:textField name="docNumber" bindTarget="EXP5201_paymentDocConfirmQuery_ds" typeCase="upper"/>
+                </a:formToolBar>
+                <a:formBody column="4" labelWidth="90">
+                    <a:comboBox name="payeeCategoryName" bindTarget="EXP5201_paymentDocConfirmQuery_ds"/>
+                    <a:lov name="payeeName" bindTarget="EXP5201_paymentDocConfirmQuery_ds" />
+                    <a:comboBox name="paymentStatusName" bindTarget="EXP5201_paymentDocConfirmQuery_ds"/>
+                    <a:comboBox name="currencyName" bindTarget="EXP5201_paymentDocConfirmQuery_ds"/>
+                    <!-- Modify Tagin/2017.12.28 先取消合同信息，待后续增加后启用
+                        <a:textField name="contract_number" bindTarget="EXP5201_paymentDocConfirmQuery_ds" placeHolder="EXP_REPORT_LINES.CONTRACT_HEADER_CODE" typeCase="upper"/>
+                        -->
+                    <a:datePicker name="docDateFrom" bindTarget="EXP5201_paymentDocConfirmQuery_ds" />
+                    <a:datePicker name="docDateTo" bindTarget="EXP5201_paymentDocConfirmQuery_ds" />
+                    <a:datePicker name="scheduleDueDateFrom" bindTarget="EXP5201_paymentDocConfirmQuery_ds" />
+                    <a:datePicker name="scheduleDueDateTo" bindTarget="EXP5201_paymentDocConfirmQuery_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP5201_confirm_result_grid" bindTarget="EXP5201_paymentDocConfirmResult_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="docNumber" align="center" prompt="exp_report_headers.exp_report_number" renderer="EXP5021_expRepNumRenderer" width="120"/>
+                <a:column name="docLineNumber" align="center" prompt="exp_report_lines.line_number" width="50"/>
+                <a:column name="docCategoryName" align="center" prompt="exp_report_header.expense_report_type_code" width="100"/>
+                <a:column name="docDate" align="center" prompt="to_be_paid_doc_cfm.doc_date" renderer="Aurora.formatDate" width="100"/>
+                <a:column name="paymentAccEntityName" align="center" editorFunction="EXP5201_paymentEntityEditFun" prompt="csh_pay_batch_rule_asgn.acc_entity_name" width="150"/>
+                <a:column name="payeeCategoryName" align="center" prompt="exp_report_lines.payee_category" width="100"/>
+                <a:column name="payeeCodeName" align="center" prompt="csh_cash_plan_lines.partner_id" width="150"/>
+                <a:column name="scheduleDueDate" align="center" prompt="exp_report_payment_query.schedule_due_date" width="100"/>
+                <a:column name="currencyCode" align="center" prompt="exp_report_header.currency_code" width="100"/>
+                <a:column name="paymentStatusName" align="center" prompt="csh_doc_payment_company.payment_status" width="100"/>
+                <a:column name="paymentAmount" align="right" prompt="exp_report_payment_query.payment_amount" renderer="Aurora.formatMoney" width="100"/>
+                <a:column name="payedAmount" align="right" prompt="exp_report_query.payed_amount" renderer="Aurora.formatMoney" width="100"/>
+                <a:column name="needPaymentAmount" align="right" prompt="exp_report_payment_query.unpayment_amount" renderer="Aurora.formatMoney" width="100"/>
+                <!-- Modify Tagin/2017.12.28 先取消合同信息，待后续增加后启用
+                    <a:column name="contract_number" align="left" prompt="EXP_REPORT_LINES.CONTRACT_HEADER_CODE" width="120"/>
+                    <a:column name="line_number" align="left" prompt="CON_PAYMENT_SCHEDULES.PAYMENT_SCHEDULE_LINE_CODE" width="50"/>
+                    -->
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="EXP5201_comboBoxEditor"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

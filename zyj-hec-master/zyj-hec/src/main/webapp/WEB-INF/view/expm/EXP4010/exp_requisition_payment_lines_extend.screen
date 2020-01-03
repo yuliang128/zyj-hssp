@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function EXP4010_onPaymentLineEditorFocus(cmp) {
+                var name = cmp.binder.name;
+                var record = cmp.binder.ds.getCurrentRecord();
+                if (name == 'acc_entity_name') {
+                    record.getField('acc_entity_name').setLovPara('company_id', record.get('company_id'));
+                } else if (name == 'payee_name') {
+                    record.getField('payee_name').setLovPara('payee_category', record.get('payee_category'));
+                    record.getField('payee_name').setLovPara('acc_entity_id', record.get('acc_entity_id'));
+                } else if (name == 'account_number') {
+                    record.getField('account_number').setLovPara('payee_id', record.get('payee_id'));
+                    record.getField('account_number').setLovPara('payee_category', record.get('payee_category'));
+                    record.getField('account_number').setLovPara('acc_entity_id', record.get('acc_entity_id'));
+                } else if (name == 'payment_req_type_name') {
+                    $au('EXP4010_paymentLineTypeDs').setQueryParameter('employee_id', '${/parameter/@employee_id}');
+                    $au('EXP4010_paymentLineTypeDs').query();
+                } else if (name == 'mo_csh_trx_class_name') {
+                    $au('EXP4010_paymentLineTrxClassesDs').setQueryParameter('mo_payment_req_type_id', record.get('payment_req_type_id'));
+                    $au('EXP4010_paymentLineTrxClassesDs').query();
+                }
+            }
+            
+            function EXP4010_paymentLinePreRecord() {
+                $au('EXP4010_paymentLineMainResult_ds').pre();
+            }
+            
+            function EXP4010_paymentLineNextRecord() {
+                $au('EXP4010_paymentLineMainResult_ds').next();
+            }
+            
+            function EXP4010_paymentLineNewRecord() {
+                EXP4010_paymentLineAdd();
+            }
+            
+            function EXP4010_paymentLineExtendClose() {
+                $au('EXP4010_payment_line_extend_window').close();
+            }
+            
+            function EXP4010_paymentLineSaveRequisition() {
+                EXP4010_saveRequisition();
+            }
+            
+            Aurora.onReady(function() {
+                for (cmpName in $A.CmpManager.cache) {
+                    if (cmpName.indexOf('EXP4010_paymentLineEditor_') != -1) {
+                        $au(cmpName)['on']('focus', EXP4010_onPaymentLineEditorFocus);
+                    }
+                }
+                var record = $au('EXP4010_paymentLineMainResult_ds').getCurrentRecord();
+                if (record.isNew) {
+                    record.getField('payment_req_type_name').setReadOnly(false);
+                } else {
+                    record.getField('payment_req_type_name').setReadOnly(true);
+                }
+            });
+            
+            $au('EXP4010_paymentLineMainResult_ds')['on']('indexchange', function(dataSet, record) {
+                if (record.isNew) {
+                    record.getField('payment_req_type_name').setReadOnly(false);
+                } else {
+                    record.getField('payment_req_type_name').setReadOnly(true);
+                }
+            });
+        ]]></script>
+        <a:screenBody>
+            <a:form column="3" padding="10" showmargin="0" title="CSH_PAYMENT_REQUISITION_HDS.INFO" width="1010">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="EXP4010_paymentLinePreRecord" text="HAP_PREVIOUS" width="70"/>
+                    <a:button click="EXP4010_paymentLineNextRecord" text="HAP_NEXT" width="70"/>
+                    <a:button click="EXP4010_paymentLineNewRecord" text="PROMPT.CREATE" width="70"/>
+                    <a:button click="EXP4010_paymentLineSaveRequisition" text="HAP_SAVE" width="70"/>
+                    <a:button click="EXP4010_paymentLineExtendClose" text="HAP_BACK" width="70"/>
+                </a:formToolbar>
+                <a:textField name="requisition_number" id="EXP4010_paymentLineEditor_001" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITION_NUMBER" readOnly="true"/>
+                <a:comboBox name="payment_req_type_name" id="EXP4010_paymentLineEditor_002" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAY_REQ_TYPES.TYPE_CODE"/>
+                <a:datePicker name="requisition_date" id="EXP4010_paymentLineEditor_003" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITION_DATE" readOnly="true" renderer="Aurora.formatDate"/>
+                <a:lov name="hds_acc_entity_name" id="EXP4010_paymentLineEditor_004" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME" readOnly="true"/>
+                <a:lov name="unit_name" id="EXP4010_paymentLineEditor_005" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.UNIT_ID" readOnly="true"/>
+                <a:lov name="employee_name" id="EXP4010_paymentLineEditor_006" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITOR" readOnly="true"/>
+                <a:textArea name="hds_description" id="EXP4010_paymentLineEditor_007" bindTarget="EXP4010_paymentLineMainResult_ds" calcWidth="calc(100% / 3 * 3 - 77px )" colspan="3" prompt="CSH_PAYMENT_REQUISITION_HDS.DESCRIPTION"/>
+            </a:form>
+            <a:form column="3" padding="10" showmargin="0" style="margin-top:10px;" title="CSH_PAYMENT_REQUISITION_LNS.INFO" width="1010">
+                <a:numberField name="line_number" id="EXP4010_paymentLineEditor_008" allowDecimals="false" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="HAP_LINE_NUMBER" readOnly="true"/>
+                <a:comboBox name="company_name" id="EXP4010_paymentLineEditor_009" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_LNS.COMPANY_ID"/>
+                <a:lov name="acc_entity_name" id="EXP4010_paymentLineEditor_010" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME"/>
+                <a:comboBox name="mo_csh_trx_class_name" id="EXP4010_paymentLineEditor_011" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_PAYMENT.SACTION_CLASS_DESC"/>
+                <a:comboBox name="payee_category_name" id="EXP4010_paymentLineEditor_012" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_CATEGORY"/>
+                <a:lov name="payee_name" id="EXP4010_paymentLineEditor_013" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID"/>
+                <a:lov name="account_number" id="EXP4010_paymentLineEditor_014" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_BANK_ACCOUNTS.BANK_ACCOUNT_NUM"/>
+                <a:textField name="account_name" id="EXP4010_paymentLineEditor_015" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="EXP_EMPLOYEE_ACCOUNTS.BANK_ACCOUNT_NAME" readOnly="true"/>
+                <a:numberField name="amount" id="EXP4010_paymentLineEditor_016" allowNegative="false" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_PAYMENT_REQUISITION_LNS.CURRENT_AMOUNT"/>
+                <a:comboBox name="payment_method_name" id="EXP4010_paymentLineEditor_017" bindTarget="EXP4010_paymentLineMainResult_ds" prompt="CSH_TRANSACTION_HEADERS.PAYMENT_METHOD_ID"/>
+                <a:label/>
+                <a:label/>
+                <a:textArea name="description" id="EXP4010_paymentLineEditor_018" bindTarget="EXP4010_paymentLineMainResult_ds" calcWidth="calc(100% / 3 * 3 - 77px )" colspan="3" prompt="CSH_PAYMENT_REQUISITION_HDS.DESCRIPTION"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshCashFlowFormulaHdMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshCashFlowFormulaHd">
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL" />
+        <result column="FORMULA_ID" property="formulaId" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_LINE_NUMBER" property="cashFlowLineNumber" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_DESC" property="cashFlowItemDesc" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryFormulaByItemId" resultMap="BaseResultMap">
+        	SELECT
+                ccffh.formula_id,
+                ccfi.cash_flow_item_id,
+                ccfi.cash_flow_line_number,
+                ccfit.description cash_flow_item_desc
+            FROM
+                CSH_CASH_FLOW_FORMULA_HD ccffh
+                INNER JOIN csh_cash_flow_item ccfi ON ccffh.cash_flow_item_id = ccfi.cash_flow_item_id
+                LEFT JOIN csh_cash_flow_item_tl ccfit ON ccfi.cash_flow_item_id = ccfit.cash_flow_item_id
+
+            WHERE ccfit.lang = #{request.locale}
+                AND ccffh.cash_flow_item_id = #{cashFlowItemId}
+    </select>
+
+    <select id="queryCashFlowLineNumber" resultType="java.util.Map">
+      SELECT
+            ccfi.CASH_FLOW_ITEM_ID cashFlowItemId,
+            ccfi.CASH_FLOW_LINE_NUMBER cashFlowLineNumber,
+            concat( ccfi.cash_flow_line_number, '-', ccfit.description ) description
+        FROM
+            csh_cash_flow_item ccfi
+            LEFT JOIN csh_cash_flow_item_tl ccfit ON ccfi.cash_flow_item_id = ccfit.cash_flow_item_id
+            AND ccfit.lang = #{request.locale}
+        WHERE
+            ccfi.cash_flow_item_id != #{cashFlowItemId}
+            AND EXISTS (
+        SELECT
+            1
+        FROM
+            fnd_company fc,
+            fnd_mag_org_ref_gld_sob gs,
+			fnd_managing_organization mo
+        WHERE
+            fc.mag_org_id = mo.mag_org_id
+			AND mo.mag_org_id = gs.mag_org_id
+			AND gs.set_of_books_id = ccfi.set_of_books_id
+            AND gs.set_of_books_id = #{setOfBooksId}
+			AND gs.enabled_flag = 'Y'
+			AND gs.default_flag = 'Y'
+            )
+        ORDER BY
+            ccfi.cash_flow_line_number
+    </select>
+
+</mapper>

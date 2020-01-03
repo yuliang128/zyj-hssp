@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/01/25 15:30:04 $
+    $Revision: 1 $
+    $Purpose: 公司批量分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[     
+    ]]></a:init-procedure>
+    <a:view>
+        <a:link id="FND1020_maxfnd_company_ref_acc_entities_link" url="$[/request/@context_path]/fnd/company-ref-acc-entity/submit"/>
+        <script><![CDATA[
+            function FND1020_maxqueryCompanyAcc() {
+                $au('FND1020_maxfnd_company_ref_acc_entities_ds').query();
+            }
+            
+            function FND1020_maxresetCompanyAcc() {
+                $au('FND1020_maxfnd_company_acc_entities_query_ds').reset();
+            }                       
+            function FND1020_saveAssignCom() {
+                var companyRecordsData = $au('FND1020_maxfnd_company_ref_acc_entities_ds').getJsonData(true);
+                if (companyRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for(var i = 0 ; i < companyRecordsData.length ; i ++){
+                    companyRecordsData[i]['companyId'] = '$[/parameter/@companyId]';
+                    companyRecordsData[i]['defaultFlag'] = 'N';
+                    companyRecordsData[i]['enabledFlag'] = 'Y';
+                    companyRecordsData[i]['magOrgId'] = '$[/parameter/@magOrgId]';
+                    companyRecordsData[i]['__status'] = 'add';
+                    companyRecordsData[i]['_token'] = null;
+                }
+                Aurora.request({
+                    url: $au('FND1020_maxfnd_company_ref_acc_entities_link').getUrl(),
+                    para:companyRecordsData,
+                    success: FND1020_maxqueryCompanyAcc,
+                    scope: this
+                });   
+                            
+            }
+            function FND1020_max_closeWindow() {
+                $au('FND1020_max_company_acc_window').close();
+            }
+      ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1020_maxfnd_company_ref_acc_entities_ds"  autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/company-ref-acc-entity/queryAccEntity?magOrgId=$[/parameter/@magOrgId]&amp;companyId=$[/parameter/@companyId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="companyId" defaultValue="$[/parameter/@companyId]"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+           <a:form id="FND_acc_entity_info_fs" column="2" title="fnd_company.info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="FND1020_saveAssignCom" text="hec_assign" width="90"/>
+                    <a:gridButton click="FND1020_max_closeWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="comCodeName" id="comCodeName" prompt="fnd_company.company_name" readOnly="true"/>
+                <a:textField name="magCodeName" id="magCodeName" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1020_maxfnd_company_ref_acc_entities_grid" bindTarget="FND1020_maxfnd_company_ref_acc_entities_ds" marginHeight="200" navBar="true" width="1000">
+				<a:columns>
+                    <a:column name="accEntityCode" align="center" width="120"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function init() {
+                var comCodeName = $au('companyCodeName').getValue();
+                var magCodeName = $au('magOrgCodeName').getValue();
+                $au('comCodeName').setValue(comCodeName);
+                $au('magCodeName').setValue(magCodeName);
+            }
+            init();
+        ]]></script>
+    </a:view>
+</a:screen>

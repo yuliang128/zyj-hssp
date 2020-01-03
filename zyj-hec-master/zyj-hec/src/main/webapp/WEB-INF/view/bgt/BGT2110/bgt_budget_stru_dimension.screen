@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/17 $
+    $Revision: 1.1 $
+    $Purpose: 预算表定义-创建维度
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function BGT2110_DimensionValueCodeLov(grid, row, name, record) {
+                record.set('structureId', $au('BGT2110_dimension_init_ds').getAt(0).get('structureId'));
+            
+                if (name == 'dimensionValueCode') {
+                    debugger;
+                    field = record.getMeta().getField('dimensionValueCode');
+                    var dimensionCode = record.get('dimensionCode');
+                    if (dimensionCode == 'COMPANY') {
+                        //查询当前公司    Y.duan 2018-8-2 20:18:37
+                        field.setLovCode('FND_COMPANY_LOV');
+                        field.setLovPara('companyId', '$[/session/@companyId]');
+                        var companyMapping = [{
+                            from: 'companyCode',
+                            to: 'dimensionValueCode'
+                        }, {
+                            from: 'companyId',
+                            to: 'defaultDimValueId'
+                        }, {
+                            from: 'companyName',
+                            to: 'dimensionValueDesc'
+                        }];
+                        field.setMapping(companyMapping);
+                    } else if (dimensionCode == 'UNIT') {
+                        field.setLovCode('LOV_BGT6200_UNIT');
+                        var unitMapping = [{
+                            from: 'unitCode',
+                            to: 'dimensionValueCode'
+                        }, {
+                            from: 'unitId',
+                            to: 'defaultDimValueId'
+                        }, {
+                            from: 'unitName',
+                            to: 'dimensionValueDesc'
+                        }];
+                        field.setMapping(unitMapping);
+                    } else if (dimensionCode == 'POSITION') {
+                        field.setLovCode('EXP_ORG_POSITION_VL_LOV');
+                        var positionMapping = [{
+                            from: 'positionCode',
+                            to: 'dimensionValueCode'
+                        }, {
+                            from: 'positionId',
+                            to: 'defaultDimValueId'
+                        }, {
+                            from: 'positionName',
+                            to: 'dimensionValueDesc'
+                        }];
+                        field.setMapping(positionMapping);
+                    } else if (dimensionCode == 'EMPLOYEE') {
+                        field.setLovCode('EXP_EMPLOYEE_VL_LOV');
+                        var employeeMapping = [{
+                            from: 'employeeCode',
+                            to: 'dimensionValueCode'
+                        }, {
+                            from: 'employeeId',
+                            to: 'defaultDimValueId'
+                        }, {
+                            from: 'name',
+                            to: 'dimensionValueDesc'
+                        }];
+                        field.setMapping(employeeMapping);
+                    } else {
+                        field.setLovCode('LOV_BUDGET_STRU_DIMENSION_VALUE');
+                        field.setLovPara('dimensionId', record.get('dimensionId'));
+                        //默认维值选择增加三大架构限制(核算主体级暂未做限制) Y.duan 2018-7-30 17:06:40
+                        var systemLevel = record.get('systemLevel');
+                        var companyLevel = record.get('companyLevel');
+                        if (!(Ext.isEmpty(systemLevel) && Ext.isEmpty(companyLevel))) {
+                            if (!Ext.isEmpty(systemLevel)) {
+                                companyLevel = systemLevel;
+                            }
+                            if (companyLevel == 'MANAGEMENT') {
+                                field.setLovPara('companyId', '$[/session/@companyId]');
+                            } else if (companyLevel == 'BUDGET') {
+                                field.setLovPara('companyId', '$[/parameter/@bgtOrgId]');
+                            } else {
+                                companyLevel = 'ACCOUNTING';
+                            }
+                            field.setLovPara('companyLevel', companyLevel);
+                        }
+                    }
+                }
+            }
+            
+            function BGT2110_closeWin() {
+                $au('bgt2110_stru_dimension_screen').close();
+            }
+            
+            
+            function BGT2110_update(ds, record, name, value, oldValue) {
+                if (name == 'dimensionCode') {
+                    record.set('dimensionValueCode', '');
+                    record.set('dimensionValueId', '');
+                    record.set('dimensionValueDesc', '');
+                }
+            }
+            
+            function BGT2110_SubmitSuccess() {
+                $au('BGT2110_structure_layouts_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2110_dimension_init_ds" autoQuery="true" baseUrl="/bgt/structure" queryUrl="$[/request/@context_path]/bgt/structure/queryAll?structureId=$[/parameter/@structureId]">
+                <a:fields>
+                    <a:field name="structureId"/>
+                    <a:field name="structureCode" prompt="bgt_budget_structure.budget_strc_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_structure.bgt_structure_desc" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="layout_init_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/LAYOUT_LOCALITY/"/>
+            <a:dataSet id="BGT2110_structure_layouts_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/bgt/structure-layout" queryUrl="$[/request/@context_path]/bgt/structure-layout/query?structureId=$[/parameter/@structureId]" selectable="true">
+                <a:fields>
+                    <a:field name="id"/>
+                    <a:field name="structureId" defaultValue="$[/parameter/@structureId]"/>
+                    <a:field name="layoutPositionDisplay" displayField="meaning" options="layout_init_ds" prompt="bgt_stru.layout_position" required="true" returnField="layoutPosition" valueField="value"/>
+                    <a:field name="layoutPriority" required="true" prompt="exp_mo_req_type_ref_hd_obj.layoutpriority"/>
+                    <a:field name="dimensionId"/>
+                    <a:field name="systemLevel"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="dimensionCode" autoComplete="true" autoCompleteField="description" lovCode="LOV_BUDGET_STRU_DIMENSION" required="true" prompt="fnd_dimension.dimension_code" title="fnd_dimension.dimension_code">
+                        <a:mapping>
+                            <a:map from="dimensionCode" to="dimensionCode"/>
+                            <a:map from="description" to="description"/>
+                            <a:map from="dimensionId" to="dimensionId"/>
+                            <a:map from="systemLevel" to="systemLevel"/>
+                            <a:map from="companyLevel" to="companyLevel"/>
+                            <a:map from="dimensionSequence" to="dimensionSequence"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="dimensionSequence"/>
+                    <a:field name="description" prompt="fnd_dimension.description"/>
+                    <a:field name="defaultDimValueId"/>
+                    <a:field name="dimensionValueCode" autoComplete="true" autoCompleteField="dimensionValueDesc" title="exp_mo_rep_type_ref_hd_dim.dim_value_code" prompt="exp_mo_rep_type_ref_hd_dim.default_dimension_value_code">
+                        <a:mapping>
+                            <a:map from="dimensionValueCode" to="dimensionValueCode"/>
+                            <a:map from="dimensionValueName" to="dimensionValueDesc"/>
+                            <a:map from="dimensionValueId" to="defaultDimValueId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="dimensionValueDesc" prompt="exp_mo_req_type_ref_hd_dim.default_dim_value_name"/>
+                    <a:field name="structureLayoutId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2110_update"/>
+                    <a:event name="submitsuccess" handler="BGT2110_SubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_stru.bgt_stru_dimension" width="1010">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2110_structure_layouts_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT2110_structure_layouts_grid" type="save" width="80"/>
+                    <a:gridButton bind="BGT2110_structure_layouts_grid" type="delete" width="80"/>
+                    <a:button click="BGT2110_closeWin" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="structureCode" bindTarget="BGT2110_dimension_init_ds"/>
+                <a:textField name="description" bindTarget="BGT2110_dimension_init_ds"/>
+            </a:form>
+            <a:grid id="BGT2110_structure_layouts_grid" bindTarget="BGT2110_structure_layouts_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="dimensionCode" align="center" editor="BGT2110_layouts_grid_lov" width="80"/>
+                    <a:column name="description" align="left" width="120"/>
+                    <a:column name="layoutPositionDisplay" align="left" editor="BGT2110_layouts_grid_cb" width="80"/>
+                    <a:column name="layoutPriority" align="right" editor="BGT2110_layouts_grid_tf" width="80"/>
+                    <a:column name="dimensionValueCode" align="center" editor="BGT2110_layouts_grid_lov" width="80"/>
+                    <a:column name="dimensionValueDesc" align="left" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT2110_layouts_grid_lov"/>
+                    <a:comboBox id="BGT2110_layouts_grid_cb"/>
+                    <a:textField id="BGT2110_layouts_grid_tf"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="BGT2110_DimensionValueCodeLov"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

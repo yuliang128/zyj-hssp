@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BPM101_bpmTpltLayoutBasicLink"
+                url="$[/request/@context_path]/bpm/BPM101/tpltLayoutBasic.screen"/>
+        <a:link id="BPM101_bpmTpltButtonsLink" url="$[/request/@context_path]/bpm/BPM101/tpltButton.screen"/>
+        <a:link id="BPM101_bpmTpltRefTablesLink"
+                url="$[/request/@context_path]/bpm/BPM101/templateRefTable.screen"/>
+        <a:link id="BPM101_bpmTpltUpdateLink"
+                url="$[/request/@context_path]/autocrud/java@bpmTemplatesController@setTemplateChange/execute"/>
+        <a:link id="BPM101_bpmTpltScreenUpdateLink"
+                url="$[/request/@context_path]/engine/screen_editor/editor_update.screen"/>
+        <script><![CDATA[
+        function BPM101_queryFunction() {
+            $au('BPM101_bpmTemplateResultDs').query();
+        }
+
+        function BPM101_resetFunction() {
+            var record = $au('BPM101_bpmTemplatesQueryDs').getCurrentRecord();
+            record.set('templateCode', '');
+            record.set('templateDesc', '');
+        }
+
+        function BPM101_layoutBasicRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM101_newlayoutBasicFunction(' + record.get('templateId') + ')">' + '$[l:bpm_template.bpm_page_layout_basic]' + '</a>';
+            return url;
+        }
+
+        function BPM101_newlayoutBasicFunction(templateId) {
+            new Aurora.Window({
+                id: 'BPM101_bpmTpltLayoutBasicScreen',
+                url: $au('BPM101_bpmTpltLayoutBasicLink').getUrl() + '?templateId=' + templateId,
+                title: '$[l:bpm_tplt_layout_basic]',
+                fullScreen: true
+            });
+        }
+
+        function BPM101_buttonsRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM101_newbuttonsFunction(' + record.get('templateId') + ')">' + '$[l:bpm_template.bpm_page_button]' + '</a>';
+            return url;
+        }
+
+        function BPM101_newbuttonsFunction(templateId) {
+            new Aurora.Window({
+                id: 'BPM101_bpmTpltButtonScreen',
+                url: $au('BPM101_bpmTpltButtonsLink').getUrl() + '?templateId=' + templateId,
+                title: '$[l:bpm_tplt_button]',
+                fullScreen: true
+            });
+        }
+
+        function BPM101_reftablesRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM101_reftablesFunction(' + record.get('templateId') + ')">' + '$[l:bpm_template.ref_table]' + '</a>';
+            return url;
+        }
+
+        function BPM101_reftablesFunction(templateId) {
+            new Aurora.Window({
+                id: 'BPM101_bpmTpltRefTableScreen',
+                url: $au('BPM101_bpmTpltRefTablesLink').getUrl() + '?templateId=' + templateId,
+                title: '$[l:bpm_template.ref_table]',
+                fullScreen: true
+            });
+        }
+
+        function BPM101_updateRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM101_updateFunction(' + record.get('templateId') + ')">' + '$[l:bpm_template.update]' + '</a>';
+            return url;
+        }
+
+        function BPM101_updateFunction(templateId) {
+            Aurora.showConfirm('提示', '确认要更改所有引用此模版的表单吗？', function () {
+                Aurora.request({
+                    url: $au('BPM101_bpmTpltUpdateLink').getUrl(),
+                    para: {
+                        templateId: templateId
+                    },
+                    success: function () {
+                        Aurora.showMessage('$[l:hap.prompt]', '$[l:hap.success]');
+                    },
+                    scope: this
+                });
+            });
+        }
+
+        function BPM101_addFunction(ds, record, index) {
+            record.getField('templateCode').setReadOnly(false);
+        }
+
+        function BPM101_tpltEditorFun(record, name) {
+            if (name == 'templateCode') {
+                if (record.get('templateId')) {
+                    return '';
+                } else {
+                    return 'BPM101_tf';
+                }
+            }
+        }
+
+        function BPM101_screenEditorRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM101_screenEditorFunction(' + record.get('templateId') + ')">' + '$[l:bpm_tplt.tplt_edit]' + '</a>';
+            return url;
+        }
+
+        function BPM101_screenEditorFunction(templateId) {
+            window.open($au('BPM101_bpmTpltScreenUpdateLink').getUrl() + '?templateId=' + templateId);
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM101_bpmTemplatesQueryDs">
+                <a:fields>
+                    <a:field name="templateCode"/>
+                    <a:field name="templateDesc"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BPM101_bpmTemplateResultDs" autoQuery="true"
+                       baseUrl="/bpm/template"
+                       pageSize="20" queryDataSet="BPM101_bpmTemplatesQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="templateId"/>
+                    <a:field name="templateCode" readOnly="true" required="true" typeCase="upper"/>
+                    <a:field name="templateDesc" required="true"/>
+                    <a:field name="screen" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" required="true" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="BPM101_addFunction"/>
+                    <a:event name="submitsuccess" handler="BPM101_queryFunction"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="BPM101_bpmTemplatesResultGrid" type="add" width="80"/>
+                <a:gridButton bind="BPM101_bpmTemplatesResultGrid" type="clear" width="80"/>
+                <a:gridButton bind="BPM101_bpmTemplatesResultGrid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BPM101_bpmTemplatesQueryDs"
+                         resultTarget="BPM101_bpmTemplateResultDs"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="templateCode" bindTarget="BPM101_bpmTemplatesQueryDs"
+                                 prompt="bpm_template.template_code" typeCase="UPPER"/>
+                    <a:textField name="templateDesc" bindTarget="BPM101_bpmTemplatesQueryDs"
+                                 prompt="bpm_template.template_desc"/>
+                </a:formToolBar>
+            </a:queryForm>
+            </span>
+            <a:grid id="BPM101_bpmTemplatesResultGrid" bindTarget="BPM101_bpmTemplateResultDs" marginHeight="110"
+                    marginWidth="40"
+                    navBar="true" width="1200">
+                <a:columns>
+                    <a:column name="templateCode" align="center" editorFunction="BPM101_tpltEditorFun" width="100"
+                              prompt="bpm_template.template_code"/>
+                    <a:column name="templateDesc" align="center" editor="BPM101_tf" width="200"
+                              prompt="bpm_template.template_desc"/>
+                    <a:column name="screen" align="left" editor="BPM101_tf_screen" width="500"
+                              prompt="bpm_template.screen"/>
+                    <a:column name="enabledFlag" align="center" editor="BPM101_ck" width="50"
+                              prompt="bpm_template.enabled_flag"/>
+                    <a:column name="pageLayoutBasicLink" align="center" prompt="bpm_template.bpm_page_layout_basic"
+                              renderer="BPM101_layoutBasicRenderer" width="80"/>
+                    <a:column name="pageButtonsLink" align="center" prompt="bpm_template.bpm_page_button"
+                              renderer="BPM101_buttonsRenderer" width="100"/>
+                    <a:column name="refTablesLink" align="center" prompt="bpm_template.ref_table"
+                              renderer="BPM101_reftablesRenderer" width="100"/>
+                    <a:column name="updateButtonsLink" align="center" prompt="bpm_template.update"
+                              renderer="BPM101_updateRenderer" width="100"/>
+                    <!--<a:column name="screenEditorLink" align="center" prompt="bpm_template.tplt_edit"
+                              renderer="BPM101_screenEditorRenderer" width="100"/>-->
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BPM101_tf"/>
+                    <a:textField id="BPM101_tf_screen"/>
+                    <a:checkBox id="BPM101_ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

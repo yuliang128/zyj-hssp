@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: jiangxz
+    $Date: 2019-02-26下午01:18:05
+    $Revision: 1.0  
+    $Purpose: 管理组织级费用对象定义功能
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1086_exp_mo_exp_object_values_link"
+                url="$[/request/@context_path]/exp/EXP1086/exp_mo_exp_object_value.screen"/>
+        <a:link id="EXP1086_mo_exp_object_type_asgn_sql_link"
+                url="$[/request/@context_path]/exp/EXP1086/exp_mo_exp_object_type_asgn_sql.screen"/>
+        <a:link id="EXP1086_mo_exp_obj_tp_assign_company_link"
+                url="$[/request/@context_path]/exp/EXP1086/exp_mo_exp_obj_tp_assign_company.screen"/>
+        <a:link id="EXP1086_mo_exp_obj_tp_batch_assign_company_link"
+                url="$[/request/@context_path]/exp/EXP1086/exp_mo_exp_obj_tp_batch_assign_company.screen"/>
+        <script><![CDATA[
+        function EXP1086_queryFunction() {
+            $au('EXP1086_expense_object_result_ds').query();
+        }
+
+
+        function EXP1086_back() {
+            window.location.href = $au('EXP1086_exp_mo_expense_object_types_select_link').getUrl();
+        }
+
+        function EXP1086_resetFunction() {
+            $au('EXP1086_expense_object_query_ds').reset();
+        }
+
+        function EXP1086_objTypeCodeEditFun(record, name) {
+            if (record.isNew) {
+                return 'EXP1086_textfieldUppercase';
+            } else {
+                return '';
+            }
+        }
+
+        function EXP1086_sysFlagEditFun(record, name) {
+            if (record.isNew) {
+                return 'EXP1086_combobox';
+            } else {
+                return '';
+            }
+        }
+
+        function EXP1086_objMethodEditFun(record, name) {
+            if (record.isNew) {
+                return 'EXP1086_combobox';
+            } else {
+                return '';
+            }
+        }
+
+        function EXP1086_valueEditRendererFun(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            if (name == 'valueEdit') {
+                //如果是值列表
+                if (record.get('expenseObjectMethod') == 'VALUE_LIST') {
+                    return '<a href="javascript:EXP1086_jumpValueList(\'' + $au('EXP1086_exp_mo_exp_object_values_link').getUrl() + '?moExpObjTypeId=' + record.get('moExpObjTypeId') + '\');" >$[l:value_list]</a>';
+                }
+                //如果是SQL语句
+                else if (record.get('expenseObjectMethod') == 'SQL_TEXT') {
+                    return '<a href="javascript:EXP1086_jumpSqlText(\'' + $au('EXP1086_mo_exp_object_type_asgn_sql_link').getUrl() + '?moExpObjTypeId=' + record.get('moExpObjTypeId') + '\');" >$[l:search_lang]</a>';
+                }
+                //描述性文本
+                else {
+                    return '';
+                }
+            }
+        }
+
+        function EXP1086_jumpValueList(url) {
+            new Aurora.Window({
+                url: url,
+                id: 'EXP1086_exp_mo_exp_object_values_window',
+                title: '$[l:value_list]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP1086_moExpenseObjectTypeResultDs').query();
+            });
+
+        }
+
+        function EXP1086_jumpSqlText(url) {
+            new Aurora.Window({
+                url: url,
+                id: 'EXP1086_exp_mo_exp_object_sql_text_window',
+                title: '$[l:search_lang]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP1086_moExpenseObjectTypeResultDs').query();
+            });
+
+        }
+
+        function EXP1086_allBatchAssignFun() {
+            if (Ext.isEmpty($au('EXP1086_moExpenseObjectTypeQueryDs').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            var records = $au('EXP1086_moExpenseObjectTypeResultDs').getSelected();
+            if (records.length == 0) {
+                Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.SELECT_LINE_DATE]', null, 250, 100);
+                return;
+            }
+            var magOrgId = $au('EXP1086_moExpenseObjectTypeQueryDs').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                url: $au('EXP1086_mo_exp_obj_tp_batch_assign_company_link').getUrl() + '?magOrgId=' + magOrgId + '&flag=Y',
+                id: 'EXP1086_mo_req_type_batch_asgn_com_window',
+                title: '$[l:exp_mo_expense_object_type.batch_company]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP1086_moExpenseObjectTypeResultDs').query();
+            });
+
+        }
+
+        function EXP1086_AssignRendererFun(value, record, name) {
+            if (!record.isNew) {
+                return '<a href="javascript:EXP1086_comAssignFun(' + record.get('moExpObjTypeId') + ')">$[l:exp_mo_req_type.assign_company]</a>';
+            }
+        }
+
+        function EXP1086_comAssignFun(objTypeId) {
+            var magOrgId = $au('EXP1086_moExpenseObjectTypeQueryDs').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                url: $au('EXP1086_mo_exp_obj_tp_assign_company_link').getUrl() + '?moExpObjTypeId=' + objTypeId + '&magOrgId=' + magOrgId,
+                id: 'EXP1086_mo_exp_obj_tp_asgn_com_batch_window',
+                title: '$[l:exp_mo_req_type.assign_company]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP1086_moExpenseObjectTypeResultDs').query();
+            });
+        }
+
+
+        function EXP1086_onObjTypeSubmitSuccessFun() {
+            $au('EXP1086_moExpenseObjectTypeResultDs').query();
+        }
+
+        function EXP1086_add(ds) {
+            var magOrgId = $au('EXP1086_moExpenseObjectTypeQueryDs').getCurrentRecord().get('magOrgId');
+            if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function EXP1086_focus() {
+            $au('EXP1086_moExpenseObjectTypeQueryDs').query();
+        }
+
+        function EXP1086_update(ds, record, name, value) {
+            if (name == 'magOrgId') {
+                $au('EXP1086_moExpenseObjectTypeResultDs').query();
+            }
+        }
+
+        //add lcy 2017/12/22 16:54:34 保存前校验管理组织
+
+        function EXP1086_beforeSubmit() {
+            if (Ext.isEmpty($au('EXP1086_moExpenseObjectTypeQueryDs').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function EXP1086_BeforeCreate() {
+            debugger;
+            if (Ext.isEmpty($au('EXP1086_moExpenseObjectTypeQueryDs').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1086_FndMagOrgListDs" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption?ENABLED_FLAG=Y"/>
+            <a:dataSet id="EXP1086_MoExpenseObjectTypeDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/EXP_MO_EXPENSE_OBJECT_TYPE/"/>
+            <a:dataSet id="EXP1086_ExpenseObjectMethodDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/EXPENSE_OBJECT_METHOD/"/>
+            <a:dataSet id="EXP1086_moExpenseObjectTypeQueryDs">
+                <a:fields>
+                    <a:field name="moExpObjTypeCode" prompt="exp_mo_expense_object_type.mo_exp_obj_type_code"/>
+                    <a:field name="description"
+                             prompt="exp_mo_expense_object_type.description"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="magOrgCode"/>
+                    <a:field name="magOrgName" options="FND1086_FndMagOrgListDs"
+                             defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName"
+                             returnField="magOrgId"
+                             valueField="magOrgId" prompt="exp_mo_req_types.mag_org_name" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1086_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1086_moExpenseObjectTypeResultDs" utoPageSize="true" autoQuery="true"
+                       baseUrl="/exp/mo-expense-object-type" queryDataSet="EXP1086_moExpenseObjectTypeQueryDs"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="moExpObjTypeId"/>
+                    <a:field name="moExpObjTypeCode" prompt="exp_mo_expense_object_type.mo_exp_obj_type_code"
+                             required="true"/>
+                    <a:field name="description" prompt="exp_mo_expense_object_type.description"
+                             dto="com.hand.hec.exp.dto.ExpMoExpenseObjectType" dtoId="moExpObjTypeId" required="true"/>
+                    <a:field name="systemFlagName" displayField="meaning" returnField="systemFlag"
+                             valueField="value" options="EXP1086_MoExpenseObjectTypeDs"
+                             prompt="exp_mo_expense_object_type.system_flag_name" required="true"/>
+                    <a:field name="expenseObjectMethod"/>
+                    <a:field name="expenseObjectMethodName" displayField="meaning" returnField="expenseObjectMethod"
+                             valueField="value" options="EXP1086_ExpenseObjectMethodDs"
+                             prompt="exp_mo_expense_object_type.expense_object_method_name" required="true"/>
+                    <a:field name="systemFlag"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgCode"/>
+                    <a:field name="magOrgName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="exp_mo_expense_object_type.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1086_onObjTypeSubmitSuccessFun"/>
+                    <a:event name="add" handler="EXP1086_add"/>
+                    <a:event name="beforecreate" handler="EXP1086_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP1086_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXO1086_moExpenseObjectTypeGrid" type="add" width="80"/>
+                <a:gridButton bind="EXO1086_moExpenseObjectTypeGrid" type="save" width="80"/>
+                <a:toolbarButton click="EXP1086_allBatchAssignFun" text="exp_mo_expense_object_type.batch_company"
+                                 width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1086_moExpenseObjectTypeQueryDs"
+                         resultTarget="EXP1086_moExpenseObjectTypeResultDs"
+                         style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="EXP1086_moExpenseObjectTypeQueryDs" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1086_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moExpObjTypeCode" bindTarget="EXP1086_moExpenseObjectTypeQueryDs"
+                                 typeCase="upper"/>
+                    <a:textField name="description" bindTarget="EXP1086_moExpenseObjectTypeQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXO1086_moExpenseObjectTypeGrid" bindTarget="EXP1086_moExpenseObjectTypeResultDs" marginHeight="115"
+                marginWidth="30" navBar="true">
+            <a:columns>
+                <a:column name="moExpObjTypeCode" align="center" editorFunction="EXP1086_objTypeCodeEditFun"
+                          width="80"/>
+                <a:column name="description" align="left" editor="EXP1086_tledit" width="250"/>
+                <a:column name="systemFlagName" align="center" editorFunction="EXP1086_sysFlagEditFun" width="80"/>
+                <a:column name="expenseObjectMethodName" align="center" editorFunction="EXP1086_objMethodEditFun"
+                          width="80"/>
+                <a:column name="enabledFlag" align="center" editor="EXP1086_checkbox" width="80"/>
+                <a:column name="valueEdit" align="center" renderer="EXP1086_valueEditRendererFun" width="80"/>
+                <a:column name="batchAssign" align="center" renderer="EXP1086_AssignRendererFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="EXP1086_tledit"/>
+                <a:textField id="EXP1086_textfieldUppercase" typeCase="upper"/>
+                <a:textField id="EXP1086_textfield"/>
+                <a:comboBox id="EXP1086_combobox"/>
+                <a:checkBox id="EXP1086_checkbox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

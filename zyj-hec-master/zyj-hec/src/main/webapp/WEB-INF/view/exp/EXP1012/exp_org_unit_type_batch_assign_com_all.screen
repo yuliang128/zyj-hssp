@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-4-17 下午05:24:32  
+    $Revision: 1.0  
+    $Purpose: 管理组织级部门类型定义批量分配所有公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP1110_org_unit_type_asgn_com_batch_assign_all_link" url="$[/request/@context_path]/exp/org-unit-type-asgn-com/submit"/>
+        <script><![CDATA[
+            
+            function EXP1012_batchAssignAllFun() {
+                var submitDs = $au('EXP1012_batch_assign_all_submit_ds');
+                var typeRecord = $au('EXP1012_exp_org_unit_types_result_ds').getAll();
+                var companyRecord =$au('EXP1012_batch_assign_all_result_ds').getSelected();
+
+                if (companyRecord.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+
+                for(var i=0;i<typeRecord.length;i++){
+                    for(var j=0;j<companyRecord.length;j++){
+                        var record = submitDs.create();
+                        record.set('unitTypeId', typeRecord[i].get('unitTypeId') );
+                        record.set('companyId', companyRecord[j].get('companyId') );
+                        record.set('enabledFlag', 'Y' );
+                    }
+                }
+
+                submitDs.submit();
+                EXP1012_batchAssignAllBackFun();
+            }
+            
+             function EXP1012_batchAssignAllBackFun() { 
+                $au('EXP1012_exp_org_unit_types_batch_assign_com_all_window').close();
+                $au('EXP1012_batch_assign_all_result_ds').query();
+            }
+             
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1012_batch_assign_all_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/fnd-company" queryUrl="$[/request/@context_path]/fnd-company/unitTypeAssignCompany?magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="unitTypeId" defaultValue="$[/parameter/@unitTypeId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="companyCode" />
+                    <a:field name="companyShortName"/>
+                </a:fields>
+            </a:dataSet>
+
+            <a:dataSet id="EXP1012_batch_assign_all_submit_ds" autoPageSize="true" autoQuery="false"  submitUrl="$[/request/@context_path]/exp/org-unit-type-asgn-com/batchAssignComAll"  selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="unitTypeId" />
+                    <a:field name="enabledFlag" />
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="prompt.batch_disp_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP1012_batchAssignAllFun"  bind="EXP1012_batch_assign_all_grid" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="EXP1012_batchAssignAllBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="EXP1012_exp_org_unit_types_query_ds" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="EXP1012_exp_org_unit_types_query_ds" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP1012_batch_assign_all_grid" Width="1010" bindTarget="EXP1012_batch_assign_all_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode" align="center" prompt="fnd_company.company_code" width="80"/>
+                    <a:column name="companyShortName" prompt="	fnd_company.company_short_name" width="120"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

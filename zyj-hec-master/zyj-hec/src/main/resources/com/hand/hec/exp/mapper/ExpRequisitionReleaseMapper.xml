@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpRequisitionReleaseMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpRequisitionRelease">
+        <result column="RELEASE_ID" property="releaseId" jdbcType="DECIMAL" />
+        <result column="EXP_REQUISITION_HEADER_ID" property="expRequisitionHeaderId" jdbcType="DECIMAL" />
+        <result column="EXP_REQUISITION_LINE_ID" property="expRequisitionLineId" jdbcType="DECIMAL" />
+        <result column="EXP_REQUISITION_DIST_ID" property="expRequisitionDistId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="OPERATION_UNIT_ID" property="operationUnitId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_TYPE" property="documentType" jdbcType="VARCHAR" />
+        <result column="DOCUMENT_ID" property="documentId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_LINE_ID" property="documentLineId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_DIST_ID" property="documentDistId" jdbcType="DECIMAL" />
+        <result column="REQ_RELEASE_AMOUNT" property="reqReleaseAmount" jdbcType="DECIMAL" />
+        <result column="DOC_RELEASE_AMOUNT" property="docReleaseAmount" jdbcType="DECIMAL" />
+        <result column="REQ_RELEASE_QUANTITY" property="reqReleaseQuantity" jdbcType="DECIMAL" />
+        <result column="REQ_RELEASE_UOM" property="reqReleaseUom" jdbcType="VARCHAR" />
+        <result column="DOC_RELEASE_QUANTITY" property="docReleaseQuantity" jdbcType="DECIMAL" />
+        <result column="DOC_RELEASE_UOM" property="docReleaseUom" jdbcType="VARCHAR" />
+        <result column="DIST_RELEASE_AMOUNT" property="distReleaseAmount" jdbcType="DECIMAL" />
+        <result column="DIST_RELEASE_QUANTITY" property="distReleaseQuantity" jdbcType="DECIMAL" />
+    </resultMap>
+
+    <select id="queryDocId" parameterType="java.lang.Long" resultType="java.lang.Long">
+          select r.document_id
+                        from exp_requisition_release r
+                       where r.document_type = 'EXP_REPORT'
+                       and r.exp_requisition_header_id = #{headId}
+                       and r.exp_requisition_dist_id=#{distId}
+                       group by r.document_id
+    </select>
+
+    <select id="queryAuditFlag" parameterType="java.lang.Long" resultType="java.lang.String">
+        select exp_report_number,
+               ifnull(h.audit_flag,'N')
+         from exp_report_headers h
+         where h.exp_report_header_id = #{docId};
+    </select>
+
+    <select id="selectExpRequisitionReleaseInfo" resultMap="BaseResultMap">
+        SELECT
+	        err.*
+        FROM
+	        exp_requisition_release err
+        LEFT JOIN exp_requisition_dist erd ON erd.exp_requisition_dist_id = err.exp_requisition_dist_id
+        AND erd.close_flag = 'N'
+        WHERE
+	        err.document_type = 'EXP_REPORT'
+        AND err.document_id = #{expReportHeaderId}
+        AND err.document_line_id = #{expReportLineId}
+        AND err.document_dist_id = #{expReportDistId}
+    </select>
+
+    <select id="getRequisitionDistsRelease"  resultMap="BaseResultMap">
+        select
+            case
+               when sum(rr.req_release_amount) is null then 0
+               when sum(rr.req_release_amount) is not null then
+                sum(rr.req_release_amount) end dist_release_amount,
+            case
+               when sum(rr.req_release_quantity) is null then 0
+               when sum(rr.req_release_quantity) is not null then
+                sum(rr.req_release_quantity) end dist_release_quantity
+      from exp_requisition_release rr
+     where rr.exp_requisition_dist_id = #{expRequisitionDistId}
+    </select>
+
+
+    <select id="getTotalReleaseAmtQty" resultType="com.hand.hec.exp.dto.ExpRequisitionRelease">
+        select (case when sum(rr.req_release_amount) is null then 0 else sum(rr.req_release_amount) end) req_release_amount,
+           (case when sum(rr.req_release_quantity) is null then 0 else sum(rr.req_release_quantity) end) req_release_quantity
+      from exp_requisition_release rr
+     where rr.exp_requisition_header_id = #{expRequisitionHeaderId}
+           and rr.exp_requisition_dist_id = #{expRequisitionDistId}
+    </select>
+
+
+    <select id="getDocReleaseAmount" resultType="java.math.BigDecimal">
+        select (case when sum(r.doc_release_amount) is null then 0 else sum(r.doc_release_amount) end)
+          from exp_requisition_release r
+         <where>
+             r.exp_requisition_header_id = #{expRequisitionHeaderId}
+             <if test="expRequisitionDistId!=null">
+                 AND r.exp_requisition_dist_id = #{expRequisitionDistId}
+             </if>
+             <if test="expReqDistsId!=null">
+                 AND exists
+                 (select 1
+                 from exp_requisition_dist d
+                 where r.exp_requisition_dist_id = d.exp_requisition_dist_id
+                 and
+                 d.mo_expense_type_id =
+                 (select rd.mo_expense_type_id
+                 from exp_requisition_dists rd
+                 where rd.exp_requisition_dist_id = #{expReqDistsId}))
+             </if>
+         </where>
+    </select>
+
+    <select id="getDocBeforeReleaseAmt" resultType="java.math.BigDecimal">
+        select (case when sum(r.doc_release_amount) is null then 0 else sum(r.doc_release_amount) end)
+          from exp_requisition_release r
+         <where>
+             r.exp_requisition_header_id = #{expRequisitionHeaderId}
+             and r.document_id not in (#{expDocumentId})
+             <if test="expRequisitionDistId!=null">
+                 AND r.exp_requisition_dist_id = #{expRequisitionDistId}
+             </if>
+         </where>
+    </select>
+</mapper>

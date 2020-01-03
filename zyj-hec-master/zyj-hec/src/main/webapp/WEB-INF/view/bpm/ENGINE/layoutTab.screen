@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '$[/parameter/@componentId]';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('layoutTabDs').getAt(0);
+                 cmp.initRecord(record);
+                 if(bpm_type=='page'){
+                    record.getField('layout_code').setReadOnly(true); 
+                    record.getField('layout_desc').setReadOnly(true);
+                    // record.getField('id').setReadOnly(true); 
+                    record.getField('dataset').setReadOnly(true);
+                 }
+            });
+            
+            function saveTab() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('layoutTabDs').getAt(0);
+                var url='';
+                if(bpm_type == 'page'){
+                    url=$au('engineLayoutPageUpdatelink').getUrl();
+                }
+                if($au('layoutTabDs').validate()){
+	                Aurora.request({
+	                    url: url,
+	                    para: record.data,
+	                    success: function(result) {
+                            if(result.rows && result.rows[0]){
+                                for(var field in result.rows[0]){
+                                    record.set(field,result.rows[0][field]);
+                                }
+                                cmp.setAttr(record);
+                            }
+	                        cancelTab();
+	                    },
+	                    scope: this
+	                });
+                }
+            }
+            
+            function cancelTab() {
+                $au('Tab_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="layoutTabDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="layoutCode" prompt="bpm_tplt_layout_basic.layout_code"/>
+                    <a:field name="layoutDesc" prompt="bpm_tplt_layout_basic.layout_desc"/>
+                    <a:field name="prompt" prompt="bpm_tplt_tags_basic.prompt"/>
+                    <a:field name="dataset" displayField="datasetId" options="engineBpmBindtargetDs" prompt="bpm_tplt_layout_basic.dataset" returnField="dataset" valueField="datasetId"/>
+                    <a:field name="id" prompt="prompt.layout_id" readOnly="true"/>
+                    <a:field name="labelwidth" prompt="bpm_tplt_layout_basic.labelwidth"/>
+                    <a:field name="row" defaultvalue="1" prompt="bpm_tplt_layout_basic.row"/>
+                    <a:field name="columnNum" defaultvalue="1" prompt="bpm_tplt_layout_basic.column"/>
+                    <a:field name="layoutsequence" prompt="bpm_tplt_layout_basic.layout_sequence" readOnly="true"/>
+                    <a:field name="layoutTypeDesc" displayfield="meaning" options="engineLayoutTypeDs" prompt="bpm_tplt_layout_basic.layout_type" readOnly="true" returnField="layoutType" valueField="value"/>
+                    <a:field name="layoutType" readOnly="true"/>
+                    <a:field name="tabGroupNumber" prompt="bpm_tplt_layout_basic.tab_group_number"/>
+                    <a:field name="ref" prompt="bpm_tplt_layout_basic.ref"/>
+                    <a:field name="selected" checkedValue="true" defaultValue="false" prompt="bpm_tplt_layout_basic.disabled" uncheckedValue="false"/>
+                    <a:field name="closeable" checkedValue="true" defaultValue="false" prompt="bpm_tplt_layout_basic.selected" uncheckedValue="false"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" prompt="bpm_tplt_layout_basic.closeable" uncheckedValue="false"/>
+                    <a:field name="viewParentLayoutId" prompt="bpm_tplt_layout_basic.parent_layout_id" readOnly="true"/>
+                    <a:field name="template_flag" checkedValue="Y" defaultValue="N" prompt="bpm_page_layout_basic.template_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="parentLayoutDesc" autoComplete="true" autoCompleteField="layout_desc" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1010.bpm_tplt_layout_basic" lovWidth="540" prompt="BPM_TPLT_LAYOUT_BASIC.PARENT_LAYOUT_ID" title="BPM_TPLT_LAYOUT_BASIC.PARENT_LAYOUT_ID">
+                        <a:mapping>
+                            <a:map from="layoutDesc" to="parentLayoutDesc"/>
+                            <a:map from="layoutId" to="parentLayoutId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentLayoutId"/>
+                    <a:field name="templateId"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="bpm_page_layout_basic.hidden" uncheckedValue="false"/>
+                    <a:field name="layoutId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="Tab">
+                <a:textField name="layoutSequence" bindTarget="layoutTabDs"/>
+                <a:textField name="layoutCode" bindTarget="layoutTabDs"/>
+                <a:textField name="layoutDesc" bindTarget="layoutTabDs"/>
+                <a:comboBox name="layoutTypeDesc" bindTarget="layoutTabDs"/>
+                <a:placeHolder id="datasetConfig"/>
+                <a:textField name="id" bindTarget="layoutTabDs"/>
+                <a:textField name="viewParentLayoutId" bindTarget="layoutTabDs"/>
+                <a:checkBox name="hidden" bindTarget="layout_box_ds"/>
+                <a:numberField name="tabGroupNumber" bindTarget="layoutTabDs"/>
+                <a:textField name="ref" bindTarget="layoutTabDs"/>
+                <a:checkBox name="disabled" bindTarget="layoutTabDs"/>
+                <a:checkBox name="selected" bindTarget="layoutTabDs"/>
+                <a:checkBox name="closeable" bindTarget="layoutTabDs"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="saveTab" skin="green" text="hap_confirm"/>
+                <a:button click="cancelTab" skin="red" text="hap_cancel"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="datasetConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="tplt">
+                    <c:process-config>
+                        <a:comboBox name="dataset" bindTarget="layoutTabDs"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="page">
+                    <c:process-config>
+                        <a:checkBox name="templateFlag" bindTarget="layoutTabDs"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.pur.mapper.PurVenderAccountRefAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.pur.dto.PurVenderAccountRefAe">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="PRIMARY_FLAG" property="primaryFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="VENDER_ID" property="venderId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+
+    <select id="queryByAccountId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+		SELECT
+			pvara.REF_ID,
+			pvara.ACCOUNT_ID,
+			pvara.ACC_ENTITY_ID,
+			pvara.PRIMARY_FLAG,
+			pvara.ENABLED_FLAG,
+			( SELECT gae.acc_entity_code FROM gld_accounting_entity gae WHERE gae.acc_entity_id = pvara.acc_entity_id ) AS acc_entity_code,
+			(
+			SELECT
+				gaetl.acc_entity_name
+			FROM
+				gld_accounting_entity gae,
+				gld_accounting_entity_tl gaetl
+			WHERE
+				gae.acc_entity_id = pvara.acc_entity_id
+				AND gae.ACC_ENTITY_ID = gaetl.ACC_ENTITY_ID
+				AND gaetl.LANG = #{request.locale,javaType = java.lang.String}
+			) AS acc_entity_name
+		FROM
+			PUR_VENDER_ACCOUNT_REF_AE pvara
+		WHERE
+			pvara.account_id = #{accountId}
+		ORDER BY
+			acc_entity_code
+    </select>
+
+    <select id="queryAccEntityByVenderIdAndAccountId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        gae.acc_entity_id,
+        gae.acc_entity_code,
+        gaetl.acc_entity_name
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_accounting_entity_tl gaetl ON ( gae.ACC_ENTITY_ID = gaetl.ACC_ENTITY_ID AND gaetl.lang = #{request.locale,javaType=java.lang.String} )
+        WHERE
+        ( gae.end_date_active IS NULL OR CURRENT_TIMESTAMP BETWEEN gae.start_date_active AND gae.end_date_active )
+        AND gae.company_type &lt;&gt; '2'
+        AND EXISTS ( SELECT 1 FROM pur_system_vender_ref_ae pa WHERE pa.acc_entity_id = gae.acc_entity_id AND pa.enabled_flag = 'Y' AND pa.vender_id = #{venderId} )
+        AND NOT EXISTS (
+        SELECT
+        1
+        FROM
+        pur_vender_account pva,
+        pur_vender_account_ref_ae pvara
+        WHERE
+        pva.account_id = pvara.account_id
+        AND pvara.acc_entity_id = gae.acc_entity_id
+        AND pva.account_id = #{accountId,javaType=java.lang.Long}
+        )
+        ORDER BY
+        gae.acc_entity_code
+    </select>
+
+    <select id="checkMainAccount" parameterType="com.hand.hec.pur.dto.PurVenderAccountRefAe" resultType="java.lang.Long">
+        SELECT
+        count( * )
+        FROM
+        pur_vender_account_ref_ae a
+        WHERE
+        a.primary_flag = 'Y'
+        AND a.enabled_flag = 'Y'
+        AND a.acc_entity_id = #{accEntityId}
+        AND EXISTS ( SELECT 1 FROM pur_vender_account p WHERE p.account_id = a.account_id AND p.account_id &lt;&gt; #{accountId} AND p.vender_id = #{venderId})
+    </select>
+
+</mapper>

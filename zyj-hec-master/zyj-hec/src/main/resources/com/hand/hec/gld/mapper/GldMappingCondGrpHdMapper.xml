@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldMappingCondGrpHdMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldMappingCondGrpHd">
+        <result column="COND_GRP_HD_ID" property="condGrpHdId" jdbcType="DECIMAL"/>
+        <result column="USAGE_CODE" property="usageCode" jdbcType="VARCHAR"/>
+        <result column="GROUP_NAME" property="groupName" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PRIORITY" property="priority" jdbcType="DECIMAL"/>
+        <result column="TABLE_NAME" property="tableName" jdbcType="VARCHAR"/>
+        <result column="SYS_FLAG" property="sysFlag" jdbcType="VARCHAR"/>
+        <result column="USAGE_CODE_DESC" property="usageCodeDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getMaxPriority" resultType="Long">
+        select case when max(priority) is null then 0 else  max(priority) end
+          from gld_mapping_cond_grp_hd
+         where usage_code = #{usageCode}
+           and table_name &lt;&gt; 'GLD_ACC_GEN_SYS_GENERAL'
+    </select>
+
+    <select id="checkUnique" resultType="Integer">
+        select count(*)
+          from gld_mapping_cond_grp_hd
+         where usage_code = #{usageCode}
+           and priority = #{priority}
+    </select>
+    <update id="executeSql">
+        ${createTableSql}
+    </update>
+    <select id="queryResult" resultType="java.util.Map">
+        SELECT
+        t.*,
+        #{tableName} table_name,
+        v.DESCRIPTION account_description
+        FROM
+        ${tableName} t
+        LEFT JOIN (SELECT
+        g.account_id,
+        gat.DESCRIPTION,
+        g.account_code
+        FROM gld_account g
+        LEFT JOIN gld_account_tl gat
+        ON gat.account_id = g.account_id AND gat.lang = #{request.locale,jdbcType=VARCHAR}) v
+        ON t.account_id=v.account_id
+        WHERE
+        t.set_of_books_id = #{setOfBooksId}
+        AND t.mag_org_id = #{magOrgId}
+        <if test="accountCode != null and accountCode != ''">
+            AND v.account_code like #{accountCode}
+        </if>
+        ${whereClause}
+    </select>
+
+    <select id="getMappingCondGrpHds" resultMap="BaseResultMap">
+        select gmcg.group_name,gmcg.priority,gmcg.table_name
+          from gld_mapping_cond_grp_hd gmcg
+         where gmcg.usage_code = #{usageCode}
+      order by gmcg.priority
+    </select>
+</mapper>

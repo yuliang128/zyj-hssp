@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="SSC2050_ssc_view_link" url="$[/request/@context_path]/ssc/SSC2010/ssc_view.screen"/>
+        <a:link id="SSC2050_ssc_monitor_process_link" url="$[/request/@context_path]/ssc/SSC2050/ssc_monitor_process.screen"/>
+        <script><![CDATA[
+            function SSC2050_onQueryDsUpdate(ds, record, name, value, oldValue) {
+                if (name == 'workflowId') {
+                    record.set('nodeName', '');
+                    record.set('nodeId', '');
+                } else if (name == 'magOrgId') {
+                    record.set('companyName', '');
+                    record.set('companyId', '');
+                }
+            }
+            
+            function SSC2050_onNodeNameFocusFun() {
+                var queryRecord = $au('SSC2050_monitor_query_ds').getAt(0);
+                $au('SSC2050_node_ds').setQueryParameter('workflowId', queryRecord.get('workflowId'));
+                $au('SSC2050_node_ds').query();
+            }
+            
+            function SSC2050_onCompNameFocusFun() {
+                var queryRecord = $au('SSC2050_monitor_query_ds').getAt(0);
+                queryRecord.getField('companyName').setLovPara('magOrgId', queryRecord.get('magOrgId'));
+            }
+            
+            function SSC2050_docNumberRenderer(value, record, name) {
+                return '<a href="javascript:SSC2050_openViewDoc(' + record.get('taskId') + ')">' + value + '</a>';
+            }
+            
+            function SSC2050_openViewDoc(taskId) {
+                new Aurora.Window({
+                    url: $au('SSC2050_ssc_view_link').getUrl() + '?taskId=' + taskId,
+                    id: 'SSC2050_ssc_view_window',
+                    fullScreen: true
+                });
+            }
+            
+            function SSC2050_getProcessDisplayStatus(record, processType) {
+                //当前没有派工记录
+                if (!record.get('dispatchRecordId')) {
+                    return false;
+                } else {
+                    var dispatchStatus = record.get('dispatchStatus');
+                    if (dispatchStatus == 'WAITING' && processType == 'DISPATCH') {
+                        return true;
+                    } else if (dispatchStatus == 'IN_PROGRESS' && processType == 'FORCE_RETURN') {
+                        return true;
+                    } else if (dispatchStatus == 'APPLYING_RETURN' && (processType == 'AGREE_RETURN' || processType == 'REJECT_RETURN')) {
+                        return true;
+                    }
+                }
+            
+                return false;
+            }
+            
+            function SSC2050_forceReturn(value, record, name) {
+                if (!SSC2050_getProcessDisplayStatus(record, 'FORCE_RETURN')) {
+                    return '';
+                }
+                return '<a href="javascript:SSC2050_openProcess(\'FORCE_RETURN\');"><img src="$[/request/@context_path]/resources/images/aurora/4.0/ssc/force_return.png"/></a>';
+            }
+            
+            function SSC2050_dispatch(value, record, name) {
+                if (!SSC2050_getProcessDisplayStatus(record, 'DISPATCH')) {
+                    return '';
+                }
+                return '<a href="javascript:SSC2050_openProcess(\'DISPATCH\');"><img src="$[/request/@context_path]/resources/images/aurora/4.0/ssc/dispatch.png"/></a>';
+            }
+            
+            function SSC2050_agreeReturn(value, record, name) {
+                if (!SSC2050_getProcessDisplayStatus(record, 'AGREE_RETURN')) {
+                    return '';
+                }
+                return '<a href="javascript:SSC2050_openProcess(\'AGREE_RETURN\');"><img src="$[/request/@context_path]/resources/images/aurora/4.0/ssc/agree_return.png"/></a>';
+            }
+            
+            function SSC2050_rejectReturn(value, record, name) {
+                if (!SSC2050_getProcessDisplayStatus(record, 'REJECT_RETURN')) {
+                    return '';
+                }
+                return '<a href="javascript:SSC2050_openProcess(\'REJECT_RETURN\');"><img src="$[/request/@context_path]/resources/images/aurora/4.0/ssc/reject_return.png"/></a>';
+            }
+            
+            function SSC2050_openProcess(type) {
+                if (type == 'DISPATCH') {
+                    new Aurora.Window({
+                        url: $au('SSC2050_ssc_monitor_process_link').getUrl() + '?processType=' + type,
+                        id: 'SSC2050_ssc_monitor_process_window',
+                        width: 1020,
+                        side: 'right'
+                    });
+                } else {
+                    new Aurora.Window({
+                        url: $au('SSC2050_ssc_monitor_process_link').getUrl() + '?processType=' + type,
+                        id: 'SSC2050_ssc_monitor_process_window',
+                        width: 560,
+                        height: 220
+                    });
+                }
+            }
+            
+            function SSC2050_adviceEmpNamesRenderer(value, record, name) {
+                var template = new Ext.Template(['<span onmouseover="$A.ToolTip.show(this,\'[emp_names]\')">', '[emp_names]', '</span>']);
+                return template.applyTemplate({
+                    emp_names: record.get('curAdviceEmpName')
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC2050_doc_category_ds" autoQuery="true" fetchAll="true"
+                                                            queryUrl="$[/request/@context_path]/common/auroraCode/ssc_doc_category/"/>
+                        <a:dataSet id="SSC2050_pool_type_ds" autoQuery="true" fetchAll="true"
+                                                                        queryUrl="$[/request/@context_path]/common/auroraCode/ssc_pool_type/"/>
+                        <a:dataSet id="SSC2050_task_status_ds" autoQuery="true" fetchAll="true"
+                                                                                    queryUrl="$[/request/@context_path]/common/auroraCode/ssc_task_status/"/>
+                        <a:dataSet id="SSC2050_dispatch_status_ds" autoQuery="true" fetchAll="true"
+                                                                                                queryUrl="$[/request/@context_path]/common/auroraCode/ssc_dispatch_status/"/>
+            <a:dataSet id="SSC2050_workflow_ds" autoQuery="true" baseUrl="/ssc/workflow" />
+            <a:dataSet id="SSC2050_node_ds" baseUrl="/ssc/workflow-node" />
+            <a:dataSet id="SSC2050_mag_org_ds" autoQuery="true" baseUrl="/ssc/task-pool-prepare" queryUrl="$[/request/@context_path]/ssc/task-pool-prepare/queryMagOrgOption"/>
+            <a:dataSet id="SSC2050_monitor_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="docNumber" prompt="ipm.document_number"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="SSC2050_doc_category_ds" prompt="exp_business_rule.doc_category" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="taskStatusName" displayField="meaning" options="SSC2050_task_status_ds" returnField="taskStatus" valueField="value"/>
+                    <a:field name="taskStatus"/>
+                    <a:field name="dispatchStatusName" displayField="meaning" options="SSC2050_dispatch_status_ds" returnField="dispatchStatus" valueField="value"/>
+                    <a:field name="dispatchStatus"/>
+                    <a:field name="enterTime"/>
+                    <a:field name="enterTimeTo"/>
+                    <a:field name="exitTime"/>
+                    <a:field name="exitTimeTo"/>
+                    <a:field name="workEmployeeName"/>
+                    <a:field name="workEmployeeId"/>
+                    <a:field name="docEmployeeName" lovCode="EXP_EMPLOYEE" prompt="submit_employee" title="submit_employee">
+                        <a:mapping>
+                            <a:map from="name" to="docEmployeeName"/>
+                            <a:map from="employeeId" to="docEmployeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="docEmployeeId"/>
+                    <a:field name="magOrgName" displayField="description" options="SSC2050_mag_org_ds" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="companyName" lovCode="FND_COMPANIES_VL_LOV">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="workflowName" displayField="description" options="SSC2050_workflow_ds" returnField="workflowId" valueField="workflowId"/>
+                    <a:field name="workflowId"/>
+                    <a:field name="nodeName" displayField="description" options="SSC2050_node_ds" returnField="nodeId" valueField="nodeId"/>
+                    <a:field name="nodeId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="SSC2050_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="SSC2050_monitor_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/ssc/task-pool-prepare" queryDataSet="SSC2050_monitor_query_ds">
+                <a:fields>
+                    <a:field name="docCategoryName" prompt="exp_business_rule.doc_category"/>
+                    <a:field name="docNumber" prompt="ipm.document_number"/>
+                    <a:field name="docEmployeeName" prompt="submit_employee"/>
+                    <a:field name="workflowName" prompt="ssc_workflow_node.workflow_id"/>
+                    <a:field name="nodeName" prompt="ssc_doc_wfl.workflow_node"/>
+                    <a:field name="workTeamName" prompt="ssc_node_assign_worker.work_team_code_name"/>
+                    <a:field name="workEmployeeName" prompt="wbc_monitor.current_handler"/>
+                    <a:field name="curAdviceEmpName" prompt="ssc_monitor.cur_advice_emp_name"/>
+                    <a:field name="poolTypeName" prompt="work_pool_type"/>
+                    <a:field name="enterTime2" prompt="task_pool_time"/>
+                    <a:field name="exitTime2" prompt="task_end_time"/>
+                    <a:field name="taskStatusName" prompt="SCH111.sch_concurrent_job.job_status"/>
+                    <a:field name="dispatchStatusName" prompt="job_status"/>
+                    <a:field name="magOrgName" prompt="sys_parameter.mag_org_name"/>
+                    <a:field name="companyName" prompt="acp_invoice_line.company_id"/>
+                    <a:field name="errorMessage" prompt="error_new" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:queryForm bindTarget="SSC2050_monitor_query_ds" resultTarget="SSC2050_monitor_result_ds" style="width:100%;border:none">
+            <a:formToolBar>
+                <a:textField name="docNumber" bindTarget="SSC2050_monitor_query_ds"/>
+                <a:comboBox name="docCategoryName" bindTarget="SSC2050_monitor_query_ds"/>
+                <a:lov name="docEmployeeName" bindTarget="SSC2050_monitor_query_ds"/>
+            </a:formToolBar>
+            <a:formBody column="4">
+                <a:comboBox name="workflowName" bindTarget="SSC2050_monitor_query_ds" placeholder="ssc_workflow_node.workflow_id"/>
+                <a:comboBox name="nodeName" bindTarget="SSC2050_monitor_query_ds" placeholder="ssc_doc_wfl.workflow_node">
+                    <a:events>
+                        <a:event name="focus" handler="SSC2050_onNodeNameFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="taskStatusName" bindTarget="SSC2050_monitor_query_ds" placeholder="sch111.sch_concurrent_job.JOB_STATUS"/>
+                <a:comboBox name="dispatchStatusName" bindTarget="SSC2050_monitor_query_ds" placeholder="job_status"/>
+                <a:comboBox name="magOrgName" bindTarget="SSC2050_monitor_query_ds" placeholder="sys_parameter.mag_org_name"/>
+                <a:lov name="companyName" bindTarget="SSC2050_monitor_query_ds" placeholder="acp_requisition.company">
+                    <a:events>
+                        <a:event name="focus" handler="SSC2050_onCompNameFocusFun"/>
+                    </a:events>
+                </a:lov>
+                <a:dateTimePicker name="enterTime" bindTarget="SSC2050_monitor_query_ds" placeholder="task_pool_time_from"/>
+                <a:dateTimePicker name="enterTimeTo" bindTarget="SSC2050_monitor_query_ds" placeholder="task_pool_time_to"/>
+                <a:dateTimePicker name="exitTime" bindTarget="SSC2050_monitor_query_ds" placeholder="task_end_time_from"/>
+                <a:dateTimePicker name="exitTimeTo" bindTarget="SSC2050_monitor_query_ds" placeholder="task_end_time_to"/>
+            </a:formBody>
+        </a:queryForm>
+        <a:grid id="SSC2050_monitor_result_grid" autoAdjust="true" bindTarget="SSC2050_monitor_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="docNumber" align="center" lock="true" renderer="SSC2050_docNumberRenderer" width="120"/>
+                <a:column name="docCategoryName" align="center" lock="true" width="100"/>
+                <a:column name="magOrgName" align="center" width="150"/>
+                <a:column name="companyName" align="center" width="150"/>
+                <a:column name="operations" prompt="hap_operation">
+                    <a:column name="forceReturn" align="center" prompt="wbc_monitor.force_return" renderer="SSC2050_forceReturn" width="50"/>
+                    <a:column name="dispatch" align="center" prompt="dispatch" renderer="SSC2050_dispatch" width="50"/>
+                    <a:column name="agreeReturn" align="center" prompt="agree_back" renderer="SSC2050_agreeReturn" width="50"/>
+                    <a:column name="rejectReturn" align="center" prompt="reject_back" renderer="SSC2050_rejectReturn" width="50"/>
+                </a:column>
+                <a:column name="docEmployeeName" align="center" width="80"/>
+                <a:column name="workflowName" align="center" width="150"/>
+                <a:column name="nodeName" align="center" width="150"/>
+                <a:column name="workEmployeeName" align="center" width="80"/>
+                <a:column name="curAdviceEmpName" align="center" width="120"/>
+                <a:column name="poolTypeName" align="center" width="80"/>
+                <a:column name="enterTime2" align="center" width="80"  renderer="Aurora.formatDateTime"/>
+                <a:column name="exitTime2" align="center" width="80" renderer="Aurora.formatDateTime"/>
+                <a:column name="taskStatusName" align="center" width="80"/>
+                <a:column name="dispatchStatusName" align="center" width="80"/>
+                <a:column name="errorMessage" editor="SSC2050_ta" width="150"/>
+            </a:columns>
+            <a:editors>
+                <a:textArea id="SSC2050_ta"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019/01/08 5:21:59
+    $Revision: 1.0
+    $Purpose: 核算主体定义创建界面
+ -->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function GLD2020_saveAccEntityDetails() {
+                var ds = $au('GLD2020_acc_enti_create_ds');
+                ds.setSubmitUrl("$[/request/@context_path]/gld/account-entity/submit");
+                ds.submit();
+            }
+
+            function GLD2020_closeAccEntityDetails() {
+                $au('GLD2020_entities_create_window').close();
+                GLD2020_accEntityQuery();
+            }
+            
+            function GLD2020_compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function GLD2020_dateValidator(record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                        if (!GLD2020_compareDate(start_date, end_date)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function GLD2020_onEntitiesCreateSuccess() {
+                //gld_acc_entity_ref_sob对应信息新增
+                var ds = $au('GLD2020_acc_enti_create_ds');
+                ds.query();
+                var length = ds.getAll().length;
+                //查询到的最后一条就是刚刚获取的数据(可能存在多线程问题)
+                var accRecord = ds.getAt(length-1);
+                var sobRecord = $au('GLD2020_accSob').create();
+                sobRecord.set('accEntityId',accRecord.get('accEntityId'));
+                sobRecord.set('setOfBooksId',accRecord.get('setOfBooksId'));
+                sobRecord.set('enabledFlag','Y');
+                sobRecord.set('defaultFlag','Y');
+
+                $au('GLD2020_accSob').submit();
+
+                $au('GLD2020_entities_create_window').close();
+                GLD2020_accEntityQuery();
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_acc_enti_details_company_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/ACCOUNTING_ENTITY_COMPANY_TYPE/"/>
+            <a:dataSet id="GLD2020_acc_enti_taxpayer_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/GLD_TAXPAYER_TYPE/"/>
+            <a:dataSet id="GLD2020_acc_enti_language_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/LANGUAGE/"/>
+            <a:dataSet id="GLD2020_acc_enti_create_ds" autoPageSize="true" baseUrl="/gld/account-entity">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code" required="true"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name" dto="com.hand.hec.gld.dto.GldAccountingEntity" dtoId="accEntityId" required="true"/>
+
+                    <a:field name="companyTypeDisplay" displayField="meaning" options="GLD2020_acc_enti_details_company_type_ds" prompt="gld_accounting_entity.company_type" required="true" returnField="companyType" valueField="value"/>
+                    <a:field name="companyType"/>
+
+                    <a:field name="taxpayerTypeDisplay" displayField="meaning" options="GLD2020_acc_enti_taxpayer_type_ds" prompt="gld_accounting_entity.taxpayer_type_display" required="true" returnField="taxpayerType" valueField="value"/>
+                    <a:field name="taxpayerType"/>
+
+                    <a:field name="defaultLanguageDisplay" displayField="meaning" options="GLD2020_acc_enti_language_ds" prompt="gld_accounting_entity.default_language_display" required="true" returnField="defaultLanguage" valueField="value"/>
+                    <a:field name="defaultLanguage"/>
+
+                    <a:field name="functionalCurrencyName" lovCode="LOV_GLD_CURRENCY" lovAutoQuery="true" required="true" title="gld_accounting_entity.currency_choice" prompt="gld_accounting_entity.functional_currency_name">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="functionalCurrencyCode"/>
+                            <a:map from="currencyName" to="functionalCurrencyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="functionalCurrencyCode"/>
+
+                    <a:field name="payCurrencyName" lovCode="LOV_GLD_CURRENCY" lovAutoQuery="true" required="true" title="gld_accounting_entity.currency_choice" prompt="gld_accounting_entity.pay_currency_name">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="payCurrencyCode"/>
+                            <a:map from="currencyName" to="payCurrencyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payCurrencyCode"/>
+
+                    <a:field name="setOfBooksName" lovCode="LOV_GLD_SET_OF_BOOK" title="gld_accounting_entity.default_set_of_books_id" prompt="gld_accounting_entity.default_set_of_books_id" required="true">
+                        <a:mapping>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="setOfBooksId"/>
+
+                    <a:field name="defaultTimezoneName" lovCode="SYS_TIMEZONE_VL_LOV" required="true" title="sys_standard_timezone.choice" prompt="sys_standard_timezone.choice">
+                        <a:mapping>
+                            <a:map from="timezoneName" to="defaultTimezoneName"/>
+                            <a:map from="timezoneId" to="defaultTimezoneId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultTimezoneId"/>
+
+                    <a:field name="defaultCountryName" LovCode="LOV_COUNTRY_CODE" prompt="gld_accounting_entity.default_country_code_display" required="true" title="fnd_country_code_vl.choice">
+                        <a:mapping>
+                            <a:map from="description" to="defaultCountryName"/>
+                            <a:map from="countryCode" to="defaultCountryCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultCountryCode"/>
+
+                    <a:field name="startDateActive" prompt="gld_accounting_entity.start_date_active" required="true" validator="GLD2020_dateValidator"/>
+                    <a:field name="endDateActive" prompt="gld_accounting_entity.end_date_active" validator="GLD2020_dateValidator"/>
+                    <a:field name="taxpayerNumber" prompt="gld_accounting_entity.taxpayer_number"/>
+                    <a:field name="phone" prompt="gld_accounting_entity.phone"/>
+                    <a:field name="address" prompt="gld_accounting_entity.address"/>
+                    <a:field name="bankAccount" prompt="pur_vender_tax.taxpayer_bank"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_onEntitiesCreateSuccess"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_accSob" submitUrl="$[/request/@context_path]/gld/acc-entity-ref-sob/submit">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="enabledFlag"/>
+                    <a:field name="defaultFlag"/>
+                </a:fields>
+                <a:fields/>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD2020_acc_enti_details_field" column="2" labelWidth="120" padding="10" showmargin="0" title="gld_accouning_entity.create">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="GLD2020_saveAccEntityDetails" text="hap.save" width="80"/>
+                    <a:toolbarButton click="GLD2020_closeAccEntityDetails" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2020_acc_enti_create_ds" typeCase="upper"/>
+                <a:tledit name="accEntityName" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:datePicker name="startDateActive" renderer="Aurora.formatDate" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:datePicker name="endDateActive" renderer="Aurora.formatDate" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:comboBox name="companyTypeDisplay" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:lov name="defaultCountryName" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:lov name="functionalCurrencyName" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:lov name="payCurrencyName" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:comboBox name="defaultLanguageDisplay" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:lov name="defaultTimezoneName" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:comboBox name="taxpayerTypeDisplay" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:textField name="taxpayerNumber" allowDecimals="false" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:textField name="address" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:numberField name="phone" allowDecimals="false" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:textField name="bankAccount" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:lov name="setOfBooksName" bindTarget="GLD2020_acc_enti_create_ds"/>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_onEntitiesCreateSuccess"/>
+                </a:events>
+            </a:form>
+        </a:screenBody>
+        <script><![CDATA[
+           /* function GLD2020_aeCreateInitPage() {
+                var tzRecords = $au('GLD2020_acc_enti_timezone_ds').getAll();
+                var mainRecord = $au('GLD2020_acc_enti_create_ds').getAt(0);
+                for (var i = 0;i < tzRecords.length;i++) {
+                    if ('+08:00' == tzRecords[i].get('timezone_code')) {
+                        mainRecord.set('defaultTimezoneName', tzRecords[i].get('timezoneName'));
+                        mainRecord.set('defaultTimezoneId', tzRecords[i].get('timezoneId'));
+                    }
+                }
+            }
+            
+            GLD2020_aeCreateInitPage();*/
+        ]]></script>
+    </a:view>
+</a:screen>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-04 14:27:26
+    $Revision: 1.0  
+    $Purpose: 管理组织级-付款事务生成规则定义-分配业务范围
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1250_biz_dtl_link" url="$[/request/@context_path]/csh/CSH1250/csh_payment_trx_rule_biz_dtl.screen"/>
+        <script><![CDATA[
+            function CSH1250_DateValidate(record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                        if (!compareDate(start_date, end_date)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start.getTime() > end.getTime()) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH1250_back() {
+                $au('CSH1250_assign_bus_scope_win').close();
+                $au('CSH1250_pay_trx_rules_result_ds').query();
+            }
+            
+            function CSH1250_bizSubmitSuccess(ds) {
+                ds.query();
+            }
+            
+            function CSH1250_bizUpdate(ds, record, name, value) {
+                if (name == 'typeCode') {
+                    var field = record.getMeta().getField('customFunction');
+                    if (value == 20) {
+                        field.setReadOnly(false);
+                        field.setRequired(true);
+                    }else{
+                        field.setReadOnly(true);
+                        field.setRequired(false);
+                    }
+                }
+            }
+            function CSH1250_typeEditor(record,name){
+                if(record.isNew){
+                    return 'CSH1250_biz_comboBox';
+                }
+                return '';
+            }
+            function CSH1250_codeEditor(record,name){
+                if(record.isNew){
+                    return 'CSH1250_biz_textFiled';
+                }
+                return '';
+            }
+            function CSH1250_detailRender(value,record,name){
+                if (!record.isNew) {
+                    var type_code = record.get('typeCode');
+                    if (type_code == 10) {
+                        var url = $au('CSH1250_biz_dtl_link').getUrl() + '?ruleBizId=' + record.get('ruleBizId');
+                        return '<a href="javascript:CSH1250_rules_detail(\'' + url + '\')">' + '$[l:csh_payment_trx_rule_biz.detail]' + '</a>';
+                    }else{
+                        return '';
+                    }
+                }
+            }
+            function CSH1250_rules_detail(url){
+                new Aurora.Window({
+                    id: 'CSH1250_pay_trx_bus_scope_detail_win',
+                    url: url,
+                    title: '$[l:csh_payment_trx_rule.business_scope]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1250_bgt_strategy_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_STRATEGY_TYPE/"/>
+            <a:dataSet id="CSH1250_pay_trx_rules_biz_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-trx-rule-biz"  queryUrl="$[/request/@context_path]/csh/payment-trx-rule-biz/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="ruleBizId"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto" dtoId="ruleBizId" prompt="csh_payment_trx_rule_biz.rule_name"/>
+                    <a:field name="typeCode"/>
+                    <a:field name="typeCodeName" displayField="meaning" options="CSH1250_bgt_strategy_type_ds" prompt="csh_payment_trx_rule_biz.type_code" required="true" returnField="typeCode" valueField="value"/>
+                    <a:field name="ruleBizCode" prompt="csh_payment_trx_rule_biz.rule_code" required="true"/>
+                    <a:field name="customFunction" prompt="csh_payment_trx_rule_biz.custom_function" readOnly="true"/>
+                    <a:field name="startDateActive" datatype="date" prompt="csh_payment_trx_rule.start_date_activr" required="true" validator="CSH1250_DateValidate"/>
+                    <a:field name="endDateActive" datatype="date" prompt="csh_payment_trx_rule.end_date_activr" validator="CSH1250_DateValidate"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1250_bizUpdate"/>
+                    <a:event name="submitsuccess" handler="CSH1250_bizSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:form id="CSH1250_pay_trx_rule_biz_form" column="2" title="csh_payment_trx_rule.business_scope_asgn">
+                    <a:formToolbar>
+                        <a:label name="separator"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_biz_grid" type="add" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_biz_grid" type="save" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_biz_grid" type="clear" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_biz_grid" click="CSH1250_back" text="hap.back" width="80"/>
+                    </a:formToolbar>
+                    <a:textField name="ruleCode" bindTarget="CSH1250_pay_trx_rules_result_ds" prompt="csh_payment_trx_rule.rule_code" readOnly="true"/>
+                    <a:textField name="description" bindTarget="CSH1250_pay_trx_rules_result_ds" prompt="csh_payment_trx_rule.description" readOnly="true"/>
+                </a:form>
+            </span>
+            <a:grid id="CSH1250_pay_trx_rule_biz_grid" bindTarget="CSH1250_pay_trx_rules_biz_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="ruleBizCode" align="center" editorFunction="CSH1250_codeEditor" width="80"/>
+                    <a:column name="description" align="left" editor="CSH1250_biz_tledit" width="120"/>
+                    <a:column name="typeCodeName" align="center" editorFunction="CSH1250_typeEditor" width="80"/>
+                    <a:column name="customFunction" align="center" editor="CSH1250_biz_textFiled" width="80"/>
+                    <a:column name="startDateActive" align="center" editor="CSH1250_biz_datePicker" renderer="Aurora.formatDate" width="80"/>
+                    <a:column name="endDateActive" align="center" editor="CSH1250_biz_datePicker" renderer="Aurora.formatDate" width="80"/>
+                    <a:column name="detail" align="center" renderer="CSH1250_detailRender" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:tledit id="CSH1250_biz_tledit"/>
+                    <a:textField id="CSH1250_biz_textFiled" typeCase="upper"/>
+                    <a:datePicker id="CSH1250_biz_datePicker"/>
+                    <a:comboBox id="CSH1250_biz_comboBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

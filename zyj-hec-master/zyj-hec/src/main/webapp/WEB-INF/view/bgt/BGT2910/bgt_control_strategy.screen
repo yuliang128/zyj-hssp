@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_ctrl_strategy_mp_conds_link" url="$[/request/@context_path]/bgt/BGT2910/bgt_ctrl_strategy_mp_cond.screen"/>
+        <script><![CDATA[
+            function strategies_detail_id(id) {
+                new Aurora.Window({
+                    id: 'new_strategies_detail_window',
+                    url: $au('bgt_ctrl_strategy_mp_conds_link').getUrl() + '?controlStrategyId=' + id,
+                    title: '$[l:bgt_control_strategy.control_method]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function strategies_detail(value, record, name) {
+                var controlStrategyId = record.get('controlStrategyId');
+                if (controlStrategyId) {
+                    return '<a href="javascript:strategies_detail_id(' + controlStrategyId + ')">$[l:bgt_control_strategy.control_method]</a>';
+                }
+            }
+            
+            function returnBtn() {
+                $au('new_column_detail_window').close();
+            }
+            
+            function control_strategy_code_editor_function(record, name) {
+                if (record.isNew) {
+                    return "new_editor_tf";
+                } else {
+                    return false;
+                }
+            
+            }
+            
+            function strategieDataAdd(dataSet, record, index) {
+                record.set("controlStrategyGroupId", '$[/parameter/@controlStrategyGroupId]');
+            }
+            
+            function girdSumbitSuccess(dataSet, res) {
+                $au('bgt_strategy_result_grid').onLoad();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="control_method_option_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_STRATEGY_METHOD/"/>
+            <a:dataSet id="message_code_option_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_CONTROL_ERROR/"/>
+            <a:dataSet id="bgt_strategy_query_ds" autoQuery="true" baseUrl="/bgt/control-strategy-group" queryUrl="$[/request/@context_path]/bgt/control-strategy-group/query?controlStrategyGroupId=$[/parameter/@controlStrategyGroupId]">
+                <a:fields>
+                    <a:field name="controlStrategyGroupCode" readOnly="true" required="true"/>
+                    <a:field name="controlStrategyGroupDesc" readOnly="true" required="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="bgt_strategies_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/control-strategy" queryUrl="$[/request/@context_path]/bgt/control-strategy/query?controlStrategyGroupId=$[/parameter/@controlStrategyGroupId]" selectable="true">
+                <a:fields>
+                    <a:field name="controlStrategyCode" prompt="csh_pay_batch_rule_ln.detail_code" required="true"/>
+                    <a:field name="controlStrategySequence" prompt="csh_payment_rule_detail.sequence" required="true"/>
+                    <a:field name="controlMethodDesc" displayField="meaning" options="control_method_option_ds" prompt="bgt_control_rule.budget_strategy_group_id" required="true" returnField="controlMethod" valueField="value"/>
+                    <a:field name="messageCodeDisplay" displayField="meaning" options="message_code_option_ds" prompt="bgt_control_strategy.message_code" required="true" returnField="messageCode" valueField="value"/>
+                    <a:field name="expWfEvent" autoComplete="true" autoCompleteField="eventCode" lovGridHeight="320" lovHeight="450" lovCode="LOV_BGT_CONTROL_STRATEGY_EVENT" lovWidth="500" prompt="bgt_control_strategy.exp_wf_event" required="true" title="bgt_control_strategy.exp_wf_event">
+                        <a:mapping>
+                            <a:map from="eventCode" to="expWfEvent"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="controlStrategyDesc" prompt="bgt_control_strategy_group.control_strategy_group_desc" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="strategieDataAdd"/>
+                    <a:event name="submitsuccess" handler="girdSumbitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="bgt_control_strategy_group.strategy_define_detail" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="bgt_strategy_result_grid" type="add" width="80"/>
+                    <a:gridButton bind="bgt_strategy_result_grid" type="save" width="80"/>
+                    <a:gridButton bind="bgt_strategy_result_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="returnBtn" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="controlStrategyGroupCode" bindTarget="bgt_strategy_query_ds" prompt="bgt_control_strategy_group.control_strategy_group_code"/>
+                <a:textField name="controlStrategyGroupDesc" bindTarget="bgt_strategy_query_ds" prompt="bgt_control_strategy_group.control_strategy_group_desc"/>
+            </a:form>
+            <a:grid id="bgt_strategy_result_grid" bindTarget="bgt_strategies_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="controlStrategySequence" width="80" align="center" editorFunction="control_strategy_code_editor_function" sortable="true"/>
+                    <a:column name="controlStrategyCode" width="80" align="center" editorFunction="control_strategy_code_editor_function" sortable="true"/>
+                    <a:column name="controlStrategyDesc" width="200" align="left" editor="new_editor_tf"/>
+                    <a:column name="controlMethodDesc" width="80" align="center" editor="editor_cob" sortable="true"/>
+                    <a:column name="messageCodeDisplay" width="200" align="left" editor="editor_cob" sortable="true"/>
+                    <a:column name="expWfEvent" width="200" align="center" editor="editor_lov" sortable="true"/>
+                    <a:column name="strategiesDetail" width="80" align="center" prompt="" renderer="strategies_detail" sortable="true"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="editor_cob"/>
+                    <a:textField id="new_editor_tf"/>
+                    <a:numberField id="editor_nf" allowDecimals="false"/>
+                    <a:lov id="editor_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

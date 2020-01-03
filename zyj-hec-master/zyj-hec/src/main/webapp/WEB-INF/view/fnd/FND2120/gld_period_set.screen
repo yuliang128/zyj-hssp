@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: junkai.lu $
+    $Date: 2018/01/07 15:06:01 $
+    $Revision: 1.12 $
+    $Purpose: 会计期定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="gld_period_rule_link" url="$[/request/@context_path]/fnd/FND2120/gld_period_rule.screen"/>
+        <script><![CDATA[
+        function queryPeriodSet() {
+            $au('gld_period_set_result_ds').query();
+        }
+
+        function periodSetCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'period_set_code_grid_tf';
+            } else {
+                return '';
+            }
+        }
+
+        function totalPeriodNumEdit(record, name) {
+            if (record.isNew) {
+                return 'total_period_num_grid_tf';
+            } else {
+                return '';
+            }
+        }
+
+        function periodAdditionalFlagEdit(record, name) {
+            if (record.isNew) {
+                console.log(record)
+                return 'period_additional_flag_grid_cmb';
+            } else {
+                return '';
+            }
+        }
+
+        function createRule(value, record, name) {
+            if (!record.isNew) {
+                var id = record.get('periodSetId');
+                return "<a href=\"javascript:createRuleInfo('" + id + "')\">$[l:gld_period_set.create_rule]</a>";
+            }
+            return '';
+        }
+
+
+        function createRuleInfo(id) {
+            new Aurora.Window({
+                id: 'gld_period_rule_window',
+                url: $au('gld_period_rule_link').getUrl() + '?periodSetId=' + id,
+                title: '$[l:definition_of_accounting_period_create_rule]',
+                fullScreen: true
+            });
+        }
+
+        function reset() {
+            $au('gld_period_set_query_ds').reset();
+        }
+        ]]></script>
+        <a:dataSets>
+
+            <a:dataSet id="gld_period_set_additional_flag_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/period_additional_flag/"/>
+
+            <a:dataSet id="gld_period_set_query_ds">
+                <a:fields>
+                    <a:field name="periodSetCode" prompt="gld_period_set.period_set_code"/>
+                    <a:field name="periodSetName" prompt="gld_period_set.period_set_name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="gld_period_set_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/fnd/gld-period-set" queryDataSet="gld_period_set_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="periodSetId"/>
+                    <a:field name="periodSetCode" prompt="gld_period_set.period_set_code" required="true"/>
+                    <a:field name="periodSetName"  prompt="gld_period_set.period_set_name" required="true" dto="com.hand.hec.fnd.dto.GldPeriodSet" dtoId="periodSetId"/>
+                    <a:field name="totalPeriodNum" prompt="gld_period_set.total_period_num" required="true"/>
+
+                    <a:field name="periodAdditionalFlagName" prompt="gld_period_set.period_additional_flag"
+                             displayField="meaning" options="gld_period_set_additional_flag_ds" required="true"
+                             returnField="periodAdditionalFlag" valueField="value"/>
+
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="gld_gld_period_set_grid" type="add" width="80"/>
+                <a:gridButton bind="gld_gld_period_set_grid" type="save" width="80"/>
+                <a:gridButton bind="gld_gld_period_set_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="gld_period_set_query_ds" resultTarget="gld_period_set_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="periodSetCode" bindTarget="gld_period_set_query_ds" typeCase="upper"/>
+                    <a:textField name="periodSetName" bindTarget="gld_period_set_query_ds" />
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+
+        <a:grid id="gld_gld_period_set_grid" bindTarget="gld_period_set_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="periodSetCode" align="center" editorFunction="periodSetCodeEdit" sortable="true" width="120"/>
+                <a:column name="periodSetName" align="left" editor="period_set_name_grid_tf"  width="200"/>
+                <a:column name="totalPeriodNum" align="right" editorFunction="totalPeriodNumEdit" sortable="true" width="100"/>
+                <a:column name="periodAdditionalFlagName" align="center" editorFunction="periodAdditionalFlagEdit" width="100"/>
+                <a:column name="gprCount" align="center" renderer="createRule" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="period_set_code_grid_tf" typeCase="upper"/>
+                <a:tledit id="period_set_name_grid_tf"/>
+                <a:numberField id="total_period_num_grid_tf" allowDecimals="false" allowNegative="false"/>
+                <a:comboBox id="period_additional_flag_grid_cmb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

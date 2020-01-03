@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="SSC2010_document_reject_element_link" url="$[/request/@context_path}/modules/ssc/SSC2010/ssc_doc_reject_element_save.svc"/>
+        <script><![CDATA[
+            function doClose() {
+                $au('SSC2010_document_dispatch_reject_window').close();
+            }
+            
+            function doConfirm() {
+            
+                var rejectRecord = $au('SSC2010_opinion_ds').getAt(0);
+                var opinion = rejectRecord.get('opinion');
+
+                var elementRecords = $au('SSC2010_document_reject_element_ds').getSelected();
+                var recordLength = elementRecords.length;
+                //拒绝原因必填
+                if (!opinion) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:exp_report_reject.check1]');
+                    return;
+                }
+                var params = [];
+                for (var i = 0;i < recordLength;i++) {
+                    var para = {
+                        indicatorId: elementRecords[i].get('indicatorId'),
+                        elementId: elementRecords[i].get('elementId'),
+                        actionId: '$[/parameter/@actionId]',
+                        dispatchRecordId: Number('$[/parameter/@dispatchRecordId]'),
+                        opinion: opinion,
+                        _status: 'execute'
+                    };
+                    params.push(para);
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('SSC2010_document_reject_element_link').getUrl(),
+                    para: {
+                        details: params,
+                        actionId: '$[/parameter/@actionId]',
+                        dispatchRecordId: Number('$[/parameter/@dispatchRecordId]'),
+                        opinion: opinion
+                    },
+                    success: function(args) {
+                        doClose();
+                        $au('SSC2010_my_task_result_ds').query();
+                        $au('SSC2010_my_task_hold_ds').query();
+                        $au('SSC2010_my_task_return_back_ds').query();
+                        $au('SSC2010_ssc_process_window').close();
+                    },
+                    scope: this
+                });
+            
+            }
+            
+            function onAssetManLoad(ds) {
+            
+               }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC2010_document_reject_element_ds" autoCount="true" autoQuery="true" pageSize="100" queryUrl="$[/request/@context_path]/ssc.SSC2010.ssc_credit_elements_lov/query?dispatchRecordId=$[/parameter/@dispatchRecordId]" selectable="true">
+                <a:fields>
+                    <!--  <a:field name="indicatorId"/>
+                    <a:field name="indicator_code"/>
+                    <a:field name="indicator_name"/> -->
+                    <a:field name="elementCode"/>
+                    <a:field name="elementName"/>
+                    <a:field name="elementId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="doConfirm" text="HAP_CONFIRM" width="80"/>
+                <a:toolbarButton click="doClose" text="HAP_CLOSE" width="80"/>
+            </a:screenTopToolbar>
+            <a:box>
+                <a:textArea name="opinion" bindTarget="SSC2010_opinion_ds" height="20" prompt="exp_report_reject.p_description" width="300"/>
+            </a:box>
+            <a:grid id="SSC2010_refuse_reasons_grid" bindTarget="SSC2010_document_reject_element_ds" height="300" width="660">
+                <a:columns>
+                    <a:column name="elementCode" align="center" width="120"/>
+                    <a:column name="elementName" align="left" width="200"/>
+                    <a:column name="score" align="center" width="80"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

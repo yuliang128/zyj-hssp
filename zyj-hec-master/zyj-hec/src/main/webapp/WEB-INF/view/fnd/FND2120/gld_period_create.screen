@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: ouyangzhaochang2663 $
+    $Date: 2010/11/22 01:49:49 $
+    $Revision: 1.2 $
+    $Purpose: 会计期定义 - 创建期间
+-->
+
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+<a:init-procedure><![CDATA[
+]]></a:init-procedure>
+<a:view>
+<script><![CDATA[
+    function closeWindow(){
+        $au('gld_period_create_window').close();
+    }
+
+    function periodCreate(){
+        $au('check_period_exists_ds').on('load',afterExitsQuery);
+        $au('check_period_exists_ds').query();
+    }
+
+    function afterExitsQuery(){
+        if($au('check_period_exists_ds').getCurrentRecord().get('count') > 0){
+            Aurora.showConfirm('$[l:prompt]','$[l:period_already_exists]',function(cmp){
+                $au('check_period_used_ds').on('load',afterUsedQuery);
+                $au('check_period_used_ds').query();
+                cmp.close();
+            },null,null,100);
+        }else{
+            $au('check_period_used_ds').on('load',afterUsedQuery);
+            $au('check_period_used_ds').query();
+        }
+    }
+
+    function afterUsedQuery(){
+        if($au('check_period_used_ds').getCurrentRecord().get('count') > 0){
+            Aurora.showConfirm('$[l:prompt]','$[l:period_already_exists]',function(){
+                $au('period_create_ds').submit();
+            },null,null,100);
+        }else{
+            $au('period_create_ds').submit();
+        }
+    }
+
+    function onPeriodCreateSuccess(){
+        Aurora.showMessage('$[l:prompt]','$[l:creating_success]',function(cmp){
+            closeWindow();
+            cmp.close();
+        });
+    }
+]]></script>
+<a:dataSets>
+    <a:dataSet id="period_create_ds" baseUrl="/fnd/gld-period">
+        <a:fields>
+            <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+            <a:field name="yearFrom" required="true"/>
+            <a:field name="yearTo" required="true"/>
+        </a:fields>
+        <a:events>
+            <a:event name="submitsuccess" handler="onPeriodCreateSuccess"/>
+        </a:events>
+    </a:dataSet>
+    <a:dataSet id="check_period_exists_ds" autoCreate="true" queryUrl="$[/request/@context_path]/fnd/gld-period/checkPeriodExists" queryDataSet="period_create_ds">
+        <a:fields>
+            <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+        </a:fields>
+    </a:dataSet>
+    <a:dataSet id="check_period_used_ds" autoCreate="true" queryUrl="$[/request/@context_path]/fnd/gld-period/checkPeriodUsed" queryDataSet="period_create_ds">
+        <a:fields>
+            <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+        </a:fields>
+    </a:dataSet>
+</a:dataSets>
+<a:screenBody>
+    <!--修改按钮位置,修改form宽度  Y.duan  2017-8-15 16:40:41-->
+    <a:form column="2" title="gld_period_set.period_set_query" width="715">
+        <a:formToolbar>
+            <a:label name="separator"/>
+            <a:button click="periodCreate" text="hap_create" width="80"/>
+            <a:button click="closeWindow" text="hap_back" width="80"/>
+        </a:formToolbar>
+        <a:textField name="periodSetCode" bindTarget="gld_period_set_result_ds" prompt="gld_period_set.period_set_code" readOnly="true"/>
+        <a:textField name="periodSetName" bindTarget="gld_period_set_result_ds" prompt="gld_period_set.period_set_name" readOnly="true"/>
+        <a:numberField name="yearFrom" allowDecimals="false" allowNegative="false" bindTarget="period_create_ds" prompt="gld_period_create.year_from"/>
+        <a:numberField name="yearTo" allowDecimals="false" allowNegative="false" bindTarget="period_create_ds" prompt="gld_period_create_year_to"/>
+    </a:form>
+</a:screenBody>
+    </a:view>
+</a:screen>

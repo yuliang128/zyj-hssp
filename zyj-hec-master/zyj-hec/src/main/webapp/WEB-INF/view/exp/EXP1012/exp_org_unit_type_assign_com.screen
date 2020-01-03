@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Description: 管理组织级部门类型定义分配公司
+ * Version: 1.0
+ * Author: rui.shi@hand-china.com
+ * Copyright Hand China Co.,Ltd.
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP1012_exp_org_unit_types_batch_assign_link" url="$[/request/@context_path]/exp/EXP1012/exp_org_unit_types_batch_assign.screen"/>
+        <script><![CDATA[
+            function EXP1012_expOrgUnitTypesAssignBackFun() {
+                $au('EXP1012_exp_org_unit_types_assign_com_window').close();
+                $au('EXP1012_exp_org_unit_types_result_ds').query();
+            }
+            
+            function EXP1012_companyCodeEditFunction(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'EXP1012_exp_org_unit_types_comapny_code_lov';
+                }
+            }
+            
+            function CSH2011_expOrgUnitTypesBatchAssignFun() {
+                new Aurora.Window({
+                    id: 'EXP1012_exp_org_unit_types_batch_assign_window',
+                    url: $au('EXP1012_exp_org_unit_types_batch_assign_link').getUrl() + '?unitTypeId=' + '$[/parameter/@unitTypeId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    title: '$[l:prompt.batch_disp_company]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP1012_exp_org_types_assign_com_ds').query();
+                });
+            }
+            
+            function EXP1012_onOrgUnitTypesAssignSubmitSuccessFun() {
+                $au('EXP1012_exp_org_types_assign_com_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+
+            <a:dataSet id="EXP1012_exp_org_types_assign_com_ds" autoPageSize="true" autoQuery="true" baseUrl="/exp/org-unit-type-asgn-com" queryUrl="$[/request/@context_path]/exp/org-unit-type-asgn-com/query?unitTypeId=$[/parameter/@unitTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="unitTypeId" defaultValue="$[/parameter/@unitTypeId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+
+                    <a:field name="companyCode" lovCode="LOV_FND_COMPANY?unitTypeId=$[/parameter/@unitTypeId]&amp;magOrgId=$[/parameter/@magOrgId]" autoComplete="true" required="true" prompt="fnd_company.company_code" title="fnd_company.assign_company">
+                        <a:mapping>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyShortName"/>
+
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1012_onOrgUnitTypesAssignSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1012_exp_org_payment_assign_com_from" column="2" title="exp_org_unit_types.unit_type_code" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1012_exp_org_unit_types_assign_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1012_exp_org_unit_types_assign_grid" type="save" width="80"/>
+                    <a:toolbarButton click="CSH2011_expOrgUnitTypesBatchAssignFun" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="EXP1012_expOrgUnitTypesAssignBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="unitTypeCode" bindTarget="EXP1012_exp_org_unit_types_result_ds" prompt="exp_org_unit_types.unit_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP1012_exp_org_unit_types_result_ds" prompt="exp_org_unit_types.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP1012_exp_org_unit_types_assign_grid" bindTarget="EXP1012_exp_org_types_assign_com_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="EXP1012_companyCodeEditFunction" width="80"/>
+                    <a:column name="companyShortName" align="left" prompt="fnd_company.company_short_name" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP1012_exp_org_unit_types_comapny_code_cb" prompt="prompt.enabledflag" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1012_exp_org_unit_types_comapny_code_lov"/>
+                    <a:checkBox id="EXP1012_exp_org_unit_types_comapny_code_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

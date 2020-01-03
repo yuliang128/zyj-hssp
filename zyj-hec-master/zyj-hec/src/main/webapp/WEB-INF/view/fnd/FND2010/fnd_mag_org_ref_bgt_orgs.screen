@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui $
+    $Date: 2019/02/15 15:47:04 $
+    $Revision: 1.3 $
+    $Purpose: 预算组织分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[     
+    ]]></a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function FND2010_closeAsgnBgtOrgCreateWindow() {
+                $au('FND2010_organization_edit_window').close();
+            }
+
+            function FND2010_budget_magOrgCode(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'FND2010_budget_lov';
+                }
+            }
+
+            function FND2010_update(dataSet, record, name, value, oldvalue) {
+                if (name == 'defaultFlag') {
+                    var allDataset = dataSet.getAll();
+                    var checkNumber = 0;
+                    if (allDataset.length > 0) {
+                        for (var i = 0; i < allDataset.length; i++) {
+                            if ((allDataset[i].get('enabledFlag') == 'Y' && allDataset[i].get('defaultFlag') == 'Y')) {
+                                checkNumber += 1;
+                            }
+                        }
+                    }
+                    if (value == 'Y') {
+                        //只有已启用的预算组织才能设置为默认预算组织
+                        var enabledFlag = record.get('enabledFlag');
+                        if (enabledFlag == 'N') {
+                            record.set('defaultFlag', 'N');
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:only_enabled_be_default]', null, 300, 150);
+                            return;
+                        }
+                        //只能有一个默认预算组织
+                        if (checkNumber > 1) {
+                            var records = dataSet.getAll();
+                            for(var i = 0;i<records.length;i++){
+                                if(records[i].get('bgtOrgId')!=record.get('bgtOrgId')){
+                                    records[i].set('defaultFlag','N');
+                                }
+                            }
+                            return;
+                        }
+                    }
+                    if(value == 'N'){
+                        //至少有一个默认预算组织
+                        if (checkNumber == 0) {
+                            record.set('defaultFlag', 'Y');
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:atleast_one_default_org]', null, 250, 100);
+                            return;
+                        }
+                    }
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+            }
+
+            function GLD6020_submitSuccessFun() {
+                $au('FND2010_fnd_budget_organizations_result_ds').query();
+            }
+
+            function FND2010_submit() {
+                var ds = $au('FND2010_fnd_budget_organizations_result_ds');
+                var records = ds.getAll();
+                var flag = 0;
+                for(var i = 0;i<records.length;i++){
+                    if('Y' == records[i].get('defaultFlag')){
+                        //如果保存时存在默认标志，则flag置为1
+                        flag = 1;
+                    }
+                }
+                if(0 == flag){
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:atleast_one_default_org]', null, 250, 100);
+                    return;
+                }
+                ds.submit();
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2010_fnd_budget_organizations_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/fnd/mag-org-ref-bgt-org" queryUrl="$[/request/@context_path]/fnd/mag-org-ref-bgt-org/query?magOrgId=$[/parameter/@magOrgId]"
+                       selectable="true" submitUrl="$[/request/@context_path]/fnd/mag-org-ref-bgt-org/submit">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="description" prompt="bgt_organization.description"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="fnd_mag_org_ref_bgt_org.default_flag"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="fnd_mag_org_ref_bgt_org.enabled_flag" />
+                    <a:field name="bgtOrgCode" lovCode="LOV_MAG_BGT?magOrgId=$[/parameter/@magOrgId]" required="true" prompt="bgt_organization.bgt_org_code">
+                        <a:mapping>
+                            <a:map from="bgtOrgCode" to="bgtOrgCode"/>
+                            <a:map from="description" to="description"/>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND2010_update"/>
+                    <a:event name="submitsuccess" handler="GLD6020_submitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="fnd_managing_organizations_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2010_fnd_budget_organization_grid" type="add" width="80"/>
+                    <a:toolbarButton click="FND2010_submit" text="hap.save" width="80"/>
+                    <a:toolbarButton click="FND2010_closeAsgnBgtOrgCreateWindow" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="FND2010_fnd_managing_organizations_result_ds" prompt="fnd_managing_organization.mag_org_code" readOnly="true" typeCase="upper"/>
+                <a:textField name="description" bindTarget="FND2010_fnd_managing_organizations_result_ds" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2010_fnd_budget_organization_grid" bindTarget="FND2010_fnd_budget_organizations_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="bgtOrgCode" align="center" editorFunction="FND2010_budget_magOrgCode" width="120"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="defaultFlag" align="left" editor="FND2010_budget_checkBox" width="120"/>
+                    <a:column name="enabledFlag" align="left" editor="FND2010_budget_checkBox" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="FND2010_budget_checkBox"/>
+                    <a:lov id="FND2010_budget_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

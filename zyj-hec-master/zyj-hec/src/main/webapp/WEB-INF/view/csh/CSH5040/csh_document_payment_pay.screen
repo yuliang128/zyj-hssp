@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH5040_getPeriodNameLink" url="$[/request/@context_path]/fnd/gld-period/getPeriodName"/>
+        <a:link id="CSH5040_getExchangeRateLink" url="$[/request/@context_path]/gld/exchange-rate/getExchangeRate"/>
+        <a:link id="CSH5040_executePaymentLink" url="$[/request/@context_path]/csh/doc-pay-acc-entity/payment"/>
+        <script><![CDATA[
+        function EXP5040_onPaymentUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'paymentDate') {
+                var param = {};
+                param.date = record.get('paymentDate');
+                param.accEntityId = '$[/parameter/@accEntityId]';
+                param.status = 'O';
+                Aurora.request({
+                    url: $au('CSH5040_getPeriodNameLink').getUrl(),
+                    para: param,
+                    success: function (resp) {
+                        if (resp && resp.rows && resp.rows[0]) {
+                            record.set('periodName', resp.rows[0]);
+                        } else {
+                            record.set('periodName', '');
+                            Aurora.showErrorMessage('$[l:hap.error]', '$[l:csh_document_payment.gld_period_not_open]');
+                        }
+                    }
+                });
+            } else if (name == 'methodCode') {
+                if (value == 'MANUAL') {
+                    record.getField('exchangeRate').setReadOnly(false);
+                } else {
+                    record.getField('exchangeRate').setReadOnly(true);
+                }
+            }
+            //汇兑日期、汇兑期间变更自动带出汇率
+            if (name == 'paymentDate' || name == 'periodName') {
+                if (record.get("currencyCode")) {
+                    var param = {};
+                    param.accEntityId = '$[/parameter/@accEntityId]';
+                    param.fromCurrency = '$[/model/defaultValue/records/record/@funcCurrency]';
+                    param.toCurrency = record.get('currencyCode');
+                    param.exchangeRateType = record.get('exchangeRateType');
+                    param.exchangeDate = record.get('paymentDate');
+                    param.periodName = record.get('periodName')
+                    Aurora.request({
+                        url: $au('CSH5040_getExchangeRateLink').getUrl(),
+                        para: param,
+                        success: function (resp) {
+                            if (resp && resp.rows && resp.rows[0]) {
+                                record.set('exchangeRate', resp.rows[0]);
+                            } else {
+                                record.set('exchangeRate', '');
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function CSH5040_payment() {
+            if (!$au('CSH5040_paymentDs').validate()) {
+                return;
+            }
+            var record = $au('CSH5040_paymentDs').getAt(0);
+            Aurora.Masker.mask($au('CSH5040_csh_document_payment_pay_window').wrap, '$[l:hap.pay_waiting]');
+            var param = {};
+            param.accEntityId = '$[/parameter/@accEntityId]';
+            param.paymentDate = record.get('paymentDate');
+            param.currencyCode = record.get('currencyCode');
+            param.exchangeRateType = record.get('exchangeRateType');
+            param.exchangeRate = record.get('exchangeRate');
+            param.bankAccountId = record.get('bankAccountId');
+            param.cashFlowItemId = record.get('cashFlowItemId');
+            param.paymentMethodId = record.get('paymentMethodId');
+            param.description = record.get('description');
+            param.data = $au('CSH5040_docPaymentResultDs').getJsonData(true);
+            param = [param];
+            Aurora.request({
+                lockMessage: '',
+                url: $au('CSH5040_executePaymentLink').getUrl(),
+                para: param,
+                success: function (resp) {
+                    Aurora.Masker.unmask($au('CSH5040_csh_document_payment_pay_window').wrap);
+                    CSH5040_returnPayment();
+                },
+                failure: function () {
+                    Aurora.Masker.unmask($au('CSH5040_csh_document_payment_pay_window').wrap);
+                },
+                error: function () {
+                    Aurora.Masker.unmask($au('CSH5040_csh_document_payment_pay_window').wrap);
+                }
+            });
+        }
+
+        function CSH5040_returnPayment() {
+            $au('CSH5040_csh_document_payment_pay_window').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5040_exchangeRateTypeDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/gld/exchangerate-type/query?enabledFlag=Y"/>
+            <a:dataSet id="CSH5040_cashFlowItemDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/csh/cash-flow-item/getCashFlowItem?accEntityId=$[/parameter/@accEntityId]"/>
+            <a:dataSet id="CSH5040_paymentDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="paymentDate" defaultValue="$[/model/defaultValue/records/record/@defaultDate]"
+                             prompt="csh_document_payment.payment_date" required="true"/>
+                    <a:field name="periodName" defaultValue="$[/model/defaultValue/records/record/@periodName]"
+                             prompt="gld_periods.period_name" readOnly="true" required="true"/>
+                    <a:field name="bankAccountNum"
+                             lovUrl="$[/request/@context_path]/csh/CSH5040/csh_payment_bank_account_lov.screen?accEntityId=$[/parameter/@accEntityId]&amp;currencyCode=$[/parameter/@currencyCode]"
+                             prompt="csh_payment.bank_account_code" required="true"
+                             title="csh_payment.bank_account_code">
+                        <a:mapping>
+                            <a:map from="bankAccountNum" to="bankAccountNum"/>
+                            <a:map from="bankAccountId" to="bankAccountId"/>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                            <a:map from="exchangeRateTypeName" to="exchangeRateTypeName"/>
+                            <a:map from="exchangeRateType" to="exchangeRateType"/>
+                            <a:map from="exchangeRate" to="exchangeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="currencyCode" prompt="exp_report_header.currency_code" readOnly="true"
+                             required="true"/>
+                    <a:field name="exchangeRateTypeName" displayField="description"
+                             options="CSH5040_exchangeRateTypeDs" prompt="csh_document_payment.exchange_rate_type"
+                             readOnly="true" returnField="exchangeRateType" valueField="typeCode"/>
+                    <a:field name="exchangeRateType"/>
+                    <a:field name="methodCode"/>
+                    <a:field name="exchangeRate" prompt="csh_document_payment.exchange_rate" readOnly="true"
+                             required="true"/>
+                    <a:field name="paymentMethodName" displayField="description"
+                             options="CSH5040_paymentMethodDs" prompt="csh_payment_method.payment_method_id"
+                             required="true" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="description" prompt="hap.comment"/>
+                    <a:field name="cashFlowItemName" displayField="description" options="CSH5040_cashFlowItemDs"
+                             prompt="csh_cash_flow_item.description" required="true" returnField="cashFlowItemId"
+                             valueField="cashFlowItemId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5040_onPaymentUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" padding="5" shrinkable="false" title="csh_payment_detail.paymenttab" width="590">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH5040_payment" text="hap.pay" width="80"/>
+                    <!--
+                    <a:toolbarButton click="CSH5040_returnPayment" text="hap.back" width="80"/>
+                    -->
+                </a:formToolbar>
+                <a:datePicker name="paymentDate" renderer="Aurora.formatDate" bindTarget="CSH5040_paymentDs"/>
+                <a:textField name="periodName" bindTarget="CSH5040_paymentDs"/>
+                <a:lov name="bankAccountNum" bindTarget="CSH5040_paymentDs"/>
+                <a:textField name="currencyCode" bindTarget="CSH5040_paymentDs"/>
+                <a:comboBox name="exchangeRateTypeName" bindTarget="CSH5040_paymentDs"/>
+                <a:numberField name="exchangeRate" decimalPrecision="6" allowDecimals="true" allowNegative="false"
+                               bindTarget="CSH5040_paymentDs"/>
+                <a:comboBox name="paymentMethodName" bindTarget="CSH5040_paymentDs"/>
+                <a:comboBox name="cashFlowItemName" bindTarget="CSH5040_paymentDs"/>
+                <a:textArea name="description" bindTarget="CSH5040_paymentDs" colspan="2" width="440"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

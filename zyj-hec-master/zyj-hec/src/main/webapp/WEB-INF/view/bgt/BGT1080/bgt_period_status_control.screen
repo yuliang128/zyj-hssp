@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/19 $
+    $Revision: 1.1 $
+    $Purpose: 预算期间控制
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1080_period_control_link" url="$[/request/@context_path]/bgt/BGT1080/bgt_period_status_control_detail.screen"/>
+        <script><![CDATA[
+            function BGT1080_PeriodControl() {
+                if ($au('BGT1080_period_detail_ds').validate()) {
+                    var record = $au('BGT1080_period_detail_ds').getAt(0);
+                    var bgtOrgId = record.get('bgtOrgId');
+                    var bgtPeriodSetCode = record.get('bgtPeriodSetCode');
+                    var bgtEntityId = record.get('bgtEntityId');
+                    var url = $au('BGT1080_period_control_link').getUrl() + '?bgtOrgId=' + bgtOrgId + '&bgtPeriodSetCode=' + bgtPeriodSetCode;
+                    if(bgtEntityId!=undefined){
+                        url = url + '&bgtEntityId=' + bgtEntityId;
+                    }
+                    new Aurora.Window({
+                        id: 'BGT1080_period_control_detail_window',
+                        url: url ,
+                        title: '',
+                        fullScreen:true,
+                        side: 'right'
+                    });
+                }
+            }
+            
+            function BGT1080_PeriodSetCodelovUpdate(dataSet, record, name, value, oldValue) {
+                if (name == 'bgtOrgCode') {
+                    record.set('periodSetCode', '');
+                    record.set('periodSetDesc', '');
+                    record.set('entityName', '');
+                    if (!Ext.isEmpty(value)) {
+                        record.getField('entityName').setLovPara('bgtOrgId', record.get('bgtOrgId'));
+                    } else {
+                        record.getField('bgtPeriodSetCode').setLovService('');
+                        record.getField('entityName').setLovService('');
+                    }
+                } else if (name == 'bgtPeriodSetCode') {
+                    record.getField('entityName').setLovPara('periodSetId', record.get('periodSetId'));
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1080_period_detail_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="bgtOrgCode" autoComplete="true" autoCompleteField="bgtOrgCode" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="LOV_BGT_PERIOD_BGT_ORGANIZATION?magOrgId=$[/session/@magOrgId]" lovWidth="540" prompt="bgt_organization.bgt_org_code" required="true" title="bgt_organization.select">
+                        <a:mapping>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                            <a:map from="bgtOrgCode" to="bgtOrgCode"/>
+                            <a:map from="bgtOrgName" to="bgtOrgDesc"/>
+                            <a:map from="periodSetId" to="periodSetId"/>
+                            <a:map from="periodSetCode" to="bgtPeriodSetCode"/>
+                            <a:map from="periodSetName" to="bgtPeriodSetDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="periodSetId"/>
+                    <a:field name="bgtPeriodSetCode" prompt="bgt_period.bgt_period_code" readOnly="true" required="true"/>
+                    <a:field name="bgtPeriodSetDesc" prompt="bgt_budget_item.description" readOnly="true"/>
+                    <a:field name="entityCode"/>
+                    <a:field name="entityName" autoComplete="true" autoCompleteField="entityName" lovHeight="500" lovCode="LOV_BGT_ENTITY_UNDER_BGT_ORG" lovWidth="530" prompt="bgt_entity.bgt_entity" title="bgt_entitie_select">
+                        <a:mapping>
+                            <a:map from="entityCode" to="entityCode"/>
+                            <a:map from="entityName" to="entityName"/>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1080_PeriodSetCodelovUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="BGT1080_PeriodControl" text="hap_confirm" width="80"/>
+            </a:screenTopToolbar>
+            <a:form labelWidth="120" marginWidth="10" title="set_wfl_workflow.chose_mag_org_code">
+                <a:lov name="bgtOrgCode" bindTarget="BGT1080_period_detail_ds" width="200"/>
+                <a:textField name="bgtPeriodSetCode" bindTarget="BGT1080_period_detail_ds" width="200"/>
+                <a:textField name="bgtPeriodSetDesc" bindTarget="BGT1080_period_detail_ds" width="200"/>
+                <a:lov name="entityName" id="entityName" bindTarget="BGT1080_period_detail_ds" width="200"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

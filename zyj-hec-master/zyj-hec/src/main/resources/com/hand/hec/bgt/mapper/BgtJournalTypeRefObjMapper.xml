@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtJournalTypeRefObjMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtJournalTypeRefObj">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="BGT_JOURNAL_TYPE_ID" property="bgtJournalTypeId" jdbcType="DECIMAL"/>
+        <result column="EXPENSE_OBJECT_TYPE_ID" property="expenseObjectTypeId" jdbcType="DECIMAL"/>
+        <result column="LAYOUT_POSITION" property="layoutPosition" jdbcType="VARCHAR"/>
+        <result column="LAYOUT_PRIORITY" property="layoutPriority" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_OBJECT_ID" property="defaultObjectId" jdbcType="DECIMAL"/>
+        <result column="REQUIRED_FLAG" property="requiredFlag" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_TYPE_CODE" property="expenseObjectTypeCode" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_TYPE_NAME" property="expenseObjectTypeName" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_OBJECT_CODE" property="defaultObjectCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_OBJECT_DESC" property="defaultObjectDesc" jdbcType="VARCHAR"/>
+        <result column="LAYOUT_POSITION_DISPLAY" property="layoutPositionDisplay" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryByBgtJournalType" resultMap="BaseResultMap">
+        SELECT
+            t.ref_id,
+            t.expense_object_type_id,
+            t.bgt_journal_type_id,
+            v.mo_exp_obj_type_code AS expense_object_type_code,
+            vt.DESCRIPTION expense_object_type_name,
+            t.layout_position,
+            (
+            SELECT SCVT.MEANING
+            FROM SYS_CODE_VALUE_B SCVB
+            INNER JOIN SYS_CODE_B SCB
+            ON (SCB.CODE_ID = SCVB.CODE_ID AND SCB.CODE='LAYOUT_LOCALITY')
+            LEFT OUTER JOIN SYS_CODE_VALUE_TL SCVT
+            ON (SCVB.CODE_VALUE_ID = SCVT.CODE_VALUE_ID AND SCVT.LANG =
+            #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+            WHERE SCVB.VALUE = t.layout_position
+            ) layout_position_display,
+            t.layout_priority,
+            t.default_object_id,
+            t.required_flag,
+            ( SELECT vv.mo_expense_object_code FROM exp_mo_expense_object_value vv WHERE vv.mo_expense_object_id = t.default_object_id ) AS default_object_code,
+            ( SELECT vv.DESCRIPTION FROM exp_mo_expense_object_value_tl vv WHERE vv.mo_expense_object_id = t.default_object_id and vv.lang = #{request.locale,jdbcType=VARCHAR}) AS default_object_desc
+        FROM
+            bgt_journal_type_ref_obj t
+            left outer join exp_mo_expense_object_type v on (t.expense_object_type_id = v.MO_EXP_OBJ_TYPE_ID )
+            left outer join exp_mo_expense_object_type_tl vt on (v.MO_EXP_OBJ_TYPE_ID = vt.MO_EXP_OBJ_TYPE_ID and vt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+             t.bgt_journal_type_id =  #{bgtJournalTypeId }
+        ORDER BY
+            v.mo_exp_obj_type_code
+    </select>
+
+
+</mapper>

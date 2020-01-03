@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: jiangxz
+    $Date: 2019-2-19 上午10:28:57
+    $Revision: 1.0  
+    $Purpose: 管理组织级费用申请单类型定义-员工组
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function EXP4020_closeEmpGroupsCreateWindow() {
+            $au('EXP4020_exp_mo_req_ref_emp_gps_window').close();
+        }
+
+        function EXP4020_empEditorFunction(record, name) {
+            if (record.isNew) {
+                return 'EXP4020_EmpGpLov';
+            }
+            return '';
+        }
+
+        function EXP4020_empGroupsSubmit(ds) {
+            ds.query();
+        }
+
+        function EXP4020_gridCellClickFun(grid, row, name, record) {
+            if (name == 'moEmpGroupCode') {
+                var magOrgId = '$[/parameter/@magOrgId]';
+                if (!!magOrgId) {
+                    record.getMeta().getField(name).setLovPara('magOrgId', magOrgId);
+                    record.getMeta().getField(name).setLovPara('moExpReqTypeId', '$[/parameter/@moExpReqTypeId]');
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4020_moReqTypesDs" autoQuery="true"
+                       baseUrl="/exp/mo-req-type"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]">
+                <a:fields>
+                    <a:field name="moExpReqTypeCode" prompt="exp_mo_req_types.mo_exp_req_type_code"
+                             typeCase="upper"/>
+                    <a:field name="description" prompt="exp_mo_req_types.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP4020_MoReqTypeRefEmpGpDs" autoQuery="true" baseUrl="/exp/mo-req-type-ref-emp-gp"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type-ref-emp-gp/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="moEmpGroupCode" lovlabelWidth="200" lovCode="EXP_MO_REQ_TYPE_EMP_GP_LOV"
+                             prompt="exp_employee_group.expense_user_group_code"
+                             required="true">
+                        <a:mapping>
+                            <a:map from="moEmpGroupId" to="moEmpGroupId"/>
+                            <a:map from="moEmpGroupCode" to="moEmpGroupCode"/>
+                            <a:map from="description" to="moEmpGroupName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moEmpGroupId"/>
+                    <a:field name="moEmpGroupName" prompt="exp_employee_group.description"/>
+                    <a:field name="enabledFlag" prompt="exp_mo_req_types.enabled_flag" checkedValue="Y" defaultValue="Y"
+                             uncheckedValue="N"/>
+                    <a:field name="moExpReqTypeId" defaultValue="$[/parameter/@moExpReqTypeId]"/>
+                    <a:field name="refId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4020_empGroupsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4020_MoReqTypeRefEmpGpForm" column="2" title="exp_mo_rep_type_ref_emp_gp.form"
+                    width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4020_MoReqTypeRefEmpGpGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4020_MoReqTypeRefEmpGpGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4020_MoReqTypeRefEmpGpGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4020_closeEmpGroupsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReqTypeCode" bindTarget="EXP4020_moReqTypesDs" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4020_moReqTypesDs" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4020_MoReqTypeRefEmpGpGrid" bindTarget="EXP4020_MoReqTypeRefEmpGpDs" marginHeight="195"
+                    navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="moEmpGroupCode" align="center" editorFunction="EXP4020_empEditorFunction"
+                              width="80"/>
+                    <a:column name="moEmpGroupName" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP4020_EmpGpCheckBox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP4020_EmpGpLov"/>
+                    <a:checkBox id="EXP4020_EmpGpCheckBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4020_gridCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

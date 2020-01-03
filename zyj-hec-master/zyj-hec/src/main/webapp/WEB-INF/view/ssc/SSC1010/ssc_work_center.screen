@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-15 16:58:28
+    $Revision: 1.0
+    $Purpose: 工作中心定义
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <!--<a:link id="ssc_work_center_busi_scope_link" url="$[/request/@context_path]/ssc/SSC1010/ssc_work_center_busi_scope.screen"/>-->
+        <a:link id="ssc_work_center_busi_scope_link" url="$[/request/@context_path]/ssc/SSC1010/ssc_work_center_busi_scope.screen"/>
+        <script><![CDATA[
+            
+            function SSC1010_gridCellClick(grid, row, name, record) {
+                if (name == 'managerName') {
+                    var manager_type = record.get('managerType');
+                    if (Ext.isEmpty(manager_type)) {
+                        Aurora.showMessage('$[l:prompt]', '$[l:ssc_work_center.choose_manager_type]');
+                        return;
+                    } else {
+                        record.getMeta().getField('managerName').setReadOnly(false);
+                        record.getMeta().getField('managerName').setLovPara('managerType', manager_type);
+                    }
+                }
+            }
+            
+            function SSC1010_workCenterUpdate(ds, record, name, value) {
+                if (name == 'managerType') {
+                    record.set('managerId', '');
+                    record.set('managerName', '');
+                }
+            }
+            
+            function SSC1010_workCenterQuery(ds) {
+                ds.query();
+            }
+            function SSC1010_codeFun(record,name){
+                if(record.isNew){
+                    return 'text_id';
+                }
+                return '';
+            }
+            function SSC1010_AsgnRule(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                var workCenterId = record.get('workCenterId');
+                return '<a href=\'javascript:OpenAsgnRule(' + workCenterId + ');\'>' + '$[l:ssc_work_center.asgn_rule]' + '</a>';
+            }
+            
+            function OpenAsgnRule(id) {
+                var url = $au('ssc_work_center_busi_scope_link').getUrl() + '?workCenterId=' + id;
+                new Aurora.Window({
+                    id:'SSC1010_work_busi_scope_win',
+                    url: url,
+                    title: '$[l:ssc_work_center.asgn_rule]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1010_manager_type_ds" autoQuery="true" fetchAll="true"
+                                                queryUrl="$[/request/@context_path]/common/auroraCode/ssc_manager_type/"/>
+            <a:dataSet id="SSC1010_process_type_ds" autoQuery="true" fetchAll="true"
+                                                            queryUrl="$[/request/@context_path]/common/auroraCode/ssc_process_model/"/>
+            <a:dataSet id="SSC1010_audit_type_ds" autoQuery="true" fetchAll="true"
+                                                            queryUrl="$[/request/@context_path]/common/auroraCode/ssc_audit_model/"/>
+            <a:dataSet id="SSC1010_work_center_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="workCenterCode" prompt="ssc_work_center.work_center_code"/>
+                    <a:field name="description" prompt="ssc_work_center.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SSC1010_work_center_ds" autoPageSize="true" autoQuery="true" baseUrl="/ssc/work-center" queryUrl="$[/request/@context_path]/ssc/work-center/query" queryDataSet="SSC1010_work_center_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="workCenterId"/>
+                    <a:field name="workCenterCode" prompt="ssc_work_center.work_center_code" required="true"/>
+                    <a:field name="description" prompt="ssc_work_center.description"/>
+                    <a:field name="managerType"/>
+                    <a:field name="managerTypeName" displayField="meaning" options="SSC1010_manager_type_ds" prompt="ssc_work_center.manager_type" returnField="managerType" valueField="value"/>
+                    <a:field name="managerId"/>
+                    <a:field name="managerName" lovCode="SSC_WORK_MANAGER_LOV"  autoComplete="true" autoCompleteField="managerName"  lovWidth="500" prompt="ssc_work_center.manager_name" readOnly="true" title="ssc_work_center_choose manager">
+                        <a:mapping>
+                            <a:map from="managerName" to="managerName"/>
+                            <a:map from="managerId" to="managerId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="processModel"/>
+                    <a:field name="processModelName" displayField="meaning" options="SSC1010_process_type_ds" prompt="ssc_work_center.process_model" returnField="processModel" valueField="value"/>
+                    <a:field name="auditType"/>
+                    <a:field name="auditTypeName" displayField="meaning" options="SSC1010_audit_type_ds" prompt="ssc_work_center.audit_type" returnField="auditType" valueField="value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="ssc_work_center.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="SSC1010_workCenterUpdate"/>
+                    <a:event name="submitsuccess" handler="SSC1010_workCenterQuery"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:gridButton bind="SSC1010_work_center_grid" type="add" width="80"/>
+            <a:gridButton bind="SSC1010_work_center_grid" type="save" width="80"/>
+            <a:gridButton bind="SSC1010_work_center_grid" type="clear" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="SSC1010_work_center_query_ds" column="2" resultTarget="SSC1010_work_center_ds" style="margin-right:10px; width:100%;border:none;">
+            <a:formToolBar>
+                <a:textField name="workCenterCode" bindTarget="SSC1010_work_center_query_ds" typeCase="upper"/>
+                <a:textField name="description" bindTarget="SSC1010_work_center_query_ds"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <a:grid id="SSC1010_work_center_grid" bindTarget="SSC1010_work_center_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="workCenterCode" align="center" editorFunction="SSC1010_codeFun"/>
+                <a:column name="description" align="center" editor="text_id"/>
+                <a:column name="managerTypeName" align="center" editor="comboBox_id"/>
+                <a:column name="managerName" align="center" editor="lov_id"/>
+                <a:column name="processModelName" align="center" editor="comboBox_id"/>
+                <a:column name="auditTypeName" align="center" editor="comboBox_id"/>
+                <a:column name="enabledFlag" align="center" editor="checkBox_id"/>
+                <a:column name="asgnRule" align="center" renderer="SSC1010_AsgnRule"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="text_id" typeCase="upper"/>
+                <a:comboBox id="comboBox_id"/>
+                <a:checkBox id="checkBox_id"/>
+                <a:lov id="lov_id"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="SSC1010_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

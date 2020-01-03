@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei
+    $Date: 2017-11-28 14:45:19  
+    $Revision: 1.0  
+    $Purpose: 付款批类型定义-合并规则
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+            function CSH1260_closeTpRuleWindow() {
+                $au('CSH1260_csh_payment_b_types_tp_rule_window').close();
+            }
+            
+            /* function CSH1260_tpRuleEdit(record, name) {
+             if (record.isNew) {
+             return "CSH1260_tp_rule_comboBox";
+             } else {
+             return "";
+             }
+             } */
+            
+            function CSH1260_tpRuleSubmit(ds) {
+                ds.query();
+            }
+            
+            function CSH1260_gridCellclick(grid, idx, name, record) {
+                if (name == 'parameterValueDisplay') {
+                    var para_type = record.get('parameterType');
+                    if (Ext.isEmpty(para_type)) {
+                        record.getMeta().getField('parameterValueDisplay').setOptions('');
+                        new Aurora.showMessage('$[l:prompt]', '$[l:bgt_sulution_detail.choice_para_type]');
+                        return;
+                    }
+                    //付款事务相关
+                    if (para_type == 'TRANSACTION') {
+                        record.getMeta().getField('parameterValueDisplay').setOptions('csh_payment_paramenter_trx_ds');
+                    } else if (para_type == 'VOUCHER') {
+                        //付款凭证行相关
+                        record.getMeta().getField('parameterValueDisplay').setOptions('csh_payment_paramenter_vchr_ds');
+                        if (record.get('drCrCode') == 'DR') {
+                            record.getMeta().getField('parameterValueDisplay').setOptions('csh_payment_paramenter_dr_vchr_ds');
+                        }
+                    } else {
+                        record.getMeta().getField('parameterValueDisplay').setOptions('');
+                    }
+                }
+            }
+            
+            function CSH1260_tpRuleUpdate(ds, record, name, value) {
+                if (name == 'drCrCodeDisplay') {
+                    record.set('parameterTypeDisplay', '');
+                    record.set('parameterType', '');
+                }
+                if (name == 'parameterType') {
+                    record.set('parameterValueDisplay', '');
+                    record.set('parameterValue', '');
+                }
+            }
+
+            function parameterValueEditorFunc(record, name) {
+                if(name == 'parameterValueDisplay'){
+                    if(record.get('parameterType') ==  'FUNCTION'){
+                        return 'CSH1260_tp_rule_textField';
+                    } else {
+                        return 'CSH1260_tp_rule_comboBox';
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="dr_cr_flag_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/DR_CR_FLAG"/>
+            <a:dataSet id="csh_payment_parameter_type_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_PARAMETER_TYPE"/>
+            <a:dataSet id="csh_payment_paramenter_trx_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_PARAMETER_TRX"/>
+            <a:dataSet id="csh_payment_paramenter_vchr_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_PARAMETER_VCHR"/>
+            <a:dataSet id="csh_payment_paramenter_dr_vchr_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_PARAMETER_DR_VCHR"/>
+            <a:dataSet id="CSH1260_csh_payment_batch_types_info_ds" loadData="true" autoQuery="true"  queryUrl="$[/request/@context_path]/csh/payment-batch-type/query?typeId=$[/parameter/@typeId]">
+                <a:fields>
+                    <a:field name="typeCode" prompt="csh_payment_batch_type.type_code" readOnly="true"/>
+                    <a:field name="description" prompt="csh_payment_batch_type.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH1260_csh_payment_batch_tp_rule_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-batch-tp-rule" pageSize="50" queryUrl="$[/request/@context_path]/csh/payment-batch-tp-rule/query?typeId=$[/parameter/@typeId]" selectable="true">
+                <a:fields>
+                    <a:field name="typeRuleId"/>
+                    <a:field name="typeId" defaultValue="$[/parameter/@typeId]"/>
+                    <a:field name="drCrCodeDisplay" displayfield="meaning" options="dr_cr_flag_ds" prompt="csh_payment_batch_tp_rule.dr_cr_code" required="true" returnfield="drCrCode" valuefield="value"/>
+                    <a:field name="drCrCode"/>
+                    <a:field name="parameterTypeDisplay" displayfield="meaning" options="csh_payment_parameter_type_ds" prompt="csh_payment_batch_tp_rule.parameter_type" required="true" returnfield="parameterType" valuefield="value"/>
+                    <a:field name="parameterType"/>
+                    <a:field name="parameterValueDisplay" displayfield="meaning" prompt="csh_payment_batch_tp_rule.parameter_value" required="true" returnfield="parameterValue" valuefield="value"/>
+                    <a:field name="parameterValue"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1260_tpRuleUpdate"/>
+                    <a:event name="submitsuccess" handler="CSH1260_tpRuleSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="100" title="csh_payment_batch_types_tp_rule" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1260_csh_payment_batch_tp_rule_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1260_csh_payment_batch_tp_rule_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1260_csh_payment_batch_tp_rule_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH1260_closeTpRuleWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="typeCode" bindTarget="CSH1260_csh_payment_b_types_result_ds" prompt="csh_payment_batch_type.type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1260_csh_payment_b_types_result_ds" prompt="csh_payment_batch_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1260_csh_payment_batch_tp_rule_grid" bindTarget="CSH1260_csh_payment_batch_tp_rule_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="drCrCodeDisplay" align="center" editor="CSH1260_tp_rule_comboBox" width="100"/>
+                    <a:column name="parameterTypeDisplay" align="center" editor="CSH1260_tp_rule_comboBox" width="100"/>
+                    <a:column name="parameterValueDisplay" align="center" editorFunction="parameterValueEditorFunc" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="CSH1260_tp_rule_comboBox"/>
+                    <a:textField id="CSH1260_tp_rule_textField"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH1260_gridCellclick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

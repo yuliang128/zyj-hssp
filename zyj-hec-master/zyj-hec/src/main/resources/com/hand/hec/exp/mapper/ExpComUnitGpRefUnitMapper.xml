@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpComUnitGpRefUnitMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpComUnitGpRefUnit">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="UNIT_GROUP_COM_ASSIGN_ID" property="unitGroupComAssignId" jdbcType="DECIMAL"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="UNIT_NAME" property="unitName" jdbcType="VARCHAR"/>
+        <result column="UNIT_CODE" property="unitCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryRefUnitInfo" resultMap="BaseResultMap" parameterType="com.hand.hec.exp.dto.ExpComUnitGpRefUnit">
+        SELECT
+        A.REQUEST_ID,
+        A.PROGRAM_ID,
+        A.OBJECT_VERSION_NUMBER,
+        A.CREATED_BY,
+        A.CREATION_DATE,
+        A.LAST_UPDATED_BY,
+        A.LAST_UPDATE_DATE,
+        A.LAST_UPDATE_LOGIN,
+        A.REF_ID,
+        A.UNIT_GROUP_COM_ASSIGN_ID,
+        A.UNIT_ID,
+        A.ENABLED_FLAG,
+        eou.UNIT_CODE,
+        ( SELECT eout.DESCRIPTION FROM exp_org_unit_tl eout WHERE eout.UNIT_ID = a.UNIT_ID and eout.lang = #{request.locale,jdbcType=VARCHAR} ) UNIT_NAME,
+        fc.COMPANY_CODE,
+        ( SELECT fct.COMPANY_SHORT_NAME FROM fnd_company_tl fct WHERE fct.company_id = ac.COMPANY_ID and fct.lang = #{request.locale,jdbcType=VARCHAR} ) COMPANY_NAME
+        FROM
+        exp_com_unit_gp_ref_unit A
+        LEFT JOIN exp_org_unit eou ON ( a.UNIT_ID = eou.UNIT_ID )
+        LEFT JOIN exp_mo_unit_group_asgn_com ac ON ( a.UNIT_GROUP_COM_ASSIGN_ID = ac.ASSIGN_ID )
+        LEFT JOIN fnd_company fc ON ( ac.COMPANY_ID = fc.COMPANY_ID )
+        where 1=1
+        <if test="unitId!=null">
+            and a.unit_id = #{unitId}
+        </if>
+        <if test="unitGroupComAssignId!=null">
+            and a.UNIT_GROUP_COM_ASSIGN_ID = #{unitGroupComAssignId}
+        </if>
+        ORDER BY
+        ref_Id ASC
+    </select>
+
+
+</mapper>

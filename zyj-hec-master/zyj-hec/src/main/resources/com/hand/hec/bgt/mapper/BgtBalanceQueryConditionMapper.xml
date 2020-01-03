@@ -1,0 +1,3243 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBalanceQueryConditionMapper">
+    <delete id="filterBalanceByPeriod">
+       delete t from bgt_journal_balance_init t
+       where not exists
+       (select 1
+                from dual
+        <trim prefixOverrides="and" prefix="where">
+                <if test="group.yearFrom != null and group.internalPeriodNumFrom != null">
+                    and (t.period_year &gt; #{group.yearFrom} or
+                    (t.period_year = #{group.yearFrom} and t.bgt_period_num &gt;= #{group.internalPeriodNumFrom}))
+                </if>
+                <if test="group.yearTo != null and group.internalPeriodNumTo != null">
+                    and (t.period_year &lt; #{group.yearTo} or
+                    (t.period_year = #{group.yearTo} and t.bgt_period_num &lt;= #{group.internalPeriodNumTo}))
+                </if>
+                <if test="group.quarterFrom != null">
+                    and (#{group.quarterFrom} is null or
+                    t.period_quarter &gt;= #{group.quarterFrom})
+                </if>
+                <if test="group.quarterTo != null">
+                    and (#{group.quarterTo} is null or
+                    t.period_quarter &lt;= #{group.quarterTo})
+                </if>
+                <if test="group.periodFrom != null">
+                    and (#{group.periodFrom} is null or
+                    t.period_name &gt;= #{group.periodFrom})
+                </if>
+                <if test="group.periodTo != null">
+                    and (#{group.periodTo} is null or
+                    t.period_name &lt;= #{group.periodTo})
+                </if>
+        </trim>
+        )
+        and t.session_id = #{request.sessionId}
+    </delete>
+    <delete id="filterReserveByPeriod">
+       delete t from bgt_budget_reserve_init t
+       where not exists
+       (select 1
+                from dual
+                <trim prefixOverrides="and" prefix="where">
+                      <if test="group.yearFrom != null and group.internalPeriodNumFrom != null">
+                         and (t.period_year &gt; #{group.yearFrom} or
+                          (t.period_year = #{group.yearFrom} and t.bgt_period_num &gt;= #{group.internalPeriodNumFrom}))
+                      </if>
+                        <if test="group.yearTo != null and group.internalPeriodNumTo != null">
+                            and (t.period_year &lt; #{group.yearTo} or
+                            (t.period_year = #{group.yearTo} and t.bgt_period_num &lt;= #{group.internalPeriodNumTo}))
+                        </if>
+                        <if test="group.quarterFrom != null">
+                            and (#{group.quarterFrom} is null or
+                            t.period_quarter &gt;= #{group.quarterFrom})
+                        </if>
+                        <if test="group.quarterTo != null">
+                            and (#{group.quarterTo} is null or
+                            t.period_quarter &lt;= #{group.quarterTo})
+                        </if>
+                        <if test="group.periodFrom != null">
+                            and (#{group.periodFrom} is null or
+                            t.period_name &gt;= #{group.periodFrom})
+                        </if>
+                        <if test="group.periodTo != null">
+                            and (#{group.periodTo} is null or
+                            t.period_name &lt;= #{group.periodTo})
+                        </if>
+                </trim>
+        )
+        and t.session_id = #{request.sessionId}
+    </delete>
+    <delete id="filterBalanceByQuarter">
+        delete t from bgt_journal_balance_init t
+        where not exists
+        (select 1
+        from dual
+        where (#{group.yearFrom} is null or
+        t.period_year &gt;= #{group.yearFrom})
+        and (#{group.yearTo} is null or
+        t.period_year &lt;= #{group.yearTo})
+        and (#{group.quarterFrom} is null or
+        t.period_quarter &gt;= #{group.quarterFrom})
+        and (#{group.quarterTo} is null or
+        t.period_quarter &lt;= #{group.quarterTo}))
+        and t.session_id = #{request.sessionId}
+    </delete>
+    <delete id="filterReserveByQuarter">
+        delete t from bgt_budget_reserve_init t
+        where not exists
+        (select 1
+        from dual
+        where (#{group.yearFrom} is null or
+        t.period_year &gt;= #{group.yearFrom})
+        and (#{group.yearTo} is null or
+        t.period_year &lt;= #{group.yearTo})
+        and (#{group.quarterFrom} is null or
+        t.period_quarter &gt;= #{group.quarterFrom})
+        and (#{group.quarterTo} is null or
+        t.period_quarter &lt;= #{group.quarterTo}))
+        and t.session_id = #{request.sessionId}
+    </delete>
+    <delete id="filterBalanceByYear">
+        delete t from bgt_journal_balance_init t
+        where (t.period_year &lt; #{group.yearFrom})
+        or (t.period_year &gt; #{group.yearTo})
+        and t.session_id = #{request.sessionId}
+    </delete>
+    <delete id="filterReserveByYear">
+        delete t from bgt_budget_reserve_init t
+        where (t.period_year &lt; #{group.yearFrom})
+        or (t.period_year &gt; #{group.yearTo})
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <!--预算项目类型-->
+    <insert id="initBalanceBudgetItemTypeTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+            #{request.sessionId},
+            'BUDGET_ITEM_TYPE_TEMP',
+            i.budget_item_type_id
+        from
+            bgt_journal_balance_init bi
+        inner join bgt_budget_item i on
+            bi.budget_item_id = i.budget_item_id
+        where
+            bi.session_id = #{request.sessionId}
+        group by
+            i.budget_item_type_id
+    </insert>
+
+    <insert id="initReserveBudgetItemTypeTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+            #{request.sessionId},
+            'BUDGET_ITEM_TYPE_TEMP',
+            i.budget_item_type_id
+        from
+            bgt_budget_reserve_init bi
+        inner join bgt_budget_item i on
+            bi.budget_item_id = i.budget_item_id
+        where
+            bi.session_id = #{request.sessionId}
+        group by
+            i.budget_item_type_id
+    </insert>
+    <insert id="generateBudgetItemType">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'BUDGET_ITEM_TYPE',
+        i.id
+        from
+        bgt_balance_query_id_temp i
+        inner join bgt_budget_item_type t on
+        i.id = t.budget_item_type_id
+        where
+        i.session_id =
+        #{request.sessionId}
+        and (
+        #{condition.parameterValueCode} is null or
+        t.budget_item_type_code like concat('%', #{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null or
+        t.budget_item_type_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null or
+        t.budget_item_type_code &lt;= #{condition.parameterValueTo})
+        and t.bgt_org_id = #{group.bgtOrgId}
+        group by i.id
+    </insert>
+
+    <select id="countBudgetItemType" resultType="java.lang.Long">
+      select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'BUDGET_ITEM_TYPE'
+    </select>
+
+    <delete id="filterBalanceBudgetItemType">
+        delete
+            t
+        from
+            bgt_journal_balance_init t
+        where
+            t.session_id =
+            #{request.sessionId}
+            and not exists (
+            select
+                1
+            from
+                bgt_budget_item z,
+                bgt_balance_query_id_temp s
+            where
+                z.budget_item_id = t.budget_item_id
+                and s.id = z.budget_item_type_id
+                and s.type = 'BUDGET_ITEM_TYPE'
+                and s.session_id =
+                #{request.sessionId})
+    </delete>
+
+    <delete id="filterReserveBudgetItemType">
+        delete
+            t
+        from
+            bgt_budget_reserve_init t
+        where
+            t.session_id =
+            #{request.sessionId}
+            and not exists (
+            select
+                1
+            from
+                bgt_budget_item z,
+                bgt_balance_query_id_temp s
+            where
+                z.budget_item_id = t.budget_item_id
+                and s.id = z.budget_item_type_id
+                and s.type = 'BUDGET_ITEM_TYPE'
+                and s.session_id =
+                #{request.sessionId})
+    </delete>
+
+    <delete id="clearBudgetItemTypeTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'BUDGET_ITEM_TYPE_TEMP'
+    </delete>
+
+    <!-- 预算项目 -->
+    <insert id="initBalanceBudgetItemTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'BUDGET_ITEM_TEMP',
+        bi.budget_item_id
+        from
+        bgt_journal_balance_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.budget_item_id
+    </insert>
+
+    <insert id="initBudgetItemTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+		type,
+		id)
+		select
+			'BUDGET_ITEM_TEMP',
+			b.parent_budget_item_id
+		from
+			bgt_budget_item_hierarchy b,
+			bgt_budget_item i,
+			bgt_balance_query_id_temp s
+		where
+			i.bgt_org_id = #{group.bgtOrgId}
+			and b.budget_item_id = i.budget_item_id
+			and s.type = 'BUDGET_ITEM_TEMP'
+			and b.budget_item_id = s.id
+			and b.parent_budget_item_id
+			and s.session_id = #{request.sessionId}
+		group by b.parent_budget_item_id;
+
+    </insert>
+
+    <insert id="initReserveBudgetItemTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'BUDGET_ITEM_TEMP',
+        bi.budget_item_id
+        from
+        bgt_budget_reserve_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.budget_item_id
+    </insert>
+
+    <insert id="generateBudgetItem">
+        insert
+        into
+        bgt_balance_query_id_temp (
+        session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'BUDGET_ITEM',
+        t.budget_item_id
+        from
+        bgt_budget_item t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.budget_item_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.budget_item_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.budget_item_code &lt;= #{condition.parameterValueTo})
+        and (#{condition.controlRuleRange} = 'ALL'
+        or (#{condition.controlRuleRange} = 'SUMMARY'
+        and t.summary_flag = 'Y')
+        or (#{condition.controlRuleRange} = 'DETAIL'
+        and t.summary_flag = 'N'))
+        and t.bgt_org_id = #{group.bgtOrgId}
+        and z.type = 'BUDGET_ITEM_TEMP'
+        and t.budget_item_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by t.budget_item_id
+    </insert>
+
+    <select id="countBudgetItem" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'BUDGET_ITEM'
+    </select>
+
+    <delete id="filterBalanceBudgetItem">
+        delete
+            t
+        from
+            bgt_journal_balance_init t
+        where
+            t.session_id = #{request.sessionId}
+            and not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                s.session_id =
+                #{request.sessionId}
+                and (s.id = t.budget_item_id
+                or exists (
+                select
+                    1
+                from
+                    bgt_budget_item_hierarchy b
+                where
+                    b.budget_item_id = t.budget_item_id
+                    and b.parent_budget_item_id = s.id))
+                and s.type = 'BUDGET_ITEM')
+    </delete>
+
+    <delete id="filterReserveBudgetItem">
+        delete t
+        from
+            bgt_budget_reserve_init t
+        where
+            t.session_id = #{request.sessionId}
+            and not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                s.session_id =
+                #{request.sessionId}
+                and (s.id = t.budget_item_id
+                or exists (
+                select
+                    1
+                from
+                    bgt_budget_item_hierarchy b
+                where
+                    b.budget_item_id = t.budget_item_id
+                    and b.parent_budget_item_id = s.id))
+                and s.type = 'BUDGET_ITEM')
+    </delete>
+
+    <delete id="clearBudgetItemTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'BUDGET_ITEM_TEMP'
+    </delete>
+
+    <!-- 部门 -->
+    <insert id="initBalanceOrgUnitTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'ORG_UNIT_TEMP',
+        bi.unit_id
+        from
+        bgt_journal_balance_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.unit_id
+    </insert>
+
+    <insert id="initReserveOrgUnitTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'ORG_UNIT_TEMP',
+        bi.unit_id
+        from
+        bgt_budget_reserve_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.unit_id
+    </insert>
+
+    <insert id="generateOrgUnit">
+        insert
+        into
+        bgt_balance_query_id_temp ( session_id,
+        type,
+        id) select
+        #{request.sessionId},
+        'ORG_UNIT',
+        t.unit_id
+        from
+        exp_org_unit t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.unit_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.unit_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.unit_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'ORG_UNIT_TEMP'
+        and t.unit_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by t.unit_id
+    </insert>
+
+    <select id="countOrgUnit" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'ORG_UNIT'
+    </select>
+
+    <delete id="filterBalanceOrgUnit">
+        delete
+        t
+        from
+        bgt_journal_balance_init t
+        where
+        not exists (
+        select
+        1
+        from
+        bgt_balance_query_id_temp s
+        where
+        s.session_id =
+        #{request.sessionId}
+        and s.id = t.unit_id
+        and s.type = 'ORG_UNIT')
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveOrgUnit">
+        delete t
+        from
+        bgt_budget_reserve_init t
+        where
+        not exists (
+        select
+        1
+        from
+        bgt_balance_query_id_temp s
+        where
+        s.session_id =
+        #{request.sessionId}
+        and s.id = t.unit_id
+        and s.type = 'ORG_UNIT')
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="clearOrgUnitTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'ORG_UNIT_TEMP'
+    </delete>
+
+    <!-- 部门组 -->
+    <insert id="initBalanceOrgUnitGroupTemp">
+    insert
+	into
+		bgt_balance_query_id_temp ( session_id,
+		type,
+		id) select
+			#{request.sessionId},
+ 			'ORG_UNIT_GROUP_TEMP',
+			z.mo_unit_group_id
+		from
+			bgt_journal_balance_init s,
+			exp_mo_unit_group z,
+			exp_mo_unit_group_asgn_com ac,
+			exp_com_unit_gp_ref_unit ru
+		where
+			z.mo_unit_group_id = ac.mo_unit_group_id
+			and ac.assign_id = ru.unit_group_com_assign_id
+			and ru.unit_id = s.unit_id
+			and s.session_id = #{request.sessionId}
+		group by
+			z.mo_unit_group_id
+    </insert>
+
+    <insert id="initReserveOrgUnitGroupTemp">
+    insert
+	into
+		bgt_balance_query_id_temp ( session_id,
+		type,
+		id) select
+			#{request.sessionId},
+ 			'ORG_UNIT_GROUP_TEMP',
+			z.mo_unit_group_id
+		from
+			bgt_budget_reserve_init s,
+			exp_mo_unit_group z,
+			exp_mo_unit_group_asgn_com ac,
+			exp_com_unit_gp_ref_unit ru
+		where
+			z.mo_unit_group_id = ac.mo_unit_group_id
+			and ac.assign_id = ru.unit_group_com_assign_id
+			and ru.unit_id = s.unit_id
+			and s.session_id = #{request.sessionId}
+		group by
+			z.mo_unit_group_id
+    </insert>
+
+    <insert id="generateOrgUnitGroup">
+        insert into bgt_balance_query_id_temp
+        (
+        session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'ORG_UNIT_GROUP',
+        t.mo_unit_group_id
+        from exp_mo_unit_group        t,
+        bgt_balance_query_id_temp z
+        where (#{condition.parameterValueCode} is null or
+        t.mo_unit_group_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null or
+        t.mo_unit_group_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null or
+        t.mo_unit_group_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'ORG_UNIT_GROUP_TEMP'
+        and t.mo_unit_group_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by t.mo_unit_group_id
+    </insert>
+
+    <select id="countOrgUnitGroup" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'ORG_UNIT_GROUP'
+    </select>
+
+    <delete id="filterBalanceOrgUnitGroup">
+    delete t
+    from
+        bgt_journal_balance_init t
+    where
+        not exists (
+        select
+            1
+        from
+            bgt_balance_query_id_temp s
+        where
+            exists (
+            select
+                1
+            from
+                exp_mo_unit_group z,
+                exp_mo_unit_group_asgn_com ac,
+                exp_com_unit_gp_ref_unit ru
+            where
+                ru.unit_id = t.unit_id
+                and ru.unit_group_com_assign_id = ac.assign_id
+                and ac.mo_unit_group_id = z.mo_unit_group_id
+                and z.mo_unit_group_id = s.id)
+            and s.type = 'ORG_UNIT_GROUP'
+            and s.session_id =
+            #{request.sessionId})
+        and t.session_id =
+        #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveOrgUnitGroup">
+    delete t
+    from
+        bgt_budget_reserve_init t
+    where
+        not exists (
+        select
+            1
+        from
+            bgt_balance_query_id_temp s
+        where
+            exists (
+            select
+                1
+            from
+                exp_mo_unit_group z,
+                exp_mo_unit_group_asgn_com ac,
+                exp_com_unit_gp_ref_unit ru
+            where
+                ru.unit_id = t.unit_id
+                and ru.unit_group_com_assign_id = ac.assign_id
+                and ac.mo_unit_group_id = z.mo_unit_group_id
+                and z.mo_unit_group_id = s.id)
+            and s.type = 'ORG_UNIT_GROUP'
+            and s.session_id =
+            #{request.sessionId})
+        and t.session_id =
+        #{request.sessionId}
+    </delete>
+
+    <delete id="clearOrgUnitGroupTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'ORG_UNIT_GROUP_TEMP'
+    </delete>
+
+    <!-- 岗位 -->
+    <insert id="initBalanceOrgPositionTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'ORG_POSITION_TEMP',
+        bi.position_id
+        from
+        bgt_journal_balance_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.position_id
+    </insert>
+
+    <insert id="initReserveOrgPositionTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'ORG_POSITION_TEMP',
+        bi.position_id
+        from
+        bgt_budget_reserve_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.position_id
+    </insert>
+
+    <insert id="generateOrgPosition">
+        insert
+        into
+        bgt_balance_query_id_temp ( session_id,
+        type,
+        id) select
+        #{request.sessionId},
+        'ORG_POSITION',
+        t.position_id
+        from
+        exp_org_position t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.position_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.position_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.position_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'ORG_POSITION_TEMP'
+        and t.position_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by t.position_id
+    </insert>
+
+    <select id="countOrgPosition" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'ORG_POSITION'
+    </select>
+
+    <delete id="filterBalanceOrgPosition">
+        delete
+        t
+        from
+        bgt_journal_balance_init t
+        where
+        not exists (
+        select
+        1
+        from
+        bgt_balance_query_id_temp s
+        where
+        s.session_id =
+        #{request.sessionId}
+        and s.id = t.position_id
+        and s.type = 'ORG_POSITION')
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveOrgPosition">
+        delete t
+        from
+        bgt_budget_reserve_init t
+        where
+        not exists (
+        select
+        1
+        from
+        bgt_balance_query_id_temp s
+        where
+        s.session_id =
+        #{request.sessionId}
+        and s.id = t.position_id
+        and s.type = 'ORG_POSITION')
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="clearOrgPositionTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'ORG_POSITION_TEMP'
+    </delete>
+
+
+    <!-- 岗位组 -->
+    <insert id="initBalanceOrgPositionGroupTemp">
+        insert
+	    into
+		bgt_balance_query_id_temp (
+		session_id,
+		type,
+		id) select
+			#{request.sessionId},
+ 			'ORG_POSITION_GROUP_TEMP',
+			z.position_group_id
+		from
+			bgt_journal_balance_init s,
+			exp_position_group_relation z
+		where
+			z.position_id = s.position_id
+			and s.session_id =
+			#{request.sessionId}
+		group by z.position_group_id
+    </insert>
+
+    <insert id="initReserveOrgPositionGroupTemp">
+        insert
+	    into
+		bgt_balance_query_id_temp (
+		session_id,
+		type,
+		id) select
+			#{request.sessionId},
+ 			'ORG_POSITION_GROUP_TEMP',
+			z.position_group_id
+		from
+			bgt_budget_reserve_init s,
+			exp_position_group_relation z
+		where
+			z.position_id = s.position_id
+			and s.session_id =
+			#{request.sessionId}
+		group by z.position_group_id
+    </insert>
+
+    <insert id="generateOrgPositionGroup">
+        insert into bgt_balance_query_id_tmp
+        (
+        session_id,
+        type,
+        id)
+        select
+        ${request.sessionId},
+        'ORG_POSITION_GROUP',
+        t.position_group_id id
+        from exp_position_group       t,
+        bgt_balance_query_id_tmp z
+        where (#{condition.parameterValueCode} is null or
+        t.position_group_code like concat('%' , #{condition.parameterValueCode , '%'))
+             and (#{condition.parameterValueFrom} is null or
+        t.position_group_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null or
+        t.position_group_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'ORG_POSITION_GROUP_TEMP'
+        and t.position_group_id = z.id
+        and z.session_id = #{request.sessionId}
+    </insert>
+
+    <select id="countOrgPositionGroup" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'ORG_POSITION_GROUP'
+    </select>
+
+    <delete id="filterBalanceOrgPositionGroup">
+        delete t
+        from
+            bgt_journal_balance_init t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                    select 1
+                from
+                    exp_position_group_relation z
+                where
+                    z.position_id = t.position_id
+                    and z.position_group_id = s.id)
+
+                and s.session_id = #{request.sessionId}
+                and s.type = 'ORG_POSITION_GROUP')
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveOrgPositionGroup">
+        delete t
+        from
+            bgt_budget_reserve_init t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                    select 1
+                from
+                    exp_position_group_relation z
+                where
+                    z.position_id = t.position_id
+                    and z.position_group_id = s.id)
+                and s.session_id = #{request.sessionId}
+                and s.type = 'ORG_POSITION_GROUP')
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="clearOrgPositionGroupTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'ORG_POSITION_GROUP_TEMP'
+    </delete>
+
+
+    <!-- 员工 -->
+    <insert id="initBalanceEmployeeTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'EMPLOYEE_TEMP',
+        bi.employee_id
+        from
+        bgt_journal_balance_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.employee_id
+    </insert>
+
+    <insert id="initReserveEmployeeTemp">
+        insert into bgt_balance_query_id_temp
+        (session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'EMPLOYEE_TEMP',
+        bi.employee_id
+        from
+        bgt_budget_reserve_init bi
+        where
+        bi.session_id = #{request.sessionId}
+        group by
+        bi.employee_id
+    </insert>
+
+    <insert id="generateEmployee">
+        insert
+        into
+        bgt_balance_query_id_temp ( session_id,
+        type,
+        id) select
+        #{request.sessionId},
+        'EMPLOYEE',
+        t.employee_id
+        from
+        exp_employee t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.employee_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.employee_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.employee_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'EMPLOYEE_TEMP'
+        and t.employee_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by t.employee_id
+    </insert>
+
+    <select id="countEmployee" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'EMPLOYEE'
+    </select>
+
+    <delete id="filterBalanceEmployee">
+        delete
+        t
+        from
+        bgt_journal_balance_init t
+        where
+        not exists (
+        select
+        1
+        from
+        bgt_balance_query_id_temp s
+        where
+        s.session_id =
+        #{request.sessionId}
+        and s.id = t.employee_id
+        and s.type = 'EMPLOYEE')
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveEmployee">
+        delete t
+        from
+        bgt_budget_reserve_init t
+        where
+        not exists (
+        select
+        1
+        from
+        bgt_balance_query_id_temp s
+        where
+        s.session_id =
+        #{request.sessionId}
+        and s.id = t.employee_id
+        and s.type = 'EMPLOYEE')
+        and t.session_id = #{request.sessionId}
+    </delete>
+
+    <delete id="clearEmployeeTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'EMPLOYEE_TEMP'
+    </delete>
+
+    <!-- 员工组 -->
+    <insert id="initBalanceEmployeeGroupTemp">
+    insert
+        into
+            bgt_balance_query_id_temp (
+            session_id,
+            type,
+            id)
+    select
+        #{request.sessionId},
+        'EMPLOYEE_GROUP_TEMP',
+        z.mo_emp_group_id
+    from
+        bgt_journal_balance_init s,
+        exp_mo_emp_group z,
+        exp_mo_emp_group_asgn_com ac,
+        exp_com_emp_group_ref_emp e
+    where
+        z.mo_emp_group_id = ac.mo_emp_group_id
+        and ac.assign_id = e.emp_group_com_assign_id
+        and e.employee_id = s.employee_id
+        and s.session_id = #{request.sessionId}
+    group by z.mo_emp_group_id
+    </insert>
+
+    <insert id="initReserveEmployeeGroupTemp">
+    insert
+        into
+            bgt_balance_query_id_temp (
+            session_id,
+            type,
+            id)
+    select
+        #{request.sessionId},
+        'EMPLOYEE_GROUP_TEMP',
+        z.mo_emp_group_id
+    from
+        bgt_budget_reserve_init s,
+        exp_mo_emp_group z,
+        exp_mo_emp_group_asgn_com ac,
+        exp_com_emp_group_ref_emp e
+    where
+        z.mo_emp_group_id = ac.mo_emp_group_id
+        and ac.assign_id = e.emp_group_com_assign_id
+        and e.employee_id = s.employee_id
+        and s.session_id = #{request.sessionId}
+    group by z.mo_emp_group_id
+    </insert>
+
+    <insert id="generateEmployeeGroup">
+        insert into bgt_balance_query_id_temp
+        (
+        session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'EMPLOYEE_GROUP',
+        t.mo_emp_group_id
+        from
+        exp_mo_emp_group t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.mo_emp_group_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.mo_emp_group_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.mo_emp_group_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'EMPLOYEE_GROUP_TEMP'
+        and t.mo_emp_group_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by
+        t.mo_emp_group_id
+    </insert>
+
+    <select id="countEmployeeGroup" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'EMPLOYEE_GROUP'
+    </select>
+
+    <delete id="filterBalanceEmployeeGroup">
+        delete
+            t
+        from
+            bgt_journal_balance_init t
+        where
+            not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                select
+                    1
+                from
+                    exp_mo_emp_group z,
+                    exp_mo_emp_group_asgn_com ac,
+                    exp_com_emp_group_ref_emp e
+                where
+                    e.employee_id = t.employee_id
+                    and e.emp_group_com_assign_id = ac.assign_id
+                    and ac.mo_emp_group_id = z.mo_emp_group_id
+                    and z.mo_emp_group_id = s.id)
+                and s.session_id =
+                #{request.sessionId}
+                and s.type = 'EMPLOYEE_GROUP')
+            and t.session_id =
+            #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveEmployeeGroup">
+        delete
+            t
+        from
+            bgt_budget_reserve_init t
+        where
+            not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                select
+                    1
+                from
+                    exp_mo_emp_group z,
+                    exp_mo_emp_group_asgn_com ac,
+                    exp_com_emp_group_ref_emp e
+                where
+                    e.employee_id = t.employee_id
+                    and e.emp_group_com_assign_id = ac.assign_id
+                    and ac.mo_emp_group_id = z.mo_emp_group_id
+                    and z.mo_emp_group_id = s.id)
+                and s.session_id =
+                #{request.sessionId}
+                and s.type = 'EMPLOYEE_GROUP')
+            and t.session_id =
+            #{request.sessionId}
+    </delete>
+
+    <delete id="clearEmployeeGroupTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'EMPLOYEE_GROUP_TEMP'
+    </delete>
+
+
+    <!-- 员工级别 -->
+    <insert id="initBalanceEmployeeLevelTemp">
+        insert
+            into
+                bgt_balance_query_id_temp (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'EMPLOYEE_LEVEL_TEMP',
+            z.employee_levels_id
+        from
+            bgt_journal_balance_init s,
+            exp_employee_assign z
+        where
+            z.employee_id = s.employee_id
+            and z.company_id =
+            #{group.companyId}
+            and s.session_id =
+            #{request.sessionId}
+            group by z.employee_levels_id
+    </insert>
+
+    <insert id="initReserveEmployeeLevelTemp">
+        insert
+            into
+                bgt_balance_query_id_temp (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'EMPLOYEE_LEVEL_TEMP',
+            z.employee_levels_id
+        from
+            bgt_budget_reserve_init s,
+            exp_employee_assign z
+        where
+            z.employee_id = s.employee_id
+            and z.company_id =
+            #{group.companyId}
+            and s.session_id =
+            #{request.sessionId}
+            group by z.employee_levels_id
+    </insert>
+
+    <insert id="generateEmployeeLevel">
+        insert
+        into
+        bgt_balance_query_id_temp
+        (
+        session_id,
+        type,
+        id)
+
+        select
+        #{request.sessionId},
+        'EMPLOYEE_LEVEL',
+        t.employee_levels_id
+        from
+        exp_employee_level t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.employee_levels_code like concat('%',#{condition.parameterValueCode}, '%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.employee_levels_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.employee_levels_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'EMPLOYEE_LEVEL_TEMP'
+        and t.employee_levels_id = z.id
+        and z.session_id = #{requst.sessionId}
+        group by t.employee_levels_id
+    </insert>
+
+    <select id="countEmployeeLevel" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'EMPLOYEE_LEVEL'
+    </select>
+
+    <delete id="filterBalanceEmployeeLevel">
+        delete t
+        from
+            bgt_journal_balance_init t
+        where
+            not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                select
+                    1
+                from
+                    exp_employee_assign z
+                where
+                    z.employee_id = t.employee_id
+                    and z.employee_levels_id = s.id)
+                and s.type = 'EMPLOYEE_LEVEL'
+                and s.session_id = #{request.sessionId})
+            and t.session_id =
+            #{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveEmployeeLevel">
+        delete t
+        from
+            bgt_budget_reserve_init t
+        where
+            not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                select
+                    1
+                from
+                    exp_employee_assign z
+                where
+                    z.employee_id = t.employee_id
+                    and z.employee_levels_id = s.id)
+                and s.type = 'EMPLOYEE_LEVEL'
+                and s.session_id = #{request.sessionId})
+            and t.session_id =
+            #{request.sessionId}
+    </delete>
+
+    <delete id="clearEmployeeLevelTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'EMPLOYEE_LEVEL_TEMP'
+    </delete>
+
+
+    <!-- 员工职务 -->
+    <insert id="initBalanceEmployeeJobTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'EMPLOYEE_JOB_TEMP',
+            z.employee_job_id
+        from
+            bgt_journal_balance_init s,
+            exp_employee_assign z
+        where
+            z.employee_id = s.employee_id
+            and z.company_id =
+            #{group.companyId}
+            and s.session_id =
+            #{request.sessionId}
+        group by z.employee_job_id
+    </insert>
+
+    <insert id="initReserveEmployeeJobTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'EMPLOYEE_JOB_TEMP',
+            z.employee_job_id
+        from
+            bgt_journal_reserve_init s,
+            exp_employee_assign z
+        where
+            z.employee_id = s.employee_id
+            and z.company_id =
+            #{group.companyId}
+            and s.session_id =
+            #{request.sessionId}
+        group by z.employee_job_id
+    </insert>
+
+    <insert id="generateEmployeeJob">
+        insert
+        into
+        bgt_balance_query_id_temp
+        (
+        session_id,
+        type,
+        id)
+
+        select
+        #{request.sessionId},
+        'EMPLOYEE_JOB',
+        t.employee_job_id
+        from
+        exp_employee_job t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.employee_job_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.employee_job_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.employee_job_code &lt;= #{condition.parameterValueTo})
+        and z.type = 'EMPLOYEE_JOB_TEMP'
+        and t.employee_job_id = z.id
+        and z.session_id = #{request.sessionId}
+        group by t.employee_job_id
+    </insert>
+
+    <select id="countEmployeeJob" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'EMPLOYEE_JOB'
+    </select>
+
+    <delete id="filterEmployeeJob">
+        delete
+            t
+        from
+            bgt_journal_balance_init t
+        where
+            not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp s
+            where
+                exists (
+                select
+                    1
+                from
+                    exp_employee_assign z
+                where
+                    z.employee_id = t.employee_id
+                    and z.employee_job_id = s.id)
+                and s.type = 'EMPLOYEE_JOB'
+                and s.session_id =
+                #{request.sessionId})
+                and t.session_id =
+                #{request.sessionId}
+    </delete>
+
+    <delete id="clearEmployeeJobTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'EMPLOYEE_JOB_TEMP'
+    </delete>
+
+
+    <!-- 责任中心 -->
+    <insert id="initBalanceRespCenterTemp">
+    insert
+        into
+            bgt_balance_query_id_temp (
+            session_id,
+            type,
+            id)
+    select
+        #{request.sessionId},
+        'RESP_CENTER_TEMP',
+        z.responsibility_center_id
+    from
+        bgt_journal_balance_init z
+    where
+        z.session_id =
+        #{request.sessionId}
+        group by z.responsibility_center_id
+    </insert>
+
+    <insert id="initReserveRespCenterTemp">
+    insert
+        into
+            bgt_balance_query_id_temp (
+            session_id,
+            type,
+            id)
+    select
+        #{request.sessionId},
+        'RESP_CENTER_TEMP',
+        z.responsibility_center_id
+    from
+        bgt_journal_balance_init z
+    where
+        z.session_id =
+        #{request.sessionId}
+        group by z.responsibility_center_id
+    </insert>
+
+    <insert id="initRespCenterTemp">
+    insert
+        into
+            bgt_balance_query_id_temp
+            (
+            session_id,
+            type,
+            id)
+    select
+        #{request.sessionId},
+        'RESP_CENTER_TEMP',
+        b.parent_resp_center_id
+    from
+        gld_resp_center_hierarchy b,
+        bgt_balance_query_id_temp s
+    where
+        s.type = 'RESP_CENTER_TEMP'
+        and b.responsibility_center_id = s.id
+        and s.session_id = #{request.sessionId}
+    group by b.parent_resp_center_id
+    </insert>
+
+    <insert id="generateRespCenter">
+        insert
+        into
+        bgt_balance_query_id_temp
+        (
+        session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'RESP_CENTER',
+        t.responsibility_center_id
+        from
+        gld_responsibility_center t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.responsibility_center_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.responsibility_center_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.responsibility_center_code &lt;= #{condition.parameterValueTo})
+        and (#{condition.controlRuleRange} = 'ALL'
+        or (#{condition.controlRuleRange} = 'SUMMARY'
+        and t.summary_flag = 'Y')
+        or (#{condition.controlRuleRange} = 'DETAIL'
+        and t.summary_flag = 'N'))
+        and z.type = 'RESP_CENTER_TEMP'
+        and t.responsibility_center_id = z.id
+        and z.session_id = #{request.sessionId}
+    </insert>
+
+    <select id="countRespCenter" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'RESP_CENTER'
+    </select>
+
+    <delete id="filterBalanceRespCenter">
+    delete t
+    from
+        bgt_journal_balance_init t
+    where
+	not exists (
+	select
+		1
+	from
+		bgt_balance_query_id_temp s
+	where
+		(t.responsibility_center_id = s.id
+		or exists (
+		select
+			1
+		from
+			gld_resp_center_hierarchy z
+		where
+			z.responsibility_center_id = t.responsibility_center_id
+			and z.parent_resp_center_id = s.id))
+		and s.type = 'RESP_CENTER'
+		and s.session_id =
+		#{request.sessionId})
+		and t.session_id =
+		#{request.sessionId}
+    </delete>
+
+    <delete id="filterReserveRespCenter">
+	delete t
+    from
+        bgt_budget_reserve_init t
+    where
+	not exists (
+	select
+		1
+	from
+		bgt_balance_query_id_temp s
+	where
+		(t.responsibility_center_id = s.id
+		or exists (
+		select
+			1
+		from
+			gld_resp_center_hierarchy z
+		where
+			z.responsibility_center_id = t.responsibility_center_id
+			and z.parent_resp_center_id = s.id))
+		and s.type = 'RESP_CENTER'
+		and s.session_id =
+		#{request.sessionId})
+		and t.session_id =
+		#{request.sessionId}
+    </delete>
+
+
+    <delete id="clearRespCenterTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'RESP_CENTER_TEMP'
+    </delete>
+
+
+    <!-- 预算中心 -->
+    <insert id="initBalanceBgtCenterTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'BGT_CENTER_TEMP',
+            z.bgt_center_id
+        from
+            bgt_journal_balance_init z
+        where
+            z.session_id =
+            #{request.sessionId}
+            group by z.bgt_center_id
+    </insert>
+
+    <insert id="initReserveBgtCenterTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'BGT_CENTER_TEMP',
+            z.bgt_center_id
+        from
+            bgt_budget_reserve_init z
+        where
+            z.session_id =
+            #{request.sessionId}
+            group by z.bgt_center_id
+    </insert>
+
+    <insert id="initBgtCenterTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id)
+        select
+            #{request.sessionId},
+            'BGT_CENTER_TEMP',
+            b.parent_center_id
+        from
+            bgt_center_hierarchy b,
+            bgt_balance_query_id_temp s
+        where
+            s.type = 'BGT_CENTER_TEMP'
+            and b.center_id = s.id
+            and s.session_id = #{request.sessionId}
+            group by b.parent_center_id
+    </insert>
+
+    <insert id="generateBgtCenter">
+        insert
+        into
+        bgt_balance_query_id_temp
+        (
+        session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'BGT_CENTER',
+        t.center_id
+        from
+        bgt_center t,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.center_code like concat('%' , #{condition.parameterValueCode} , '%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.center_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.center_code &lt;= #{condition.parameterValueTo})
+        and (#{condition.controlRuleRange} = 'ALL'
+        or (#{condition.controlRuleRange} = 'SUMMARY'
+        and t.center_type = 'SUMMARY')
+        or (#{condition.controlRuleRange} = 'DETAIL'
+        and t.center_type = 'DETAILS'))
+        and t.enabled_flag = 'Y'
+        and t.bgt_org_id = #{group.bgtOrgId}
+        and z.type = 'BGT_CENTER_TEMP'
+        and t.center_id = z.id
+        and z.session_id =
+        #{request.sessionId}
+        group by t.center_id
+    </insert>
+
+    <select id="countBgtCenter" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'BGT_CENTER'
+    </select>
+
+    <delete id="filterBalanceBgtCenter">
+        delete t
+        from
+            bgt_journal_balance_init t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp s
+            where
+                (s.id = t.bgt_center_id
+                or exists (
+                    select 1
+                from
+                    bgt_center_hierarchy b
+                where
+                    b.center_id = t.bgt_center_id
+                    and b.parent_center_id = s.id))
+                and s.type = 'BGT_CENTER')
+    </delete>
+
+    <delete id="filterReserveBgtCenter">
+        delete t
+        from
+            bgt_budget_reserve_init t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp s
+            where
+                (s.id = t.bgt_center_id
+                or exists (
+                    select 1
+                from
+                    bgt_center_hierarchy b
+                where
+                    b.center_id = t.bgt_center_id
+                    and b.parent_center_id = s.id))
+                and s.type = 'BGT_CENTER')
+    </delete>
+
+
+    <delete id="clearBgtCenterTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'BGT_CENTER_TEMP'
+    </delete>
+
+
+    <insert id="initDimensionTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id )
+                select
+                    #{request.sessionId},
+                    'DIMENSION_${dimSeq}_TEMP',
+                    s.dimension_value_id
+                from
+                    fnd_company_dimension_value s,
+                    bgt_journal_balance_init z
+                where
+                    z.dimension${dimSeq}_id = s.dimension_value_id
+                    and (s.company_id = #{group.companyId}
+                    or exists (
+                    select
+                        1
+                    from
+                        fnd_company_hierarchy_detail b
+                    where
+                        b.company_id = s.company_id
+                        and b.parent_company_id =
+                        #{group.companyId}))
+                group by s.dimension_value_id
+    </insert>
+
+    <insert id="initBalanceDimensionTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                (
+                session_id,
+                type,
+                id )
+                select
+                    #{request.sessionId},
+                    'DIMENSION_${dimSeq}_TEMP',
+                    s.dimension_value_id
+                from
+                    fnd_company_dimension_value s,
+                    bgt_budget_reserve_init z
+                where
+                    z.dimension${dimSeq}_id = s.dimension_value_id
+                    and (s.company_id = #{group.companyId}
+                    or exists (
+                    select
+                        1
+                    from
+                        fnd_company_hierarchy_detail b
+                    where
+                        b.company_id = s.company_id
+                        and b.parent_company_id =
+                        #{group.companyId}))
+                group by s.dimension_value_id
+    </insert>
+
+    <insert id="initReserveDimensionTemp">
+        insert
+            into
+                bgt_balance_query_id_temp
+                    (session_id,type,id)
+                    select
+                    #{request.sessionId},
+                    'DIMENSION_${dimSeq}_TEMP',
+                    s.dimension_value_id
+                from
+                    fnd_company_dimension_value s,
+                    bgt_balance_query_id_temp z,
+                    fnd_dim_value_hierarchy h
+                where
+                    z.type = 'DIMENSION_${dimSeq}_TEMP'
+                    and h.dimension_value_id = z.id
+                    and h.parent_dim_value_id = s.dimension_value_id
+                    and (s.company_id = #{group.companyId}
+                    or exists (
+                        select 1
+                    from
+                        fnd_company_hierarchy_detail b
+                    where
+                        b.company_id = s.company_id
+                        and b.parent_company_id = #{group.companyId}))
+                        group by dimension_value_id
+    </insert>
+
+    <insert id="generateDimension">
+        insert
+        into
+        bgt_balance_query_id_tmp (
+        session_id,
+        type,
+        id)
+        select
+        #{request.sessionId},
+        'DIMENSION_${dimSeq}',
+        t.dimension_value_id
+        from
+        fnd_dimension_value t,
+        fnd_company_dimension_value s,
+        bgt_balance_query_id_temp z
+        where
+        (#{condition.parameterValueCode} is null
+        or t.dimension_value_code like concat('%',#{condition.parameterValueCode},'%'))
+        and (#{condition.parameterValueFrom} is null
+        or t.dimension_value_code &gt;= #{condition.parameterValueFrom})
+        and (#{condition.parameterValueTo} is null
+        or t.dimension_value_code &lt;= #{condition.parameterValueTo})
+        and (#{condition.controlRuleRange} = 'ALL'
+        or (#{condition.controlRuleRange} = 'SUMMARY'
+        and t.summary_flag = 'Y')
+        or (#{condition.controlRuleRange} = 'DETAIL'
+        and t.summary_flag = 'N'))
+        and s.dimension_value_id = t.dimension_value_id
+        and t.dimension_id = #{dimensionId}
+        and (s.company_id = #{group.companyId}
+        or exists (
+        select 1
+        from
+        fnd_company_hierarchy_detail b
+        where
+        b.company_id = s.company_id
+        and b.parent_company_id = #{group.companyId}))
+        and s.dimension_value_id = z.id
+        and z.type = 'DIMENSION_${dimSeq}_TEMP'
+        group by t.dimension_value_id
+    </insert>
+
+    <select id="countDimension" resultType="java.lang.Long">
+        select count(*) from bgt_balance_query_id_temp t where t.session_id = #{request.sessionId} and type = 'DIMENSION_${dimSeq}'
+    </select>
+
+    <delete id="filterBalanceDimension">
+        delete z
+        from
+            bgt_journal_balance_init z
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp t
+            where
+                (t.id = z.dimension${dimSeq}_id
+                or exists (
+                    select 1
+                from
+                    fnd_dim_value_hierarchy s
+                where
+                    s.dimension_value_id = z.dimension${dimSeq}_id
+                    and s.parent_dim_value_id = t.id))
+                and t.type = 'DIMENSION_${dimSeq}')
+    </delete>
+
+    <delete id="filterReserveDimension">
+        delete z
+        from
+            bgt_budget_reserve_init z
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp t
+            where
+                (t.id = z.dimension${dimSeq}_id
+                or exists (
+                    select 1
+                from
+                    fnd_dim_value_hierarchy s
+                where
+                    s.dimension_value_id = z.dimension${dimSeq}_id
+                    and s.parent_dim_value_id = t.id))
+                and t.type = 'DIMENSION_${dimSeq}')
+    </delete>
+
+
+    <delete id="clearDimensionTemp">
+        delete from bgt_balance_query_id_temp where session_id = #{request.sessionId} and type = 'DIMENSION_${dimSeq}_TEMP'
+    </delete>
+
+    <insert id="extendBgtCenter">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            b.id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            budget_item_id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            unit_group_id,
+            position_id,
+            position_group_id,
+            employee_id,
+            employee_group_id,
+            employee_level_id,
+            employee_job_id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'BGT_CENTER'
+            and exists (
+                select 1
+            from
+                bgt_center_hierarchy s
+            where
+                s.center_id = t.bgt_center_id
+                and s.parent_center_id = b.id)
+            and t.session_id = #{request.sessionId}
+            and b.session_id = #{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteBgtCenter">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'BGT_CENTER'
+                and b.id = t.bgt_center_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendBgtItem">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            bgt_center_id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            b.id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            unit_group_id,
+            position_id,
+            position_group_id,
+            employee_id,
+            employee_group_id,
+            employee_level_id,
+            employee_job_id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'BUDGET_ITEM'
+            and exists (
+                select 1
+            from
+                bgt_budget_item_hierarchy s
+            where
+                s.budget_item_id = t.budget_item_id
+                and s.parent_budget_item_id = b.id)
+            and t.session_id = #{request.sessionId}
+            and b.session_id = #{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteBgtItem">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'BUDGET_ITEM'
+                and b.id = t.budget_item_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendBgtItemType">
+        update
+            bgt_balance_query_summary_temp t
+        set
+            t.budget_item_type_id = (
+                select s.budget_item_type_id
+            from
+                bgt_budget_item s
+            where
+                s.budget_item_id = t.budget_item_id)
+        where
+            t.session_id = #{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteBgtItemType">
+    delete t
+        from
+            bgt_balance_qurey_results_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_tmp b
+            where
+                b.type = 'BUDGET_ITEM_TYPE'
+                and b.id = t.budget_item_type_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendOrgUnit">
+
+    </insert>
+
+    <insert id="extendOrgUnitGroup">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            bgt_center_id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            budget_item_id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            b.id,
+            position_id,
+            position_group_id,
+            employee_id,
+            employee_group_id,
+            employee_level_id,
+            employee_job_id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'ORG_UNIT_GROUP'
+            and exists (
+                select 1
+            from
+                exp_mo_unit_group s,
+                exp_mo_unit_group_asgn_com ac,
+                exp_com_unit_gp_ref_unit u
+            where
+                s.mo_unit_group_id = ac.mo_unit_group_id
+                and ac.assign_id = u.unit_group_com_assign_id
+                and u.unit_id = t.unit_id
+                and s.mo_unit_group_id = b.id)
+            and t.session_id = #{request.sessionId}
+            and b.session_id = #{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteOrgUnitGroup">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'ORG_UNIT_GROUP'
+                and b.id = t.unit_group_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendOrgPosition">
+
+    </insert>
+
+    <insert id="extendOrgPositionGroup">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            bgt_center_id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            budget_item_id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            unit_group_id,
+            position_id,
+            position_group_id,
+            employee_id,
+            employee_group_id,
+            employee_level_id,
+            employee_job_id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'ORG_POSITION_GROUP'
+            and exists (
+                select 1
+            from
+                exp_position_group_relation s
+            where
+                s.position_id = t.position_id
+                and s.position_group_id = b.id
+                and b.session_id =
+                #{request.sessionId})
+                and t.session_id =
+                #{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteOrgPositionGroup">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'ORG_POSITION_GROUP'
+                and b.id = t.position_group_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendEmployee">
+
+    </insert>
+
+    <insert id="extendEmployeeGroup">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            bgt_center_id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            budget_item_id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            unit_group_id,
+            position_id,
+            position_group_id,
+            b.id,
+            employee_group_id,
+            employee_level_id,
+            employee_job_id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'EMPLOYEE_GROUP'
+            and exists (
+                select 1
+            from
+                exp_mo_emp_group s,
+                exp_mo_emp_group_asgn_com ac,
+                exp_com_emp_group_ref_emp e
+            where
+                s.mo_emp_group_id = ac.mo_emp_group_id
+                and ac.assign_id = e.emp_group_com_assign_id
+                and e.employee_id = t.employee_id
+                and s.mo_emp_group_id = b.id)
+            and t.session_id = #{request.sessionId}
+            and b.session_id = #{request.sessionId}
+    </insert>
+
+    <delete id="extendDeleteEmployeeGroup">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+            select
+                1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'EMPLOYEE_GROUP'
+                and b.id = t.employee_group_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendEmployeeLevel">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            bgt_center_id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            budget_item_id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            unit_group_id,
+            position_id,
+            position_group_id,
+            employee_id,
+            employee_group_id,
+            b.id,
+            employee_job_id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'EMPLOYEE_LEVEL'
+            and exists (
+                select 1
+            from
+                exp_employee_assign s
+            where
+                s.employee_id = t.employee_id
+                and s.employee_levels_id = b.id)
+            and t.session_id = #{request.sessionId}
+            and b.session_id = #{request.sessionId}
+    </insert>
+
+    <delete id="extendDeleteEmployeeLevel">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'EMPLOYEE_LEVEL'
+                and b.id = t.employee_level_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendEmployeeJob">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+        select
+            t.session_id,
+            bgt_org_id,
+            bgt_entity_id,
+            bgt_center_id,
+            structure_id,
+            company_id,
+            version_id,
+            operation_unit_id,
+            scenario_id,
+            responsibility_center_id,
+            budget_item_type_id,
+            budget_item_id,
+            period_year,
+            period_quarter,
+            period_name,
+            bgt_period_num,
+            currency,
+            bgt_amount,
+            bgt_fun_amount,
+            bgt_quantity,
+            exp_reserve_amount,
+            exp_reserve_fun_amount,
+            exp_reserve_quantity,
+            exp_used_amount,
+            exp_used_fun_amount,
+            exp_used_quantity,
+            exp_available_amount,
+            exp_available_fun_amount,
+            exp_available_quantity,
+            unit_id,
+            unit_group_id,
+            position_id,
+            position_group_id,
+            employee_id,
+            employee_group_id,
+            employee_level_id,
+            b.id,
+            dimension1_id,
+            dimension2_id,
+            dimension3_id,
+            dimension4_id,
+            dimension5_id,
+            dimension6_id,
+            dimension7_id,
+            dimension8_id,
+            dimension9_id,
+            dimension10_id,
+            dimension11_id,
+            dimension12_id,
+            dimension13_id,
+            dimension14_id,
+            dimension15_id,
+            dimension16_id,
+            dimension17_id,
+            dimension18_id,
+            dimension19_id,
+            dimension20_id
+        from
+            bgt_balance_query_summary_temp t,
+            bgt_balance_query_id_temp b
+        where
+            b.type = 'EMPLOYEE_LEVEL'
+            and exists (
+                select 1
+            from
+                exp_employee_assign s
+            where
+                s.employee_id = t.employee_id
+                and s.employee_job_id = b.id)
+            and t.session_id = #{request.sessionId}
+            and b.session_id = #{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteEmployeeJob">
+        delete t
+        from
+            bgt_balance_query_summary_temp t
+        where
+            not exists (
+                select 1
+            from
+                bgt_balance_query_id_temp b
+            where
+                b.type = 'EMPLOYEE_LEVEL'
+                and b.id = t.employee_job_id
+                and b.session_id = #{request.sessionId})
+            and t.session_id = #{request.sessionId}
+    </delete>
+
+    <insert id="extendDimension">
+        insert
+            into
+                bgt_balance_query_summary_temp (session_id,
+                bgt_org_id,
+                bgt_entity_id,
+                bgt_center_id,
+                structure_id,
+                company_id,
+                version_id,
+                operation_unit_id,
+                scenario_id,
+                responsibility_center_id,
+                budget_item_type_id,
+                budget_item_id,
+                period_year,
+                period_quarter,
+                period_name,
+                bgt_period_num,
+                currency,
+                bgt_amount,
+                bgt_fun_amount,
+                bgt_quantity,
+                exp_reserve_amount,
+                exp_reserve_fun_amount,
+                exp_reserve_quantity,
+                exp_used_amount,
+                exp_used_fun_amount,
+                exp_used_quantity,
+                exp_available_amount,
+                exp_available_fun_amount,
+                exp_available_quantity,
+                unit_id,
+                unit_group_id,
+                position_id,
+                position_group_id,
+                employee_id,
+                employee_group_id,
+                employee_level_id,
+                employee_job_id,
+                dimension1_id,
+                dimension2_id,
+                dimension3_id,
+                dimension4_id,
+                dimension5_id,
+                dimension6_id,
+                dimension7_id,
+                dimension8_id,
+                dimension9_id,
+                dimension10_id,
+                dimension11_id,
+                dimension12_id,
+                dimension13_id,
+                dimension14_id,
+                dimension15_id,
+                dimension16_id,
+                dimension17_id,
+                dimension18_id,
+                dimension19_id,
+                dimension20_id)
+		select
+			t.session_id,
+			bgt_org_id,
+			bgt_entity_id,
+			bgt_center_id,
+			structure_id,
+			company_id,
+			version_id,
+			operation_unit_id,
+			scenario_id,
+			responsibility_center_id,
+			budget_item_type_id,
+			budget_item_id,
+			period_year,
+			period_quarter,
+			period_name,
+			bgt_period_num,
+			currency,
+			bgt_amount,
+			bgt_fun_amount,
+			bgt_quantity,
+			exp_reserve_amount,
+			exp_reserve_fun_amount,
+			exp_reserve_quantity,
+			exp_used_amount,
+			exp_used_fun_amount,
+			exp_used_quantity,
+			exp_available_amount,
+			exp_available_fun_amount,
+			exp_available_quantity,
+			unit_id,
+			unit_group_id,
+			position_id,
+			position_group_id,
+			employee_id,
+			employee_group_id,
+			employee_level_id,
+			employee_job_id,
+			case
+				#{dimSeq}
+				when 1 then b.id
+				else t.dimension1_id
+			end,
+			case
+				#{dimSeq}
+				when 2 then b.id
+				else t.dimension2_id
+			end,
+			case
+				#{dimSeq}
+				when 3 then b.id
+				else t.dimension3_id
+			end,
+			case
+				#{dimSeq}
+				when 4 then b.id
+				else t.dimension4_id
+			end,
+			case
+				#{dimSeq}
+				when 5 then b.id
+				else t.dimension5_id
+			end,
+			case
+				#{dimSeq}
+				when 6 then b.id
+				else t.dimension6_id
+			end,
+			case
+				#{dimSeq}
+				when 7 then b.id
+				else t.dimension7_id
+			end,
+			case
+				#{dimSeq}
+				when 8 then b.id
+				else t.dimension8_id
+			end,
+			case
+				#{dimSeq}
+				when 9 then b.id
+				else t.dimension9_id
+			end,
+			case
+				#{dimSeq}
+				when 10 then b.id
+				else t.dimension10_id
+			end,
+			case
+				#{dimSeq}
+				when 11 then b.id
+				else t.dimension11_id
+			end,
+			case
+				#{dimSeq}
+				when 12 then b.id
+				else t.dimension12_id
+			end,
+			case
+				#{dimSeq}
+				when 13 then b.id
+				else t.dimension13_id
+			end,
+			case
+				#{dimSeq}
+				when 14 then b.id
+				else t.dimension14_id
+			end,
+			case
+				#{dimSeq}
+				when 15 then b.id
+				else t.dimension15_id
+			end,
+			case
+				#{dimSeq}
+				when 16 then b.id
+				else t.dimension16_id
+			end,
+			case
+				#{dimSeq}
+				when 17 then b.id
+				else t.dimension17_id
+			end,
+			case
+				#{dimSeq}
+				when 18 then b.id
+				else t.dimension18_id
+			end,
+			case
+				#{dimSeq}
+				when 19 then b.id
+				else t.dimension19_id
+			end,
+			case
+				#{dimSeq}
+				when 20 then b.id
+				else t.dimension20_id
+			end
+		from
+			bgt_balance_query_summary_temp t,
+			bgt_balance_query_id_temp b
+		where
+			b.type = 'DIMENSION_${dimSeq}'
+			and exists (
+			select
+				1
+			from
+				fnd_dim_value_hierarchy s
+			where
+				s.dimension_value_id =
+				case
+					#{dimSeq}
+					when 1 then t.dimension1_id
+					when 2 then t.dimension2_id
+					when 3 then t.dimension3_id
+					when 4 then t.dimension4_id
+					when 5 then t.dimension5_id
+					when 6 then t.dimension6_id
+					when 7 then t.dimension7_id
+					when 8 then t.dimension8_id
+					when 9 then t.dimension9_id
+					when 10 then t.dimension10_id
+					when 11 then t.dimension11_id
+					when 12 then t.dimension12_id
+					when 13 then t.dimension13_id
+					when 14 then t.dimension14_id
+					when 15 then t.dimension15_id
+					when 16 then t.dimension16_id
+					when 17 then t.dimension17_id
+					when 18 then t.dimension18_id
+					when 19 then t.dimension19_id
+					when 20 then t.dimension20_id
+				end
+				and s.parent_dim_value_id = b.id)
+			and t.session_id =
+			#{request.sessionId}
+			and b.session_id =
+			#{request.sessionId}
+    </insert>
+    
+    <delete id="extendDeleteDimension">
+        delete t
+            from
+                bgt_balance_query_summary_temp t
+            where
+                not exists (
+                    select 1
+                from
+                    bgt_balance_query_id_temp b
+                where
+                    b.type = 'DIMENSION_${dimSeq}'
+                    and b.id =
+                    case
+                        #{dimSeq}
+                        when 1 then t.dimension1_id
+                        when 2 then t.dimension2_id
+                        when 3 then t.dimension3_id
+                        when 4 then t.dimension4_id
+                        when 5 then t.dimension5_id
+                        when 6 then t.dimension6_id
+                        when 7 then t.dimension7_id
+                        when 8 then t.dimension8_id
+                        when 9 then t.dimension9_id
+                        when 10 then t.dimension10_id
+                        when 11 then t.dimension11_id
+                        when 12 then t.dimension12_id
+                        when 13 then t.dimension13_id
+                        when 14 then t.dimension14_id
+                        when 15 then t.dimension15_id
+                        when 16 then t.dimension16_id
+                        when 17 then t.dimension17_id
+                        when 18 then t.dimension18_id
+                        when 19 then t.dimension19_id
+                        when 20 then t.dimension20_id
+                    end )
+                and t.session_id = #{request.sessionId}
+    </delete>
+    
+    <update id="extendUpdateDimension">
+        update
+            bgt_balance_query_result t
+        set
+            t.exp_available_amount = ifnull(t.bgt_amount,
+            0) - ifnull(t.exp_reserve_amount,
+            0) - ifnull(t.exp_used_amount,
+            0),
+            t.exp_available_fun_amount = ifnull(t.bgt_fun_amount,
+            0) - ifnull(t.exp_reserve_fun_amount,
+            0) - ifnull(t.exp_used_fun_amount,
+            0),
+            t.exp_available_quantity = ifnull(t.bgt_quantity,
+            0) - ifnull(t.exp_reserve_quantity,
+            0) - ifnull(t.exp_used_quantity,
+            0)
+        where
+            t.session_id =
+            #{request.sessionId}
+    </update>
+</mapper>

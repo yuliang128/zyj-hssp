@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentMethodAsgnMoMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentMethodAsgnMo">
+        <result column="ASSIGN_MO_ID" property="assignMoId" jdbcType="DECIMAL" />
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="MAG_ORG_CODE" property="magOrgCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="query" parameterType="com.hand.hec.csh.dto.CshPaymentMethodAsgnMo" resultMap="BaseResultMap">
+        select cpmam.assign_mo_id,
+        cpmam.payment_method_id,
+        cpmam.enabled_flag,
+        fmo.mag_org_id,
+        fmot.description,
+        fmo.mag_org_code
+        FROM
+        csh_payment_method_asgn_mo cpmam
+        LEFT JOIN	fnd_managing_organization fmo ON cpmam.mag_org_id = fmo.mag_org_id
+        LEFT JOIN	fnd_managing_organization_tl fmot on (fmo.mag_org_id = fmot.mag_org_id AND
+        fmot.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        1=1
+        <if test = "description != null">
+            and fmot.description like '%${description}%'
+        </if>
+        <if test = "magOrgCode != null">
+            and fmo.mag_org_code like '%${magOrgCode}%'
+        </if>
+        <if test = "paymentMethodId != null">
+            and cpmam.payment_method_id = #{paymentMethodId}
+        </if>
+        ORDER BY
+        fmo.mag_org_code
+    </select>
+</mapper>

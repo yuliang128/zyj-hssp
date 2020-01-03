@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen 
+    $Date: 2017-10-27 11:42:33
+    $Revision: 1.0  
+    $Purpose: 费用申请单关联借款申请-只读页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <a:model-query defaultWhereClause="erpe.req_page_element_code = &apos;PAYMENT&apos;" model="expm.EXP4010.exp_requisition_line_description_query" rootPath="payment_line_description"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP4010_paymentLineExtendLink" url="${/request/@context_path}/modules/expm/EXP4010/exp_requisition_view_payment_lines_extend.screen"/>
+        <script><![CDATA[
+            function EXP4010_paymentLinemoreRenderer(value, record, name) {
+                var content = ">>";
+                return '<a href="javascript:EXP4010_paymentLinemoreWindow()"> ' + content + '</a>';
+            }
+            
+            function EXP4010_paymentLinemoreWindow() {
+                new Aurora.Window({
+                    id: 'EXP4010_payment_line_extend_window',
+                    url: $au('EXP4010_paymentLineExtendLink').getUrl() + '?employee_id=${/model/header_info/record/@employee_id}',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+         
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_paymentLineTypeDs" fetchAll="true" model="csh.CSH5010.csh_mo_payment_req_type_list"/>
+            <a:dataSet id="EXP4010_paymentLineObjectDs" lookupCode="PAYMENT_OBJECT"/>
+            <a:dataSet id="EXP4010_paymentLineMethodDs" loadData="true" model="hec_util.csh_mo_payment_methods_vl_lov"/>
+            <a:dataSet id="EXP4010_paymentLineTrxClassesDs" fetchAll="true" model="hec_util.csh_util.csh_mo_trx_classes_for_loan"/>
+            <a:dataSet id="EXP4010_paymentLineDocCategoryListDs" loadData="true" lookupCode="PAYMENT_REQ_DOC_CATEGORY"/>
+            <a:dataSet id="EXP4010_paymentLineMainResult_ds" autoQuery="true" bindName="payment_lines" bindTarget="EXP4010_exp_requisition_header_ds" queryUrl="${/request/@context_path}/autocrud/expm.EXP4010.exp_requisition_payment_line_query/query?exp_requisition_header_id=${/model/header_info/record/@exp_requisition_header_id}" selectable="false" submitUrl="${/request/@context_path}/autocrud/csh.CSH5010.csh_payment_requisition/batch_update">
+                <a:fields>
+                    <a:field name="payment_requisition_line_id" readOnly="true"/>
+                    <a:field name="payment_requisition_header_id" readOnly="true"/>
+                    <a:field name="requisition_number" readOnly="true"/>
+                    <a:field name="payment_req_type_id" readOnly="true"/>
+                    <a:field name="payment_req_type_name" displayField="mo_payment_req_type_name" options="EXP4010_paymentLineTypeDs" prompt="CSH_PAY_REQ_TYPES.TYPE_CODE" readOnly="true" required="true" returnField="payment_req_type_id" valueField="mo_payment_req_type_id"/>
+                    <a:field name="requisition_date" readOnly="true"/>
+                    <a:field name="hds_acc_entity_id" readOnly="true"/>
+                    <a:field name="hds_acc_entity_name" readOnly="true"/>
+                    <a:field name="unit_id" readOnly="true"/>
+                    <a:field name="unit_name" readOnly="true"/>
+                    <a:field name="employee_id" readOnly="true"/>
+                    <a:field name="employee_name" readOnly="true"/>
+                    <a:field name="hds_description" readOnly="true"/>
+                    <a:field name="currency_code" readOnly="true"/>
+                    <a:field name="line_number" prompt="HAP_LINE_NUMBER" readOnly="true"/>
+                    <a:field name="company_id" readOnly="true" required="true"/>
+                    <a:field name="company_name" lovService="hec_util.fnd_companies_vl_lov" prompt="CSH_PAYMENT_REQUISITION_LNS.COMPANY_ID" required="true">
+                        <a:mapping>
+                            <a:map from="company_name" to="company_name"/>
+                            <a:map from="company_id" to="company_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="acc_entity_id" readOnly="true" required="true"/>
+                    <a:field name="acc_entity_name" lovService="hec_util.gld_accounting_entities_vl_lov" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME" required="true">
+                        <a:mapping>
+                            <a:map from="acc_entity_name" to="acc_entity_name"/>
+                            <a:map from="acc_entity_id" to="acc_entity_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="mo_csh_trx_class_id" readOnly="true"/>
+                    <a:field name="mo_csh_trx_class_name" displayField="mo_csh_trx_class_name" options="EXP4010_paymentLineTrxClassesDs" prompt="CSH_PAYMENT_REQUISITION_PAYMENT.SACTION_CLASS_DESC" readOnly="true" required="true" returnField="mo_csh_trx_class_id" valueField="mo_csh_trx_class_id"/>
+                    <a:field name="payee_category" readOnly="true" required="true"/>
+                    <a:field name="payee_category_name" displayField="code_value_name" options="EXP4010_paymentLineObjectDs" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_CATEGORY" readOnly="true" required="true" returnField="payee_category" valueField="code_value"/>
+                    <a:field name="payee_id" readOnly="true"/>
+                    <a:field name="payee_name" lovService="hec_util.gld_payee_v_lov" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID" required="true" title="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID">
+                        <a:mapping>
+                            <a:map from="payee_id" to="payee_id"/>
+                            <a:map from="payee_name" to="payee_name"/>
+                            <a:map from="account_number" to="account_number"/>
+                            <a:map from="account_name" to="account_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="account_name" readOnly="true"/>
+                    <a:field name="account_number" lovService="hec_util.gld_util.gld_payee_account_vl_lov" prompt="CSH_BANK_ACCOUNTS.BANK_ACCOUNT_NUM" required="true" title="CSH_BANK_ACCOUNTS.BANK_ACCOUNT_NUM">
+                        <a:mapping>
+                            <a:map from="account_number" to="account_number"/>
+                            <a:map from="account_name" to="account_name"/>
+                            <a:map from="bank_code" to="bank_code"/>
+                            <a:map from="bank_name" to="bank_name"/>
+                            <a:map from="bank_location_code" to="bank_location_code"/>
+                            <a:map from="bank_location_name" to="bank_location_name"/>
+                            <a:map from="province_code" to="province_code"/>
+                            <a:map from="province_name" to="province_name"/>
+                            <a:map from="city_code" to="city_code"/>
+                            <a:map from="city_name" to="city_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="amount" prompt="CSH_PAYMENT_REQUISITION_LNS.CURRENT_AMOUNT" readOnly="true" required="true"/>
+                    <a:field name="payment_method_id" readOnly="true"/>
+                    <a:field name="payment_method_name" displayField="payment_method_name" options="EXP4010_paymentLineMethodDs" prompt="CSH_TRANSACTION_HEADERS.PAYMENT_METHOD_ID" readOnly="true" required="true" returnField="payment_method_id" valueField="payment_method_id"/>
+                    <a:field name="description" prompt="CSH_PAYMENT_REQUISITION_HDS.DESCRIPTION" readOnly="true"/>
+                    <a:field name="payment_requisition_line_type" readOnly="true"/>
+                    <a:field name="payment_req_line_type_name" displayField="code_value_name" options="EXP4010_paymentLineDocCategoryListDs" prompt="CSH_PAYMENT_REQUISITION_LNS.PAYMENT_REQUISITION_LINE_TYPE" readOnly="true" returnField="payment_requisition_line_type" valueField="code_value"/>
+                    <a:field name="ref_document_id" readOnly="true"/>
+                    <a:field name="more" prompt="HAP_MORE" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form id="EXP4010_paymentLineMainReadForm" padding="0" showmargin="0" style="margin-top:10px;" title="${/model/payment_line_description/record/@line_description}">
+            <a:grid id="EXP4010_paymentLineMain_grid" autoAdjustHeight="true" bindTarget="EXP4010_paymentLineMainResult_ds" height="600" marginWidth="12" navBar="true">
+                <a:columns>
+                    <a:column name="more" align="center" renderer="EXP4010_paymentLinemoreRenderer" width="20"/>
+                    <a:column name="description" width="230"/>
+                    <a:column name="payment_req_type_name" align="center" width="80"/>
+                    <a:column name="mo_csh_trx_class_name" align="center" width="80"/>
+                    <a:column name="payee_category_name" align="center" width="80"/>
+                    <a:column name="payee_name" align="center" width="80"/>
+                    <a:column name="account_number" align="center" width="80"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="payment_method_name" align="center" width="80"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+    </a:view>
+</a:screen>

@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui $
+    $Date: 2019/03/05 $
+    $Revision: 1.1 $
+    $Purpose: 预付款核销-入口页
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH5220_prepaymentPostLink" url="$[/request/@context_path]/csh/CSH5220/csh_prepayment_post.screen"/>
+        <a:link id="CSH5220_prepaymentDetailLink" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <div/>
+        <script><![CDATA[
+            function CSH5220_onUpdate(dataSet, record, name, value, oldvalue) {
+                if (name == 'payeeCategoryName') {
+                    record.set('payeeId', '');
+                    record.set('payeeName', '');
+                    // modify lcy 2018/1/10 20:26:34  收款方在收款对象有值时才可以选择
+                    if (value) {
+                        record.getField('payeeName').setReadOnly(false);
+                    } else {
+                        record.getField('payeeName').setReadOnly(true);
+                    }
+                } else if (name == 'accEntityName') {
+                    record.set('bankAccountId', '');
+                    record.set('bankAccountName', '');
+                }
+            }
+            
+            function CSH5220_dateValidator(record, name, value) {
+                if (name == 'transactionDateFrom' || name == 'transactionDateTo') {
+                    var date_from = record.get('transactionDateFrom');
+                    var date_to = record.get('transactionDateTo');
+                    if (typeof(date_to) != 'undefined' && !Ext.isEmpty(date_to)) {
+                        if (!CSH5220_compareDate(date_from, date_to)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function CSH5220_compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH5220_trxRenderer(value, record, name) {
+                var id = record.get('transactionHeaderId');
+                var paymentRequisitionHeaderId = record.get('paymentRequisitionHeaderId');
+                if (id) {
+                    return '<a href="javascript:CSH5220_trxNumberWindow(' + id +','+paymentRequisitionHeaderId+ ')">' + value + '</a>';
+                } else {
+                    return '';
+                }
+
+            }
+        function CSH5220_trxNumberWindow(id,paymentRequisitionHeaderId) {
+                new Aurora.Window({
+                    id: 'CSH5220_prepayment_post_window',
+                    url: $au('CSH5220_prepaymentPostLink').getUrl() + '?transactionHeaderId=' + id + '&paymentRequisitionHeaderId=' + paymentRequisitionHeaderId,
+                    title: '$[l:csh_prepayment_post.title]',
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('CSH5220_resultDs').query();
+                });
+            }
+            
+            function CSH5220_reqRenderer(value, record, name) {
+                var id = record.get('paymentRequisitionHeaderId');
+                if (id) {
+                    return '<a href="javascript:CSH5220_reqNumberWindow(\'' + id + '\')">' + value + '</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH5220_reqNumberWindow(id) {
+                new Aurora.Window({
+                    id: 'CSH5010_pay_requisition_view_main_window',
+                    url: $au('CSH5220_prepaymentDetailLink').getUrl() + '?paymentRequisitionHeaderId=' + id,
+                    fullScreen: true,
+                    title: ''
+                }).on('close', function() {
+                    $au('CSH5220_resultDs').query();
+                });
+            }
+            
+            function CSH5220_onBankAccountFocusFun() {
+                var record = $au('CSH5220_queryDs').getAt(0);
+                record.getField('bankAccountName').setLovPara('accEntityId', record.get('accEntityId'));
+                $au('CSH5220_bankAccountDs').query();
+            }
+            
+            function CSH5220_onPayeeNameFocusFun() {
+                var record = $au('CSH5220_queryDs').getAt(0);
+                record.getField('payeeName').setLovPara('payeeCategory', record.get('payeeCategory'));
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5220_accEntityDs">
+                <a:datas dataSource="accEntityList/records"/>
+            </a:dataSet>
+            <a:dataSet id="CSH5220_paymentObjectDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT/"/>
+            <a:dataSet id="CSH5220_currencyCodeDs" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="CSH5220_paymentMethodsDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?magOrgId=$[/session/@magOrgId]&amp;companyId=$[/session/@companyId]"/>
+            <a:dataSet id="CSH5220_bankAccountDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/bank-account/queryBankAccounts"/>
+            <a:dataSet id="CSH5220_queryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityName" defaultValue="$[/model/dftAcc/records/record/@accEntityName]" displayField="accEntityName" options="CSH5220_accEntityDs" prompt="gld_accounting_entity.acc_entity_name" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="accEntityId" defaultValue="$[/model/dftAcc/records/record/@accEntityId]"/>
+                    <a:field name="transactionDateFrom" datatype="date" prompt="csh_prepayment_write_off.transaction_date_from" required="true" validator="CSH5220_dateValidator"/>
+                    <a:field name="transactionDateTo" datatype="date" prompt="csh_prepayment_write_off.transaction_date_to" required="true" validator="CSH5220_dateValidator"/>
+                    <a:field name="transactionNum" prompt="csh_prepayment_write_off.transaction_num"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="CSH5220_paymentObjectDs" placeHolder="csh_transaction_line.partner_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeName" lovCode="LOV_GLD_PAYEE?payeeCategory=$[/parameter/@payeeCategory]" placeHolder="acp_requisition.partner_name" readOnly="true">
+                        <a:mapping>
+                            <a:map from="payeeId" to="payeeId"/>
+                            <a:map from="payeeName" to="payeeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="agentEmployeeName" lovCode="LOV_EXP_EMPLOYEE" placeHolder="csh_transaction_line.agent_employee_id">
+                        <a:mapping>
+                            <a:map from="employeeId" to="agentEmployeeId"/>
+                            <a:map from="employeeName " to="agentEmployeeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankAccountName" displayField="bankAccountName" options="CSH5220_bankAccountDs" placeHolder="csh_bank_account.bank_account_num" returnField="bankAccountId" valueField="bankAccountId"/>
+                    <a:field name="currencyName" displayField="currencyName" options="CSH5220_currencyCodeDs" placeHolder="csh_payment_requisition_hd.currency_code" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="paymentMethodName" displayField="paymentMethodName" options="CSH5220_paymentMethodsDs" placeHolder="csh_transaction_header.payment_method_id" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="contactNumber" placeHolder="csh_prepayment_write_off.contact_number"/>
+                    <a:field name="amountFrom" placeHolder="csh_prepayment_write_off.number_from"/>
+                    <a:field name="amountTo" placeHolder="csh_prepayment_write_off.number_to"/>
+                    <a:field name="requisitionNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5220_onUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5220_resultDs" queryUrl="$[/request/@context_path]/csh/write-off/queryPrePay" queryDataSet="CSH5220_queryDs">
+                <a:fields>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="transactionNum" prompt="csh_prepayment_write_off.transaction_num"/>
+                    <a:field name="transactionDate" prompt="csh_transaction_header.transaction_date"/>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="currencyCode" prompt="csh_transaction_line.currency_code"/>
+                    <a:field name="transactionAmount" prompt="csh_transaction_line.transaction_amount"/>
+                    <a:field name="unWriteOffAmount" prompt="csh_prepayment_write_off.unwrite_off_amount"/>
+                    <a:field name="bankAccountNum" prompt="csh_prepayment_write_off.bank_account_name"/>
+                    <a:field name="bankAccountName" prompt="csh_prepayment_write_off.bank_account_name"/>
+                    <a:field name="payeeCategoryName" prompt="csh_transaction_line.partner_category"/>
+                    <a:field name="payeeName" prompt="csh_transaction_line.partner_id"/>
+                    <a:field name="documentNum" prompt="csh_transaction_line.document_num"/>
+                    <a:field name="agentEmployeeName" prompt="csh_transaction_line.agent_employee_id"/>
+                    <a:field name="userDesc" prompt="csh_transaction_line.created_by"/>
+                    <a:field name="contactNumber" prompt="csh_prepayment_write_off.contact_number"/>
+                </a:fields>
+            </a:dataSet>        
+        </a:dataSets>
+        <a:queryForm bindTarget="CSH5220_queryDs" marginWidth="35" resultTarget="CSH5220_resultDs" style="width:100%;border:none">
+            <a:formToolBar>
+                <a:comboBox name="accEntityName" bindTarget="CSH5220_queryDs"/>
+                <a:datePicker name="transactionDateFrom" bindTarget="CSH5220_queryDs" renderer="Aurora.formatDate"/>
+                <a:datePicker name="transactionDateTo" bindTarget="CSH5220_queryDs" renderer="Aurora.formatDate"/>
+                <a:textField name="transactionNum" bindTarget="CSH5220_queryDs"/>
+            </a:formToolBar>
+            <a:formBody column="4">
+                <a:comboBox name="payeeCategoryName" bindTarget="CSH5220_queryDs"/>
+                <a:lov name="payeeName" bindTarget="CSH5220_queryDs">
+                    <a:events>
+                        <a:event name="focus" handler="CSH5220_onPayeeNameFocusFun"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="agentEmployeeName" bindTarget="CSH5220_queryDs"/>
+                <a:comboBox name="bankAccountName" bindTarget="CSH5220_queryDs">
+                    <a:events>
+                        <a:event name="focus" handler="CSH5220_onBankAccountFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="currencyName" bindTarget="CSH5220_queryDs"/>
+                <a:comboBox name="paymentMethodName" bindTarget="CSH5220_queryDs"/>
+                <a:textField name="contactNumber" bindTarget="CSH5220_queryDs"/>
+                <a:numberField name="amountFrom" bindTarget="CSH5220_queryDs"/>
+                <a:numberField name="amountTo" bindTarget="CSH5220_queryDs"/>
+                <a:textField name="requisitionNumber" bindTarget="CSH5220_queryDs"/>
+            </a:formBody>
+        </a:queryForm>
+        <a:grid id="EXP5220_grid" bindTarget="CSH5220_resultDs" marginHeight="115" marginWidth="3" navBar="true">
+            <a:toolBar>
+                <a:button type="excel"/>
+            </a:toolBar>
+            <a:columns>
+                <a:column name="transactionNum" align="center" renderer="CSH5220_trxRenderer" width="150"/>
+                <a:column name="transactionDate" align="center" width="100"/>
+                <a:column name="requisitionNumber" align="center" renderer="CSH5220_reqRenderer" width="150"/>
+                <a:column name="currencyCode" align="center" width="100"/>
+                <a:column name="transactionAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                <a:column name="unWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                <a:column name="bankAccountNum" align="center" width="150"/>
+                <a:column name="bankAccountName" align="center" width="200"/>
+                <a:column name="payeeCategoryName" align="center" width="100"/>
+                <a:column name="payeeName" align="center" width="100"/>
+                <a:column name="documentNum" align="center" width="150"/>
+                <a:column name="agentEmployeeName" align="center" width="100"/>
+                <a:column name="userDesc" align="center" width="100"/>
+                <a:column name="contactNumber" align="center" width="150"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

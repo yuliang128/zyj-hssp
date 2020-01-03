@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldSobRuleGpRefAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldSobRuleGpRefAe">
+        <result column="ref_id" property="refId" jdbcType="DECIMAL" />
+        <result column="rule_group_id" property="ruleGroupId" jdbcType="DECIMAL" />
+        <result column="acc_entity_id" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="enabled_flag" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="acc_entity_code" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="acc_entity_name" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="set_of_books_id" property="setOfBookId" jdbcType="DECIMAL" />
+    </resultMap>
+
+    <select id="queryNotRefAE" parameterType="com.hand.hec.gld.dto.GldSobRuleGpRefAe" resultMap="BaseResultMap">
+        select
+            ers.set_of_books_id,
+            #{ruleGroupId}	rule_group_id,
+            gae.acc_entity_id,
+            gae.acc_entity_code,
+            gae.acc_entity_name
+        from
+            gld_accounting_entity gae
+
+                join gld_accounting_entity_tl gaetl on gaetl.acc_entity_id = gae.acc_entity_id
+                and gaetl.lang =  #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                and gae.company_type  &lt;&gt; 2
+                and gae.start_date_active &lt;= current_date ( )
+                and ( gae.end_date_active is null or current_date ( ) &lt;= gae.end_date_active )
+
+                and not exists ( select 1 from gld_sob_rule_gp_ref_ae gra where gae.acc_entity_id = gra.acc_entity_id and gra.rule_group_id = #{ruleGroupId})
+
+                join gld_acc_entity_ref_sob ers on gae.acc_entity_id = ers.acc_entity_id
+                and ers.enabled_flag = 'Y'
+                and ers.set_of_books_id = #{setOfBookId}
+
+
+    </select>
+
+</mapper>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-26 18:49
+    $Revision: 1.0
+    $Purpose: 管理组织级-报销类型定义-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP4030_exp_mo_companies_batch_link"
+                url="$[/request/@context_path]/exp/mo-exp-type-asgn-com/insertCompanyRelationship"/>
+        <script><![CDATA[
+        function EXP4030_assignCom() {
+            var companyRecordsData = $au('EXP4030_batch_asgn_company_ds').getJsonData(true);
+            var typeRecordsData = $au('EXP4030_exp_mo_expense_types_result_ds').getJsonData(true);
+            var datas = new Array(typeRecordsData.length * companyRecordsData.length);
+            if (companyRecordsData.length == 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            var k = 0;
+            for (var i = 0;i < typeRecordsData.length ;i++) {
+                for (var j = 0;j < companyRecordsData.length;j++) {
+                    datas[k] = {};
+                    datas[k]['moExpenseTypeId'] = typeRecordsData[i]['moExpenseTypeId'];
+                    datas[k]['companyId'] =  companyRecordsData[j]['companyId'];
+                    datas[k]['enabledFlag'] = 'Y';
+                    datas[k]['__status'] = 'add';
+                    datas[k]['_token'] = null;
+                    k++;
+                }
+            }
+            Aurora.request(
+                {
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP4030_exp_mo_companies_batch_link').getUrl(),
+                    para: datas,
+                    success: EXP4030_closeAsgnBatchCreateWindow,
+                    scope: this
+                });
+        }
+
+        function EXP4030_closeAsgnBatchCreateWindow() {
+            $au('EXP4030_exp_mo_exp_type_asgn_companies_batch').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4030_fnd_Organization_ds" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/fnd-managing-organizations/query?magOrgId=$[/parameter/@magOrgId]"/>
+            <a:dataSet id="EXP4030_batch_asgn_company_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-exp-type-asgn-com/queryRemainAllCompany?magOrgId=$[/parameter/@magOrgId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP2030_exp_mo_exp_type_batch_asgn_com_form" column="2" title="exp_mo_exp_type.batch_disp_comp">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP4030_assignCom" text="hec_assign" width="90"/>
+                    <a:toolbarButton click="EXP4030_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="EXP4030_fnd_Organization_ds"
+                             prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4030_fnd_Organization_ds"
+                             prompt="fnd_managing_organization.description"  readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP4030_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode"  width="160"/>
+                    <a:column name="companyShortName" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

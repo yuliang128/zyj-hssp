@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoEmpGroupMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoEmpGroup">
+        <result column="MO_EMP_GROUP_ID" property="moEmpGroupId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MO_EMP_GROUP_CODE" property="moEmpGroupCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkExpMoEmpGroup" resultMap="BaseResultMap">
+        select  eg.*
+            from exp_mo_emp_group          eg,
+            exp_mo_emp_group_asgn_com ac,
+            exp_com_emp_group_ref_emp re
+            where eg.mo_emp_group_id = ac.mo_emp_group_id
+            and ac.assign_id = re.emp_group_com_assign_id
+            and re.employee_id = #{employeeId}
+            and
+            (
+              (
+                #{filtrateMethod} = 'INCLUDE'
+                and (#{controlEmpGroupCodeFrom} is null or eg.mo_emp_group_code &gt;= #{controlEmpGroupCodeFrom})
+                and (#{controlEmpGroupCodeTo} is null or eg.mo_emp_group_code &lt;= #{controlEmpGroupCodeTo})
+              )
+              or
+              (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (#{controlEmpGroupCodeFrom} is null or eg.mo_emp_group_code &lt; #{controlEmpGroupCodeFrom})
+                    or (#{controlEmpGroupCodeTo} is null or eg.mo_emp_group_code &gt; #{controlEmpGroupCodeTo})
+                )
+              )
+            )
+            and eg.enabled_flag = 'Y'
+            and ac.enabled_flag = 'Y'
+            and re.enabled_flag = 'Y'
+    </select>
+    
+    <select id="getEmpGroupListForQuery" resultMap="BaseResultMap">
+        SELECT
+            eg.*,
+            re.employee_id
+        FROM
+            exp_mo_emp_group eg
+            LEFT JOIN exp_mo_emp_group_asgn_com ac ON eg.mo_emp_group_id = ac.mo_emp_group_id
+            LEFT JOIN exp_com_emp_group_ref_emp re ON ac.assign_id = re.emp_group_com_assign_id
+        WHERE
+            eg.mag_org_id = #{request.magOrgId}
+            AND eg.enabled_flag = 'Y'
+            AND ac.enabled_flag = 'Y'
+            AND re.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR eg.mo_emp_group_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR eg.mo_emp_group_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR eg.mo_emp_group_code &lt;= #{parameterUpperLimit})
+    </select>
+
+</mapper>

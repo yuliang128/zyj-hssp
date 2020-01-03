@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscTaskPoolPrepareMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscTaskPoolPrepare">
+        <result column="TASK_ID" property="taskId" jdbcType="DECIMAL" />
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL" />
+        <result column="DOC_ID" property="docId" jdbcType="DECIMAL" />
+        <result column="DOC_NUMBER" property="docNumber" jdbcType="VARCHAR" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL" />
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ENTER_TIME" property="enterTime" jdbcType="DATE" />
+        <result column="EXIT_TIME" property="exitTime" jdbcType="DATE" />
+        <result column="PROCESS_STATUS" property="processStatus" jdbcType="VARCHAR" />
+        <result column="ERROR_MESSAGE" property="errorMessage" jdbcType="VARCHAR" />
+
+        <result column="CUR_ADVICE_EMP_NAME" property="curAdviceEmpName" jdbcType="VARCHAR"/>
+        <result column="DOC_CATEGORY_NAME" property="docCategoryName" jdbcType="VARCHAR"/>
+        <result column="DOC_EMPLOYEE_ID" property="docEmployeeId" jdbcType="DECIMAL"/>
+        <result column="DOC_EMPLOYEE_NAME" property="docEmployeeName" jdbcType="VARCHAR"/>
+        <result column="WORKFLOW_ID" property="workflowId" jdbcType="DECIMAL"/>
+        <result column="WORKFLOW_NAME" property="workflowName" jdbcType="VARCHAR"/>
+        <result column="NODE_ID" property="nodeId" jdbcType="DECIMAL"/>
+        <result column="NODE_NAME" property="nodeName" jdbcType="VARCHAR"/>
+        <result column="POOL_TYPE" property="poolType" jdbcType="VARCHAR"/>
+        <result column="POOL_TYPE_NAME" property="poolTypeName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_NAME" property="magOrgName" jdbcType="VARCHAR"/>
+        <result column="CURRENT_NODE_ID" property="currentNodeId" jdbcType="DECIMAL"/>
+        <result column="CURRENT_NODE_NAME" property="currentNodeName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR"/>
+        <result column="DISPATCH_RECORD_ID" property="dispatchRecordId" jdbcType="DECIMAL"/>
+        <result column="TASK_STATUS" property="taskStatus" jdbcType="VARCHAR"/>
+        <result column="TASK_STATUS_NAME" property="taskStatusName" jdbcType="VARCHAR"/>
+        <result column="DISPATCH_STATUS" property="dispatchStatus" jdbcType="VARCHAR"/>
+        <result column="DISPATCH_STATUS_NAME" property="dispatchStatusName" jdbcType="VARCHAR"/>
+        <result column="WORK_EMPLOYEE_ID" property="workEmployeeId" jdbcType="DECIMAL"/>
+        <result column="WORK_EMPLOYEE_NAME" property="workEmployeeName" jdbcType="VARCHAR"/>
+        <result column="ENTER_TIME2" property="enterTime2" jdbcType="VARCHAR"/>
+        <result column="EXIT_TIME2" property="exitTime2" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="selectSscTaskPoolPrepare" resultMap="BaseResultMap">
+        Select v.*,
+(case v.work_employee_name when null then (select stp.CURRENT_EMPLOYEE_ID
+      from ssc_task_pool stp
+     where stp.task_id = v.task_id)
+else null
+end) As cur_advice_emp_name
+  From (Select p.task_id,
+               p.doc_category,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_DOC_CATEGORY'
+                   And sc.code_id = v.code_id
+										and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = p.doc_category) As doc_category_name,
+               p.doc_id,
+               p.doc_number,
+               p.employee_id As doc_employee_id,
+               (Select ee.name
+                  From exp_employee ee
+                 Where ee.employee_id = p.employee_id) As doc_employee_name,
+               p.workflow_id As workflow_id,
+               (Select v.DESCRIPTION
+                  From ssc_workflow_tl v
+                 Where v.workflow_id = p.workflow_id
+and v.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As workflow_name,
+               p.current_node_id As node_id,
+               (Select v.DESCRIPTION
+                  From ssc_workflow_node_tl v
+                 Where v.node_id = p.current_node_id
+and v.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As node_name,
+               'SSC' As pool_type,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_POOL_TYPE'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = 'SSC') As pool_type_name,
+        p.enter_Time,
+        date_format(p.ENTER_TIME,'%Y-%m-%d %T')as enter_time2,
+        p.exit_Time,
+        date_format(p.exit_time,'%Y-%m-%d %T')as exit_time2,
+               p.task_status,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_TASK_STATUS'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = p.task_status) As task_status_name,
+               r.status As dispatch_status,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_DISPATCH_STATUS'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = r.status) As dispatch_status_name,
+               r.employee_id As work_employee_id,
+               (Select Name
+                  From exp_employee ee
+                 Where ee.employee_id = r.employee_id) As work_employee_name,
+               p.mag_org_id,
+               (Select ov.DESCRIPTION
+                  From fnd_managing_organization_tl ov
+                 Where ov.mag_org_id = p.mag_org_id
+and ov.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As mag_org_name,
+               p.company_id,
+               (Select fcv.COMPANY_SHORT_NAME
+                  From fnd_company_tl fcv
+                 Where fcv.company_id = p.company_id
+and fcv.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As company_name,
+               r.dispatch_record_id,
+               '' As error_message
+          From ssc_task_pool p, ssc_task_dispatch_record r
+         Where p.task_id = r.task_id
+        Union All
+        Select ph.task_id,
+               ph.doc_category,
+               (Select v.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_DOC_CATEGORY'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = ph.doc_category) As doc_category_name,
+               ph.doc_id,
+               ph.doc_number,
+               ph.employee_id As doc_employee_id,
+               (Select Name
+                  From exp_employee ee
+                 Where ee.employee_id = ph.employee_id) As doc_employee_name,
+               ph.workflow_id As workflow_id,
+               (Select v.DESCRIPTION
+                  From ssc_workflow_tl v
+                 Where v.workflow_id = ph.workflow_id
+and v.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As workflow_name,
+               Null As node_id,
+               Null As node_name,
+               'SSC' As pool_type,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_POOL_TYPE'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = 'SSC') As pool_type_name,
+        ph.enter_Time,
+        date_format(ph.ENTER_TIME,'%Y-%m-%d %T')as enter_time2,
+        ph.exit_Time,
+        date_format(ph.exit_time,'%Y-%m-%d %T')as exit_time2,
+               ph.task_status,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_TASK_STATUS'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = ph.task_status) As task_status_name,
+               Null As dispatch_status,
+               Null As dispatch_status_name,
+               Null As work_employee_id,
+               Null As work_employee_name,
+               ph.mag_org_id,
+               (Select ov.DESCRIPTION
+                  From fnd_managing_organization_tl ov
+                 Where ov.mag_org_id = ph.mag_org_id
+and ov.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As mag_org_name,
+               ph.company_id,
+               (Select fcv.COMPANY_SHORT_NAME
+                  From fnd_company_tl fcv
+                 Where fcv.company_id = ph.company_id
+and fcv.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As company_name,
+               Null As dispatch_record_id,
+               '' As error_message
+          From ssc_task_pool_his ph
+        Union All
+        Select l.task_id,
+               l.doc_category,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_DOC_CATEGORY'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = l.doc_category) As doc_category_name,
+               l.doc_id,
+               l.doc_number,
+               l.employee_id As doc_employee_id,
+               (Select Name
+                  From exp_employee ee
+                 Where ee.employee_id = l.employee_id) As doc_employee_name,
+               Null As workflow_id,
+               Null As workflow_name,
+               Null As current_node_id,
+               Null As current_node_name,
+               'PREPARE' As pool_type,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_POOL_TYPE'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = 'LOCAL') As pool_type_name,
+        l.enter_Time,
+        date_format(l.ENTER_TIME,'%Y-%m-%d %T')as enter_time2,
+        l.exit_Time,
+        date_format(l.exit_time,'%Y-%m-%d %T') as exit_time2,
+               Null As task_status,
+               Null As task_status_name,
+               Null As dispatch_status,
+               Null As dispatch_status_name,
+               Null As work_employee_id,
+               Null As work_employee_name,
+               l.mag_org_id,
+               (Select ov.DESCRIPTION
+                  From fnd_managing_organization_tl ov
+                 Where ov.mag_org_id = l.mag_org_id
+and ov.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As mag_org_name,
+               l.company_id,
+               (Select fcv.COMPANY_SHORT_NAME
+                  From fnd_company_tl fcv
+                 Where fcv.company_id = l.company_id
+and fcv.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As company_name,
+               Null As dispatch_record_id,
+               '' As error_message
+          From ssc_task_pool_local l
+        Union All
+        Select pp.task_id,
+               pp.doc_category,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_DOC_CATEGORY'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = pp.doc_category) As doc_category_name,
+               pp.doc_id,
+               pp.doc_number,
+               pp.employee_id As doc_employee_id,
+               (Select Name
+                  From exp_employee ee
+                 Where ee.employee_id = pp.employee_id) As doc_employee_name,
+               Null As workflow_id,
+               Null As workflow_name,
+               Null As current_node_id,
+               Null As current_node_name,
+               'PREPARE' As pool_type,
+               (Select v1.DESCRIPTION
+                  From sys_code_b sc, sys_code_value_b v,sys_code_value_tl v1
+                 Where sc.code = 'SSC_POOL_TYPE'
+                   And sc.code_id = v.code_id
+and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+and v1.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+                   And v.VALUE = 'PREPARE') As pool_type_name,
+        pp.enter_Time,
+        date_format(pp.ENTER_TIME,'%Y-%m-%d %T')as enter_time2,
+        pp.exit_Time,
+        date_format(pp.exit_time,'%Y-%m-%d %T')as exit_time2,
+               Null As task_status,
+               Null As task_status_name,
+               Null As dispatch_status,
+               Null As dispatch_status_name,
+               Null As work_employee_id,
+               Null As work_employee_name,
+               pp.mag_org_id,
+               (Select ov.DESCRIPTION
+                  From fnd_managing_organization_tl ov
+                 Where ov.mag_org_id = pp.mag_org_id
+and ov.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As mag_org_name,
+               pp.company_id,
+               (Select fcv.COMPANY_SHORT_NAME
+                  From fnd_company_tl fcv
+                 Where fcv.company_id = pp.company_id
+and fcv.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) As company_name,
+               Null As dispatch_record_id,
+               pp.error_message
+          From ssc_task_pool_prepare pp) v
+          where 1=1
+        <if test="docNumber != null"	>
+            and v.doc_number like concat('%',#{docNumber},'%')
+        </if>
+        <if test="docCategory != null"	>
+            and v.doc_category =#{docCategory}
+        </if>
+        <if test="taskStatus != null"	>
+            and v.task_status =#{taskStatus}
+        </if>
+        <if test="dispatchStatus != null"	>
+            and v.dispatch_status =#{dispatchStatus}
+        </if>
+        <if test="workEmployeeId != null"	>
+            and v.work_employee_id =#{workEmployeeId}
+        </if>
+        <if test="docEmployeeId != null"	>
+            and v.doc_employee_id =#{docEmployeeId}
+        </if>
+        <if test="magOrgId != null"	>
+            and v.mag_org_id =#{magOrgId}
+        </if>
+        <if test="companyId != null"	>
+            and v.company_id =#{companyId}
+        </if>
+        <if test="workflowId != null"	>
+            and v.workflow_id =#{workflowId}
+        </if>
+        <if test="nodeId != null"	>
+            and v.node_id =#{nodeId}
+        </if>
+        <if test="enterTime != null"	>
+            and v.enter_time &gt;=#{enterTime}
+        </if>
+        <if test="enterTimeTo != null"	>
+            and v.enter_time &lt;=#{enterTimeTo}
+        </if>
+        <if test="exitTime != null"	>
+            and v.exit_time &gt;=#{exitTime}
+        </if>
+        <if test="exitTimeTo != null"	>
+            and v.exit_time &lt;=#{exitTimeTo}
+        </if>
+
+ Order By v.enter_time Desc
+
+    </select>
+
+    <select id="selectCurAdviceEmpName" resultType="java.lang.String">
+      Select ee.name
+  From ssc_task_dispatch_advice stda, exp_employee ee
+ Where stda.task_id = #{taskId}
+   And stda.employee_id = ee.employee_id
+   And ee.enabled_flag = 'Y'
+ Group By ee.name
+    </select>
+
+</mapper>

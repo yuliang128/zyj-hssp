@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-02-28 11:32:39
+    $Revision: 1.0  
+    $Purpose: 付款批规则定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1095_csh_payment_acc_entity_link" url="$[/request/@context_path]/csh/CSH1095/csh_pay_batch_rule_asgn_ae.screen"/>
+        <a:link id="CSH1095_csh_payment_batch_rules_details_link" url="$[/request/@context_path]/csh/CSH1095/csh_pay_batch_rule_lns.screen"/>
+        <script><![CDATA[
+       
+            function CSH1095_ruleCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1095_textField_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH1095_PriorityEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1095_textField_num';
+                } else {
+                    return '';
+                }
+            
+            }
+            
+            function CSH1095_Submit() {
+                $au('CSH1095_csh_payment_batch_rules_result_ds').query();
+            }
+            //生成规则
+            
+            function CSH1095_columnDetail(value, record, name) {
+                var ruleId = record.get('ruleId');
+                if (record.isNew) {
+                    return '';
+                } else {
+                    return '<a href="javascript:CSH1095_openDetail(' + ruleId + ')">' + '$[l:csh_payment_batch_rules.detail]' + '</a>';
+                }
+            }
+            
+            function CSH1095_openDetail(id) {
+                var magOrgId = $au('CSH1095_csh_payment_batch_rules_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1095_csh_payment_batch_rules_details_link').getUrl() + '?ruleId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1095_csh_payment_batch_rules_details_window',
+                    url: url,
+                    title: '$[l:csh_payment_batch_rules.detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+            //分配核算主体
+            function CSH1095_accEntity(value, record, name) {
+                var ruleId = record.get('ruleId');
+                if (record.isNew) {
+                    return '';
+                } else {
+                    return '<a href="javascript:CSH1095_openAccEntity(' + ruleId + ')">' + '$[l:prompt.accounting_distribution]' + '</a>';
+                }
+            }
+            
+            function CSH1095_openAccEntity(id) {
+                var magOrgId = $au('CSH1095_csh_payment_batch_rules_query_ds').getCurrentRecord().get('magOrgId');
+                url = $au('CSH1095_csh_payment_acc_entity_link').getUrl() + '?ruleId=' + id + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1095_csh_payment_acc_entity_window',
+                    url: url,
+                    title: '$[l:prompt.accounting_distribution]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1095_add(ds) {
+            
+                var magOrgId = $au('CSH1095_csh_payment_batch_rules_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+            
+                }
+            }
+
+            function CSH1095_update(ds, record, name, value, oldValue) {
+              
+                if (name == 'magOrgId') {
+                    var magOrgId = record.get('magOrgId');
+                    $au('CSH1095_csh_payment_batch_rules_result_ds').query();
+                }
+            }
+            
+            function DateValidator(record, name, value) { //日期校验方法
+            
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if ( !! end_date) { //由于结束日期非必填，只有在结束日期填了才进行比较
+                        if (!compareDate(start_date, end_date)) {
+                            return '$[l:time_error]'; //校验不通过返回字符串
+                        }
+                    }
+                    return true; //校验通过返回true
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start > end) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function GridCellclickFun(grid, row, name, record) {
+                if (name == 'typeCode') {
+                    var magOrgId = $au('CSH1095_csh_payment_batch_rules_query_ds').getCurrentRecord().get('magOrgId');
+                    record.getField('typeCode').setLovPara('magOrgId', magOrgId);
+            
+                }
+            }
+
+            function CSH1095_BeforeCreate(){
+                if (Ext.isEmpty($au('CSH1095_csh_payment_batch_rules_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1095_req_types_magOrgList_ds" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="CSH1095_csh_payment_batch_rules_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/defaultMag/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1095_req_types_magOrgList_ds" prompt="csh_payment_batch_rule.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMag/records/record/@magOrgId]"/>
+                    <a:field name="ruleCode" prompt="csh_payment_batch_rule.rule_code"/>
+                    <a:field name="description" prompt="csh_payment_batch_rule.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1095_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1095_csh_payment_batch_rules_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/payment-batch-rule" queryDataSet="CSH1095_csh_payment_batch_rules_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="ruleId"/>
+                    <a:field name="ruleCode" prompt="csh_payment_batch_rule.rule_code" required="true"/>
+                    <a:field name="priority" prompt="csh_payment_batch_rule.priority" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto" dtoId="ruleId" prompt="csh_payment_batch_rule.description" required="true"/>
+                    <a:field name="typeCode" lovCode="LOV_PAYMENT_BATCH_TYPE" prompt="csh_payment_batch_type.type_code" required="true">
+                        <a:mapping>
+                            <a:map from="typeCode" to="typeCode"/>
+                            <a:map from="typeId" to="typeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="typeId"/>
+                    <a:field name="magOrgId" prompt="csh_payment_batch_rule.mag_org_id" required="true"/>
+                    <a:field name="startDateActive" datatype="date" prompt="csh_payment_batch_rule.start_date_active" required="true" validator="DateValidator"/>
+                    <a:field name="endDateActive" datatype="date" prompt="csh_payment_batch_rule.end_date_active" validator="DateValidator"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1095_Submit"/>
+                    <a:event name="add" handler="CSH1095_add"/>
+                    <a:event name="beforecreate" handler="CSH1095_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1095_csh_payment_rules_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1095_csh_payment_rules_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1095_csh_payment_batch_rules_query_ds" resultTarget="CSH1095_csh_payment_batch_rules_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgDisplay" bindTarget="CSH1095_csh_payment_batch_rules_query_ds" width="170"/>
+                    <a:textField name="ruleCode" bindTarget="CSH1095_csh_payment_batch_rules_query_ds"/>
+                    <a:textField name="description" bindTarget="CSH1095_csh_payment_batch_rules_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1095_csh_payment_rules_grid" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="priority" align="center" editorFunction="CSH1095_PriorityEdit" width="120"/>
+                <a:column name="ruleCode" align="center" editorFunction="CSH1095_ruleCodeEdit" width="120"/>
+                <a:column name="description" align="left" editor="CSH1095_tledit" width="200"/>
+                <a:column name="typeCode" align="center" editor="CSH1095_type_code_lov" width="100"/>
+                <a:column name="startDateActive" align="center" editor="CSH1095_date" renderer="Aurora.formatDate" width="100"/>
+                <a:column name="endDateActive" align="center" editor="CSH1095_date" renderer="Aurora.formatDate" width="100"/>
+                <a:column name="ruleDetail" align="center" renderer="CSH1095_columnDetail" width="100"/>
+                <a:column name="accEntity" align="center" renderer="CSH1095_accEntity" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="CSH1095_textField_num" allowDecimals="false" allowNegative="false"/>
+                <a:lov id="CSH1095_type_code_lov"/>
+                <a:tledit id="CSH1095_tledit"/>
+                <a:textField id="CSH1095_textField_upper" typeCase="upper"/>
+                <a:datePicker id="CSH1095_date"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="GridCellclickFun"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

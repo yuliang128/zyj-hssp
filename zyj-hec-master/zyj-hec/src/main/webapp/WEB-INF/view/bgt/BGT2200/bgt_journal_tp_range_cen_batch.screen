@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/15 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-指定范围-批量分配中心
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function BGT2200_etsBatchAssgin() {
+                var resultDs = $au('BGT2200_journal_tp_range_cen_bacth_result_ds');
+                var datas = $au('BGT2200_journal_tp_range_cen_bacth_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    var record = resultDs.create();
+                    record.set('centerId',datas[i]['centerId']);
+                }
+                resultDs.submit();
+            }
+            
+            function BGT2200_range_center_assign_success() {
+                $au('BGT2200_jour_t_cen_batch_window').close();
+                $au('BGT2200_journal_type_ref_cen_ds').query();
+            }
+            
+            function BGT2200_cenBatchReturn() {
+                $au("BGT2200_jour_t_cen_batch_window").close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_journal_tp_range_cen_bacth_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/center" queryUrl="$[/request/@context_path]/bgt/center/bgtJournalBatch?bgtOrgId=$[/parameter/@bgtOrgId]&amp;rangeEtsId=$[/parameter/@rangeEtsId]" selectable="true">
+                <a:fields>
+                    <a:field name="rangeEtsId" defaultValue="$[/parameter/@rangeEtsId]"/>
+                    <a:field name="centerId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2200_journal_tp_range_cen_bacth_result_ds" autoPageSize="true" autoQuery="false" baseUrl="/bgt/journal-tp-range-cen" >
+                <a:fields>
+                    <a:field name="centerCode" autoComplete="true" autoCompleteField="centerCode" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="LOV_BGT_CONTROL_RULE_BUDGET_CENTER?bgtOrgId=$[/parameter/@bgtOrgId]&amp;entityId=$[/parameter/@entityId]" lovWidth="540" prompt="bgt_center.center_code" required="true" title="bgt_center.bgt_center">
+                        <a:mapping>
+                            <a:map from="centerId" to="centerId"/>
+                            <a:map from="code" to="centerCode"/>
+                            <a:map from="name" to="centerName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="centerName" readOnly="true" prompt="bgt_center.description"/>
+                    <a:field name="rangeCenId"/>
+                    <a:field name="rangeEtsId" defaultValue="$[/parameter/@rangeEtsId]"/>
+                    <a:field name="centerId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="bgt_budget_item_type.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BGT2200_range_center_assign_success"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_journal_tp_cen_bacth">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="BGT2200_etsBatchAssgin" text="hec_assign" width="80"/>
+                    <a:button click="BGT2200_cenBatchReturn" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="entity_code" bindTarget="BGT2200_journal_type_code_cen_ds" prompt="bgt_entities.entity_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="BGT2200_journal_type_code_cen_ds" prompt="bgt_entities.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="BGT2200_journal_tp_range_cen_bacth_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="centerCode" align="center" prompt="bgt_centers.center_code" width="80"/>
+                    <a:column name="description" prompt="bgt_centers.description" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.expm.mapper.ExpReportPmtScheduleMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.expm.dto.ExpReportPmtSchedule">
+        <result column="CITY_CODE" property="cityCode" jdbcType="VARCHAR"/>
+        <result column="CITY_NAME" property="cityName" jdbcType="VARCHAR"/>
+        <result column="CONTRACT_HEADER_ID" property="contractHeaderId" jdbcType="DECIMAL"/>
+        <result column="CON_PMT_SCHEDULE_LINE_ID" property="conPmtScheduleLineId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_SCHEDULE_LINE_ID" property="paymentScheduleLineId" jdbcType="DECIMAL"/>
+        <result column="EXP_REPORT_HEADER_ID" property="expReportHeaderId" jdbcType="DECIMAL"/>
+        <result column="SCHEDULE_LINE_NUMBER" property="scheduleLineNumber" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_CURRENCY_CODE" property="paymentCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="SCHEDULE_START_DATE" property="scheduleStartDate" jdbcType="DATE"/>
+        <result column="SCHEDULE_DUE_DATE" property="scheduleDueDate" jdbcType="DATE"/>
+        <result column="DUE_AMOUNT" property="dueAmount" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL"/>
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL"/>
+        <result column="FROZEN_FLAG" property="frozenFlag" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_CODE" property="bankLocationCode" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_NAME" property="bankLocationName" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_CODE" property="provinceCode" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_NAME" property="provinceName" jdbcType="VARCHAR"/>
+        <result column="TAX_AMOUNT" property="taxAmount" jdbcType="DECIMAL"/>
+        <result column="TAX_TYPE_ID" property="taxTypeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_TYPE_ID" property="payeeTypeId" jdbcType="DECIMAL"/>
+
+        <result column="PAYMENT_CURRENCY_NAME" property="paymentCurrencyName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY_NAME" property="payeeCategoryName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_NAME" property="paymentMethodName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_USEDE_NAME" property="paymentUsedeName" jdbcType="VARCHAR"/>
+        <result column="CASH_FLOW_ITEM_NAME" property="cashFlowItemName" jdbcType="VARCHAR"/>
+        <result column="WRITE_OFF_AMOUNT" property="writeOffAmount" jdbcType="DECIMAL"/>
+        <result column="CONTRACT_NUMBER" property="contractNumber" jdbcType="VARCHAR"/>
+        <result column="CON_PMT_SCHEDULE_LINE_NUMBER" property="conPmtScheduleLineNumber" jdbcType="VARCHAR"/>
+        <result column="TAX_FLAG" property="taxFlag" jdbcType="VARCHAR"/>
+        <result column="MORE_TAX_FLAG" property="moreTaxFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getExpReportPmtSchedules" resultMap="BaseResultMap">
+      select erps.*,v.payee_type_id
+        from exp_report_pmt_schedule erps
+        LEFT JOIN (
+	        SELECT
+		      ee.EMPLOYEE_ID payee_id,
+		      ee.EMPLOYEE_TYPE_ID payee_type_id,
+		      'EMPLOYEE' payee_category
+	        FROM
+		      exp_employee ee
+	        UNION ALL
+		    SELECT
+			  psv.VENDER_ID payee_id,
+			  psv.VENDER_TYPE_ID payee_type_id,
+			  'VENDER' payee_category
+		    FROM
+			  pur_system_vender psv
+		    UNION ALL
+			SELECT
+				osc.CUSTOMER_ID payee_id,
+				osc.CUSTOMER_TYPE_ID payee_type_id,
+				'CUSTOMER' payee_category
+			FROM
+				ord_system_customer osc
+            ) v ON v.payee_category = erps.PAYEE_CATEGORY
+            AND v.payee_id =erps.PAYEE_ID
+       where erps.exp_report_header_id = #{expReportHeaderId}
+    </select>
+
+    <select id="getExpReportPmtSchedulesTax" resultMap="BaseResultMap">
+        SELECT
+	      erps.*,
+	      ertl.tax_amount,
+	      ertl.tax_type_id,
+	      v.payee_type_id
+        FROM
+	      exp_report_pmt_schedule erps
+        INNER JOIN exp_report_pmt_sch_tax_line ertl ON erps.payment_schedule_line_id = ertl.payment_schedule_line_id
+        LEFT JOIN (
+	        SELECT
+		      ee.EMPLOYEE_ID payee_id,
+		      ee.EMPLOYEE_TYPE_ID payee_type_id,
+		      'EMPLOYEE' payee_category
+	        FROM
+		      exp_employee ee
+	        UNION ALL
+		    SELECT
+			  psv.VENDER_ID payee_id,
+			  psv.VENDER_TYPE_ID payee_type_id,
+			  'VENDER' payee_category
+		    FROM
+			  pur_system_vender psv
+		    UNION ALL
+			SELECT
+				osc.CUSTOMER_ID payee_id,
+				osc.CUSTOMER_TYPE_ID payee_type_id,
+				'CUSTOMER' payee_category
+			FROM
+				ord_system_customer osc
+            ) v ON v.payee_category = erps.PAYEE_CATEGORY
+            AND v.payee_id =erps.PAYEE_ID
+        WHERE
+	      erps.exp_report_header_id = #{expReportHeaderId}
+    </select>
+
+    <!-- Modify Tagin/2018.02.18 获取报销单计划付款行总金额 -->
+    <select id="totalAmount" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+    SELECT
+    CASE
+        WHEN
+            sum( erps.due_amount ) IS NULL THEN
+                0 ELSE sum( erps.due_amount )
+                END AS total_amount
+        FROM
+            exp_report_pmt_schedule erps
+    WHERE
+        erps.exp_report_header_id = #{expReportHeaderId};
+    </select>
+
+    <select id="getTotalAmountByLine" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+        SELECT
+        CASE
+            WHEN
+                sum( erps.due_amount ) IS NULL THEN
+                    0 ELSE sum( erps.due_amount )
+                    END AS total_amount
+            FROM
+                exp_report_pmt_schedule erps
+        WHERE
+            erps.payment_schedule_line_id = #{paymentScheduleLineId}
+    </select>
+
+    <!--检查计划付款行是否发生过核销 Y.duan-->
+    <select id="checkPmtScheduleLnOccurWf" resultType="long">
+        select count(*)
+          from csh_write_off            cwo,
+               exp_report_pmt_schedule  es,
+               exp_report_header        s
+         where cwo.document_line_id = es.payment_schedule_line_id
+           and cwo.document_header_id = es.exp_report_header_id
+           and cwo.document_source = 'EXPENSE_REPORT'
+           and cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+           and es.exp_report_header_id = s.exp_report_header_id
+           and es.payment_schedule_line_id = #{paymentScheduleLineId}
+    </select>
+    <select id="queryPmtSchedule" resultMap="BaseResultMap">
+        SELECT
+                    s.exp_report_header_id,
+                    s.payment_schedule_line_id,
+                    s.schedule_line_number,
+                    s.description,
+                    s.payment_currency_code,
+                    (SELECT gct.currency_name FROM gld_currency gc LEFT JOIN gld_currency_tl gct ON gc.currency_id = gct.currency_id AND gct.lang = #{request.locale} WHERE gc.currency_code = s.payment_currency_code) AS payment_currency_name,
+                    s.payee_category,
+                    (SELECT scv.MEANING FROM sys_code_value_b scv LEFT JOIN sys_code_b sc ON scv.code_id = sc.code_id WHERE scv.VALUE = s.payee_category AND sc.CODE = 'PAYMENT_OBJECT') AS payee_category_name,
+                    s.payee_id,
+                    null AS payee_name,
+                    s.schedule_start_date,
+                    s.schedule_due_date,
+                    s.due_amount,
+                    s.company_id,
+                    (SELECT fct.company_short_name FROM fnd_company fc LEFT JOIN fnd_company_tl fct ON fc.company_id = fct.company_id and fct.LANG = #{request.locale} where fc.COMPANY_ID = s.company_id) AS company_name,
+                    s.acc_entity_id,
+                    (SELECT gaet.acc_entity_name FROM gld_accounting_entity gae LEFT JOIN gld_accounting_entity_tl gaet ON gae.ACC_ENTITY_ID = gaet.ACC_ENTITY_ID  AND gaet.LANG = #{request.locale} where gae.ACC_ENTITY_ID = s.acc_entity_id) AS acc_entity_name,
+                    s.payment_method_id,
+                    (SELECT cpmt.description FROM csh_payment_method cpm LEFT JOIN csh_payment_method_tl cpmt ON cpm.PAYMENT_METHOD_ID = cpmt.PAYMENT_METHOD_ID and cpmt.LANG = #{request.locale} where cpm.payment_method_id = s.payment_method_id) AS payment_method_name,
+                    s.payment_usede_id,
+                    (select cut.DESCRIPTION from csh_mo_payment_used cu left join csh_mo_payment_used_tl cut on cu.PAYMENT_USEDE_ID = cut.PAYMENT_USEDE_ID and cut.LANG= #{request.locale} where cu.PAYMENT_USEDE_ID = s.payment_usede_id) AS payment_usede_name,
+                    s.cash_flow_item_id,
+                    (select cit.DESCRIPTION from csh_cash_flow_item ci left join  csh_cash_flow_item_tl cit on ci.CASH_FLOW_ITEM_ID = cit.CASH_FLOW_ITEM_ID and cit.LANG = #{request.locale} where ci.CASH_FLOW_ITEM_ID = s.cash_flow_item_id) AS cash_flow_item_name,
+                    s.frozen_flag,
+                    s.account_name,
+                    s.account_number,
+                    s.bank_code,
+                    s.bank_name,
+                    s.bank_location_code,
+                    s.bank_location_name,
+                    s.province_code,
+                    s.province_name,
+                    s.city_code,
+                    s.city_name,
+                    (SELECT
+                        (case when SUM(cwo.csh_write_off_amount) is null then 0 else SUM(cwo.csh_write_off_amount) end)
+                    FROM
+                        csh_write_off cwo
+                    WHERE
+                        cwo.document_line_id   = s.payment_schedule_line_id AND
+                        cwo.document_header_id = s.exp_report_header_id AND
+                        cwo.document_source    = 'EXPENSE_REPORT' AND
+                        cwo.write_off_type     = 'PREPAYMENT_EXPENSE_REPORT'
+                    ) AS write_off_amount,
+                    s.contract_header_id,
+                    (SELECT
+                        cch.contract_number
+                    FROM
+                        con_contract_header cch
+                    WHERE
+                        cch.contract_header_id=s.contract_header_id
+                    ) contract_number,
+                    s.con_pmt_schedule_line_id,
+                    (SELECT
+                        cps.line_number
+                    FROM
+                        con_payment_schedule cps
+                    WHERE
+                        cps.payment_schedule_line_id=s.con_pmt_schedule_line_id
+                    ) con_pmt_schedule_line_number,
+                    (SELECT
+                        re.tax_flag
+                    FROM
+                        exp_report_header erh,
+                        exp_mo_rep_type_ref_ele re,
+                        exp_report_page_element e
+                    WHERE
+                        erh.mo_exp_report_type_id  = re.mo_exp_report_type_id AND
+                        re.report_page_element_id  = e.report_page_element_id AND
+                        re.enabled_flag            = 'Y' AND
+                        re.doc_type_code           = 'LINE' AND
+                        e.report_page_element_code = 'STANDARD_PMT' AND
+                        erh.exp_report_header_id   = s.exp_report_header_id
+                    ) tax_flag,
+                    (SELECT
+                        re.more_tax_flag
+                    FROM
+                        exp_report_header erh,
+                        exp_mo_rep_type_ref_ele re,
+                        exp_report_page_element e
+                    WHERE
+                        erh.mo_exp_report_type_id  = re.mo_exp_report_type_id AND
+                        re.report_page_element_id  = e.report_page_element_id AND
+                        re.enabled_flag            = 'Y' AND
+                        re.doc_type_code           = 'LINE' AND
+                        e.report_page_element_code = 'STANDARD_PMT' AND
+                        erh.exp_report_header_id   = s.exp_report_header_id
+                    ) more_tax_flag
+                FROM
+                    exp_report_pmt_schedule s
+                WHERE
+                    s.exp_report_header_id    = #{expReportHeaderId}
+                ORDER BY
+                    s.schedule_line_number
+    </select>
+
+    <select id="queryConPayInfo" resultMap="BaseResultMap">
+        SELECT
+            erpc.schedule_line_number,
+            psv.description payeeName,
+            erh.exp_report_number,
+            erpc.due_amount,
+            erpc.schedule_due_date
+        FROM
+            exp_report_pmt_schedule erpc,
+            pur_system_vender psv,
+            exp_report_header erh,
+            con_payment_schedule cps
+        WHERE
+            erpc.payee_id = psv.vender_id
+            AND erpc.exp_report_header_id = erh.exp_report_header_id
+            AND cps.payment_schedule_line_id = erpc.con_pmt_schedule_line_id
+            AND cps.payment_schedule_line_id in (${paymentScheduleLineId})
+    </select>
+
+
+    <select id="writeOffPrepaymentHeaderQuery" resultType="java.util.Map">
+        SELECT
+                    erh.exp_report_header_id as expReportHeaderId,
+                    erps.payment_schedule_line_id as paymentScheduleLineId,
+                    date_format(erh.report_date, '%Y-%m-%d') writeOffDate,
+                    erh.payment_currency_code as paymentCurrencyCode,
+                    erh.pay2fun_exchange_type as pay2funExchangeType,
+                    erh.pay2fun_exchange_rate as pay2funExchangeRate,
+                    erh.exp_report_number as expReportNumber,
+                    erps.payee_category as payeeCategory,
+                    (SELECT scv.meaning FROM sys_code_b sc,sys_code_value_b scv WHERE sc.code = 'PAYMENT_OBJECT' AND sc.code_id = scv.code_id AND scv.value = erps.payee_category) AS payeeCategoryName,
+                    erps.payee_id as payeeId,
+                    (case
+                      when erps.payee_category = 'EMPLOYEE'
+                      then (select ee.name
+                            from exp_employee ee
+                            where ee.employee_id = erps.payee_id)
+                      when erps.payee_category = 'VENDER'
+                      then (select vv.description
+                            from pur_system_vender vv LEFT OUTER JOIN pur_system_vender_tl psvt ON (vv.vender_id = psvt.vender_id
+                                                                        AND psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                            where vv.vender_id = erps.payee_id)
+                      when erps.payee_category = 'CUSTOMER'
+                      then (select osct.description
+                            from ord_system_customer cv
+                            LEFT OUTER JOIN ord_system_customer_tl osct ON (cv.customer_id = osct.customer_id
+                                                                        AND osct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                            where cv.customer_id = erps.payee_id)
+                    end) payeeName,
+                    erps.due_amount as dueAmount,
+                    erps.due_amount -
+                    (SELECT
+                        (case when SUM(cwo.csh_write_off_amount) is null then 0 else SUM(cwo.csh_write_off_amount) end)
+                    FROM
+                        csh_write_off cwo
+                    WHERE
+                        cwo.document_line_id   = erps.payment_schedule_line_id AND
+                        cwo.document_header_id = erh.exp_report_header_id AND
+                        cwo.document_source    = 'EXPENSE_REPORT'
+                    ) as  canAmount,
+                    cch.contract_number as contractNumber,
+                    cps.line_number as lineNumber
+                FROM
+                    exp_report_pmt_schedule erps
+                    inner join exp_report_header erh on erps.exp_report_header_id = erh.exp_report_header_id
+                    left join con_document_flow cdf on erps.exp_report_header_id  = cdf.source_document_id AND erps.payment_schedule_line_id = cdf.source_document_line_id and cdf.source_document_type = 'EXP_REPORT_PMT_SCHEDULES'
+                    left join con_contract_header cch on cdf.document_id = cch.contract_header_id
+                    left join con_payment_schedule cps on cdf.document_line_id = cps.payment_schedule_line_id
+                WHERE
+                    erps.payment_schedule_line_id = #{paymentScheduleLineId}
+    </select>
+
+    <select id="writeOffPrepaymentHistoryQuery" resultType="java.util.Map">
+        SELECT
+                    v.*,
+                    (case v.writeOffType
+                        when 'PAYMENT_PREPAYMENT'
+                        then    '预付款核销报销单'
+                        when 'ACP_PREPAYMENT'
+                        then    '付款申请核销报销单'
+                    else '' end) writeOffTypeName,
+                    (case v.writeOffType
+                        when 'PAYMENT_PREPAYMENT'
+                        then (SELECT
+                            h.requisition_number
+                        FROM
+                            csh_payment_requisition_hd h
+                        WHERE
+                            h.payment_requisition_header_id = v.paymentRequisitionHeaderId
+                        )
+                         when 'ACP_PREPAYMENT'
+                         then  (SELECT
+                                h.requisition_number
+                            FROM
+                                acp_requisition_hd h
+                            WHERE
+                                h.requisition_hds_id = v.paymentRequisitionHeaderId
+                            ) else '' end) as requisitionNumber,
+                    (case v.writeOffType
+                    when 'PAYMENT_PREPAYMENT'
+                    then (SELECT
+                        mtv.description
+                    FROM
+                        csh_payment_requisition_hd h,
+                        (select ct.mo_payment_req_type_id,ctt.description from csh_mo_payment_req_type ct left join csh_mo_payment_req_type_tl ctt on ct.mo_payment_req_type_id = ctt.mo_payment_req_type_id and ctt.lang=#{request.locale}) mtv
+                    WHERE
+                        h.payment_requisition_header_id = v.paymentRequisitionHeaderId AND
+                        h.payment_req_type_id           = mtv.mo_payment_req_type_id
+                    )
+                    when 'ACP_PREPAYMENT'
+                    then (SELECT
+                        mtv.description
+                    FROM
+                        acp_requisition_hd h,
+                        (select apt.mo_pay_req_type_id,aptt.description from acp_mo_pay_req_type apt left join acp_mo_pay_req_type_tl aptt on apt.mo_pay_req_type_id = aptt.mo_pay_req_type_id and aptt.lang=#{request.locale}) mtv
+                    WHERE
+                        h.requisition_hds_id = v.paymentRequisitionHeaderId AND
+                        h.mo_pay_req_type_id = mtv.mo_pay_req_type_id
+                    ) else '' end) as moPaymentReqTypeName
+                FROM
+                    (SELECT
+                        erps.exp_report_header_id as expReportHeaderId,
+                        erps.payment_schedule_line_id as paymentScheduleLineId,
+                        cwo.write_off_id as writeOffId,
+                        ctl.transaction_line_id as transactionLineId,
+                        date_format(cwo.write_off_date, '%Y-%m-%d') as writeOffDate,
+                        (select fc.ACC_ENTITY_ID from fnd_company_ref_acc_entity fc where fc.COMPANY_ID = erps.company_id  and fc.DEFAULT_FLAG = 'Y' and fc.ENABLED_FLAG = 'Y') as accEntityId,
+                        null periodName,
+                        erh.exp_report_number as expReportNumber,
+                        cwo.csh_write_off_amount as cshWriteOffAmount,
+                        cth.transaction_num as transactionNum,
+                        (SELECT
+                            d.document_header_id
+                        FROM
+                            (select cthx.transaction_header_id,
+                                    c.document_header_id
+                              from csh_transaction_header cthx,
+                                   csh_transaction_line   ctlx,
+                                   csh_write_off           c
+                             where cthx.transaction_header_id = ctlx.transaction_header_id
+                               and ctlx.transaction_line_id = c.csh_transaction_line_id) d
+                        WHERE
+                            d.transaction_header_id = cth.source_payment_header_id AND
+                            d.document_header_id   IS NOT NULL
+                            limit 1
+                        ) as paymentRequisitionHeaderId,
+                        (SELECT
+                            d.write_off_type
+                        FROM
+                            (select cthx.transaction_header_id,
+                                    c.document_header_id,
+                                    c.write_off_type
+                              from csh_transaction_header cthx,
+                                   csh_transaction_line   ctlx,
+                                   csh_write_off           c
+                             where cthx.transaction_header_id = ctlx.transaction_header_id
+                               and ctlx.transaction_line_id = c.csh_transaction_line_id) d
+                        WHERE
+                            d.transaction_header_id = cth.source_payment_header_id AND
+                            d.document_header_id   IS NOT NULL
+                            limit 1
+                        ) as writeOffType
+                    FROM
+                        exp_report_pmt_schedule erps,
+                        exp_report_header erh,
+                        csh_write_off cwo,
+                        csh_transaction_line ctl,
+                        csh_transaction_header cth
+                    WHERE
+                        erps.payment_schedule_line_id = #{paymentScheduleLineId} AND
+                        erps.exp_report_header_id     = erh.exp_report_header_id AND
+                        erps.payment_schedule_line_id = cwo.document_line_id AND
+                        erps.exp_report_header_id     = cwo.document_header_id AND
+                        cwo.document_source           = 'EXPENSE_REPORT' AND
+                        cwo.write_off_type            = 'PREPAYMENT_EXPENSE_REPORT' AND
+                        cwo.csh_transaction_line_id   = ctl.transaction_line_id AND
+                        ctl.transaction_header_id     = cth.transaction_header_id
+                    ) v
+    </select>
+</mapper>

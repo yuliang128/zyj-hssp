@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldAccEntityHierarchyMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldAccEntityHierarchy">
+        <result column="HIERARCHY_ID" property="hierarchyId" jdbcType="DECIMAL" />
+        <result column="PARENT_ENTITY_ID" property="parentEntityId" jdbcType="DECIMAL" />
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="COMPANY_TYPE_DISPLAY" property="companyTypeDisplay" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <sql id="companyTypeDisplay">
+        (SELECT
+              scv.meaning
+         FROM
+              sys_code_b sc,
+              sys_code_value_b scv
+         WHERE
+              sc.code = 'ACCOUNTING_ENTITY_COMPANY_TYPE'
+          AND sc.code_id = scv.code_id
+          AND scv.value = acc.COMPANY_TYPE
+        )  companyTypeDisplay
+    </sql>
+
+    <select id="selectChild" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            acc.ACC_ENTITY_ID entityId,
+            acc.ACC_ENTITY_NAME,
+            acc.ACC_ENTITY_CODE,
+            <include refid="companyTypeDisplay"/>,
+            acch.PARENT_ENTITY_ID,
+            acch.HIERARCHY_ID
+        FROM
+            gld_accounting_entity acc,
+            gld_acc_entity_hierarchy acch
+        WHERE
+            acc.ACC_ENTITY_ID = acch.ENTITY_ID
+        AND acch.PARENT_ENTITY_ID = #{parentEntityId}
+        AND acc.ACC_ENTITY_ID IN (SELECT acch2.ENTITY_ID FROM gld_acc_entity_hierarchy acch2 WHERE acch2.PARENT_ENTITY_ID = #{parentEntityId} )
+
+    </select>
+
+    <select id="selectTree" resultMap="BaseResultMap">
+        SELECT
+            CONCAT( acch.PARENT_ENTITY_ID, acc.ACC_ENTITY_ID ) entityId,
+            acch.PARENT_ENTITY_ID,
+            CONCAT( acc.ACC_ENTITY_CODE, "-", acc.ACC_ENTITY_NAME ) accEntityCode
+        FROM
+            gld_acc_entity_hierarchy acch,
+            GLD_ACCOUNTING_ENTITY acc
+        WHERE
+            acch.ENTITY_ID = acc.ACC_ENTITY_ID UNION
+        SELECT
+            acc.ACC_ENTITY_ID,
+            NULL parentEntityId,
+            CONCAT( acc.ACC_ENTITY_CODE, "-", acc.ACC_ENTITY_NAME ) accEntityCode
+        FROM
+            GLD_ACCOUNTING_ENTITY acc
+        WHERE
+            acc.ACC_ENTITY_ID IN ( SELECT DISTINCT acch.PARENT_ENTITY_ID FROM gld_acc_entity_hierarchy acch )
+
+    </select>
+
+
+</mapper>

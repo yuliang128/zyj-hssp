@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei
+    $Date: 201711-29 上午9:35:19  
+    $Revision: 1.0  
+    $Purpose: 核算主体批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[     
+    ]]></a:init-procedure>
+    <a:view>
+        <a:link id="CSH1260_csh_payment_bat_tp_as_ae_batch_link" url="$[/request/@context_path]/csh/payment-batch-tp-asgn-ae/submit"/>
+        <script><![CDATA[
+            //返回
+            
+            function CSH1260_cshPaymentBatTpAsBatchloseWindow() {
+                $au('CSH1260_csh_payment_batch_tp_as_ae_b_window').close();
+                CSH1260_queryTpAsgnAeFun();
+            }
+            
+            //查询
+            
+            function CSH1260_cshPaymentBatTpAsBatchAcc() {
+                $au('CSH1260_csh_payment_bat_tp_as_ae_batch_ds').query();
+            }
+            
+            //分配
+            
+            function CSH1260_saveAssignBatchAcc() {
+                var records = $au('CSH1260_csh_payment_bat_tp_as_ae_batch_ds').getSelected();
+                if (records.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:choose_one_record]', null, 250, 100);
+                    return;
+                }
+                var param = [];
+                for (var i = 0;i < records.length;i++) {
+                    records[i].set('typeId', '$[/parameter/@typeId]');
+                    records[i].set('enabledFlag', 'Y');
+                    records[i].set('__status', 'add');
+                    param.push(records[i].data);
+                }
+                Aurora.request({
+                    url: $au('CSH1260_csh_payment_bat_tp_as_ae_batch_link').getUrl(),
+                    para: param,
+                    success: CSH1260_cshPaymentBatTpAsBatchloseWindow,
+                    scope: this
+                });
+            
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1260_csh_payment_bat_tp_as_ae_batch_ds" autoPageSize="true" autoQuery="true" fetchAll="false" queryUrl="$[/request/@context_path]/csh/payment-batch-tp-asgn-ae/query-acc-entity?typeId=$[/parameter/@typeId]&amp;magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityCode"/>
+                    <a:field name="accEntityId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1260_csh_payment_bat_tp_as_ae_batch_form" column="2" labelWidth="100" title="prompt.batch_asgn_ae" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="CSH1260_saveAssignBatchAcc" text="gld_accounting_entity.distribution" width="80"/>
+                    <a:toolbarButton click="CSH1260_cshPaymentBatTpAsBatchloseWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="typeCode" bindTarget="CSH1260_csh_payment_b_types_result_ds" prompt="csh_payment_batch_type.type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1260_csh_payment_b_types_result_ds" prompt="csh_payment_batch_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1260_csh_payment_bat_tp_as_ae_batch_grid" bindTarget="CSH1260_csh_payment_bat_tp_as_ae_batch_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" prompt="gld_accounting_entity.acc_entity_code" width="80"/>
+                    <a:column name="accEntityName" align="left"  prompt="gld_accounting_entity.acc_entity_name" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/08 $
+    $Revision: 1.1 $
+    $Purpose: 预算期间-分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="BGT1070_period_company_batch_link" url="${/request/@context_path}/modules/bgt/BGT1070/bgt_period_assign_com_batch.screen"/>
+        <script><![CDATA[
+            function BGT1070_ReturnPeriod() {
+                $au('bgt1070_period_asgn_com_window').close();
+            }
+            
+            function BGT1070_CompanyCodeEidt(record, name) {
+                if (record.isNew) {
+                    return 'BGT1070_grid_com_lov';
+                }
+                return '';
+            }
+            
+            function BGT1070_BatchAllCompany() {
+                var bgtAssignMoId = '$[/parameter/@assignMoId]';
+                new Aurora.Window({
+                    id: 'bgt1070_period_asgn_com_batch_window',
+                    url: $au('BGT1070_period_company_batch_link').getUrl() + '?assignMoId=' + bgtAssignMoId + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    title: '$[l:bgt_period.bgt_period_assign_com_org]',
+                    fullScreen: true
+                });
+            }
+            
+            function BGT1070_SetAsgnComQuery() {
+                $au('BGT1070_period_set_asgn_com_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1070_period_sets_com_ds" loadData="true" model="bgt.BGT1070.bgt_period_sets_query">
+                <a:fields>
+                    <a:field name="periodSetId" readOnly="true"/>
+                    <a:field name="periodSetCode" readOnly="true"/>
+                    <a:field name="periodSetDesc" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT1070_period_set_asgn_com_ds" autoPageSize="true" autoQuery="true" model="bgt.BGT1070.bgt_period_set_asgn_com" queryUrl="${/request/@context_path}/autocrud/bgt.BGT1070.bgt_period_set_asgn_com/query?ORDER_FIELD=company_code&amp;assign_mo_id=${/parameter/@assign_mo_id}" selectable="true" submitUrl="${/request/@context_path}/modules/bgt/BGT1070/bgt_period_set_asgn_com.svc">
+                <a:fields>
+                    <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="assignComId"/>
+                    <a:field name="companyCode" autoComplete="true" autoCompleteField="company_code" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovService="bgt.BGT1070.bgt_period_company_lov?mag_org_id=${/parameter/@mag_org_id}" lovWidth="540" required="true" title="COMPANY_SELECTED">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyDesc" to="companyDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyDesc" readOnly="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" marginWidth="10" title="BGT_PERIOD_SETS.BGT_PERIOD_SETS_QUERY">
+                <a:formToolbar>
+                    <a:gridButton bind="BGT1070_period_com_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT1070_period_com_grid" type="save" width="80"/>
+                    <a:toolbarButton click="BGT1070_BatchAllCompany" text="BGT_PERIOD.BATCH_DISP_COMPANY" width="100"/>
+                    <a:toolbarButton click="BGT1070_ReturnPeriod" text="HAP_BACK" width="80"/>
+                    <a:label name="separator"/>
+                </a:formToolbar>
+                <a:textField name="periodSetCode" bindTarget="BGT1070_period_sets_com_ds"/>
+                <a:textField name="periodSetDesc" bindTarget="BGT1070_period_sets_com_ds"/>
+            </a:form>
+            <a:grid id="BGT1070_period_com_grid" bindTarget="BGT1070_period_set_asgn_com_ds" marginHeight="150" marginWidth="10" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="BGT1070_CompanyCodeEidt" width="120"/>
+                    <a:column name="companyDesc" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="BGT1070_grid_com_ck" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT1070_grid_com_lov"/>
+                    <a:checkBox id="BGT1070_grid_com_ck"/>
+                    <a:textField id="BGT1070_grid_com_tf"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            Aurora.onReady(function() {
+                BGT1070_SetAsgnComQuery();
+            });
+        ]]></script>
+    </a:view>
+</a:screen>

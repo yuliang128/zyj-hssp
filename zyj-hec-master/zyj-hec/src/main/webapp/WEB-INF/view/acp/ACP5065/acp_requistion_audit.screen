@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: liliang
+    $Date: 2018-05-14 16:22:06
+    $Revision: 1.0  
+    $Purpose: 付款申请单审核
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+        <p:echo/>
+    </a:init-procedure>
+    <a:view>
+
+        <a:link id="ACP5065_get_period_name_link" url="$[/request/@context_path]/acp/requisition-hd/getPeriodName"/>
+        <a:link id="ACP5065_acp_requistion_audit_create_currency_tmp_link" url="$[/request/@context_path]/acp/ACP5065/acp_requistion_audit_create_currency_tmp.svc"/>
+        <a:link id="ACP5065_create_acp_requistion_account_link" url="$[/request/@context_path]//acp/requisition-hd/createAcpRequisitionAccount"/>
+        <a:link id="ACP5065_audit_acp_requistion_link" url="$[/request/@context_path]/acp/requisition-hd/auditAcpReq"/>
+        <a:link id="ACP5065_audit_reject_acp_requistion_link" url="$[/request/@context_path]/acp/requisition-hd/rejectAcpReq"/>
+        <a:link id="ACP5065_acp_requistion_audit_view_log_link" url="$[/request/@context_path]/acp/ACP5065/acp_requistion_audit_view_log.screen"/>
+        <!-- <a:link id="EXP5240_exp_report_audit_adjust_exchange_rate_link" url="$[/request/@context_path]/modules/expm/EXP5240/exp_report_audit_adjust_exchange_rate.screen"/> -->
+        <a:link id="ACP5065_acp_requistion_view_main_link" url="$[/request/@context_path]/acp/ACP3100/acp_requisition_view_maintain_main.screen"/>
+        <script><![CDATA[
+            function ACP5065_query() {
+                $au('ACP5065_audit_result_ds').query();
+            }
+            
+            function ACP5065_audit_je_lines_query() {
+                //ADD CHQ 20171228
+                //创建凭证后刷新凭证界面，更新单据创建凭证标志
+                var recordsData = $au('ACP5065_audit_result_ds').getSelected();
+            
+                for (var i = 0;i < recordsData.length;i++) {
+                    $au('ACP5065_audit_je_lines_ds').setQueryParameter('requisitionHdsId', recordsData[i].get('requisitionHdsId'));
+                    recordsData[i].set('jeCreationStatus', 'SUCCESS');
+            
+                }
+                $au('ACP5065_audit_je_lines_ds').query();
+            }
+            
+            function ACP5065_createJournal() {
+                var accEntityId = $au('ACP5065_audit_query_ds').getAt(0).get('accEntityId');
+                var journalDate = $au('ACP5065_journal_date_ds').getAt(0).get('journalDate');
+                var details = $au('ACP5065_audit_result_ds').getJsonData(true);
+            
+                if (!accEntityId) {
+                    Aurora.showErrorMessage('$[l:hap.error]', '$[l:csh_payment_batch_accounts.acc_entity_id_not_null]');
+                    return;
+                }
+            
+                if (!journalDate) {
+                    Aurora.showErrorMessage('$[l:hap.error]', '$[l:exp_accrued_accounts.journal_date_not_null]');
+                    return;
+                }
+            
+                var records = $au('ACP5065_audit_result_ds').getSelected();
+                if (records.length < 1) {
+                    Aurora.showErrorMessage('$[l:prompt.error]', '$[l:prompt.please_select_one]');
+                    return;
+                }
+
+                if ($au('ACP5065_journal_date_ds').validate()) {
+                    Aurora.request({
+                        lockMessage: '$[l:hap_handle_waiting]',
+                        url: $au('ACP5065_create_acp_requistion_account_link').getUrl() + '?accEntityId='+accEntityId +'&journalDate='+journalDate,
+                        para: details,
+                        success: function() {
+                            ACP5065_audit_je_lines_query();
+                        }
+                    });
+                }
+            }
+            
+            function ACP5065_audit() {
+                var data = $au('ACP5065_audit_result_ds').getJsonData(true);
+                if (data.length == 0) {
+                    Aurora.showErrorMessage('$[l:hap.error]', '$[l:exp_report_audit_select_reviewed_doc]');
+                    return;
+                }
+            
+                for (var i = 0;i < data.length;i++) {
+                    data[i]['_status'] = 'execute';
+                }
+            
+                Aurora.request({
+                    url: $au('ACP5065_audit_acp_requistion_link').getUrl(),
+                    para: data,
+                    success: function(resp) {
+                        ACP5065_query();
+                    }
+                });
+            }
+            
+            function ACP5065_reject() {
+                var data = $au('ACP5065_audit_result_ds').getJsonData(true);
+                if (data.length == 0) {
+                    Aurora.showErrorMessage('$[l:hap.error]', '$[l:exp_report_audit_select_rejected_doc]');
+                    return;
+                }
+            
+                for (var i = 0;i < data.length;i++) {
+                    data[i]['_status'] = 'execute';
+                }
+            
+                Aurora.request({
+                    url: $au('ACP5065_audit_reject_acp_requistion_link').getUrl(),
+                    para: data,
+                    success: function(resp) {
+                        ACP5065_query();
+                    }
+                });
+            }
+            
+            function ACP5065_save() {
+                $au('ACP5065_audit_je_lines_ds').submit();
+            }
+            
+            function ACP5065_changeExchangeRate() {
+                var data = $au('ACP5065_audit_result_ds').getJsonData(true);
+                if (data.length == 0) {
+                    Aurora.showErrorMessage('$[l:hap.error]', '$[l:exp_report_audit_select_adjust_exchange_rate_doc]');
+                    return;
+                }
+            
+                Aurora.request({
+                    lockMessage: '$[l:hap_handle_waiting]',
+                    url: $au('ACP5065_acp_requistion_audit_create_currency_tmp_link').getUrl(),
+                    para: {
+                        accEntityId: $au('ACP5065_audit_query_ds').getAt(0).get('accEntityId'),
+                        details: $au('ACP5065_audit_result_ds').getJsonData(true)
+                    },
+                    success: function(resp) {
+                        EXP5240_openChangeExchangeRate();
+                    }
+                });
+            }
+            
+            function EXP5240_openChangeExchangeRate() {
+                new Aurora.Window({
+                    url: $au('EXP5240_exp_report_audit_adjust_exchange_rate_link').getUrl() + '?accEntityId=' + $au('ACP5065_audit_query_ds').getAt(0).get('accEntityId'),
+                    id: 'EXP5240_exp_report_audit_adjust_exchange_rate_window',
+                    width: 1020,
+                    side: 'right',
+                    title: '$[l:update_xchange_rate]'
+                });
+            }
+            
+            function ACP5065_viewLog() {
+                new Aurora.Window({
+                    url: $au('ACP5065_acp_requistion_audit_view_log_link').getUrl(),
+                    id: 'ACP5065_acp_requistion_audit_view_log_window',
+                    title: '$[l:prompt.view_log]',
+                    fullScreen: false,
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function EXP5240_viewHistory() {
+            
+               }
+            
+            function ACP5065_reportNumberUpdate(ds, record, name, value, oldValue) {
+                if (name == 'journalDate' && value) {
+                    var d = new Date(value);
+                    var newDate=d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + ' ' + d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds();
+                    Aurora.request({
+                        lockMessage: '$[l:hap_handle_waiting]',
+                        url: $au('ACP5065_get_period_name_link').getUrl()+"?newDate="+newDate+"&accEntityId="+$au('ACP5065_audit_query_ds').getAt(0).get('accEntityId'),
+
+                        success: function(resp) {
+                            if (resp && resp.rows[0]) {
+                                record.set('periodName', resp.rows[0]);
+                            } else {
+                                record.set('periodName', '');
+                                Aurora.showErrorMessage('$[l:hap.error]', '$[l:curren_available_opened_period]');
+                            }
+                        }
+                    });
+                }
+            }
+            
+            function ACP5065_formatMoney(value, record, name) {
+                return '<div style="font-weight:bold;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+            }
+            
+            function ACP5065_onJeCellClickFun(grid, row, name, record) {
+                if (name != 'accEntityName') {
+                    record.getField(name).setLovPara('accEntityId', record.get('accEntityId'));
+                }
+            }
+            
+            function ACP5065_onJeUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'accEntityId') {
+                    record.set('respCenterName', '');
+                    record.set('respCenterId', '');
+                }
+            }
+            
+            function ACP5065_requistionNumberRenderer(value, record, name) {
+                return '<a href="javascript:EXP5240_openExpReport(' + record.get('requisitionHdsId') + ')">' + value + '</a>';
+            }
+            
+            function EXP5240_openExpReport(requisitionHdsId) {
+                new Aurora.Window({
+                    url: $au('ACP5065_acp_requistion_view_main_link').getUrl() + '?requisitionHdsId=' + requisitionHdsId,
+                    id: 'ACP3100_acp_requisition_view_main_window',
+                    fullScreen: true
+                });
+            }
+            
+            function ACP5065_indexChangeFunction(ds, record) {
+                $au('ACP5065_audit_je_lines_ds').setQueryParameter('requisitionHdsId', record.get('requisitionHdsId'));
+                $au('ACP5065_audit_je_lines_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ACP5065_acc_entity_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/acp/requisition-hd/queryAccEntityByCompanyId"/>
+            <a:dataSet id="ACP5065_currency_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/acp/requisition-hd/queryCurrency"/>
+            <a:dataSet id="ACP5065_audit_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityName" defaultValue="$[/model/defaultAccEntity/records/record/@accEntityName]" displayField="accEntityName" options="ACP5065_acc_entity_ds" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="accEntityId" defaultValue="$[/model/defaultAccEntity/records/record/@accEntityId]"/>
+                    <a:field name="moPayReqTypeName" autoComplete="true" lovCode="LOV_ACP_MO_PAY_REQ_TYPE" title="acp_requisition.req_types_choice">
+                        <a:mapping>
+                            <a:map from="moPayReqTypeName" to="moPayReqTypeName"/>
+                            <a:map from="moPayReqTypeId" to="moPayReqTypeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeName" autoComplete="true" lovCode="LOV_EXP_EMPLOYEE" title="bgt_budget_item_mapping.choose_employee">
+                        <a:mapping>
+                            <a:map from="employeeName" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="currencyName" displayField="currencyName" options="ACP5065_currency_ds" returnField="currencyCode" valueField="currencyCode"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="ACP5065_journal_date_ds" autoCreate="true">
+                <a:fields>
+
+                    <a:field name="journalDate" defaultValue="$[/model/currentTime/records/record/@journalDate]" prompt="csh_transaction_account.journal_date" required="true"/>
+                    <a:field name="periodName" defaultValue="$[/model/currentTime/records/record/@periodName]" prompt="csh_transaction_account.period_name" readOnly="true" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="ACP5065_reportNumberUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ACP5065_audit_result_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/acp/requisition-hd/queryAuditResult" model="acp.ACP5065.acp_requistion_audit_query" queryDataSet="ACP5065_audit_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name" required="true"/>
+                    <a:field name="requisitionNumber" prompt="exp_report_header.exp_report_number"/>
+                    <a:field name="moPayReqTypeName" prompt="acp_requisition.req_types"/>
+                    <a:field name="employeeName" prompt="bgt_budget_item_mapping.choose_employee"/>
+                    <a:field name="paymentCurrencyName" prompt="csh_payment_req_account.currency_code"/>
+                    <a:field name="paymentAmount" prompt="bgt_journal_line.amount"/>
+                    <a:field name="requisitionDate" prompt="ast_requisition_date"/>
+                    <a:field name="requisitionStatusName" prompt="exp_report_header.report_status"/>
+                    <a:field name="description" prompt="exp_requisition_lines.description"/>
+                    <a:field name="jeCreationStatus" checkedValue="SUCCESS" prompt="prompt.create_je" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="indexchange" handler="ACP5065_indexChangeFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ACP5065_audit_je_lines_ds" autoQuery="true" fetchAll="true" model="acp.ACP5065.acp_requistion_audit_accounts_query" submitUrl="$[/request/@context_path]/autocrud/acp.ACP5065.update_acp_requistion_accounts/batch_update">
+                <a:fields>
+                    <a:field name="accEntityName" lovCode="LOV_GLD_ACCOUNTING_ENTITY_MORE"  prompt="csh_pay_batch_rule_asgn.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterName" lovCode="GLD_RESPONSIBILITY_CENTERS_VL_LOV"  prompt="acp_invoice_line.responsibility_center_id">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountName" lovCode="LOV_GLD_ACCOUNTS_VL"  prompt="choose.accounting_choose">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="periodName" lovCode="LOV_GLD_PERIODS" prompt="bgt_period.period_name">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enteredAmountDr" prompt="exp_report_account.entered_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="exp_report_account.entered_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="exp_report_account.functional_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="exp_report_account.functional_amount_cr"/>
+                    <a:field name="description" prompt="exp_requisition_dist.description"/>
+                    <a:field name="currencyName" prompt="csh_payment_req_account.currency_code"/>
+                    <a:field name="accountSegment1" prompt="$[/model/segmentDescs/records/record/@segment1Desc]"/>
+                    <a:field name="accountSegment2" prompt="$[/model/segmentDescs/records/record/@segment2Desc]"/>
+                    <a:field name="accountSegment3" prompt="$[/model/segmentDescs/records/record/@segment3Desc]"/>
+                    <a:field name="accountSegment4" prompt="$[/model/segmentDescs/records/record/@segment4Desc]"/>
+                    <a:field name="accountSegment5" prompt="$[/model/segmentDescs/records/record/@segment5Desc]"/>
+                    <a:field name="accountSegment6" prompt="$[/model/segmentDescs/records/record/@segment6Desc]"/>
+                    <a:field name="accountSegment7" prompt="$[/model/segmentDescs/records/record/@segment7Desc]"/>
+                    <a:field name="accountSegment8" prompt="$[/model/segmentDescs/records/record/@segment8Desc]"/>
+                    <a:field name="accountSegment9" prompt="$[/model/segmentDescs/records/record/@segment9Desc]"/>
+                    <a:field name="accountSegment10" prompt="$[/model/segmentDescs/records/record/@segment10Desc]"/>
+                    <a:field name="accountSegment11" prompt="$[/model/segmentDescs/records/record/@segment11Desc]"/>
+                    <a:field name="accountSegment12" prompt="$[/model/segmentDescs/records/record/@segment12Desc]"/>
+                    <a:field name="accountSegment13" prompt="$[/model/segmentDescs/records/record/@segment13Desc]"/>
+                    <a:field name="accountSegment14" prompt="$[/model/segmentDescs/records/record/@segment14Desc]"/>
+                    <a:field name="accountSegment15" prompt="$[/model/segmentDescs/records/record/@segment15Desc]"/>
+                    <a:field name="accountSegment16" prompt="$[/model/segmentDescs/records/record/@segment16Desc]"/>
+                    <a:field name="accountSegment17" prompt="$[/model/segmentDescs/records/record/@segment17Desc]"/>
+                    <a:field name="accountSegment18" prompt="$[/model/segmentDescs/records/record/@segment18Desc]"/>
+                    <a:field name="accountSegment19" prompt="$[/model/segmentDescs/records/record/@segment19Desc]"/>
+                    <a:field name="accountSegment20" prompt="$[/model/segmentDescs/records/record/@segment20Desc]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="ACP5065_onJeUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="ACP5065_createJournal" text="prompt.create_je" width="80"/>
+                <a:toolbarButton click="ACP5065_audit" text="prompt.audit" width="80"/>
+                <a:toolbarButton click="ACP5065_reject" text="prompt.reject" width="80"/>
+                <a:toolbarButton click="ACP5065_changeExchangeRate" hidden="true" text="exp_expense_report.exchange_rate_modify" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="ACP5065_audit_query_ds" resultTarget="ACP5065_audit_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="accEntityName" bindTarget="ACP5065_audit_query_ds" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:textField name="requisitionNumber" bindTarget="ACP5065_audit_query_ds" prompt="exp_report_header.exp_report_number"/>
+                    <a:lov name="moPayReqTypeName" bindTarget="ACP5065_audit_query_ds" prompt="acp_requisition.req_types"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:lov name="employeeName" bindTarget="ACP5065_audit_query_ds" placeHolder="gld.employee_name"/>
+                    <a:comboBox name="currencyName" bindTarget="ACP5065_audit_query_ds" placeHolder="exp_report_headers.currency_code"/>
+                    <a:datePicker name="requisitionDateFrom" bindTarget="ACP5065_audit_query_ds" placeHolder="exp_requisition_header.requisition_date_from"/>
+                    <a:datePicker name="requisitionDateTo" bindTarget="ACP5065_audit_query_ds" placeHolder="exp_requisition_header.requisition_date_to"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <!-- <a:form column="2" marginWidth="3" padding="0" title="CSH_TRANSACTION_ACCOUNTS.JOURNAL_DATE">
+            <a:datePicker name="journal_date" bindTarget="ACP5065_journal_date_ds"/>
+            <a:textField name="period_name" bindTarget="ACP5065_journal_date_ds"/>
+        </a:form> -->
+        <a:form marginWidth="3" padding="0" showmargin="false" title="hap_doc_information">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:button click="ACP5065_viewLog" text="prompt.view_log" width="80"/>
+            </a:formToolbar>
+            <a:grid id="ACP5065_docGrid" bindTarget="ACP5065_audit_result_ds" marginHeight="970" marginWidth="3" navBar="true" style="box-shadow:none;">
+                <a:columns>
+                    <a:column name="accEntityName" align="center" width="150"/>
+                    <a:column name="requisitionNumber" align="center" renderer="ACP5065_requistionNumberRenderer" width="150"/>
+                    <a:column name="moPayReqTypeName" align="center" width="150"/>
+                    <a:column name="employeeName" align="center" width="120"/>
+                    <a:column name="paymentCurrencyName" align="center" width="100"/>
+                    <a:column name="paymentAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="requisitionDate" align="center" renderer="Aurora.formatDate" width="100"/>
+                    <a:column name="requisitionStatusName" align="center" width="100"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="jeCreationStatus" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="ACP5065_chk"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+        <a:form marginWidth="3" padding="0" showmargin="false" title="hap_acc_information">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:datePicker name="journalDate" bindTarget="ACP5065_journal_date_ds" width="130"/>
+                <a:textField name="periodName" bindTarget="ACP5065_journal_date_ds" width="130"/>
+                <a:toolbarButton click="ACP5065_save" text="HAP_SAVE" width="80"/>
+            </a:formToolbar>
+            <a:grid id="ACP5065_accountGrid" autoAdjustHeight="true" bindTarget="ACP5065_audit_je_lines_ds" height="600" marginWidth="3" navBar="true" style="box-shadow:none;">
+                <a:columns>
+                    <a:column name="accEntityName" align="center" editor="ACP5065_lov" width="150"/>
+                    <a:column name="respCenterName" align="center" editor="ACP5065_lov" width="150"/>
+                    <a:column name="accountName" align="center" editor="ACP5065_lov" width="150"/>
+                    <a:column name="periodName" align="center" editor="ACP5065_lov" width="100"/>
+                    <a:column name="currencyName" align="center" width="100"/>
+                    <a:column name="enteredAmountDr" align="right" renderer="ACP5065_formatMoney" width="100"/>
+                    <a:column name="enteredAmountCr" align="right" renderer="ACP5065_formatMoney" width="100"/>
+                    <a:column name="functionalAmountDr" align="right" renderer="ACP5065_formatMoney" width="100"/>
+                    <a:column name="functionalAmountCr" align="right" renderer="ACP5065_formatMoney" width="100"/>
+                    <a:column name="description" align="left" editor="ACP5065_tf" width="250"/>
+                    <a:column name="accountSegment1" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment2" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment3" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment4" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment5" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment6" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment7" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment8" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment9" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment10" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment11" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment12" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment13" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment14" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment15" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment16" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment17" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment18" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment19" align="center" editor="ACP5065_tf"/>
+                    <a:column name="accountSegment20" align="center" editor="ACP5065_tf"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="ACP5065_lov"/>
+                    <a:textField id="ACP5065_tf"/>
+                    <a:numberField id="ACP5065_nf" allowDecimals="true" allowNegative="false" decimalPrecision="2"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="ACP5065_onJeCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:form>
+    </a:view>
+</a:screen>

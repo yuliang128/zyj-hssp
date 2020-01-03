@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+	<a:view>
+		<a:link id="WFL1010_taskReceiverLink" url="$[/request/@context_path]/wfl/WFL1010/wflTaskReceiver.screen"/>
+		<a:link id="WFL1010_userTaskLink" url="$[/request/@context_path]/wfl/WFL1010/wflUserTask.screen"/>
+		<a:link id="WFL1010_taskActionLink" url="$[/request/@context_path]/wfl/WFL1010/wflTaskAction.screen"/>
+        <a:link id="WFL1010_gatewayBizRuleLink" url="$[/request/@context_path]/wfl/WFL1010/wflGatewayBizRule.screen"/>
+        <script src="$[/request/@context_path]/resources/js/aurora/4.0/Aurora-ui.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Init.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/pako.min.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/base64.js" type="text/javascript"/>
+		<!--<script type="text/javascript" src="jscolor/jscolor.js"></script>-->
+		<script src="$[/request/@context_path]/lib/mxGraph/js/sanitizer.min.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/mxClient.min.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/EditorUi.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Editor.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Sidebar.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Graph.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Format.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Shapes.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Actions.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Menus.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Toolbar.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/Dialogs.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/lib/mxGraph/js/WflProcessDb.js" type="text/javascript"/>
+		<script src="$[/request/@context_path]/resources/js/aurora/hap/toastr.js" type="text/javascript"></script>
+		<link href="$[/request/@context_path]/lib/mxGraph/css/grapheditor.css" rel="stylesheet" type="text/css"/>
+		<script type="text/javascript"><![CDATA[
+		var ui=null,wp=null;
+        function onWflProcessLoad(ds){
+            var processId="$[/parameter/@processId]";
+            console.log(processId);
+            //var ds=$au('WFL1010_processResultDs');
+            var wflProcessRec=ds.getAll().length>0?ds.getAt(0):null;
+            mxLoadResources = false;
+            var editorUiInit = EditorUi.prototype.init;
+            EditorUi.prototype.init = function()
+            {
+                editorUiInit.apply(this, arguments);
+            };
+            mxResources.loadDefaultBundle = false;
+            var bundle = mxResources.getDefaultBundle(RESOURCE_BASE, '');
+            mxUtils.getAll([bundle, STYLE_PATH + '/default.xml'], function(xhr)
+            {
+                mxResources.parse(xhr[0].getText());
+                var themes = new Object();
+                themes[Graph.prototype.defaultThemeName] = xhr[1].getDocumentElement();
+                var dsConfig={};
+                var wflEventDs=$au('WFL1010_elementEventDs');
+                var wflTaskDs=$au('WFL1010_elementTaskDs');
+                var wflGatewayDs=$au('WFL1010_elementGatewayDs');
+                var wflFlowDs=$au('WFL1010_elementFlowDs');
+                var wflFlowBakDs=$au('WFL1010_elementFlowDs_bak');
+                dsConfig.wflEventDs=wflEventDs;
+                dsConfig.wflTaskDs=wflTaskDs;
+                dsConfig.wflGatewayDs=wflGatewayDs;
+                dsConfig.wflFlowDs=wflFlowDs;
+                dsConfig.wflFlowBakDs=wflFlowBakDs;
+                ui=new EditorUi(new Editor(wflTaskDs,null, themes),null,wflProcessRec,dsConfig);//默认container为document
+                wp=ui.createWflProcessDb();
+				ds.locate(1,true);
+            }, function()
+            {
+                document.body.innerHTML = '<center style="margin-top:10%;">Error loading resource files. Please check browser console.</center>';
+            });
+        }
+        function onWflEventLoad(ds){
+             // var records=ds.getAll();
+             // var noRecords=[];
+             // for(var i=0;i<records.length;i++){
+			// 	if(!records[i].get('rendered'))
+             //        noRecords.push(records);
+			//  }
+            // if(wp){
+             //        wp.eventInit(noRecords,ui);
+			// }
+		}
+		function eventTest(ds){
+            var records=ds.getAll();
+            var noRecords=[];
+            for(var i=0;i<records.length;i++){
+                if(!records[i].get('rendered'))
+                    noRecords.push(records[i]);
+            }
+            if(wp){
+                wp.eventInit(noRecords,ui);
+            }
+		}
+        function taskTest(ds){
+            var records=ds.getAll();
+            var noRecords=[];
+            for(var i=0;i<records.length;i++){
+                if(!records[i].get('rendered'))
+                    noRecords.push(records[i]);
+            }
+            if(wp){
+                wp.taskInit(noRecords,ui);
+            }
+        }
+        function gatewayTest(ds){
+            var records=ds.getAll();
+            var noRecords=[];
+            for(var i=0;i<records.length;i++){
+                if(!records[i].get('rendered'))
+                    noRecords.push(records[i]);
+            }
+            if(wp){
+                wp.gatewayInit(noRecords,ui);
+            }
+        }
+		function onWflTaskLoad(ds){
+            // if(ui){
+            //     var wp=ui.createWflProcessDb();
+            //     wp.taskInit(ds.getAll(),ui);
+            // }
+		}
+		function onWflGatewayLoad(ds){
+            // if(ui){
+            //     var wp=ui.createWflProcessDb();
+            //     wp.gatewayInit(ds.getAll(),ui);
+            // }
+        }
+        function onWflFlowLoad(ds){
+            var flowRecords=ds.getAll();
+            if(flowRecords.length>0){
+                if(wp){
+                    wp.flowInit(flowRecords,ui);
+                }
+            }
+            eventTest($au('WFL1010_elementEventDs'));
+            taskTest($au('WFL1010_elementTaskDs'));
+			gatewayTest($au('WFL1010_elementGatewayDs'));
+
+		}
+		function onWflFlowUpdate(ds,record,name,newValue,oldValue){
+			if(name=='fromElementType'){
+			    if(newValue!=oldValue){
+                    record.set('fromElementName','');
+                    record.set('fromElementId','');
+                }
+                record.getField('fromElementName').setLovPara('elementType',newValue);
+                record.getField('fromElementName').setLovPara('processId','$[/parameter/@processId]');
+			}else if(name=='toElementType'){
+                if(newValue!=oldValue) {
+                    record.set('toElementName', '');
+                    record.set('toElementId', '');
+                }
+                record.getField('toElementName').setLovPara('elementType',newValue);
+                record.getField('toElementName').setLovPara('processId','$[/parameter/@processId]');
+			}
+		}
+
+		function onTaskSubmitSuccess(ds,res){
+            //onSubmitSuccess('任务保存成功！');
+            //ds.query();
+		}
+
+		function onEventSubmitSuccess(ds,res){
+            //onSubmitSuccess('事件保存成功！');
+            //ds.query();
+		}
+        function onGatewaySubmitSuccess(ds,res){
+            //onSubmitSuccess('网关保存成功！');
+            //ds.query();
+        }
+		function onSubmitSuccess(mess){
+            //Aurora.showInfoMessage('提示',mess);
+		}
+		function onFlowSubmitSuccess(ds){
+            //Aurora.showInfoMessage('提示','流转保存成功！',function(){
+               // ds.query();
+            //});
+        }
+		function onProcessSubmitSuccess(ds){
+           // Aurora.showInfoMessage('提示','保存成功！');
+        }
+        function test(ds,url,data){
+            debugger;
+        }
+        function onSubmitFun(ds){
+            debugger;
+			if(ui){
+			    var graph=ui.editor.graph;
+			    graph.getModel().clear();
+			    ui.format.clear();
+			    $au('WFL1010_processResultDs').query();
+                $au('WFL1010_processResultDs').locate(1,true);
+			}
+		}
+        ]]></script>
+		<a:dataSets>
+			<a:dataSet id="WFL1010_eventTypeDs" autoQuery="true"
+					   queryUrl="$[/request/@context_path]/common/auroraCode/WFL.EVENT_TYPE/"/>
+			<a:dataSet id="WFL1010_docCategoryDs" autoQuery="true"
+					   queryUrl="$[/request/@context_path]/common/auroraCode/FND.DOC_CATEGORY/" />
+			<a:dataSet id="WFL1010_taskTypeDs" autoQuery="true"
+					   queryUrl="$[/request/@context_path]/common/auroraCode/WFL.TASK_TYPE/"/>
+			<a:dataSet id="WFL1010_receiveTypeDs" autoQuery="true"
+					   queryUrl="$[/request/@context_path]/common/auroraCode/WFL.RECEIVE_TYPE/"/>
+            <a:dataSet id="WFL1010_gatewayTypeDs" autoQuery="true"
+					   queryUrl="$[/request/@context_path]/common/auroraCode/WFL.GATEWAY_TYPE/"/>
+			<a:dataSet id="WFL1010_elementTypeDs" autoQuery="true"
+					   queryUrl="$[/request/@context_path]/common/auroraCode/WFL.ELEMENT_TYPE/"/>
+			<a:dataSet id="WFL1010_processResultDs" autoQuery="true" baseUrl="/wfl/process" queryUrl="$[/request/@context_path]/wfl/process/queryWflProcess?processId=$[/parameter/processId]" submitUrl="$[/request/@context_path]/wfl/process/saveAll" selectable="true">
+				<!--<a:datas dataSource="model/wflProcess"  />-->
+				<a:fields>
+					<a:field name="processCode" prompt="wfl_process.process_code" required="true"/>
+					<a:field name="processName" descIdField="processNameId" prompt="wfl_process.process_name" required="true"/>
+					<a:field name="processNameId" />
+					<a:field name="docCategoryName" displayField="meaning" options="WFL1010_docCategoryDs" prompt="wfl_process.doc_category_name" returnField="docCategory" valueField="value"/>
+					<a:field name="docCategory"/>
+					<a:field name="subProcessFlag" checkedValue="Y" defaultValue="N" prompt="wfl_process.sub_process_flag" uncheckedValue="N"/>
+					<a:field name="parentProcessName" lovCode="LOV_PROCESS_NAME" prompt="wfl_process.parent_process_name" title="wfl_process.parent_process_name">
+						<a:mapping>
+							<a:map from="processName" to="parentProcessName"/>
+							<a:map from="processId" to="parentProcessId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="parentProcessId"/>
+					<a:field name="processPageName" lovCode="LOV_PROCESS_PAGE" prompt="wfl_process.process_page_name" title="wfl_process.process_page_name">
+						<a:mapping>
+							<a:map from="pageName" to="processPageName"/>
+							<a:map from="pageId" to="processPageId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="processPageId"/>
+					<a:field name="viewPageName" lovCode="LOV_PROCESS_PAGE" prompt="wfl_process.view_page_name" title="wfl_process.view_page_name">
+						<a:mapping>
+							<a:map from="pageName" to="viewPageName"/>
+							<a:map from="pageId" to="viewPageId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="viewPageId"/>
+					<a:field name="startProcedureName" lovCode="LOV_PROCESS_PROCEDURE" prompt="wfl_process.start_procedure_name" title="wfl_process.start_procedure_name">
+						<a:mapping>
+							<a:map from="procedureName" to="startProcedureName"/>
+							<a:map from="procedureId" to="startProcedureId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="startProcedureId"/>
+					<a:field name="endProcedureName" lovCode="LOV_PROCESS_PROCEDURE"  prompt="wfl_process.end_procedure_name" title="wfl_process.end_procedure_name">
+						<a:mapping>
+							<a:map from="procedureName" to="endProcedureName"/>
+							<a:map from="procedureId" to="endProcedureId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="endProcedureId"/>
+					<a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="wfl_process.enabled_flag" required="true" uncheckedValue="N"/>
+				</a:fields>
+                <a:events>
+                    <a:event name="load" handler="onWflProcessLoad"/>
+                    <a:event name="submitsuccess" handler="onProcessSubmitSuccess"/>
+                </a:events>
+			</a:dataSet>
+			<a:dataSet id="WFL1010_elementEventDs" autoQuery="false" baseUrl="/wfl/event" fetchAll="true"  bindName="event" bindTarget="WFL1010_processResultDs" queryUrl="$[/request/@context_path]/wfl/processEvent/query?processId=$[/parameter/@processId]" selectable="true">
+				<a:fields>
+					<a:field name="processId" defaultValue="$[/parameter/@processId]"/>
+					<a:field name="eventId"/>
+					<a:field name="eventCode" prompt="wfl_event.event_code" required="true"/>
+					<a:field name="eventName" descIdField="eventNameId" prompt="wfl_event.event_name" required="true"/>
+					<a:field name="eventNameId"/>
+					<a:field name="eventTypeName" displayField="meaning" options="WFL1010_eventTypeDs" prompt="wfl_event.event_type_name" required="true" returnField="eventType" valueField="value"/>
+					<a:field name="eventType"/>
+				</a:fields>
+				<a:events>
+					<a:event name="load" handler="onWflEventLoad"/>
+					<a:event name="submitsuccess" handler="onEventSubmitSuccess"/>
+				</a:events>
+			</a:dataSet>
+			<a:dataSet id="WFL1010_elementTaskDs" autoQuery="false" baseUrl="/wfl/task"  fetchAll="true" bindName="task" bindTarget="WFL1010_processResultDs" queryUrl="$[/request/@context_path]/wfl/task/taskNameLov?processId=$[/parameter/@processId]" selectable="true">
+				<a:fields>
+					<a:field name="processId" defaultValue="$[/parameter/@processId]"/>
+					<a:field name="taskId" />
+					<a:field name="taskCode" prompt="wfl_task.task_code" required="true"/>
+					<a:field name="taskName"  descIdField="taskNameId" prompt="wfl_task.task_name" required="true"/>
+					<a:field name="taskNameId"/>
+					<a:field name="taskTypeName" displayField="meaning" options="WFL1010_taskTypeDs" prompt="wfl_task.task_type_name" returnField="taskType" valueField="value" required="true"/>
+					<a:field name="taskType"/>
+					<a:field name="meaning" displayField="code_value_name" options="WFL1010_receiveTypeDs" prompt="wfl_task.receive_type_name" returnField="receiveType" valueField="value" required="true"/>
+					<a:field name="receiveType"/>
+					<a:field name="processPageName" lovCode="LOV_PAGE_NAME" prompt="wfl_task.process_page_name" title="wfl_task.process_page_name">
+						<a:mapping>
+							<a:map from="pageName" to="processPageName"/>
+							<a:map from="pageId" to="processPageId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="processPageId"/>
+					<a:field name="viewPageName" lovCode="LOV_PAGE_NAME" prompt="wfl_task.view_page_name" title="wfl_task.view_page_name">
+						<a:mapping>
+							<a:map from="pageName" to="viewPageName"/>
+							<a:map from="pageId" to="viewPageId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="viewPageId"/>
+					<a:field name="arriveProcedureName" lovCode="LOV_PROCEDURE_NAME" prompt="wfl_task.arrive_procedure_name" title="wfl_task.arrive_procedure_name">
+						<a:mapping>
+							<a:map from="procedureName" to="arriveProcedureName"/>
+							<a:map from="procedureId" to="arriveProcedureId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="arriveProcedureId"/>
+					<a:field name="departProcedureName" lovCode="LOV_PROCEDURE_NAME" pompt="wfl_task.depart_procedure_name" title="wfl_task.depart_procedure_name">
+						<a:mapping>
+							<a:map from="procedureName" to="departProcedureName"/>
+							<a:map from="procedureId" to="departProcedureId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="departProcedureId"/>
+				</a:fields>
+				<a:events >
+					<a:event name="load" handler="onWflTaskLoad"  />
+					<a:event name="submitsuccess" handler="onTaskSubmitSuccess"/>
+				</a:events>
+			</a:dataSet>
+			<a:dataSet id="WFL1010_elementGatewayDs" autoQuery="false" fetchAll="true" bindName="gateway" bindTarget="WFL1010_processResultDs" baseUrl="/wfl/gateway" queryUrl="$[/request/@context_path]/wfl/processGateway/query?processId=$[/parameter/@processId]" selectable="true">
+				<a:fields>
+					<a:field name="processId" defaultValue="$[/parameter/@processId]"/>
+					<a:field name="gatewayId" />
+					<a:field name="gatewayCode" prompt="wfl_gateway.gateway_code" required="true"/>
+					<a:field name="gatewayName"  descIdField="gatewayNameId" prompt="wfl_gateway.gateway_name" required="true"/>
+					<a:field name="gatewayNameId"/>
+					<a:field name="gatewayTypeName" displayField="meaning" options="WFL1010_gatewayTypeDs" prompt="wfl_gateway.gateway_type_name" required="true" returnField="gatewayType" valueField="value"/>
+					<a:field name="gatewayType"/>
+				</a:fields>
+
+				<a:events >
+					<a:event name="load" handler="onWflGatewayLoad"  />
+					<a:event name="submitsuccess" handler="onGatewaySubmitSuccess"/>
+				</a:events>
+			</a:dataSet>
+			<a:dataSet id="WFL1010_elementFlowDs" autoQuery="false" fetchAll="true"  bindName="flow" bindTarget="WFL1010_processResultDs"  baseUrl="/wfl/flow"  queryUrl="$[/request/@context_path]/wfl/processFlow/query?processId=$[/parameter/@processId]" submitUrl="$[/request/@context_path]/wfl/insertFlows" selectable="true">
+				<a:fields>
+					<a:field name="processId" defaultValue="$[/parameter/@processId]"/>
+					<a:field name="flowId" />
+					<a:field name="flowCode" prompt="wfl_flow.flow_code" required="true"/>
+					<a:field name="flowName"  descIdField="flowNameId" prompt="wfl_flow.flow_name"/>
+					<a:field name="flowNNameId"/>
+					<a:field name="fromElementTypeName" displayField="meaning" options="WFL1010_elementTypeDs" prompt="wfl_flow.from_element_type_name" required="true" returnField="fromElementType" valueField="value"/>
+					<a:field name="fromElementType"/>
+					<a:field name="fromElementName" lovCode="LOV_WFL_ELEMENT" prompt="wfl_flow.from_element_name"  title="wfl_flow.from_element_name">
+						<a:mapping>
+							<a:map from="elementName" to="fromElementName"/>
+							<a:map from="elementId" to="fromElementId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="fromElementId"/>
+					<a:field name="toElementTypeName" displayField="meaning" options="WFL1010_elementTypeDs" prompt="wfl_flow.to_element_type_name" returnField="toElementType" valueField="value"/>
+					<a:field name="toElementType"/>
+					<a:field name="toElementName" lovCode="LOV_WFL_ELEMENT" lovWidth="500" prompt="wfl_flow.to_element_name" title="wfl_flow.to_element_name">
+						<a:mapping>
+							<a:map from="elementName" to="toElementName"/>
+							<a:map from="elementId" to="toElementId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="toElementId"/>
+					<a:field name="flowValue" prompt="wfl_flow.flow_value"/>
+					<a:field name="sequence" prompt="wfl_flow.sequence"/>
+					<a:field name="fromElementCode"/>
+					<a:field name="toElementCode"/>
+				</a:fields>
+
+				<a:events >
+					<a:event name="load" handler="onWflFlowLoad"  />
+					<a:event name="submitsuccess" handler="onFlowSubmitSuccess"/>
+					<a:event name="update" handler="onWflFlowUpdate"/>
+				</a:events>
+			</a:dataSet>
+
+			<a:dataSet id="WFL1010_elementFlowDs_bak" autoQuery="false" fetchAll="true" baseUrl="/wfl/flow"  queryUrl="$[/request/@context_path]/wfl/processFlow/query?processId=$[/parameter/@processId]" submitUrl="$[/request/@context_path]/wfl/insertFlows" selectable="true">
+				<a:fields>
+					<a:field name="processId" defaultValue="$[/parameter/@processId]"/>
+					<a:field name="flowId" />
+					<a:field name="flowCode" prompt="wfl_flow.flow_code" required="true"/>
+					<a:field name="flowName"  descIdField="flowNameId" prompt="wfl_flow.flow_name"/>
+					<a:field name="flowNNameId"/>
+					<a:field name="fromElementTypeName" displayField="meaning" options="WFL1010_elementTypeDs" prompt="wfl_flow.from_element_type_name" required="true" returnField="fromElementType" valueField="value"/>
+					<a:field name="fromElementType"/>
+					<a:field name="fromElementName" lovCode="LOV_WFL_ELEMENT" prompt="wfl_flow.from_element_name"  title="wfl_flow.from_element_name">
+						<a:mapping>
+							<a:map from="elementName" to="fromElementName"/>
+							<a:map from="elementId" to="fromElementId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="fromElementId"/>
+					<a:field name="toElementTypeName" displayField="meaning" options="WFL1010_elementTypeDs" prompt="wfl_flow.to_element_type_name" returnField="toElementType" valueField="value"/>
+					<a:field name="toElementType"/>
+					<a:field name="toElementName" lovCode="LOV_WFL_ELEMENT" lovWidth="500" prompt="wfl_flow.to_element_name" title="wfl_flow.to_element_name">
+						<a:mapping>
+							<a:map from="elementName" to="toElementName"/>
+							<a:map from="elementId" to="toElementId"/>
+						</a:mapping>
+					</a:field>
+					<a:field name="toElementId"/>
+					<a:field name="flowValue" prompt="wfl_flow.flow_value"/>
+					<a:field name="sequence" prompt="wfl_flow.sequence"/>
+					<a:field name="fromElementCode"/>
+					<a:field name="toElementCode"/>
+				</a:fields>
+
+				<a:events >
+					<a:event name="load" handler="onWflFlowLoad"  />
+					<a:event name="submitsuccess" handler="onFlowSubmitSuccess"/>
+					<a:event name="update" handler="onWflFlowUpdate"/>
+				</a:events>
+			</a:dataSet>
+		</a:dataSets>
+	</a:view>
+</a:screen>

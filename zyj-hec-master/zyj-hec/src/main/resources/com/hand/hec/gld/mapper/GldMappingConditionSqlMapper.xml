@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldMappingConditionSqlMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldMappingConditionSql">
+        <result column="MAPPING_CONDITION_SQL_ID" property="mappingConditionSqlId" jdbcType="DECIMAL"/>
+        <result column="MAPPING_CONDITION_CODE" property="mappingConditionCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="LOV_STATEMENT" property="lovStatement" jdbcType="VARCHAR"/>
+        <result column="REF_TABLE" property="refTable" jdbcType="VARCHAR"/>
+        <result column="REF_FIELD" property="refField" jdbcType="VARCHAR"/>
+        <result column="REF_ID_FIELD" property="refIdField" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="selectMappingConditionDetail" resultMap="BaseResultMap">
+        select gmcs.ref_table,
+               gmcs.ref_field,
+               gmcs.ref_id_field
+          from gld_mapping_condition_sql gmcs
+         where gmcs.mapping_condition_code = #{mappingConditionCode};
+    </select>
+    <select id="getDataType" resultType="String">
+        <choose>
+            <when test="dbType == 'oracle' ">
+                select A.DATA_TYPE
+                from user_tab_columns A
+                where A.TABLE_NAME =#{refTable}
+                and A.COLUMN_NAME = #{refField}
+            </when>
+            <when test="dbType == 'mysql' ">
+                select COLUMN_TYPE
+                from INFORMATION_SCHEMA.Columns
+                where table_name = #{refTable}
+                and COLUMN_NAME = #{refField}
+            </when>
+            <when test="dbType == 'sqlserver' ">
+                SELECT b.name
+                FROM syscolumns a
+                left join systypes b on a.xtype=b.xusertype
+                inner join sysobjects d on a.id=d.id and d.xtype='U' and d.name &lt;&gt;'dtproperties'
+                where d.name=#{refTable}
+                and a.name=#{refField}
+            </when>
+            <otherwise>
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="selectGridData" resultMap="BaseResultMap">
+        SELECT
+	        s.LOV_STATEMENT,
+	        s.MAPPING_CONDITION_CODE,
+	        s.MAPPING_CONDITION_SQL_ID,
+	        s.REF_FIELD,
+	        s.REF_ID_FIELD,
+	        s.REF_TABLE,
+	        st.DESCRIPTION
+          FROM
+	        gld_mapping_condition_sql s
+          LEFT JOIN gld_mapping_condition_sql_tl st ON s.MAPPING_CONDITION_SQL_ID = st.MAPPING_CONDITION_SQL_ID
+          AND st.lang = #{request.locale,jdbcType = VARCHAR}
+          where exists
+          (select
+                 1
+             from
+                 gld_usage_code_catalog c
+             where
+                 c.mapping_condition_code=s.mapping_condition_code
+             and c.usage_code = #{usageCode})
+    </select>
+</mapper>

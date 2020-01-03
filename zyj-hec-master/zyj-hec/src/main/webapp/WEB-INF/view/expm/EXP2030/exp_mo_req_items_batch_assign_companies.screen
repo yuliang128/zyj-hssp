@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP2030_expMoCompaniesBatchLink" url="$[/request/@context_path]/exp/mo-req-items-asgn-com/batchAsgnCompanyManyToMany"/>
+        <script><![CDATA[
+            function EXP2030_assignCom() {
+                var companyRecordsData = $au('EXP2030_batchAsgnCompanyDs').getJsonData(true);
+                var typeRecordsData = $au('EXP2030_expMoReqItemsResultDs').getJsonData(true);
+                if (companyRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT]', null, 250, 100);
+                    return;
+                }
+                for(var i = 0 ; i < typeRecordsData.length ; i ++){
+                    typeRecordsData[i]['companyInfo'] = companyRecordsData;
+                }
+                Aurora.request({lockMessage:'$[l:HAP_WAITING]',lockMessage:'$[l:HAP_WAITING]',
+                    url: $au('EXP2030_expMoCompaniesBatchLink').getUrl(),
+                    para: typeRecordsData,
+                    success: EXP2030_closeAsgnBatchCreateWindow,
+                    scope: this
+                });
+            }
+            
+            function EXP2030_closeAsgnBatchCreateWindow() {
+                $au('EXP2030_exp_mo_req_items_com_assign_batch').close();
+            }
+            
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2030_batchAsgnCompanyDs" queryUrl="$[/request/@context_path]/exp/mo-req-items-asgn-com/queryCompanyByItem?magOrgId=$[/parameter/@magOrgId]" autoQuery="true"  selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP2030_expMoReqItemsBatchAsgnComForm" column="2" title="exp_req_item_comp.batch_disp_comp">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP2030_assignCom" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="EXP2030_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="EXP2030_expMoReqItemsQueryDs" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="EXP2030_expMoReqItemsQueryDs" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP2030_batchAsgnCompanyDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" prompt="fnd_company.company_code" width="160"/>
+                    <a:column name="companyShortName" prompt="company_short_name" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

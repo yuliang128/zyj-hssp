@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function queryParameterFromId() {
+            $au('sys_parameter_result_ds').query();
+        }
+
+        function saveParam() {
+            $au('sys_parameter_define_ds').submit();
+        }
+
+        function closeWindow() {
+            closeNewWindow();
+        }
+
+        function closeNewWindow() {
+            $au('sys_parameter_new').close();
+        }
+
+        function onSuccess(dateSet, datas, results) {
+            closeWindow();
+        }
+
+        function onUpdate(ds, record, name, value) {
+            var lovId = record.getMeta().getField('lovCode');
+            if (name === 'parameterType') {
+                if (value === 'LOV CODE') {
+                    lovId.setReadOnly(false);
+                } else {
+                    lovId.setReadOnly(true);
+                    record.set('lovCode', null);
+                }
+            }
+        }
+
+        function onParameterLoad(ds) {
+            var record = ds.getCurrentRecord();
+            if (record.get('parameterId')) {
+                record.getMeta().getField('parameterCode').setReadOnly(true);
+            }
+            if (record.get('parameterType') !== 'LOV CODE') {
+                record.getMeta().getField('lovCode').setReadOnly(true);
+            }
+        }
+
+        function onBeforecreate(ds) {
+            if ('$[/model/@parameterId]' !== '') {
+                $au('sys_parameter_define_ds').setQueryUrl("$[/request/@context_path]/sys/parameter/query/$[/model/@parameterId]")
+                $au('sys_parameter_define_ds').query();
+            }
+
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="parameter_type_ds">
+                <a:datas>
+                    <a:record name="CHARACTER" code="CHARACTER"/>
+                    <a:record name="LOV CODE" code="LOV CODE"/>
+                    <a:record name="NUMERIC" code="NUMERIC"/>
+                </a:datas>
+            </a:dataSet>
+            <a:dataSet id="sys_parameter_define_ds" autoCreate="true" baseUrl="/sys/parameter">
+                <a:fields>
+                    <a:field name="parameterCode" prompt="sys_parameter.parameter_code" required="true"/>
+                    <a:field name="parameterName" dto="com.hand.hec.sys.dto.Parameter" dtoId="parameterId"
+                             prompt="sys_parameter.parameter_name" required="true"/>
+
+                    <a:field name="description" prompt="sys_parameter.parameter_desc" required="true"/>
+                    <a:field name="startDateActive" prompt="sys_parameter.start_date_active" required="true"/>
+                    <a:field name="endDateActive" prompt="sys_parameter.end_date_active"/>
+                    <a:field name="parameterType" displayField="name" options="parameter_type_ds"
+                             prompt="sys_parameter.parameter_type" required="true" returnField="parameterType"
+                             valueField="code"/>
+                    <a:field name="encryptValueFlag" checkedValue="Y" prompt="sys_parameter.encrypt"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="userVisibleFlag" checkedValue="Y" prompt="sys_parameter.user_visible"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="userChangeableFlag" checkedValue="Y" prompt="sys_parameter.user_changeable"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="companyEnabledFlag" checkedValue="Y" prompt="sys_parameter.company"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="accEntityEnabledFlag" checkedValue="Y" prompt="sys_parameter.acc_entity"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="userEnabledFlag" checkedValue="Y" prompt="sys_parameter.user"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="roleEnabledFlag" checkedValue="Y" prompt="sys_parameter.role"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="systemEnabledFlag" checkedValue="Y" prompt="sys_parameter.system"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="magOrgEnabledFlag" checkedValue="Y" prompt="sys_parameter.management_organization"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="setOfBooksEnabledFlag" checkedValue="Y"
+                             prompt="sys_parameter.set_of_books" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="bgtOrgEnabledFlag" checkedValue="Y" prompt="sys_parameter.bgt_org"
+                             defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="lovId"/>
+                    <a:field name="lovCode" prompt="sys_parameter.lov_code" lovCode="LOV_SQL">
+                        <a:mapping>
+                            <a:map from="lovId" to="lovId"/>
+                            <a:map from="code" to="lovCode"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onSuccess"/>
+                    <a:event name="update" handler="onUpdate"/>
+                    <a:event name="load" handler="onParameterLoad"/>
+                    <a:event name="beforecreate" handler="onBeforecreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="sys_parameter_fs" column="1" labelWidth="95" padding="5" showmargin="true"
+                    title="sys_parameter.define">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="saveParam" text="hap_save" width="80"/>
+                    <a:toolbarButton click="closeWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="parameterCode" bindTarget="sys_parameter_define_ds" typeCase="upper"
+                             width="500"/>
+                <a:tledit name="parameterName" bindTarget="sys_parameter_define_ds" width="500"/>
+                <a:tledit name="description" bindTarget="sys_parameter_define_ds" width="500"/>
+                <a:datePicker name="startDateActive" bindTarget="sys_parameter_define_ds" width="500"/>
+                <a:datePicker name="endDateActive" bindTarget="sys_parameter_define_ds" width="500"/>
+                <a:comboBox name="parameterType" bindTarget="sys_parameter_define_ds" width="500"/>
+                <a:checkBox name="encryptValueFlag" bindTarget="sys_parameter_define_ds" width="500"/>
+                <a:hBox padding="0" prompt="sys_parameter.user">
+                    <a:checkBox name="userVisibleFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.user_visible" prompt=""/>
+                    <a:checkBox name="userChangeableFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.user_changeable" prompt=""/>
+                </a:hBox>
+                <a:hBox padding="0" prompt="sys_parameter.level">
+                    <a:checkBox name="systemEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.system" prompt=""/>
+                    <a:checkBox name="companyEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.company" prompt=""/>
+                    <a:checkBox name="accEntityEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.acc_entity" prompt=""/>
+                    <a:checkBox name="userEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.user" prompt=""/>
+                    <a:checkBox name="roleEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.role" prompt=""/>
+                    <a:checkBox name="magOrgEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.management_organization" prompt=""/>
+                    <a:checkBox name="setOfBooksEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.set_of_books" prompt=""/>
+                    <a:checkBox name="bgtOrgEnabledFlag" bindTarget="sys_parameter_define_ds"
+                                label="sys_parameter.bgt_org" prompt=""/>
+                </a:hBox>
+                <a:lov name="lovCode" id="lovCode" bindTarget="sys_parameter_define_ds"
+                       width="500"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

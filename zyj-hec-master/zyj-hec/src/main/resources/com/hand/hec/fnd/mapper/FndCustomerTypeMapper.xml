@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndCustomerTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndCustomerType">
+        <result column="CUSTOMER_TYPE_ID" property="customerTypeId" jdbcType="DECIMAL"/>
+        <result column="CUSTOMER_TYPE_CODE" property="customerTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="CUSTOMER_TYPE_NAME" property="customerTypeName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByAccEntity" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    SELECT
+	oct.customer_type_id,
+	oct.customer_type_code,
+	octl.DESCRIPTION AS customer_type_name
+    FROM
+	ord_customer_type oct
+	LEFT OUTER JOIN ord_customer_type_tl octl ON (
+	oct.CUSTOMER_TYPE_ID = octl.CUSTOMER_TYPE_ID
+	AND octl.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+    WHERE
+	OCT.enabled_flag = 'Y'
+	AND (
+     #{accEntityId} IS NULL
+    OR (
+    EXISTS ( SELECT 1 FROM ord_customer_type_ref_ae ocra WHERE ocra.customer_type_id = oct.customer_type_id AND ocra.acc_entity_id = #{accEntityId} ) )
+    )
+    ORDER BY customer_type_code
+    </select>
+
+</mapper>

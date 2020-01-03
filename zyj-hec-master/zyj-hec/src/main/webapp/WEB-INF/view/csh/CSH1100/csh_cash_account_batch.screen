@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1100_cash_account_assign_svc_link"
+                url="$[/request/@context_path]/csh/default-cash-flow-item/batchSubmit"/>
+        <script><![CDATA[
+        function CSH1100_assignAccount() {
+            var datas = $au('CSH1100_assign_account_grid_ds').getJsonData(true);
+            if (datas.length === 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select_one]', null, 250, 100);
+                return;
+            }
+            for (var i = 0; i < datas.length; i++) {
+                datas[i]['cashFlowItemId'] = '$[/parameter/@cashFlowItemId]';
+                datas[i]['setOfBooksId'] = '$[/parameter/@setOfBooksId]';
+            }
+
+            Aurora.request({
+                lockMessage: '$[l:hap_writing]',
+                url: $au('CSH1100_cash_account_assign_svc_link').getUrl(),
+                para: datas,
+                success: CSH1100_closeAssignPage,
+                scope: this
+            });
+        }
+
+        function CSH1100_query() {
+            $au('CSH1100_assign_account_grid_ds').query();
+        }
+
+        function CSH1100_closeAssignPage() {
+            $au('CSH1100_csh_account_batch_screen').close();
+            $au('CSH1100_csh_cash_flow_items_default_result_ds').query();
+        }
+
+        function CSH1100_backFun() {
+            $au('CSH1100_csh_account_batch_screen').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1100_assign_account_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accountCodeFromDisplay" autoComplete="true"
+                             lovCode="LOV_CASH_FLOW_ASSIGN_DEF_ACCOUNT?setOfBooksId=$[/parameter/@setOfBooksId]"
+                             prompt="gld_account.account_code_from" title="gld_account.account_code_from">
+                        <a:mapping>
+                            <a:map from="codeName" to="accountCodeFromDisplay"/>
+                            <a:map from="accountCode" to="accountCodeFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountCodeToDisplay" autoComplete="true"
+                             lovCode="LOV_CASH_FLOW_ASSIGN_DEF_ACCOUNT?setOfBooksId=$[/parameter/@setOfBooksId]"
+                             prompt="gld_account.account_code_to" title="gld_account.account_code_to">
+                        <a:mapping>
+                            <a:map from="codeName" to="accountCodeToDisplay"/>
+                            <a:map from="accountCode" to="accountCodeTo"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountCodeFrom"/>
+                    <a:field name="accountCodeTo"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH1100_assign_account_grid_ds" autoPageSize="true" selectable="true"
+                       queryDataSet="CSH1100_assign_account_query_ds"
+                       queryUrl="$[/request/@context_path]/csh/default-cash-flow-item/queryByAccount?setOfBooksId=$[/parameter/@setOfBooksId]">
+                <a:fields>
+                    <a:field name="accountCode" prompt="gld_account.account_code"/>
+                    <a:field name="description" prompt="gld_account.account_description"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <!--<a:screenTitle/>-->
+                    <a:toolbarButton click="CSH1100_assignAccount" text="prompt.batch_disp" width="80"/>
+                    <a:toolbarButton click="CSH1100_backFun" text="HAP_BACK" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="CSH1100_assign_account_query_ds" resultTarget="CSH1100_assign_account_grid_ds"
+                             style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:lov name="accountCodeFromDisplay" bindTarget="CSH1100_assign_account_query_ds"/>
+                        <a:lov name="accountCodeToDisplay" bindTarget="CSH1100_assign_account_query_ds"/>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid id="csh_cash_account_batch_grid" Width="1010" bindTarget="CSH1100_assign_account_grid_ds"
+                    marginHeight="150" navBar="true">
+                <a:columns>
+                    <a:column name="accountCode" align="center" width="80"/>
+                    <a:column name="description" width="150"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

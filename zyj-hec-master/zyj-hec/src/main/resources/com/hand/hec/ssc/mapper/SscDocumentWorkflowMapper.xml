@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscDocumentWorkflowMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscDocumentWorkflow">
+        <result column="DOC_WFL_ASSIGN_ID" property="docWflAssignId" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="WORKFLOW_ID" property="workflowId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="DOC_CATEGORY_NAME" property="docCategoryName" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_NAME" property="docTypeName" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_CODE_NAME" property="docTypeCodeName" jdbcType="VARCHAR" />
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR" />
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR" />
+        <result column="COMPANY_CODE_NAME" property="companyCodeName" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_CODE_NAME" property="accEntityCodeName" jdbcType="VARCHAR" />
+        <result column="WORKFLOW_CODE" property="workflowCode" jdbcType="VARCHAR" />
+        <result column="WORKFLOW_NAME" property="workflowName" jdbcType="VARCHAR" />
+        <result column="WORKFLOW_CODE_NAME" property="workflowCodeName" jdbcType="VARCHAR" />
+    </resultMap>
+    
+    <select id="queryDocument" resultMap="BaseResultMap">
+        SELECT
+        t.*
+        FROM
+        (
+        SELECT
+        sdw.doc_wfl_assign_id,
+        sdw.mag_org_id,
+        sdw.doc_category,
+        scs.meaning doc_category_name,
+        sdw.doc_type_id,
+        case when sdw.doc_category = 'EXP_REPORT'
+        then ( SELECT ertv.mo_exp_report_type_code FROM exp_mo_report_type ertv WHERE ertv.mo_exp_report_type_id = sdw.doc_type_id )
+        when sdw.doc_category = 'PAYMENT_REQUISITION'
+        then ( SELECT crtv.mo_payment_req_type_code FROM csh_mo_payment_req_type crtv WHERE crtv.mo_payment_req_type_id = sdw.doc_type_id )
+        when sdw.doc_category = 'WORK_ORDER'
+        then ''
+        else null
+        end doc_type_code,
+
+        case when sdw.doc_category = 'EXP_REPORT'
+        then ( SELECT ertv.description FROM exp_mo_report_type ertv WHERE ertv.mo_exp_report_type_id = sdw.doc_type_id )
+        when sdw.doc_category = 'PAYMENT_REQUISITION'
+        then ( SELECT crtv.description FROM csh_mo_payment_req_type crtv WHERE crtv.mo_payment_req_type_id = sdw.doc_type_id )
+        when sdw.doc_category = 'WORK_ORDER'
+        then ''
+        else null
+        end doc_type_name,
+
+        case when sdw.doc_category = 'EXP_REPORT'
+        then ( SELECT CONCAT(ertv.mo_exp_report_type_code,'-',ertv.description) FROM exp_mo_report_type ertv WHERE ertv.mo_exp_report_type_id = sdw.doc_type_id )
+        when sdw.doc_category = 'PAYMENT_REQUISITION'
+        then ( SELECT CONCAT(crtv.mo_payment_req_type_code,'-',crtv.description) FROM csh_mo_payment_req_type crtv WHERE crtv.mo_payment_req_type_id = sdw.doc_type_id )
+        when sdw.doc_category = 'WORK_ORDER'
+        then ''
+        else null
+        end doc_type_code_name,
+
+        sdw.company_id,
+        fcv.company_code,
+        fcv.company_short_name company_name,
+        CONCAT(fcv.company_code,'-',fcv.company_short_name) company_code_name,
+        sdw.acc_entity_id,
+        gae.acc_entity_code,
+        gae.acc_entity_name,
+        CONCAT(gae.acc_entity_code,'-',gae.acc_entity_name) acc_entity_code_name,
+        sdw.workflow_id,
+        swv.`WORKFLOW_CODE` workflow_code,
+        swv.description workflow_name,
+        CONCAT(swv.`WORKFLOW_CODE`,'-',swv.description) workflow_code_name,
+        sdw.enabled_flag
+        FROM
+        ssc_document_workflow sdw LEFT OUTER JOIN fnd_company fcv ON (sdw.company_id = fcv.company_id)
+        LEFT OUTER JOIN gld_accounting_entity gae ON (sdw.acc_entity_id = gae.acc_entity_id)
+        LEFT OUTER JOIN ssc_workflow swv ON (sdw.workflow_id = swv.workflow_id)
+        LEFT OUTER JOIN sys_code_v scs ON (sdw.doc_category = scs.value and scs.code = 'WBC_DOC_CATEGORY')
+        ) t
+        where
+        1=1
+        <if test = "magOrgId != null">
+            AND t.mag_org_id LIKE '%${magOrgId}%'
+        </if>
+        <if test = "docCategory != null">
+            AND t.doc_category LIKE '%${docCategory}%'
+        </if>
+        ORDER BY
+        t.doc_category
+    </select>
+</mapper>

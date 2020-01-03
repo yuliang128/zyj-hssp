@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/01/24 10:45 $
+    $Revision: 1 $
+    $Purpose: 公司分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[     
+    ]]></a:init-procedure>
+    <a:view>
+        <a:link id="FND1020_fnd_max_acc_company_ref_link" url="$[/request/@context_path]/fnd/FND1020/fnd_max_company_ref_acc_entities.screen"/>
+        <a:link id="FND1020_fnd_company_ref_acc_be_link" url="$[/request/@context_path]/fnd/FND1020/fnd_com_ae_ref_bgt_entities.screen"/>
+        <script><![CDATA[
+            function FND1020_queryCompanyAcc() {
+                $au('FND1020_fnd_company_ref_acc_entities_ds').query();
+            }
+            
+            function FND1020_resetCompanyAcc() {
+                $au('FND1020_fnd_company_acc_entities_query_ds').reset();
+            }
+            
+
+            function FND1020_budget_MaGorgCode(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'FND1020_budget_lov';
+                }
+            }
+            
+            function FND1020_max_acc_company_ref() {
+                var magOrgId = $au('FND1020_fnd_companies_update_ds').getAt(0).get('magOrgId');
+                new Aurora.Window({
+                    id: 'FND1020_max_company_acc_window',
+                    url: $au('FND1020_fnd_max_acc_company_ref_link').getUrl() + '?companyId=' + '$[/parameter/@companyId]' + '&magOrgId=' + magOrgId,
+                    title: '$[l:fnd_company.asgn_acc_entity]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    FND1020_queryCompanyAcc();
+                });
+            }
+            
+            function FND1020_fnd_ref_closeWindow() {
+                $au('company_acc_window').close();
+                FND1020_queryCompanyLevel();
+            }
+            
+            function FND1020_submitacc() {
+                var accEntityId;
+                var default_acc_entity;
+                var acc_entity_ds = $au('FND1020_fnd_company_ref_acc_entities_ds').getAll();
+                for (var i = 0;i < acc_entity_ds.length;i++) {
+                    if (acc_entity_ds[i].get('defaultFlag') == 'Y') {
+                        accEntityId = acc_entity_ds[i].get('accEntityId');
+                        default_acc_entity = acc_entity_ds[i].get('accEntityName');
+                    }
+                }
+                $au('FND1020_fnd_companies_update_ds').getAt(0).set('default_acc_entity', default_acc_entity);
+            
+                $au('FND1020_fnd_companies_update_ds').getAt(0).set('accEntityId', accEntityId);
+            
+            }
+            
+            function FND6020_update(dataSet, record, name, value, oldvalue) { /*  只有已启用的预算组织才能设置为默认预算组织 */
+                if (name == 'defaultFlag') {
+                    if (value == 'Y') {
+                        var enabledFlag = record.get('enabledFlag');
+                        if (enabledFlag == 'N') {
+                            record.set('defaultFlag', 'N');
+                            Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_default_acc_entity]', null, 300, 150);
+                            return;
+                        }
+            
+                        var rds = dataSet.getAll();
+                        for (var i = 0;i < rds.length;i++) {
+                            if (rds[i] == record) continue;
+                            if (rds[i].get('defaultFlag') == 'Y') {
+                                record.set('defaultFlag', 'N');
+                                Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_enabled_flag_acc_entityes]', null, 250, 100);
+                                break;
+                            }
+                        }
+                    }
+            
+            
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+                if (name == 'defaultBgtEntityName') {
+                    if (Ext.isEmpty(record.get('defaultBgtEntityName'))) {
+                        record.set('defaultBgtEntityId', null);
+                    };
+                }
+            }
+            
+            function GLD6010_saveGldAccEntiAssignSob() { /* 最多只能启用一个 默认组织*/
+                var all_dataset = $au('FND1020_fnd_company_ref_acc_entities_ds').getAll();
+                var checkNumber = 0;
+                if (all_dataset.length > 0) {
+                    for (var i = 0;i < all_dataset.length;i++) {
+                        if ((all_dataset[i].get('enabledFlag') == 'Y' && all_dataset[i].get('defaultFlag') == 'Y')) {
+                            checkNumber += 1;
+                        }
+                    }
+            
+                    if (checkNumber == 0) {
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_enabled_flag_acc_entity]', null, 250, 100);
+                        return;
+                    }
+                    if (checkNumber > 1) {
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld6010_enabled_flag_acc_entityes]', null, 250, 100);
+                        return;
+                    }
+                }
+            
+            
+                $au('FND1020_fnd_company_ref_acc_entities_ds').submit();
+            }
+            
+            function FND1020_add() {
+                var companyId = '$[/parameter/@companyId]';
+                $au('FND1020_fnd_company_ref_acc_entities_ds').create();
+                var currentrecord = $au('FND1020_fnd_company_ref_acc_entities_ds').getCurrentRecord();
+                currentrecord.set('companyId', companyId);
+            }
+            
+            function FND1020_AssignBgtEntitiesRender(value, record, name) {
+                if (!record.isNew) {
+                    var accRefId = record.get('refId');
+                    var companyId = '$[/parameter/@companyId]';
+                    var magOrgId = '$[/parameter/@magOrgId]';
+                    var url = $au('FND1020_fnd_company_ref_acc_be_link').getUrl() + '?accRefId=' + accRefId + '&companyId=' + companyId + '&magOrgId=' + magOrgId;
+                    return '<a href="javascript:FND1020_viewAssignBe(\'' + url + '\')">' + '$[l:prompt.budget_distribution]' + '</a>';
+                }
+                return '';
+            }
+            
+            function FND1020_viewAssignBe(url) {
+                new Aurora.Window({
+                    id: 'FND1020_View_Assign_Be',
+                    url: url,
+                    title: '$[l:prompt.budget_distribution]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    FND1020_queryCompanyAcc();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1020_fnd_company_ref_acc_entities_ds" autoCreate="true" submitUrl="$[/request/@context_path]/fnd/company-ref-acc-entity/submitCompanyRefAccEntity"  autoQuery="true"  queryUrl="$[/request/@context_path]/fnd/company-ref-acc-entity/queryAllFndCompanyRefAccEntity?companyId=$[/parameter/@companyId]" selectable="true" >
+                <a:fields>
+                    <a:field name="companyId" defaultValue="$[/parameter/@companyId]"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="accEntityCode" LovCode="LOV_CHOOSE_ACC_ENTITY?magOrgId=$[/parameter/@magOrgId]&amp;companyId=$[/parameter/@companyId]"  prompt="gld_accounting_entity.acc_entity_code" required="true" title="gld_responsibility_centers.acc_entity_choice">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="defaultFlag" prompt="travel_plan_type.default_flag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="fnd_company_group.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityName" LovCode="LOV_SELECT_BGT_ENTITY?magOrgId=$[/parameter/@magOrgId]"  prompt="fnd_company.default_bgt_entity_name" title="bgt_entity.bgt_entity">
+                        <a:mapping>
+                            <a:map from="bgtEntityId" to="bgtEntityId"/>
+                            <a:map from="bgtEntityName" to="bgtEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND1020_submitacc"/>
+                    <a:event name="update" handler="FND6020_update"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND_info_fs" column="2" title="fnd_company.info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1020_fnd_company_ref_acc_entities_grid" click="FND1020_add" text="hap_new" width="80"/>
+                    <a:gridButton bind="FND1020_fnd_company_ref_acc_entities_grid" click="GLD6010_saveGldAccEntiAssignSob" text="HAP_SAVE" width="80"/>
+                    <a:gridButton click="FND1020_max_acc_company_ref" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:gridButton click="FND1020_fnd_ref_closeWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="companyCodeName" id="companyCodeName" prompt="fnd_company.company_name" readOnly="true"/>
+                <a:textField name="magOrgCodeName" id="magOrgCodeName" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1020_fnd_company_ref_acc_entities_grid" bindTarget="FND1020_fnd_company_ref_acc_entities_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="FND1020_budget_MaGorgCode" width="100"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="defaultFlag" editor="FND1020_budget_checkBox" />
+                    <a:column name="bgtEntityName" editor="FND1020_budget_lov" width="120"/>
+                    <a:column name="enabledFlag" editor="FND1020_budget_checkBox" />
+                    <a:column name="assign_bgt_entities" align="center" renderer="FND1020_AssignBgtEntitiesRender" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND1020_budget_lov"/>
+                    <a:checkBox id="FND1020_budget_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function init() {
+                var com_code = $au('FND1020_fnd_companies_update_ds').getCurrentRecord().get('companyCode');
+                var com_name = $au('FND1020_fnd_companies_update_ds').getCurrentRecord().get('companyShortName');
+                var com_code_name = com_code + '-' + com_name;
+                var mag_code = $au('FND1020_fnd_companies_update_ds').getCurrentRecord().get('magOrgCode');
+                var mag_name = $au('FND1020_fnd_companies_update_ds').getCurrentRecord().get('magOrgName');
+                var mag_code_name = mag_code + '-' + mag_name;
+                $au('companyCodeName').setValue(com_code_name);
+                $au('magOrgCodeName').setValue(mag_code_name);
+            }
+            init();
+        ]]></script>
+    </a:view>
+</a:screen>

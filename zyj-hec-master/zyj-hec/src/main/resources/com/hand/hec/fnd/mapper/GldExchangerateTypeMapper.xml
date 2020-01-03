@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldExchangerateTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldExchangerateType">
+        <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL" />
+        <result column="TYPE_CODE" property="typeCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="METHOD_CODE" property="methodCode" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="PERIOD_TYPE" property="periodType" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="expAuditSelectType" resultMap="BaseResultMap">
+        SELECT
+            gert.type_id,
+            gertt.description,
+            gert.type_code,
+            gert.method_code
+        FROM
+            gld_exchangerate_type gert
+            LEFT JOIN gld_exchangerate_type_tl gertt ON gert.TYPE_ID = gertt.TYPE_ID
+            AND gertt.LANG = #{request.locale,jdbcType = VARCHAR}
+            WHERE
+            gert.enabled_flag = 'Y'
+        ORDER BY
+            gert.type_code
+    </select>
+
+    <select id="queryGldExchangerateTypes" resultMap="BaseResultMap">
+        SELECT
+	        b.type_id,
+            t.description,
+            b.type_code,
+            b.method_code
+        FROM
+	        gld_exchangerate_type b
+        LEFT OUTER JOIN gld_exchangerate_type_TL t ON (
+	            b.type_Id = t.type_Id
+	        AND t.LANG = #{request.locale,jdbcType = VARCHAR}
+        )
+        WHERE
+	        b.TYPE_CODE = #{exchangeRateType}
+    </select>
+    
+    <select id="getRateTypeByBgtOrg" parameterType="java.lang.Long" resultType="java.lang.String">
+        SELECT
+            et.type_code
+        FROM
+            bgt_organization bo,
+            gld_exchangerate_type et
+        WHERE
+            bo.exchange_rate_type_id = et.type_id
+            AND bo.bgt_org_id = #{bgtOrgId}
+    </select>
+</mapper>

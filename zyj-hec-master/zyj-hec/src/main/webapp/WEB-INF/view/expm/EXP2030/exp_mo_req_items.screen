@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-17 下午14:05:19  
+    $Revision: 1.0  
+    $Purpose: 管理组织级-申请项目定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP2030_expMoReqItemsAsgnComLink" url="$[/request/@context_path]/expm/EXP2030/exp_mo_req_items_company.screen"/>
+        <a:link id="EXP2030_expMoReqItemsBatchCompaniesLink" url="$[/request/@context_path]/expm/EXP2030/exp_mo_req_items_batch_assign_companies.screen"/>
+        <div/>
+        <script><![CDATA[
+            function EXP2030_reqItemCodeEdit(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'EXP2030_textField';
+                }
+            }
+            
+            function EXP2030_setinitdata(ds, record, index) {
+                var magOrgId = $au('EXP2030_expMoReqItemsQueryDs').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+                record.set('enabledFlag', 'Y');
+            }
+            
+            
+            //分配公司-跳转
+            
+            function EXP2030_assignCompany(value, record, name) {
+                if (!record.isNew) {
+                    var reqItemId = record.get('moReqItemId');
+                    return '<a href="javascript:EXP2030_reqItemsAsgnCompany(' + reqItemId + ')">$[l:BUDGET_ITEM.ASSIGN_COMPANY]</a>';
+                }
+            }
+            
+            function EXP2030_reqItemsAsgnCompany(reqItemId) {
+                var magOrgId = $au('EXP2030_expMoReqItemsQueryDs').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP2030_exp_mo_req_items_asgn_com',
+                    url: /*exp_req_items_company.screen*/
+                    $au('EXP2030_expMoReqItemsAsgnComLink').getUrl() + '?moReqItemId=' + reqItemId + '&magOrgId=' + magOrgId,
+                    title: '$[l:EXP_REQ_ITEM_COMP.PRO_DISP_COMP]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //批量分配公司-跳转
+            
+            function EXP2030_batchAsgnCompany() {
+                //add lcy 2017/12/21 19:47:32 批量分配时校验管理组织是否为空
+                if (Ext.isEmpty($au('EXP2030_expMoReqItemsQueryDs').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                var typeDs = $au('EXP2030_expMoReqItemsResultDs');
+                var typeRecordsData = typeDs.getJsonData(true);
+                if (typeRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT]', null, 250, 100);
+                    return;
+                }
+                var record = typeDs.getAll();
+                var currentRecord = typeDs.getAt(record.length - 1);
+                if (currentRecord.isNew) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.DATA_CHECK_FAILURE]', null, 250, 100);
+                    return;
+                }
+                var magOrgId = $au('EXP2030_expMoReqItemsQueryDs').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP2030_exp_mo_req_items_com_assign_batch',
+                    url: $au('EXP2030_expMoReqItemsBatchCompaniesLink').getUrl() + '?magOrgId=' + magOrgId,
+                    title: '$[l:PROMPT.BATCH_DISP_COMPANY]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function EXP2030_reloadFunction(ds) {
+                ds.query();
+            }
+            
+            function EXP2030_closeReqItemsCreateWindow() {
+                history.go(-1);
+            }
+            
+            function EXP2030_focus() {
+                $au('EXP2030_mangeOrganizationlistDs').query();
+            }
+            
+            function EXP2030_cellclick(grid, row, name, record) {
+                var magOrgId = $au('EXP2030_expMoReqItemsQueryDs').getCurrentRecord().get('magOrgId');
+                var metadata = record.getMeta();
+                if (name == 'budgetItemCode') {
+                    metadata.getField('budgetItemCode').setLovPara('magOrgId', magOrgId);
+                }
+            }
+            //add lcy 2017/12/21 19:47:32 保存时校验管理组织是否为空
+            
+            function EXP2030_beforeSubmit() {
+                if (Ext.isEmpty($au('EXP2030_expMoReqItemsQueryDs').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP2030_beforeCreate() {
+                if (Ext.isEmpty($au('EXP2030_expMoReqItemsQueryDs').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:PROMPT]', '$[l:FND.MAG_ORG_IS_NULL]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP2030_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('EXP2030_expMoReqItemsResultDs').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2030_mangeOrganizationlistDs" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP2030_expMoReqItemsQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="moReqItemCode"/>
+                    <a:field name="description"/>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/EXP2030_defaultMagList/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP2030_mangeOrganizationlistDs" prompt="exp_mo_report_type.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId">
+                        <!--  modify lcy 2017/12/19 新增mapping值，用于批量分配时form上显示  -->
+                        <a:mapping>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="magOrgCodeName" to="magOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId" defaultValue="$[/model/EXP2030_defaultMagList/records/record/@magOrgId]"/>
+                    <a:field name="magOrgCode" defaultValue="$[/model/EXP2030_defaultMagList/records/record/@magOrgCode]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/EXP2030_defaultMagList/records/record/@DESCRIPTION]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP2030_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP2030_expMoReqItemsResultDs" baseUrl="/exp/mo-req-item" queryUrl="$[/request/@context_path]/exp/mo-req-item/query" autoPageSize="true" autoQuery="true"  queryDataSet="EXP2030_expMoReqItemsQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="moReqItemCode" required="true"/>
+                    <a:field name="description" required="true" dto="com.hand.hec.exp.dto.ExpMoReqItem" dtoId="moReqItemId"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="budgetItemCode" lovCode="LOV_BUDGET_ITEM" autoComplete="true" autoCompleteField="budgetItemCode"   title="exp_mo_req_item.budget_item_id">
+                        <a:mapping>
+                            <a:map from="budgetItemId" to="budgetItemId"/>
+                            <a:map from="budgetItemCode" to="budgetItemCode"/>
+                            <a:map from="description" to="budgetItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="magOrgId" prompt="exp_mo_report_type.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="EXP2030_setinitdata"/>
+                    <a:event name="submitsuccess" handler="EXP2030_reloadFunction"/>
+                    <a:event name="beforecreate" handler="EXP2030_beforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP2030_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP2030_expMoReqItemsGrid" type="add" width="80"/>
+                <a:gridButton bind="EXP2030_expMoReqItemsGrid" type="save" width="80"/>
+                <a:toolbarButton click="EXP2030_batchAsgnCompany" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP2030_expMoReqItemsQueryDs" resultTarget="EXP2030_expMoReqItemsResultDs" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgDisplay" bindTarget="EXP2030_expMoReqItemsQueryDs" prompt="exp_mo_report_type.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2030_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moReqItemCode" bindTarget="EXP2030_expMoReqItemsQueryDs" prompt="exp_mo_req_item.mo_req_item_code" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="EXP2030_expMoReqItemsQueryDs" prompt="exp_mo_req_item.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP2030_expMoReqItemsGrid" bindTarget="EXP2030_expMoReqItemsResultDs" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moReqItemCode" align="center" editorFunction="EXP2030_reqItemCodeEdit" prompt="exp_mo_req_item.mo_req_item_code" width="80"/>
+                <a:column name="description" editor="EXP2030_tledit" prompt="exp_mo_req_item.description" width="200"/>
+                <a:column name="budgetItemCode" align="center" editor="EXP2030_lov" prompt="exp_mo_req_item.budget_item_id" width="80"/>
+                <a:column name="budgetItemName" prompt="exp_mo_req_item.description" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP2030_checkBox" sortable="true" width="80"/>
+                <a:column name="asignCm" align="center" renderer="EXP2030_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP2030_textField"/>
+                <a:lov id="EXP2030_lov"/>
+                <a:checkBox id="EXP2030_checkBox"/>
+                <a:tledit id="EXP2030_tledit"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="EXP2030_cellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

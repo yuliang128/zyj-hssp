@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/01/25 15:36 $
+    $Revision: 1.0 $
+    $Purpose: 岗位组定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="exp_position_group_relations_link"
+                url="$[/request/@context_path]/exp/position-group/expPositionGroupRelationView"/>
+        <div/>
+        <script><![CDATA[
+        function queryPositionGroups() {
+            $au('exp_position_groups_result_ds').query()
+        }
+
+        function positionGroupCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'position_group_code_grid_tf';
+            }
+            return '';
+        }
+
+        function setPositionGroupRelations(value, record, name) {
+            var positionGroupId = record.get('positionGroupId');
+            if (positionGroupId) {
+                return '<a href="javascript:setPositionGroupRelationsInfo(' + positionGroupId + ')">$[l:exp_position_group.position_group_relations]</a>';
+            }
+        }
+
+        function setPositionGroupRelationsInfo(positionGroupId) {
+            new Aurora.Window({
+                id: 'exp_position_group_relations_window',
+                url: $au('exp_position_group_relations_link').getUrl() + '?positionGroupId=' + positionGroupId,
+                title: '$[l:exp_position_group.position_group_relations]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="exp_position_groups_query_ds" autoQuery="false" baseUrl="/exp/position-group"
+                       queryUrl="$[/request/@context_path]/exp/position-group/query">
+                <a:fields>
+                    <a:field name="positionGroupCode" prompt="exp_position_group.position_group_code"/>
+                    <a:field name="description" prompt="exp_position_group.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="exp_position_groups_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       baseUrl="/exp/position-group" queryDataSet="exp_position_groups_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="companyId" defaultValue="$[/session/@companyId]"/>
+                    <a:field name="positionGroupCode" prompt="exp_position_group.position_group_code" required="true"/>
+                    <a:field name="description" prompt="exp_position_group.description"
+                             dto="com.hand.hec.exp.dto.ExpPositionGroup" dtoId="positionGroupId" required="true"/>
+                    <a:field name="enabledFlag" prompt="exp_position_group.enabled_flag" checkedValue="Y"
+                             defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <!--<a:screenTitle/>-->
+                <a:gridButton bind="exp_position_groups_grid" type="add" width="80"/>
+                <a:gridButton bind="exp_position_groups_grid" type="save" width="80"/>
+                <a:gridButton bind="exp_position_groups_grid" type="clear" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="exp_position_groups_query_ds" resultTarget="exp_position_groups_result_ds"
+                         style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="positionGroupCode" bindTarget="exp_position_groups_query_ds" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPositionGroups"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="exp_position_groups_query_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPositionGroups"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="exp_position_groups_grid" bindTarget="exp_position_groups_result_ds" marginHeight="115"
+                marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="positionGroupCode" align="center" editorFunction="positionGroupCodeEdit"
+                          sortable="true" width="80"/>
+                <a:column name="description" editor="position_group_description_grid_tld" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="enabled_flag_ckb" sortable="true" width="80"/>
+                <a:column name="positionAssign" align="center" renderer="setPositionGroupRelations" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="position_group_code_grid_tf" typeCase="upper"/>
+                <a:tledit id="position_group_description_grid_tld"/>
+                <a:checkBox id="enabled_flag_ckb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <a:model-query model="expm.EXP5110.exp_report_header_query" rootPath="header_info"/>
+        <!-- 头费用对象的处理 -->
+        <p:switch test="/parameter/@exp_report_header_id">
+            <p:case value="null">
+                <a:model-query fetchAll="true" model="expm.EXP5110.exp_report_header_object_fields_query" rootPath="default_objects"/>
+                <a:model-join joinField="fixed_id" models="/model/header_info,/model/default_objects" shareField="display_field,return_field" valueField="dft_mo_expense_object_name,dft_mo_expense_object_id"/>
+            </p:case>
+            <p:case>
+                <a:model-query fetchAll="true" model="expm.EXP5110.exp_report_header_object_query" rootPath="header_objects"/>
+                <a:model-join joinField="exp_report_header_id" models="/model/header_info,/model/header_objects" shareField="display_field,return_field" valueField="mo_expense_object_name,mo_expense_object_id"/>
+            </p:case>
+        </p:switch>
+        <p:echo/>
+        <!-- 头费用对象的处理 -->
+        <a:model-query model="expm.EXP5110.exp_mo_rep_type_ref_eles_query" rootPath="elements"/>
+        <a:model-query model="expm.EXP5110.exp_report_header_dimension_fields_query" rootPath="header_dimension_fields"/>
+        <a:model-query model="expm.EXP5110.exp_report_header_object_fields_query" rootPath="header_object_fields"/>
+        <p:echo/>
+        <s:server-script><![CDATA[
+            importPackage(java.lang);
+            importPackage(Packages.uncertain.composite);
+            importPackage(Packages.aurora.service);
+            importPackage(Packages.aurora.service.http);
+            importPackage(Packages.aurora.presentation);
+            importPackage(Packages.aurora.presentation.component);
+            
+            var viewPlace = CompositeUtil.findChild($config(), 'vBox', 'id', 'EXP5110_view_place');
+            var elements = $ctx.model.getChild('elements').getData().getChilds();
+            if (elements) {
+                var eleIterator = elements.iterator();
+                while (eleIterator.hasNext()) {
+                    var element = eleIterator.next();
+                    if (element.get('readonly_service_name')) {
+                        var includeScreen = new CompositeMap('a', 'http://www.aurora-framework.org/application', 'screen-include');
+                        var includeScreenData = includeScreen.getData();
+                        includeScreenData.put('screen', element.get('readonly_service_name'));
+                        viewPlace.addChild(includeScreen.getData());
+                    }
+                }
+            }
+        ]]></s:server-script>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP5110_submit_exp_report_link" model="db.exp_report_pkg.submit_exp_report" modelaction="execute"/>
+        <a:link id="EXP5110_exp_report_main_link" url="${/request/@context_path}/modules/expm/EXP5110/exp_report_main.screen"/>
+        <a:link id="EXP5110_exp_report_maintain_create_from_req_link" url="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_create_from_req.screen"/>
+        <a:link id="EXP5110_uploadFile_link" url="${/request/@context_path}/uploadFile.screen"/>
+        <a:link id="EXP5110_document_history_view_link" url="${/request/@context_path}/modules/expm/public/exp_document_history_query.screen"/>
+        <a:link id="EXP5110_exp_report_from_req_query_link" model="expm.EXP5110.exp_report_from_req_query" modelaction="query"/>
+        <a:link id="EXP5110_get_policy_info_link" model="db.exp_mo_expense_policies_pkg.get_policy_info" modelaction="execute"/>
+        <!-- <style><![CDATA[
+        	.reqnumberlov{
+			    color: #005a78;
+    			text-decoration: none;
+    			cursor:pointer;
+        	}
+        	
+        	.reqnumberlov:hover{
+        	    color: #ff9900;
+    			text-decoration: none;   
+        	}
+        	
+        	
+        	.reqnumberlov input{
+        		cursor:pointer;
+        	}
+        ]]></style> -->
+        <style><![CDATA[
+            #reporttravle_placeholder{
+			    height:45px;
+			}
+        ]]></style>
+        <script><![CDATA[
+            var headerRecord;
+            var submitFlag = false;
+            var bgtIgnoreWarningFlag;
+            var vatIgnoreAccEntityFlag;
+            var vatIgnoreDateFlag;
+            var closeable = false;
+            
+            function EXP5110_onMaintainReady() {
+                headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                $au('EXP5110_exp_report_header_ds')['on']('beforesubmit', EXP5110_headerBeforeSubmit);
+            
+                //对头上的申请单编号进行处理,申请单编号的输入框点击时，打开申请单的只读页面
+                if ($A.CmpManager.get('EXP5110_expReqNumberLov')) {
+                    //如果存在申请单编号的lov，说明当前单据是头关联申请的，将对应的编辑器设置css，并设置点击事件
+                    EXP5110_setExpReqNumberLink();
+                }
+            
+                //对报销单页面的关闭事件进行拦截，如果当前存在数据未保存，则进行提示[Tagin/2017.12.06 先注释]
+                //$au('exp_report_maintain_main_screen').on('beforeclose', function() {
+                //    if ($au('EXP5110_exp_report_header_ds').isModified()) {
+                //        if (window.closeable) {
+                //            return true;
+                //        } else {
+                //            Aurora.showConfirm('提示', '有数据尚未保存，是否直接关闭?', function() {
+                //                window.closeable = true;
+                //                $au('exp_report_maintain_main_screen').close();
+                //            });
+                //            return false;
+                //        }
+                //    } else {
+                //        return true;
+                //    }
+                //});
+            }
+            
+            function EXP5110_setExpReqNumberLink() {
+                var lovDom = Ext.get('EXP5110_expReqNumberLov');
+                lovDom['on']('click', function(evt) {
+                    var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                    var exp_requisition_header_id = headerRecord.get('exp_requisition_header_id');
+                    //Modify lcy 2018/5/18 13:24:12    直接打开申请单只读页面查看
+                    var req_readonly_service_name = '${/model/header_info/record/@req_readonly_service_name}';
+                    new Aurora.Window({
+                        title: '',
+                        id: 'EXP5110_exp_report_create_from_req_renderer_window',
+                        url: '${/request/@context_path}/' + req_readonly_service_name + '?exp_requisition_header_id=' + exp_requisition_header_id,
+                        fullScreen: true
+                    });
+            
+                });
+            }
+            
+            
+            
+            
+            function EXP5110_headerBeforeSubmit() {
+                var headerDs = $au('EXP5110_exp_report_header_ds');
+                if (!headerDs.validate()) {
+                    return false;
+                } else {
+                    var record = headerDs.getAll()[0];
+                    var expObjDatas = [];
+                    for (field in headerDs.fields) {
+                        if (/^#/.test(field)) {
+                            //id值
+                            var expObjTypeId = field.replace(/^#/, '');
+                            var idValue = record.get(field);
+                            var nameValue = record.get('^' + field);
+                            var expObjData = {
+                                mo_exp_obj_type_id: expObjTypeId,
+                                mo_expense_object_id: idValue,
+                                mo_expense_object_name: nameValue
+                            };
+                            expObjDatas.push(expObjData);
+                        }
+                    }
+                    record['data']['expense_object_lines'] = expObjDatas;
+                }
+            }
+            
+            function EXP5110_onReqNumberFocusFun() {
+                $au('EXP5110_exp_report_header_ds').getAt(0).getField('exp_requisition_number').setLovPara('payment_currency_code', $au('EXP5110_exp_report_header_ds').getAt(0).get('payment_currency_code'));
+            }
+            
+            
+            
+            function EXP5110_policyValidator(record, name, value) {
+                //超政策之后不允许保存
+                if (record.get('commit_flag') == 'N') {
+                    if (record.get('management_price') < (record.get('lower_limit') ? record.get('lower_limit') : record.get('management_price'))) {
+                        return '当前单价低于政策下限值，政策下限值为:' + record.get('management_currency_name') + record.get('lower_limit');
+                    } else if (record.get('management_price') > (record.get('upper_limit') ? record.get('upper_limit') : record.get('management_price'))) {
+                        return '当前单价高于政策上限值，政策上限值为:' + record.get('management_currency_name') + record.get('lower_limit');
+                    }
+                }
+                return true;
+            }
+            
+            
+            function EXP5110_return() {
+                $au(this.__host.id).close();
+            }
+            
+            // function EXP5100_onFocus() {
+            // var record = $au('EXP5110_exp_report_header_ds').getCurrentRecord();
+            // var payee_category = record.get('payee_category');
+            // if (payee_category != null && payee_category != '') {
+            // var acc_entity_id = record.get('acc_entity_id');
+            // record.getField('payee_name').setLovPara('payee_category', payee_category);
+            // record.getField('payee_name').setLovPara('acc_entity_id', acc_entity_id);
+            // } else {
+            // new Aurora.showMessage('${l:PROMPT}', '请先选择收款对象!');
+            // }
+            // }
+            
+            
+            
+            function EXP5110_attachment() {
+                var record = $au('EXP5110_exp_report_header_ds').getAt(0);
+                new Aurora.Window({
+                    url: $au('EXP5110_uploadFile_link').getUrl() + '?table_name=EXP_REPORT_HEADERS&header_id=' + record.get('exp_report_header_id'),
+                    title: '${l:ATM.UPLOAD_ATTACHMENT}',
+                    id: 'check_upload_file_screen',
+                    width: 600,
+                    height: 400
+                });
+            }
+            
+            function EXP5110_trackReport() {
+                var record = $au('EXP5110_exp_report_header_ds').getAt(0);
+                new Aurora.Window({
+                    url: $au('EXP5110_document_history_view_link').getUrl() + '?document_type=EXP_REPORT&document_id=' + record.get('exp_report_header_id'),
+                    id: 'CSH5010_document_history_view_window',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function EXP5110_getInvoiceType(invoiceCode) {
+                /**
+                 * @Author: xuzhao
+                 * @Email: mailto:zhao.xu@hand-china.com
+                 * @Description: 判断发票类型
+                 * @Time: 2017/10/17 15:32
+                 * @param a 发票代码
+                 * @Return: 发票类型号
+                 */
+                /**
+                 *10:电子普票
+                 *11:卷式发票
+                 *01:专票
+                 *03:机动车发票
+                 *04:普票
+                 */
+                if (invoiceCode) {
+            
+                    var a = invoiceCode;
+                    var b;
+                    var c = "99";
+                    if (a.length == 12) {
+                        b = a.substring(7, 8);
+                        if (c == "99") { //增加判断，判断是否为新版电子票
+                            if (a.charAt(0) == '0' && a.substring(10, 12) == '11') {
+                                c = "10";
+                            }
+                            if (a.charAt(0) == '0' && (a.substring(10, 12) == '06' || a.substring(10, 12) == '07')) { //判断是否为卷式发票  第1位为0且第11-12位为06或07
+                                c = "11";
+                            }
+                        }
+                        if (c == "99") { //如果还是99，且第8位是2，则是机动车发票
+                            if (b == 2 && a.charAt(0) != '0') {
+                                c = "03";
+                            }
+                        }
+                    } else if (a.length == 10) {
+                        b = a.substring(7, 8);
+                        if (b == 1 || b == 5) {
+                            c = "01";
+                        } else if (b == 6 || b == 3) {
+                            c = "04";
+                        } else if (b == 7 || b == 2) {
+                            c = "02";
+                        }
+                    }
+            
+                    if (c == '01') {
+                        return 'VAT_SPECIAL';
+                    } else if (c == '04') {
+                        return 'VAT_NORMAL';
+                    } else if (c == '10') {
+                        return 'VAT_ELETRONIC_NORMAL';
+                    } else if (c == '11' || c == '03' || c == '02') {
+                        return 'OTHER';
+                    } else {
+                        return 'OTHER';
+                    }
+                }
+            }
+            
+            Aurora.onReady(EXP5110_onMaintainReady);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_paymentObject_ds" loadData="true" lookupCode="PAYMENT_OBJECT"/>
+            <a:dataSet id="EXP5110_currency_ds" loadData="true" model="gld.gld_currency_vl"/>
+            <a:dataSet id="EXP5110_exp_report_header_ds" submitUrl="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_save.svc">
+                <a:datas dataSource="/model/header_info"/>
+                <a:fields>
+                    <a:field name="exp_report_header_id"/>
+                    <a:field name="employee_name" prompt="EXP_REPORT_HEADERS.EMPLOYEE_NAME" readOnly="true" required="true"/>
+                    <a:field name="employee_id"/>
+                    <a:field name="payee_id"/>
+                    <a:field name="payee_name" lovHeight="300" lovService="hec_util.gld_payee_v_lov" lovWidth="450" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID" readOnly="true" title="CSH_PAYMENT_REQUISITION_HDS.PARTNER_ID">
+                        <a:mapping>
+                            <a:map from="payee_name" to="payee_name"/>
+                            <a:map from="payee_id" to="payee_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payee_category"/>
+                    <a:field name="payee_category_name" displayField="code_value_name" options="EXP5110_paymentObject_ds" prompt="CSH_PAYMENT_REQUISITION_HDS.PARTNER_CATEGORY" readOnly="true" returnField="payee_category" valueField="code_value"/>
+                    <a:field name="exp_report_number" prompt="EXP_REPORT_HEADERS.EXP_REPORT_NUMBER" readOnly="true"/>
+                    <a:field name="mo_exp_report_type_name" prompt="EXP_MO_EXP_POLICY_ASSIGN.DOC_TYPE" readOnly="true" required="true"/>
+                    <a:field name="mo_exp_report_type_id"/>
+                    <a:field name="report_date" prompt="EXP_REQUISITION_HEADERS.REQUISITION_DATE" readOnly="true"/>
+                    <a:field name="created_by_name" prompt="EXP_REPORT_HEADERS.CREATED_BY_NAME" readOnly="true" required="true"/>
+                    <a:field name="payment_currency_name" displayField="currency_name" prompt="EXP_REPORT_HEADERS.PAYMENT_CURRENCY_NAME" readOnly="true" required="true" returnField="payment_currency_code" valueField="currency_code"/>
+                    <a:field name="payment_currency_code"/>
+                    <a:field name="rep_total_amount" prompt="EXP_REPORT_HEADERS.SUM_AMOUNT" readOnly="true"/>
+                    <a:field name="unit_id"/>
+                    <a:field name="unit_name" lovService="hec_util.exp_util.exp_org_unit_limit_emp_com_lov?employee_id=${/parameter/@employee_id}" prompt="EXP_REPORT_HEADERS.UNIT_ID" readOnly="true" title="EXP_REPORT_HEADERS.UNIT_ID">
+                        <a:mapping>
+                            <a:map from="unit_id" to="unit_id"/>
+                            <a:map from="unit_name" to="unit_name"/>
+                            <a:map from="position_id" to="position_id"/>
+                            <a:map from="default_bgt_entity_id" to="acc_entity_id"/>
+                            <a:map from="default_bgt_center_id" to="resp_center_id"/>
+                            <a:map from="default_resp_center_id" to="bgt_entity_id"/>
+                            <a:map from="default_acc_entity_id" to="acc_entity_id"/>
+                            <a:map from="default_acc_entity_name" to="acc_entity_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="position_name" prompt="EXP_REPORT_HEADERS.POSITION_NAME"/>
+                    <a:field name="pay2fun_exch_type_name" prompt="EXP_REPORT_HEADERS.PAY2FUN_EXCH_RATE_NAME"/>
+                    <a:field name="pay2fun_exch_type"/>
+                    <a:field name="pay2fun_exch_rate" prompt="EXP_REPORT_HEADERS.PAY2FUN_EXCH_RATE"/>
+                    <a:field name="pay2mag_exch_type_name" prompt="EXP_REPORT_HEADERS.PAY2MAG_EXCH_RATE_NAME"/>
+                    <a:field name="pay2mag_exch_type"/>
+                    <a:field name="pay2mag_exch_rate" prompt="EXP_REPORT_HEADERS.PAY2MAG_EXCH_RATE"/>
+                    <a:field name="report_status_name" prompt="EXP_REPORT_HEADERS.REPORT_STATUS_NAME" readOnly="true" required="true"/>
+                    <a:field name="attachment_num" prompt="EXP_REPORT_HEADERS.ATTACHMENT_NUM" readOnly="true"/>
+                    <a:field name="description" prompt="EXP_REPORT_HEADERS.DESCRIPTION"/>
+                    <a:field name="acc_entity_id"/>
+                    <a:field name="acc_entity_name" prompt="CSH_PAYMENT_REQUISITION_HDS.ACC_ENTITY_NAME" readOnly="true"/>
+                    <a:field name="acc_center_id"/>
+                    <a:field name="acc_center_name"/>
+                    <a:field name="bgt_entity_id"/>
+                    <a:field name="bgt_entity_name"/>
+                    <a:field name="bgt_center_id"/>
+                    <a:field name="bgt_center_name"/>
+                    <a:field name="period_name"/>
+                    <a:field name="payment_method_id"/>
+                    <a:field name="payment_method_name"/>
+                    <a:field name="vat_invoice_flag" checkedValue="Y" defaultValue="Y" prompt="ACP_INVOICE_HEADERS.INVOICE_NEWS" readOnly="true" uncheckedValue="N"/>
+                    <a:placeHolder id="EXP5110_expReqField"/>
+                    <a:placeHolder id="EXP5110_headerDimensionFields"/>
+                    <a:placeHolder id="EXP5110_headerObjectFields"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <!--add by chao.dai 2019-01-17 将报销单的按钮上移，防止滑动滚动条时按钮跟随滑动-->
+        <a:screenTopToolbar style="position:fixed;left:1px;right:1px;height:34px;z-index:100;border-bottom:1px solid #C7C7C7;background-color:#FFFFFF;padding-left: 10px;">
+            <div class="clearfix" style="width:100%;height:100%;">
+                <a:button id="EXP5110_returnBtn" click="EXP5110_return" style="margin-top:8px;margin-right:10px;float:right;" text="HAP_BACK"/>
+                <a:button id="EXP5110_trackBtn" click="EXP5110_trackReport" style="margin-top:8px;margin-right:10px;float:right;" text="HAP_TRACKING_DOCUMENTS"/>
+                <a:button id="EXP5110_attachmentBtn" click="EXP5110_attachment" style="margin-top:8px;margin-right:10px;float:right;" text="HAP_ATTACHMENT_DOCUMENTATION"/>
+                <span style="margin-top:15px;margin-left：5px;font-size:1.05em;display:block;font-weight: 600;"><![CDATA[${/model/header_info/record/@mo_exp_report_type_name} ]]></span>
+            </div>
+        </a:screenTopToolbar>
+        <div id="reporttravle_placeholder"/>
+        <a:screenBody>
+            <a:form column="1" marginWidth="0" title=" ">
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="exp_report_number" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="mo_exp_report_type_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="employee_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:datePicker name="report_date" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:lov name="unit_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="acc_entity_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="created_by_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="report_status_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:numberField name="attachment_num" allowDecimals="1" allowNegative="false" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="payment_currency_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:textField name="rep_total_amount" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <!-- <a:comboBox name="payee_category_name" bindTarget="EXP5110_exp_report_header_ds"/>
+                    <a:lov name="payee_name" bindTarget="EXP5110_exp_report_header_ds">
+                        <a:events>
+                            <a:event name="focus" handler="EXP5100_onFocus"/>
+                        </a:events>
+                    </a:lov> -->
+                    <a:placeHolder id="EXP5110_vatInvoiceFlagEditor"/>
+                    <a:placeHolder id="EXP5110_expReqEditor"/>
+                    <a:placeHolder id="EXP5110_headerDimensionEditors"/>
+                    <a:placeHolder id="EXP5110_headerObjectEditors"/>
+                </a:box>
+                <a:box style="width:100%;margin-top:-5px;">
+                    <a:textArea name="description" bindTarget="EXP5110_exp_report_header_ds" calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" width="800"/>
+                </a:box>
+            </a:form>
+            <a:vBox id="EXP5110_view_place" padding="0" showMargin="false" style=""/>
+        </a:screenBody>
+        <script><![CDATA[
+            function init() {
+                // 【单据审批】增加保存按钮隐藏逻辑  LiLiang 2018-10-8
+                // 在审批时加载单据头的时候隐藏返回按钮
+                var EXP5110_returnBtn = Ext.get('EXP5110_returnBtn');
+                if (this.__host.id != 'to_do_list_window') {
+                    EXP5110_returnBtn.parent().setStyle('display', 'table-cell');
+                } else {
+                    EXP5110_returnBtn.parent().setStyle('display', 'none');
+                }
+            }
+            init();
+        ]]></script>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_expReqField">
+            <p:switch test="/model/header_info/record/@relation_method_code">
+                <p:case value="HEAD">
+                    <c:process-config>
+                        <a:field name="exp_requisition_number" lovUrl="${/request/@context_path}/modules/expm/EXP5110/exp_report_from_req_header_lov.screen?=${/model/header_info/record/@mo_exp_report_type_id}" lovWidth="880" prompt="PUR_PURCHASE_ORDER_TYPES.REQUISITION_FLAG" readOnly="true" required="${/model/header_info/record/@req_required}">
+                            <a:mapping>
+                                <a:map from="exp_requisition_number" to="exp_requisition_number"/>
+                                <a:map from="exp_requisition_header_id" to="exp_requisition_header_id"/>
+                            </a:mapping>
+                        </a:field>
+                        <a:field name="exp_requisition_header_id"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_expReqEditor">
+            <p:switch test="/model/header_info/record/@relation_method_code">
+                <p:case value="HEAD">
+                    <c:process-config>
+                        <a:textField name="exp_requisition_number" id="EXP5110_expReqNumberLov" bindTarget="EXP5110_exp_report_header_ds" className="reqnumberlov">
+                            <a:events>
+                                <a:event name="focus" handler="EXP5110_onReqNumberFocusFun"/>
+                            </a:events>
+                        </a:textField>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_headerDimensionFields">
+            <p:loop source="/model/header_dimension_fields">
+                <c:process-config>
+                    <a:field name="${@display_field}" defaultValue="${@default_dim_value_name}" lovService="hec_util.fnd_dimension_values_vl_lov?dimension_id=${@dimension_id}" prompt="${@dimension_name}" readOnly="true" title="${@dimension_name}">
+                        <a:mapping>
+                            <a:map from="dimension_value_name" to="${@display_field}"/>
+                            <a:map from="dimension_value_id" to="${@return_field}"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="${@return_field}" defaultValue="${@default_dim_value_id}"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_headerDimensionEditors">
+            <p:loop source="/model/header_dimension_fields">
+                <c:process-config>
+                    <a:lov name="${@display_field}" bindTarget="EXP5110_exp_report_header_ds"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_headerObjectFields">
+            <p:loop source="/model/header_object_fields">
+                <c:process-config>
+                    <a:field name="${@display_field}" defaultValue="${@dft_mo_expense_object_name}" lovService="hec_util.exp_mo_expense_object_value_vl_lov?mo_exp_obj_type_id=${@mo_exp_obj_type_id}" prompt="${@mo_exp_obj_type_name}" required="${@required_flag}" title="${@mo_exp_obj_type_name}">
+                        <a:mapping>
+                            <a:map from="name" to="${@display_field}"/>
+                            <a:map from="id" to="${@return_field}"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="${@return_field}" defaultValue="${@dft_mo_expense_object_id}"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_headerObjectEditors">
+            <p:loop source="/model/header_object_fields">
+                <p:switch test="@expense_object_method">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:textField name="${@display_field}" bindTarget="EXP5110_exp_report_header_ds"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:lov name="${@display_field}" bindTarget="EXP5110_exp_report_header_ds"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_vatInvoiceFlagEditor">
+            <p:switch test="/model/header_info/record/@taxpayer_type">
+                <p:case value="GENERAL_TAXPAYER">
+                    <c:process-config>
+                        <a:checkBox name="vat_invoice_flag" bindTarget="EXP5110_exp_report_header_ds"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

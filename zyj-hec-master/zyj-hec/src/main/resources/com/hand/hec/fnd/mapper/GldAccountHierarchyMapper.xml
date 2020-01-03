@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldAccountHierarchyMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldAccountHierarchy">
+        <result column="SUB_ACCOUNT_CODE" property="subAccountCode" jdbcType="VARCHAR"/>
+        <result column="FROM_ACCOUNT_CODE" property="fromAccountCode" jdbcType="VARCHAR"/>
+        <result column="TO_ACCOUNT_CODE" property="toAccountCode" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_HIERARCHY_ID" property="accountHierarchyId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_SET_ID" property="accountSetId" jdbcType="DECIMAL"/>
+        <result column="PARENT_ACCOUNT_ID" property="parentAccountId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <resultMap id="hierarchyTreeMap" type="com.hand.hec.fnd.dto.GldAccountHierarchyTree">
+        <result column="accountCode" property="accountCode" jdbcType="VARCHAR"/>
+        <result column="accountId" property="accountId" jdbcType="DECIMAL"/>
+        <result column="parentAccountId" property="parentAccountId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="accountHierarchyTreeQuery" parameterType="java.lang.Long" resultMap="hierarchyTreeMap">
+      	  select parent_account_id AS parentAccountId,
+      	         account_id as accountId,
+      	         account_code as accountCode
+          from (select null as parent_account_id,
+                                   v.account_id,
+                                   concat(v.account_code,'-',
+                                   (select gal.DESCRIPTION
+                                       from gld_account_tl gal
+                                      where gal.ACCOUNT_ID = v.ACCOUNT_ID
+                                        and gal.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})) account_code
+                              from gld_account v
+                             where v.account_set_id = #{accountSetId}
+                               and not exists (select 1
+                                      from gld_account_hierarchy_detail t
+                                     where t.account_id = v.account_id)
+                            union
+                            select t.parent_account_id,
+                                   v2.account_id,
+                                   concat(v2.account_code, '-' ,
+                                  (select gal.DESCRIPTION
+                                       from gld_account_tl gal
+                                      where gal.ACCOUNT_ID = v2.ACCOUNT_ID
+                                        and gal.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})) account_code
+                            from gld_account_hierarchy_detail t
+                                 left join gld_account v on t.PARENT_ACCOUNT_ID  = v.ACCOUNT_ID ,
+                                 gld_account                 v2
+                             where t.account_set_id = #{accountSetId}
+                               and v2.account_id = t.account_id) w
+                     order by w.account_code
+    </select>
+</mapper>

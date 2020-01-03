@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    *Author: yang.cai@hand-china.com
+    *Date: 2019-2-26 20:00:00
+    *Revision: 1.0
+    *Purpose: 管理组织级-付款用途定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1075_csh_mo_payment_usedes_select_link" url="$[/request/@context_path]/csh/CSH1075/csh_mo_payment_used_mag_org_select.screen"/>
+        <a:link id="CSH1075_csh_mo_pay_usd_asgn_com_link" url="$[/request/@context_path]/csh/CSH1075/csh_mo_pay_usd_asgn_com.screen"/>
+        <script><![CDATA[
+            var glb_usedes_id;
+            var glb_usedes_code;
+            
+            function CSH1075_closePaymentUsedesCreateWindow() {
+                window.location.href = $au('CSH1075_csh_mo_payment_usedes_select_link').getUrl();
+            }
+            
+            function CSH1075_usedesCodeEdit(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'CSH1075_textField';
+                }
+            }
+            
+            //分配公司-跳转
+            
+            function CSH1075_assignCompany(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:CSH1075_openAssignCom(\'' + record.get('paymentUsedeId') + '\')">$[l:fnd_system_venders.company_assign]</>';
+            }
+            
+            function CSH1075_openAssignCom(usedesId) {
+                var magOrgId = $au('CSH1075_csh_mo_payment_usedes_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'CSH1075_csh_mo_pay_usd_asgn_com',
+                    url: $au('CSH1075_csh_mo_pay_usd_asgn_com_link').getUrl() + '?paymentUsedesId=' + usedesId + '&magOrgId=' + magOrgId,
+                    title: '$[l:fnd_system_venders.company_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1075_saveFunction() {
+                beforeSave('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds', 'cashFlowItemId', '$[l:csh_mo_trx_cls_ref_flow_its.repeated]');
+            }
+            
+            //update by penglei 20180608 修改其校验默认值的规则
+            function beforeSave(ds, name, message) {
+                var records = $au(ds).getAll();
+                var default_number = 0;
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i].get('defaultFlag') == 'Y') {
+	                    for (var k = i + 1;k < records.length;k++) {
+	                        if (records[i].get('setOfBookId') == records[k].get('setOfBookId') && records[k].get('defaultFlag') == 'Y') {
+	                            default_number++;
+	                        }
+	                        if (default_number > 0) {
+			                	Aurora.showErrorMessage('', '$[l:default_cash_flow_item_error]');
+			                	return;
+			                }
+	                    }
+                    }
+                    for (var j = i + 1;j < records.length;j++) {
+                        if (records[i].get(name) == records[j].get(name)) {
+                            Aurora.showErrorMessage('', message);
+                            return;
+                        }
+            
+                    }
+                }
+                $au(ds).submit();
+            }
+            
+            function CSH1075_cashFlowItemTypeIdEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1075_cashFlow_lov';
+                }
+                return '';
+            }
+            
+            function CSH1075_paymentUsedesIndexchange(ds, record) {
+            
+                $au('btnAdd').enable();
+                $au('btnSave').enable();
+            
+                glbUsedesId = record.get('paymentUsedeId');
+                glbUsedesCode = record.get('paymentUsedeCode');
+            
+                var usedesId = record.get('paymentUsedeId');
+                if (usedesId == null || usedesId == undefined) {
+                    //新增记录时，清空下级grid数据，防止查出不符合的记录
+                    $au('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds').setQueryParameter('paymentUsedeId', -1);
+                    $au('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds').query();
+                } else {
+                    //非新增情况下，正常传入参数查询下级grid中数据
+                    $au('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds').setQueryParameter('paymentUsedeId', usedesId);
+                    $au('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds').query();
+                }
+            
+            }
+            
+            function CSH1075_addFunction(ds, record, index) {
+                record.set('paymentUsedeCode', glbUsedesCode);
+                record.set('paymentUsedeId', glbUsedesId);
+            
+            }
+            
+            function CSH1075_submit(ds) {
+                ds.query();
+            }
+            
+            function CSH1075_add(ds) {
+                var magOrgId = $au('CSH1075_csh_mo_payment_usedes_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function CSH1075_focus() {
+                $au('CSH1075_payment_usedes_magOrgList_ds').query();
+            }
+            
+            function CSH1075_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('CSH1075_csh_mo_payment_usedes_result_ds').setQueryUrl('$[/request/@context_path]/csh/mo-payment-used/queryAll');
+                    $au('CSH1075_csh_mo_payment_usedes_result_ds').query();
+                   // var test = $au('CSH1075_csh_mo_payment_usedes_result_ds').getSelected()
+                    //$au('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds').setQueryParameter('paymentUsedeId', -1);
+                    // $au('CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds').query();
+                }
+            }
+            
+            function CSH1075_cellClick(grid, row, name, record) {
+                var magOrgId = $au('CSH1075_csh_mo_payment_usedes_query_ds').getCurrentRecord().get('magOrgId');
+                var metadata = record.getMeta();
+                if (name == 'cashFlowItemDesc') {
+                    metadata.getField('cashFlowItemDesc').setLovPara('magOrgId', magOrgId);
+                }
+            }
+            
+            function CSH1075_BeforeCreate() {
+                if (Ext.isEmpty($au('CSH1075_csh_mo_payment_usedes_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            function PaymentUsedesSave(){
+                CSH1075_saveFunction();
+                if($au('CSH1075_csh_mo_payment_usedes_result_ds').validate()){
+                    var records = $au('CSH1075_csh_mo_payment_usedes_result_ds').getAll();
+                    var default_number = 0;
+                    for (var i = 0; i < records.length; i++) {
+                        for (var j = i +1; j < records.length; j++) {
+                            if (records[i].get('paymentUsedeCode') == records[j].get('paymentUsedeCode')) {
+                                default_number++;
+                            }
+                            if (default_number > 0) {
+                                Aurora.showErrorMessage('$[l:prompt.error]', '$[l:payment_used_repetition_error]');
+                                return;
+                            }
+                        }
+                    }
+                    $au('CSH1075_csh_mo_payment_usedes_result_ds').submit();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+           <!-- <a:dataSet id="CSH1075_payment_usedes_magOrgList_ds">
+                <a:datas dataSource="fndManagingOrganizationList/records"/>
+            </a:dataSet>-->
+            <a:dataSet id="CSH1075_payment_usedes_magOrgList_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="CSH1075_csh_mo_payment_usedes_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="paymentUsedeCode"/>
+                    <a:field name="description"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/fndManagingOrganization/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1075_payment_usedes_magOrgList_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/fndManagingOrganization/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1075_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1075_csh_mo_payment_usedes_result_ds" autoPageSize="true" autoQuery="true"  queryDataSet="CSH1075_csh_mo_payment_usedes_query_ds" baseUrl="/csh/mo-payment-used" queryUrl="$[/request/@context_path]/csh/mo-payment-used/queryAll" selectable="false">
+                <a:fields>
+                    <a:field name="paymentUsedeId"/>
+                    <a:field name="paymentUsedeCode" required="true"/>
+                    <a:field name="usedesCodeName"/>
+                    <a:field name="description" required="true" dto="com.hand.hec.csh.dto.CshMoPaymentUsed" dtoId="paymentUsedeId"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_types.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="indexchange" handler="CSH1075_paymentUsedesIndexchange"/>
+                    <a:event name="submitsuccess" handler="CSH1075_submit"/>
+                    <a:event name="add" handler="CSH1075_add"/>
+                    <a:event name="beforecreate" handler="CSH1075_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds" fetchAll="false" baseUrl="/csh/mo-pay-usd-ref-flow-it" queryUrl="$[/request/@context_path]/csh/mo-pay-usd-ref-flow-it/queryIncludeSetOfBooks" submitUrl="$[/request/@context_path]/csh/mo-pay-usd-ref-flow-it/submit">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="paymentUsedeId"/>
+                    <a:field name="paymentUsedeCode"/>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="cashFlowItemDesc" autoComplete="true" autoCompleteField="description" lovGridHeight="320" lovHeight="450" lovCode="LOV_CSH_CASH_FLOW_ITEMS?magOrgId=$[/parameter/@magOrgId]"  lovWidth="500" prompt="csh_mo_pay_usd_ref_flow_it.cash_flow_item_id" required="true" title="csh_mo_pay_usd_ref_flow_it.cash_flow_item_id">
+                        <a:mapping>
+                            <a:map from="cashFlowItemId" to="cashFlowItemId"/>
+                            <a:map from="description" to="cashFlowItemDesc"/>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="setOfBooksName"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH1075_addFunction"/>
+                    <a:event name="submitsuccess" handler="CSH1075_submit"/>
+                    <a:event name="beforecreate" handler="CSH1075_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <!-- 将付款用途新增保存按钮改至头上  modified by liliang 20180313 -->
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1075_csh_mo_payment_usedes_grid" type="add"/>
+                <a:gridButton bind="CSH1075_csh_mo_payment_usedes_grid" click="PaymentUsedesSave" type="save"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1075_csh_mo_payment_usedes_query_ds" resultTarget="CSH1075_csh_mo_payment_usedes_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="CSH1075_csh_mo_payment_usedes_query_ds" prompt="exp_mo_req_type.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="CSH1075_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="paymentUsedeCode" bindTarget="CSH1075_csh_mo_payment_usedes_query_ds" prompt="csh_mo_payment_used.payment_used_code"/>
+                    <a:textField name="description" bindTarget="CSH1075_csh_mo_payment_usedes_query_ds" prompt="csh_mo_payment_used.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1075_csh_mo_payment_usedes_grid" bindTarget="CSH1075_csh_mo_payment_usedes_result_ds" marginHeight="300" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="paymentUsedeCode" align="center" editorFunction="CSH1075_usedesCodeEdit" prompt="csh_mo_payment_used.payment_used_code" width="100"/>
+                <a:column name="description" editor="CSH1075_description_tld" prompt="csh_mo_payment_used.description" width="500"/>
+                <a:column name="enabledFlag" editor="CSH1075_checkBox" prompt="prompt.enabledflag" width="80"/>
+                <a:column name="asgnCompany" align="center" renderer="CSH1075_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="CSH1075_textField"/>
+                <a:checkBox id="CSH1075_checkBox"/>
+                <a:tledit id="CSH1075_description_tld"/>
+            </a:editors>
+        </a:grid>
+        <a:grid id="CSH1075_csh_mo_pay_usd_ref_flow_its_grid" bindTarget="CSH1075_csh_mo_pay_usd_ref_flow_its_result_ds" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:toolBar>
+                <a:button id="btnAdd" disabled="true" type="add"/>
+                <a:button id="btnSave" click="CSH1075_saveFunction" disabled="true" type="save"/>
+            </a:toolBar>
+            <a:columns>
+                <a:column name="paymentUsedeCode" align="center" prompt="csh_mo_payment_used.payment_used_code" width="100"/>
+                <a:column name="cashFlowItemDesc" editorFunction="CSH1075_cashFlowItemTypeIdEdit" prompt="csh_mo_pay_usd_ref_flow_it.cash_flow_item_id" width="250"/>
+                <a:column name="setOfBooksName" align="left" prompt="gld_set_of_books_vl.set_of_books_name" width="250"/>
+                <a:column name="defaultFlag" align="center" editor="CSH1075_cashFlow_checkBox" prompt="csh_mo_pay_usd_ref_flow_it.default_flag" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="CSH1075_cashFlow_checkBox" prompt="prompt.enabledflag" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="CSH1075_cashFlow_numbeField" allowDecimals="false" allowFormat="false"/>
+                <a:checkBox id="CSH1075_cashFlow_checkBox"/>
+                <a:lov id="CSH1075_cashFlow_lov"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="CSH1075_cellClick"/>
+            </a:events>
+        </a:grid>
+        <script purpose="auto_resize"><![CDATA[
+              function CSH1075_InitSize() {
+                  //描述宽度
+                  //var labelWidth = 75;
+                  //标签宽度,5 = 3padding + 2border-spacing
+                  //var tagWidth = 150 + 5;
+                  //页面宽度、高度
+                  //var vw = $A.getViewportWidth();
+                  //var vh = $A.getViewportHeight();
+                  var vw = this.outerWidth;
+                  var vh = this.outerHeight;
+                  //留白宽度
+                  var marginHeight = 260;
+                  //自适应宽度
+                  //var autoWidth = (vw - marginWidth) / 3;
+                  //var leftWidth = autoWidth * 2;
+                  //设置组件的自适应宽度
+                  var autoHeight = (vh - marginHeight) / 2;
+                  if (Aurora.CmpManager.get('CSH1075_csh_mo_payment_usedes_grid')) {
+                      $au('CSH1075_csh_mo_payment_usedes_grid').setHeight(autoHeight);
+                  }
+                  if (Aurora.CmpManager.get('CSH1075_csh_mo_pay_usd_ref_flow_its_grid')) {
+                      $au('CSH1075_csh_mo_pay_usd_ref_flow_its_grid').setHeight(autoHeight);
+                  }
+              }
+              
+              CSH1075_InitSize();
+          ]]></script>
+    </a:view>
+</a:screen>

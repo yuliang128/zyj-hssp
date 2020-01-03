@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoPaymentUsedMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoPaymentUsed">
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_USEDE_CODE" property="paymentUsedeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+
+        <result column="USEDES_CODE_NAME" property="usedesCodeName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryAll" resultMap="BaseResultMap">
+        SELECT
+        t1.payment_usede_id,
+        t1.mag_org_id,
+        t1.payment_usede_code,
+        cmput.description,
+        t1.enabled_flag,
+        concat(t1.payment_usede_code,'-',cmput.description) usedes_code_name
+        FROM
+        csh_mo_payment_used t1 left join csh_mo_payment_used_tl cmput on (t1.PAYMENT_USEDE_ID=cmput.PAYMENT_USEDE_ID
+        and cmput.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where
+        1=1
+        <if test="magOrgId != null">
+            and t1.mag_org_id = #{magOrgId}
+        </if>
+        <if test="paymentUsedeCode != null">
+            and t1.payment_usede_code like '%${paymentUsedeCode}%'
+        </if>
+        <if test="description != null">
+            and cmput.description like '%${description}%'
+        </if>
+        ORDER BY
+        t1.payment_usede_code
+    </select>
+
+    <!-- Modify Tagin/2019.03.04 增加获取公司（管理组织）下启用的付款用途 -->
+    <select id="queryPaymentUsed" resultMap="BaseResultMap">
+        SELECT
+        cmpu.payment_usede_id,
+        cmpu.payment_usede_code,
+        cmut.description
+        FROM
+        csh_mo_payment_used cmpu
+        LEFT OUTER JOIN csh_mo_payment_used_tl cmut ON cmpu.payment_usede_id = cmut.payment_usede_id
+        AND cmut.lang = #{request.locale}
+        WHERE
+        cmpu.mag_org_id = #{request.magOrgId}
+        AND cmpu.enabled_flag = 'Y'
+        AND EXISTS ( SELECT 'x' FROM csh_mo_pay_usd_asgn_com cmac WHERE cmac.payment_usede_id = cmpu.payment_usede_id
+        AND cmac.company_id = #{request.companyId} AND cmac.enabled_flag = 'Y')
+    </select>
+</mapper>

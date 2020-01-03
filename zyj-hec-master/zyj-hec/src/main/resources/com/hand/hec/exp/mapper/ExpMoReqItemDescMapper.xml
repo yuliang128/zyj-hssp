@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoReqItemDescMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoReqItemDesc">
+        <result column="ITEM_DESC" property="itemDesc" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_REQ_TYPE_ID" property="moExpReqTypeId" jdbcType="DECIMAL" />
+        <result column="MO_EXPENSE_TYPE_ID" property="moExpenseTypeId" jdbcType="DECIMAL" />
+        <result column="MO_REQ_ITEM_ID" property="moReqItemId" jdbcType="DECIMAL" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+
+        <result column="MAG_ORG_DISPLAY" property="magOrgDisplay" jdbcType="VARCHAR" />
+        <result column="MO_REQ_ITEM_NAME" property="moReqItemName" jdbcType="VARCHAR" />
+        <result column="MO_EXP_REQ_TYPE_NAME" property="moExpReqTypeName" jdbcType="VARCHAR" />
+        <result column="MO_EXPENSE_TYPE_NAME" property="moExpenseTypeName" jdbcType="VARCHAR" />
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryAll" resultMap="BaseResultMap">
+        SELECT
+        emrid.item_desc,
+        emridt.description,
+        fc.mag_org_id,
+        concat(
+        fmo.mag_org_code,
+        '-',
+        fmot.DESCRIPTION
+        ) mag_org_display,
+        emri.mo_req_item_id,
+        emri.mo_req_item_code,
+        emrit.description mo_req_item_name,
+        fc.company_id,
+        fc.company_code,
+        fct.company_full_name,
+        fct.company_short_name company_name,
+        emrt.mo_exp_req_type_id,
+        emrt.mo_exp_req_type_code,
+        emrtt.description mo_exp_req_type_name,
+        emet.mo_expense_type_id,
+        emet.mo_expense_type_code,
+        emett.description mo_expense_type_name
+        FROM
+        exp_mo_req_item_desc emrid
+        LEFT JOIN fnd_managing_organization fmo ON emrid.mag_org_id = fmo.mag_org_id
+        LEFT JOIN fnd_company fc ON emrid.company_id = fc.company_id
+        LEFT JOIN exp_mo_req_type emrt ON emrid.mo_exp_req_type_id = emrt.mo_exp_req_type_id
+        LEFT JOIN exp_mo_expense_type emet ON emrid.mo_expense_type_id = emet.mo_expense_type_id
+        LEFT JOIN exp_mo_req_item emri ON emrid.mo_req_item_id = emri.mo_req_item_id
+        left join exp_mo_req_item_desc_tl emridt on (emrid.item_desc = emridt.item_desc and
+        emridt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN fnd_managing_organization_tl fmot on (fmo.MAG_ORG_ID = fmot.MAG_ORG_ID AND
+        fmot.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN fnd_company_tl fct on (fc.COMPANY_ID = fct.company_id and fct.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN exp_mo_req_type_tl emrtt on (emrt.mo_exp_req_type_id = emrtt.mo_exp_req_type_id and
+        emrtt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN exp_mo_expense_type_tl emett on (emet.mo_expense_type_id = emett.mo_expense_type_id
+        and emett.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN exp_mo_req_item_tl emrit on (emri.mo_req_item_id = emrit.mo_req_item_id AND
+        emrit.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where 1=1
+        <if test="magOrgId != null">
+            and fc.mag_org_id = #{magOrgId}
+        </if>
+        <if test="moReqItemName != null">
+            and emrit.description like '%${moReqItemName}%'
+        </if>
+        <if test="companyName != null">
+            and fct.company_short_name like '%${companyName}%'
+        </if>
+        <if test="moExpReqTypeName != null">
+            and emrtt.description like '%${moExpReqTypeName}%'
+        </if>
+        <if test="moExpenseTypeName != null">
+            and emett.description like '%${moExpenseTypeName}%'
+        </if>
+    </select>
+</mapper>

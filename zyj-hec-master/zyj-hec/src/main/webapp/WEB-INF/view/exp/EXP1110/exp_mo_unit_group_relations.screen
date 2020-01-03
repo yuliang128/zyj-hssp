@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong $
+    $Date: 2017/04/21 17:46:40 $
+    $Revision: 1.3 $
+    $Purpose ：部门组分配部门
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1110_exp_mo_unit_group_relations_bath_assign_link" url="$[/request/@context_path]/exp/EXP1110/exp_mo_unit_group_relations_bath_assign.screen"/>
+        <script><![CDATA[
+            function EXP1110_unitCodeEditFun(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'EXP1110_unit_gp_asgn_unit_lov';
+                }
+            }
+            
+            function EXP1110_unitGroupsAssignUnitBackFun() {
+                $au('EXP1110_exp_mo_unit_group_relations_window').close();
+                $au('EXP1110_unit_group_assign_company_result_ds').query();
+            }
+            
+            
+            function EXP1110_unitGroupsBatchAsgnUnitFun(value, record, name) {
+                new Aurora.Window({
+                    title: '$[l:hec_batch_assign]',
+                    url: $au('EXP1110_exp_mo_unit_group_relations_bath_assign_link').getUrl() + '?unitGroupComAssignId=' + '$[/parameter/@assignId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    id: 'EXP1110_exp_mo_unit_group_relations_bath_assign_window',
+                    side: 'right',
+                    width:1020
+                }).on('close', function() {
+                    $au('EXP1110_unit_group_assign_unit_result_ds').query();
+                });
+            
+            }
+            
+            
+            function EXP1110_unitAssignUnitSubSuccessFun() {
+                $au('EXP1110_unit_group_assign_unit_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1110_unit_group_assign_unit_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="true" baseUrl="/exp/com-unit-gp-ref-unit" queryUrl="$[/request/@context_path]/exp/com-unit-gp-ref-unit/query?unitGroupComAssignId=$[/parameter/@assignId]&amp;companyId=$[/parameter/@companyId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="unitCode" autoComplete="true" autoCompleteField="unitName" lovGridHeight="320" lovHeight="450" lovCode="LOV_EXP_UNIT_ASSIGN?companyId=$[/parameter/@companyId]&amp;magOrgId=$[/parameter/@magOrgId]&amp;unitGroupComAssignId=$[/parameter/@assignId]"  lovWidth="500" required="true" prompt="exp_org_units.unit_code" title="acp_invoice_lines.unit_id">
+                        <a:mapping>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="unitCode" to="unitCode"/>
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId"/>
+                    <a:field name="unitName" prompt="exp_org_unit.org_unit_description"/>
+                    <a:field name="companyName" prompt="fnd_company.company_name"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="unitGroupComSssignId" defaultValue="$[/parameter/@assignId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1110_unitAssignUnitSubSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1110_unit_groups_assign_unit_info" column="2" labelWidth="150" title="exp_org_unit_groups.unit_group_info">
+                <a:formToolbar>
+                    <a:label name="separator" width="0"/>
+                    <a:gridButton bind="EXP1110_unit_group_assign_unit_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1110_unit_group_assign_unit_grid" type="save" width="80"/>
+                    <a:gridButton bind="EXP1110_unit_group_assign_unit_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP1110_unitGroupsBatchAsgnUnitFun" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="EXP1110_unitGroupsAssignUnitBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moUnitGroupCode" prompt="exp_org_unit_groups.unit_group_code" bindTarget="EXP1110_unit_groups_assign_com_info_ds"/>
+                <a:textField name="description" prompt="exp_org_unit_groups.description" bindTarget="EXP1110_unit_groups_assign_com_info_ds"/>
+            </a:form>
+            <a:grid id="EXP1110_unit_group_assign_unit_grid" bindTarget="EXP1110_unit_group_assign_unit_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="unitCode" align="center" editorFunction="EXP1110_unitCodeEditFun" width="80"/>
+                    <a:column name="unitName" align="left" width="200"/>
+                    <a:column name="companyCode" align="center" width="80"/>
+                    <a:column name="companyName" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP1110_unit_gp_asgn_unit_cb" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1110_unit_gp_asgn_unit_lov"/>
+                    <a:checkBox id="EXP1110_unit_gp_asgn_unit_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

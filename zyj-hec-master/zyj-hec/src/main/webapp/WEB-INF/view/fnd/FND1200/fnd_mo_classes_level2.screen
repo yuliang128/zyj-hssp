@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Zealot
+    $Date: 2018/05/15
+    $Revision: 1.1
+    $Purpose: 物料分类集定义-二级分类
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND1200_ref_sub_level3_link"
+                url="$[/request/@context_path]/fnd/FND1200/fnd_mo_classes_level3.screen"/>
+        <script><![CDATA[
+        function FND1200_invItemsQuery() {
+            $au('FND1200_fnd_mo_classes_level2_query_result_ds').query();
+        }
+
+        function FND1200_subLevel3(value, record, name) {
+            if (!record.isNew && $au('FND1200_fnd_mo_class_sets_query_result_ds').getCurrentRecord().get('levelDepth') > '2') {
+                const url = $au('FND1200_ref_sub_level3_link').getUrl() + '?moClassSetId=' + record.get('moClassSetId') + '&parentClassId=' + record.get('classId');
+                return '<a href="javascript:FND1200_view_sub_level3(\'' + url + '\')">' + '$[l:fnd_mo_class_set.view_sub_level]' + '</a>';
+            }
+        }
+
+        function FND1200_view_sub_level3(url) {
+            new Aurora.Window({
+                id: 'FND1200_view_sub_level3_win',
+                url: url,
+                title: '$[l:fnd_mo_class_set.view_sub_level]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1200_level2Code(record, name) {
+            if (record.isNew) {
+                return 'FND1200_level2_grid_tf_up';
+            }
+            return '';
+        }
+
+        function FND1200_onSubLevel2Add(ds, record) {
+            const parentRecord = $au('FND1200_fnd_mo_class_sets_query_result_ds').getCurrentRecord();
+            record.set('magOrgId', parentRecord.get('magOrgId'));
+            record.set('parentClassId', '$[/parameter/@parentClassId]');
+        }
+
+        function FND1200_subLevel2Submitsuccess(ds) {
+            ds.query();
+        }
+
+        function FND1200_subLevel2CloseWindow() {
+            $au('FND1200_view_sub_level2_win').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1200_fnd_mo_classes_level2_query_result_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/fnd/mo-class"
+                       queryUrl="$[/request/@context_path]/fnd/mo-class/query?moClassSetId=$[/parameter/@moClassSetId]&amp;parentClassId=$[/parameter/@parentClassId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="moClassSetId" defaultValue="$[/parameter/@moClassSetId]"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="magOrgName"/>
+                    <a:field name="classId"/>
+                    <a:field name="classCode" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.fnd.dto.FndMoClass" dtoId="classId" required="true"/>
+                    <a:field name="codeName"/>
+                    <a:field name="classLevel" defaultValue="2"/>
+                    <a:field name="parentClassId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="FND1200_onSubLevel2Add"/>
+                    <a:event name="submitsuccess" handler="FND1200_subLevel2Submitsuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND1200_fnd_mo_classes_level2_form" column="3" title="fnd_mo_class_set.sub_level">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1200_fnd_mo_classes_level2_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND1200_fnd_mo_classes_level2_grid" type="save" width="80"/>
+                    <a:gridButton bind="FND1200_fnd_mo_classes_level2_grid" type="clear" width="80"/>
+                    <a:toolbarButton click="FND1200_subLevel2CloseWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="codeName" bindTarget="FND1200_fnd_mo_class_sets_query_result_ds"
+                             prompt="fnd_mo_class.code_name" readOnly="true"/>
+                <a:textField name="codeName" bindTarget="FND1200_fnd_mo_classes_level1_query_result_ds"
+                             prompt="fnd_mo_class_set.class_code_level1" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1200_fnd_mo_classes_level2_grid" bindTarget="FND1200_fnd_mo_classes_level2_query_result_ds"
+                    marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="classCode" align="center" editorFunction="FND1200_level2Code"
+                              prompt="fnd_mo_class_set.class_code_level2" sortable="true" width="80"/>
+                    <a:column name="description" align="left" editor="FND1200_level2_grid_tltf"
+                              prompt="fnd_mo_class_set.class_name_level2" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND1200_level2_grid_ck" width="80" prompt="hap.enableflag"/>
+                    <a:column name="view_sub_level3" align="center" renderer="FND1200_subLevel3" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="FND1200_level2_grid_tf_up" typeCase="upper"/>
+                    <a:textField id="FND1200_level2_grid_tf"/>
+                    <a:tledit id="FND1200_level2_grid_tltf"/>
+                    <a:checkBox id="FND1200_level2_grid_ck"/>
+                    <a:comboBox id="FND1200_level2_grid_cb"/>
+                    <a:lov id="FND1200_level2_grid_lv"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

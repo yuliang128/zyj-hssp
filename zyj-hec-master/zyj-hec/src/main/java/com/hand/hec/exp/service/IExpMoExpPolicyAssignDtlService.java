@@ -1,0 +1,9 @@
+package com.hand.hec.exp.service;
+
+import com.hand.hap.core.ProxySelf;
+import com.hand.hap.system.service.IBaseService;
+import com.hand.hec.exp.dto.ExpMoExpPolicyAssignDtl;
+
+public interface IExpMoExpPolicyAssignDtlService extends IBaseService<ExpMoExpPolicyAssignDtl>, ProxySelf<IExpMoExpPolicyAssignDtlService>{
+
+}

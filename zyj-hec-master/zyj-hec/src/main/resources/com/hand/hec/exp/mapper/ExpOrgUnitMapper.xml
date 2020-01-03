@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpOrgUnitMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpOrgUnit">
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="UNIT_CODE" property="unitCode" jdbcType="VARCHAR"/>
+        <result column="UNIT_TYPE_ID" property="unitTypeId" jdbcType="DECIMAL"/>
+        <result column="UNIT_TYPE_DISPLAY" property="unitTypeDisplay" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PARENT_UNIT_ID" property="parentUnitId" jdbcType="DECIMAL"/>
+        <result column="PARENT_UNIT_DISPLAY" property="parentUnitDisplay" jdbcType="VARCHAR"/>
+        <result column="CHIEF_POSITION_ID" property="chiefPositionId" jdbcType="DECIMAL"/>
+        <result column="CHIEF_POSITION_DISPLAY" property="chiefPositionDisplay" jdbcType="VARCHAR"/>
+        <result column="ORG_UNIT_LEVEL_ID" property="orgUnitLevelId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="UNIT_NAME" property="unitName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_ACC_ENTITY_DISPLAY" property="defaultAccEntityDisplay" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_BGT_ENTITY_DISPLAY" property="defaultBgtEntityDisplay" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_RES_CENTER_DISPLAY" property="defaultResCenterDisplay" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_BGT_CENTER_DISPLAY" property="defaultBgtCenterDisplay" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_ACC_ENTITY_ID" property="defaultAccEntityId" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_RES_CENTER_ID" property="defaultResCenterId" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_BGT_ENTITY_ID" property="defaultBgtEntityId" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_BGT_CENTER_ID" property="defaultBgtCenterId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkExpOrgUnit" resultMap="BaseResultMap">
+        select u.* from exp_org_unit u
+            where u.unit_id = #{unitId}
+            and
+            (
+              (
+                #{filtrateMethod} = 'INCLUDE'
+                and (#{controlUnitCodeFrom} is null or u.unit_code &gt;= #{controlUnitCodeFrom})
+                and (#{controlUnitCodeTo} is null or u.unit_code &lt;= #{controlUnitCodeTo})
+              )
+              or
+              (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (#{controlUnitCodeFrom} is null or u.unit_code &lt; #{controlUnitCodeFrom})
+                    or (#{controlUnitCodeTo} is null or u.unit_code &gt; #{controlUnitCodeTo})
+                )
+              )
+            )
+            and u.enabled_flag = 'Y'
+	</select>
+    <select id="queryUnitForLov" parameterType="com.hand.hec.exp.dto.ExpOrgUnit" resultMap="BaseResultMap">
+       SELECT
+			u.REQUEST_ID,
+			u.PROGRAM_ID,
+			u.OBJECT_VERSION_NUMBER,
+			u.CREATED_BY,
+			u.CREATION_DATE,
+			u.LAST_UPDATED_BY,
+			u.LAST_UPDATE_DATE,
+			u.LAST_UPDATE_LOGIN,
+			u.UNIT_ID,
+			u.COMPANY_ID,
+			f.COMPANY_CODE,
+			ft.COMPANY_SHORT_NAME COMPANY_SHORT_NAME,
+			u.UNIT_CODE,
+			u.UNIT_TYPE_ID,
+			u.DESCRIPTION,
+			t.DESCRIPTION  unit_name,
+			u.PARENT_UNIT_ID,
+			u.CHIEF_POSITION_ID,
+			u.ORG_UNIT_LEVEL_ID,
+			u.ENABLED_FLAG
+		FROM
+			exp_org_unit u
+			LEFT OUTER JOIN exp_org_unit_tl t ON ( u.UNIT_ID = t.UNIT_ID AND t.LANG = #{request.locale,jdbcType=VARCHAR} )
+			LEFT OUTER JOIN fnd_company f ON ( f.COMPANY_ID = u.COMPANY_ID)
+			LEFT OUTER JOIN fnd_company_tl ft ON ( ft.COMPANY_ID = u.COMPANY_ID AND ft.LANG = #{request.locale,jdbcType=VARCHAR} )
+		where u.ENABLED_FLAG = 'Y'
+        AND U.COMPANY_ID = #{companyId}
+		<if test="unitCode!=null">
+            and u.UNIT_CODE like concat('%',#{unitCode},'%')
+        </if>
+        <if test="unitName!=null">
+            and t.DESCRIPTION like concat('%',#{unitName},'%')
+        </if>
+        <if test="unitId!=null">
+            and u.UNIT_ID &lt;&gt; #{unitId}
+        </if>
+    </select>
+
+    <select id="queryAssignUnit" parameterType="com.hand.hec.exp.dto.ExpOrgUnit" resultMap="BaseResultMap">
+        SELECT
+        u.REQUEST_ID,
+        u.PROGRAM_ID,
+        u.OBJECT_VERSION_NUMBER,
+        u.CREATED_BY,
+        u.CREATION_DATE,
+        u.LAST_UPDATED_BY,
+        u.LAST_UPDATE_DATE,
+        u.LAST_UPDATE_LOGIN,
+        u.UNIT_ID,
+        u.COMPANY_ID,
+        f.COMPANY_CODE,
+        ft.COMPANY_SHORT_NAME  COMPANY_SHORT_NAME,
+        u.UNIT_CODE,
+        u.UNIT_TYPE_ID,
+        u.DESCRIPTION,
+        t.DESCRIPTION  unit_name,
+        u.PARENT_UNIT_ID,
+        u.CHIEF_POSITION_ID,
+        u.ORG_UNIT_LEVEL_ID,
+        u.ENABLED_FLAG
+        FROM
+        exp_org_unit u
+        LEFT OUTER JOIN exp_org_unit_tl t ON ( u.UNIT_ID = t.UNIT_ID AND t.LANG = #{request.locale,jdbcType=VARCHAR} )
+        LEFT OUTER JOIN fnd_company f ON ( f.COMPANY_ID = u.COMPANY_ID )
+        LEFT OUTER JOIN fnd_company_tl ft ON ( ft.COMPANY_ID = u.COMPANY_ID AND ft.LANG =
+        #{request.locale,jdbcType=VARCHAR} )
+        where u.ENABLED_FLAG = 'Y'
+        <if test="companyId!=null">
+            AND u.company_id = #{companyId}
+        </if>
+        <if test="magOrgId!=null">
+            AND f.MAG_ORG_ID = #{magOrgId}
+        </if>
+        AND NOT EXISTS (
+        SELECT 1
+        FROM exp_com_unit_gp_ref_unit eme
+        WHERE eme.unit_id = u.unit_id
+        AND eme.unit_group_com_assign_id = #{unitGroupComAssignId } )
+    </select>
+    <select id="queryByCompany" parameterType="com.hand.hec.exp.dto.ExpOrgUnit" resultMap="BaseResultMap">
+        SELECT
+        v.*,
+        (
+        SELECT
+        ao.resp_center_id
+        FROM
+        exp_org_unit_ref_acc_org ao
+        WHERE
+        ao.unit_id = v.UNIT_ID
+        AND ao.acc_entity_id = v.default_acc_entity_id
+        AND ao.enabled_flag = 'Y'
+        AND ao.default_flag = 'Y'
+        ) default_res_center_id,
+        (
+        SELECT
+        eobo.bgt_center_id
+        FROM
+        exp_org_unit_ref_bgt_org eobo
+        WHERE
+        eobo.unit_id = v.UNIT_ID
+        AND eobo.bgt_entity_id = v.default_bgt_entity_id
+        AND eobo.enabled_flag = 'Y'
+        AND eobo.default_flag = 'Y'
+        ) default_bgt_center_id,
+        (
+        SELECT
+        ctl.responsibility_center_name
+        FROM
+        exp_org_unit_ref_acc_org ao
+        LEFT OUTER JOIN gld_responsibility_center_tl ctl ON (
+        ao.RESP_CENTER_ID = ctl.RESPONSIBILITY_CENTER_ID
+        AND ctl.lang = #{request.locale,jdbcType=VARCHAR} )
+
+        WHERE
+        ao.unit_id = v.UNIT_ID
+        AND ao.acc_entity_id = v.default_acc_entity_id
+        AND ao.enabled_flag = 'Y'
+        AND ao.default_flag = 'Y'
+        ) default_res_center_display,
+        (
+        SELECT
+        bet.DESCRIPTION
+        FROM
+        bgt_entity_tl bet
+        WHERE
+        bet.ENTITY_ID = v.default_bgt_entity_id
+        AND bet.lang = #{request.locale,jdbcType=VARCHAR} ) default_bgt_entity_display,
+        (
+        SELECT
+        bct.DESCRIPTION
+        FROM
+        exp_org_unit_ref_bgt_org eobo
+        LEFT OUTER JOIN bgt_center_tl bct ON (
+        bct.CENTER_ID = eobo.BGT_CENTER_ID
+        AND bct.LANG = #{request.locale,jdbcType=VARCHAR})
+
+        WHERE
+        eobo.unit_id = v.UNIT_ID
+        AND eobo.bgt_entity_id = v.default_bgt_entity_id
+        AND eobo.enabled_flag = 'Y'
+        AND eobo.default_flag = 'Y'
+        ) default_bgt_center_display
+        FROM
+        (
+        SELECT
+        eou.unit_id,
+        eou.company_id,
+        eou.unit_code,
+        eou.unit_type_id,
+        (
+        SELECT
+        tt.DESCRIPTION
+        FROM
+        exp_org_unit_type_tl tt
+        WHERE
+        tt.UNIT_TYPE_ID = eou.UNIT_TYPE_ID
+        AND tt.LANG = #{request.locale,jdbcType=VARCHAR} ) unit_type_display,
+        eout.description,
+        eou.parent_unit_id,
+        (
+        SELECT
+        ut.DESCRIPTION
+        FROM
+        exp_org_unit_tl ut
+        WHERE
+        ut.UNIT_ID = eou.PARENT_UNIT_ID
+        AND ut.LANG = #{request.locale,jdbcType=VARCHAR} ) parent_unit_display,
+        eou.chief_position_id,
+        (
+        SELECT
+        pt.DESCRIPTION
+        FROM
+        exp_org_position_tl pt
+        WHERE
+        pt.POSITION_ID = eou.CHIEF_POSITION_ID
+        AND pt.LANG = #{request.locale,jdbcType=VARCHAR} ) chief_position_display,
+        eou.org_unit_level_id,
+        (
+        SELECT
+        lt.DESCRIPTION
+        FROM
+        exp_org_unit_level_tl lt
+        WHERE
+        lt.ORG_UNIT_LEVEL_ID = eou.ORG_UNIT_LEVEL_ID
+        AND lt.LANG = #{request.locale,jdbcType=VARCHAR} ) org_unit_level_display,
+        ( SELECT ae.acc_entity_id FROM fnd_company_ref_acc_entity ae WHERE ae.company_id = #{companyId}
+        AND ae.enabled_flag = 'Y' AND ae.default_flag = 'Y' ) default_acc_entity_id,
+        (
+        SELECT
+        et.ACC_ENTITY_NAME
+        FROM
+        fnd_company_ref_acc_entity ae
+        LEFT OUTER JOIN gld_accounting_entity_tl et ON (
+        ae.ACC_ENTITY_ID = et.ACC_ENTITY_ID
+        AND et.LANG = #{request.locale,jdbcType=VARCHAR} )
+
+        WHERE
+        ae.company_id = #{companyId}
+
+        AND ae.enabled_flag = 'Y'
+        AND ae.default_flag = 'Y'
+        ) default_acc_entity_display,
+        ( SELECT fcbe.entity_id FROM fnd_company_ref_bgt_entity fcbe WHERE fcbe.company_id = #{companyId}
+        AND fcbe.default_flag = 'Y' AND fcbe.enabled_flag = 'Y' ) default_bgt_entity_id,
+        eou.enabled_flag
+        FROM
+        exp_org_unit eou
+        LEFT OUTER JOIN exp_org_unit_tl eout ON ( eou.UNIT_ID = eout.UNIT_ID AND eout.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+        eou.company_id = #{companyId}
+
+        ) v
+        WHERE 1=1
+        <if test="unitCode!=null">
+            AND v.unit_code like concat('%',#{unitCode,jdbcType=VARCHAR},'%')
+        </if>
+        <if test="description!=null">
+            AND v.description like concat('%',#{description,jdbcType=VARCHAR},'%')
+        </if>
+        <if test="parentUnitId!=null">
+            AND v.parent_unit_id = #{parentUnitId}
+        </if>
+        ORDER BY
+        v.unit_code
+    </select>
+    
+    <select id="queryWithCompany" parameterType="java.lang.Long" resultType="java.util.Map">
+        SELECT
+            eou.company_id companyId,
+            eou.unit_id unitId,
+            eou.unit_code unitCode,
+            eou.description unitName,
+            fc.start_date_active startDateActive,
+            fc.end_date_active endDateActive,
+            eou.enabled_flag unitEnabledFlag
+        FROM
+            fnd_company fc,
+            exp_org_unit eou
+        WHERE
+            fc.company_id = #{companyId}
+            AND fc.company_id = eou.company_id
+    </select>
+
+    <select id="getOrgUnitListForQuery" resultMap="BaseResultMap">
+        SELECT
+            u.*
+        FROM
+            exp_org_unit u
+        WHERE
+            u.company_id = #{request.companyId}
+            AND u.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR u.unit_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR u.unit_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR u.unit_code &lt;= #{parameterUpperLimit})
+    </select>
+</mapper>

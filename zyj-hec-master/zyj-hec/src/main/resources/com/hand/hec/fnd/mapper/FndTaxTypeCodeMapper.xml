@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndTaxTypeCodeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndTaxTypeCode">
+        <result column="TAX_TYPE_ID" property="taxTypeId" jdbcType="DECIMAL" />
+        <result column="COUNTRY_CODE" property="countryCode" jdbcType="VARCHAR" />
+        <result column="TAX_TYPE_CODE" property="taxTypeCode" jdbcType="VARCHAR" />
+        <result column="TAX_TYPE_NAME" property="description" jdbcType="VARCHAR" />
+        <result column="TAX_CATEGORY" property="taxCategory" jdbcType="VARCHAR" />
+        <result column="TAX_TYPE_RATE" property="taxTypeRate" jdbcType="DECIMAL" />
+        <result column="AUTO_CALCULATION_FLAG" property="autoCalculationFlag" jdbcType="VARCHAR" />
+        <result column="WITHHOLDING_FLAG" property="withholdingFlag" jdbcType="VARCHAR" />
+        <result column="SALE_TAX_FLAG" property="saleTaxFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="COUNTRY_NAME" property="countryName" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryByAccEntityId" resultMap="BaseResultMap">
+        SELECT
+            fttc.tax_type_id,
+            fttc.tax_type_code,
+            fttctl.description tax_type_name,
+            concat(fttc.tax_type_code,'-',fttctl.description) tax_type_code_name,
+            fttc.tax_type_rate,
+            fttc.withholding_flag,
+            fttc.country_code,
+            fttc.tax_category,
+            fttc.auto_calculation_flag,
+            fttc.sale_tax_flag
+        FROM
+            fnd_tax_type_code fttc
+            LEFT JOIN fnd_tax_type_code_tl fttctl ON ( fttc.tax_type_id = fttctl.tax_type_id AND fttctl.lang = #{request.locale,javaType=java.lang.String} )
+        WHERE
+            fttc.enabled_flag = 'Y'
+            AND EXISTS ( SELECT 1 FROM fnd_tax_type_code_ref_ae ftra WHERE ftra.tax_type_id = fttc.tax_type_id AND  ftra.acc_entity_id = #{accEntityId} AND ftra.enabled_flag = 'Y' )
+        ORDER BY
+            fttc.tax_type_rate
+    </select>
+    <select id="queryTaxTypeWithholding" resultMap="BaseResultMap">
+        SELECT
+            fttc.TAX_TYPE_ID,
+            fttc.TAX_TYPE_RATE,
+            fttc.TAX_TYPE_CODE,
+            fttt.DESCRIPTION AS TAX_TYPE_NAME
+        FROM
+	        fnd_tax_type_code fttc LEFT JOIN fnd_tax_type_code_tl fttt ON fttc.TAX_TYPE_ID = fttt.TAX_TYPE_ID AND fttt.LANG = #{request.locale}
+        WHERE
+	        fttc.ENABLED_FLAG = 'Y'
+	    AND fttc.WITHHOLDING_FLAG = 'Y'
+    </select>
+
+</mapper>

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: gyt $
+    $Date: 2019/01/15 08:10:39 $
+    $Revision: 1.6 $
+    $Purpose: 岗位定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+        function onExpOrgPositionSubmit() {
+            $au('EXP1020_exp_org_position_result_ds').query();
+        }
+
+        function codeEditFunction(record, name) {
+            if (record.isNew) {
+                return 'EXP1020_position_code_tf';
+            } else {
+                return '';
+            }
+        }
+
+        function EXP1020_gridCellClickFun(grid, row, name, record) {
+            if (name == 'parentPositionName') {
+                var positionId = record.get('positionId');
+                if (!!positionId) {
+                    record.getMeta().getField(name).setLovPara('positionId', positionId);
+                }
+            }
+        }
+
+        function reset() {
+            $au('EXP1020_exp_org_position_query_ds').reset();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1020_exp_org_position_job_ds" autoQuery="true" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/exp/employee-job/queryForCb?magOrgId=$[/session/@magOrgId]"/>
+            <a:dataSet id="EXP1020_exp_org_position_query_ds">
+                <a:fields>
+                    <a:field name="parentPositionName" autoComplete="true" autoCompleteField="positionName"
+                             lovGridHeight="320" lovHeight="450" lovCode="LOV_EXP_PARENT_POSITION?companyId=$[/session/@companyId]" lovWidth="500"
+                             prompt="exp_org_position.parent_position" title="exp_org_position.parent_position_id">
+                        <a:mapping>
+                            <a:map from="positionId" to="parentPositionId"/>
+                            <a:map from="positionName" to="parentPositionName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentPositionId"/>
+                    <a:field name="unitName" autoComplete="true" autoCompleteField="description" lovGridHeight="320"
+                             lovHeight="450" lovCode="LOV_EXP_UNIT?companyId=$[/session/@companyId]" lovWidth="500"
+                             title="bgt_budget_item_mapping.org_unit_selected" prompt="exp_org_position.unit">
+                        <a:mapping>
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1020_exp_org_position_result_ds" autoCount="true" autoPageSize="true" autoQuery="true"
+                       fetchAll="false" baseUrl="/exp/org-position" queryDataSet="EXP1020_exp_org_position_query_ds"
+                       queryUrl="$[/request/@context_path]/exp/org-position/query?companyId=$[/session/@companyId]" selectable="true">
+                <a:fields>
+                    <a:field name="parentPositionName" autoComplete="true" autoCompleteField="positionName"
+                             lovGridHeight="320" lovHeight="450" lovCode="LOV_EXP_PARENT_POSITION?companyId=$[/session/@companyId]" lovWidth="500"
+                             prompt="exp_org_position.parent_position" title="exp_org_position.parent_position_id">
+                        <a:mapping>
+                            <a:map from="positionId" to="parentPositionId"/>
+                            <a:map from="positionName" to="parentPositionName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitName" autoComplete="true" autoCompleteField="description" lovGridHeight="320"
+                             lovHeight="450" lovCode="LOV_EXP_UNIT?companyId=$[/session/@companyId]" lovWidth="500" required="true"
+                             title="bgt_budget_item_mapping.org_unit_selected" prompt="exp_org_position.unit">
+                        <a:mapping>
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId"/>
+                    <a:field name="employeeJobName" prompt="exp_org_position.employee_job_id" displayField="employeeJobName"
+                             options="EXP1020_exp_org_position_job_ds" returnField="employeeJobId"
+                             valueField="employeeJobId"/>
+                    <a:field name="positionCode" required="true" prompt="exp_org_position.position_code"/>
+                    <a:field name="description" required="true" prompt="exp_org_position.position_name" dto="com.hand.hec.exp.dto.ExpOrgPosition" dtoId="positionId"/>
+                    <a:field name="companyId" defaultValue="$[/session/@companyId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="exp_position_group.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onExpOrgPositionSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1020_exp_org_position_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1020_exp_org_position_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1020_exp_org_position_query_ds"
+                         resultTarget="EXP1020_exp_org_position_result_ds" style="border:none; width:100%;">
+                <a:formToolBar>
+                    <a:textField name="positionCode" bindTarget="EXP1020_exp_org_position_query_ds"
+                                 prompt="exp_org_position.position_code" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="EXP1020_exp_org_position_query_ds"
+                                 prompt="exp_org_position.position_name"/>
+                    <a:lov name="unitName" bindTarget="EXP1020_exp_org_position_query_ds"
+                                 prompt="exp_org_position.unit"/>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:lov name="parentPositionName" bindTarget="EXP1020_exp_org_position_query_ds" width="200"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1020_exp_org_position_grid" bindTarget="EXP1020_exp_org_position_result_ds" marginHeight="115"
+                marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="positionCode" align="center" editorFunction="codeEditFunction" sortable="true"
+                          width="80"/>
+                <a:column name="description" editor="EXP1020_position_name_tld" width="200"/>
+                <a:column name="parentPositionName" align="left" editor="EXP1020_parent_position_name_display_lov"
+                          width="200"/>
+                <a:column name="unitName" align="left" editor="EXP1020_org_unit_description_display_lov" width="200"/>
+                <a:column name="employeeJobName" align="left" editor="EXP1020_employee_job_desc_display_cmb"
+                          width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP1020_enabled_flag_grid_checkBox" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP1020_position_code_tf" typeCase="upper"/>
+                <a:tledit id="EXP1020_position_name_tld"/>
+                <a:lov id="EXP1020_parent_position_name_display_lov"/>
+                <a:lov id="EXP1020_org_unit_description_display_lov"/>
+                <a:comboBox id="EXP1020_employee_job_desc_display_cmb"/>
+                <a:checkBox id="EXP1020_enabled_flag_grid_checkBox"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="EXP1020_gridCellClickFun"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

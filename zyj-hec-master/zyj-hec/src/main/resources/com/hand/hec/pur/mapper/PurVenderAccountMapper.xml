@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.pur.mapper.PurVenderAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.pur.dto.PurVenderAccount">
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL"/>
+        <result column="VENDER_ID" property="venderId" jdbcType="DECIMAL"/>
+        <result column="BANK_ID" property="bankId" jdbcType="DECIMAL"/>
+        <result column="CNAPS_CODE" property="cnapsCode" jdbcType="VARCHAR"/>
+        <result column="CNAPS_NAME" property="cnapsName" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_CODE" property="provinceCode" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_NAME" property="provinceName" jdbcType="VARCHAR"/>
+        <result column="CITY_CODE" property="cityCode" jdbcType="VARCHAR"/>
+        <result column="CITY_NAME" property="cityName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="NOTES" property="notes" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="PRIMARY_FLAG" property="primaryFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByVenderId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        select
+        pva.account_id,
+        pva.vender_id,
+        pva.bank_id,
+        cb.bank_code,
+        cbt.bank_name,
+        pva.cnaps_code,
+        cc.bank_location_name cnaps_name,
+        pva.province_code,
+        pva.province_name,
+        pva.city_code,
+        pva.city_name,
+        pva.account_name,
+        pva.account_number,
+        pva.notes,
+        pva.enabled_flag
+        from
+        pur_vender_account pva
+        left outer join csh_cnaps cc on
+        pva.cnaps_code = cc.bank_location_code,
+        csh_bank cb
+        left outer join csh_bank_tl cbt on
+        ( cb.bank_id = cbt.bank_id
+        and cbt.lang = #{request.locale, jdbcType=VARCHAR, javaType=java.lang.String})
+        where
+        pva.bank_id = cb.bank_id
+        <if test="venderId != null and venderId != ''">
+            and pva.vender_id = #{venderId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        </if>
+    </select>
+
+    <select id="queryByVenderIdAndAccEntityId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT
+            pva.account_id,
+            pva.vender_id,
+            pvra.acc_entity_id,
+            pva.bank_id,
+            cb.bank_code,
+            cbtl.BANK_NAME,
+            pva.cnaps_code,
+            pva.province_code,
+            pva.province_name,
+            pva.city_code,
+            pva.city_name,
+            pva.account_name,
+            pva.account_number,
+            pva.notes,
+            pvra.primary_flag,
+            pva.enabled_flag
+        FROM
+            pur_vender_account pva
+            LEFT JOIN csh_bank cb ON pva.bank_id = cb.bank_id
+            LEFT JOIN csh_bank_tl cbtl ON ( cb.BANK_ID = cbtl.BANK_ID AND cbtl.LANG = #{request.locale,javaType=java.lang.String} )
+            JOIN pur_vender_account_ref_ae pvra ON pva.account_id = pvra.account_id
+        WHERE
+            pvra.acc_entity_id = #{accEntityId}
+            AND pva.VENDER_ID = #{venderId}
+        ORDER BY
+            cb.bank_code
+    </select>
+
+</mapper>

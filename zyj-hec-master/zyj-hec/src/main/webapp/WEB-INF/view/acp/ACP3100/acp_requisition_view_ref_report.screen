@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="exp_rep_readonly_wfl_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <script><![CDATA[
+            function reportNumRenderer(value, record, name) {
+                return '<a href="javascript:reqNumNewWindow_1(' + record.get('expReportHeaderId') + ');">' + value + '</a>';
+            }
+            
+            function reqNumNewWindow_1(expReportHeaderId) {
+                var url = $au('exp_rep_readonly_wfl_link').getUrl() + '?expReportHeaderId=' + expReportHeaderId + '&canUploadFlag=false';
+                debugger;
+                new Aurora.Window({
+                    id: 'exp_rep_readonly_win',
+                    url: url,
+                    fullScreen: true
+                });
+            }
+            
+            function ACP3100_acp_req_ref_report_back() {
+                $au(this.__host.id).close();
+            }
+        ]]></script>
+        <a:dataSets>
+   <!--         <a:dataSet id="ACP3100_acp_req_view_header_ds" autoCreate="true">
+                <a:datas dataSource="headerInfo/records"/>
+                <a:fields>
+                    <a:field name="requisitionNumber" prompt="exp_requisition_header.requisition_number"  readOnly="true"/>
+                    <a:field name="moPayReqTypeName" prompt="wfl_workflow_approve.process_type" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>-->
+            <a:dataSet id="ACP3100_acpReportRequisitionDtlDs" autoQuery="true" bindName="report" baseUrl="/acp/requisition-dtl" queryUrl="$[/request/@context_path]/acp/requisition-dtl/queryByLineId?requisitionHdsId=$[/parameter/@requisitionHdsId]">
+                <a:fields>
+                    <a:field name="lineNumber" prompt="hap_line_number"/>
+                    <a:field name="documentNumber" prompt="exp7010.report_number"/>
+                    <a:field name="documentLineNumber" prompt="exp_report_pmt_schedules.schedule_line_number"/>
+                    <a:field name="totalAmount" prompt="exp_report_pmt_schedules.requisition_amount"/>
+                    <a:field name="scheduleDueDate" prompt="exp_report_pmt_schedules.schedule_due_date"/>
+                    <a:field name="payedAmount" prompt="csh_payment_requisition_hd.paymented_amount"/>
+                    <a:field name="amount" prompt="exp_report_query.req_amount"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="ACP3100_acp_req_form" column="2" title="exp_req.csh_payment_req">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="ACP3100_acp_req_ref_report_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="requisitionNumber" bindTarget="ACP3100_queryResultDs" prompt="exp_requisition_header.requisition_number" readOnly="true"/>
+                <a:textField name="moPayReqTypeName" bindTarget="ACP3100_queryResultDs" prompt="wfl_workflow_approve.process_type" readOnly="true"/>
+            </a:form>
+            <a:form showmargin="false" title="exp_report.reimbursement_bill">
+                <a:grid id="ACP3100_reportRequisition_dtl_grid" bindTarget="ACP3100_acpReportRequisitionDtlDs" marginHeight="250" marginWidth="12" navBar="true" showRowNumber="false">
+                    <a:columns>
+                        <a:column name="documentNumber" align="center" renderer="reportNumRenderer" width="100"/>
+                        <a:column name="lineNumber" align="center" width="50"/>
+                        <a:column name="documentLineNumber" align="center" width="50"/>
+                        <a:column name="totalAmount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        <a:column name="scheduleDueDate" align="center" width="100"/>
+                        <a:column name="payedAmount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

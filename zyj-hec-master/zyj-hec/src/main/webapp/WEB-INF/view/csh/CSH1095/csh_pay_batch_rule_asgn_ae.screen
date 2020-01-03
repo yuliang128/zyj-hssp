@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-02-28 15:48:39
+    $Revision: 1.0  
+    $Purpose: 付款批规则定义-分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1095_paymentRuleAeBatch_link" url="$[/request/@context_path]/csh/CSH1095/csh_pay_batch_rule_asgn_ae_batch.screen"/>
+        <script><![CDATA[
+            function CSH1095_paymentRuleAeBatch() {
+                new Aurora.Window({
+                    id: 'CSH1095_paymentRuleAeBatch_window',
+                    url: $au('CSH1095_paymentRuleAeBatch_link').getUrl() + '?ruleId=' + '$[/parameter/@ruleId]'+'&magOrgId='+'$[/parameter/@magOrgId]',
+                    title: '$[l:acc_entity_batch_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('CSH1095_paymentRuleAeResult_ds').query();
+                });
+            }
+            
+            function CSH1095_paymentRuleAeBack() {
+                $au('CSH1095_csh_payment_acc_entity_window').close();
+            }
+            
+            function CSH1095_paymentRuleAeEditorFunc(record, name) {
+                if (record.isNew) {
+                    return 'CSH1095_paymentRuleAe_lov';
+                } else {
+                    return '';
+                }
+            }
+            function submitsuccessFun(){
+                $au('CSH1095_paymentRuleAeResult_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1095_paymentRuleAeResult_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-bat-rule-asgn-ae" queryUrl="$[/request/@context_path]/csh/payment-bat-rule-asgn-ae/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                    <a:field name="accEntityCode" lovCode="LOV_CSH_PAY_BATCH_RULE_ASGN_AE?magOrgId=$[/parameter/@magOrgId]&amp;ruleId=$[/parameter/@ruleId]" prompt="csh_pay_batch_rule_asgn.acc_entity_code" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="csh_pay_batch_rule_asgn.acc_entity_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="csh_payment_bat_rule_asgn_ae.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="submitsuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1095_paymentRuleAe_form" column="2" labelWidth="100" title="csh_payment_batch_rule.distribution" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1095_paymentRuleAe_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1095_paymentRuleAe_grid" type="save" width="80"/>
+                    <a:toolbarButton click="CSH1095_paymentRuleAeBatch" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="CSH1095_paymentRuleAeBack" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" prompt="csh_payment_batch_rule.rule_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" prompt="csh_payment_batch_rule.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1095_paymentRuleAe_grid" bindTarget="CSH1095_paymentRuleAeResult_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="CSH1095_paymentRuleAeEditorFunc" width="120"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="CSH1095_enabled_flag"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="CSH1095_enabled_flag"/>
+                    <a:lov id="CSH1095_paymentRuleAe_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

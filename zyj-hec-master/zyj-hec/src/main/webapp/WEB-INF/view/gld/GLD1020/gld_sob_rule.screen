@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong
+    $Date: 2017/04/06 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 会计规则定义-规则明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="GLD1020_gld_sob_rule_account_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rule_account.screen"/>
+        <a:link id="GLD1020_gld_sob_rule_segment_link" url="$[/request/@context_path]/gld/GLD1020/gld_sob_rule_segment.screen"/>
+        <script><![CDATA[
+            function GLD1020_ruleCodeEditFunc(record, name) {
+                if (record.isNew) {
+                    if (name == 'ruleCode' || name == 'ruleName') {
+                        return 'GLD1020_gld_sob_rules_grid_tf';
+                    }
+                }
+                return '';
+            
+            }
+            
+            function GLD1020_accountAssignRendererFun(value, record, name) {
+                var ruleId = record.get('ruleId');
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:GLD1020_accountAssignFun(' + ruleId + ');">$[l:gld.account_assign]</a>';
+            }
+            
+            function GLD1020_accountAssignFun(ruleId) {
+                new Aurora.Window({
+                    url: $au('GLD1020_gld_sob_rule_account_link').getUrl() + '?ruleId=' + ruleId + '&setOfBookId=' + '$[/parameter/@setOfBooksId]' + '&ruleGroupId=' + '$[/parameter/@ruleGroupId]',
+                    id: 'GLD1020_gld_sob_rule_accounts_window',
+                    title: '$[l:gld.account_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('GLD1020_gld_sob_rules_result_ds').query();
+                });
+            }
+            
+            function GLD1020_segmentDetailsRendererFun(value, record, name) {
+                var ruleId = record.get('ruleId');
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:GLD1020_segmentDetailsFun(' + ruleId + ');">$[l:gld.account_segment_detail]</a>';
+            }
+            
+            function GLD1020_segmentDetailsFun(ruleId) {
+                new Aurora.Window({
+                    url: $au('GLD1020_gld_sob_rule_segment_link').getUrl() + '?ruleId=' + ruleId + '&setOfBookId=' + '$[/parameter/@setOfBooksId]',
+                    id: 'GLD1020_gld_sob_rule_segments_window',
+                    title: '$[l:gld.account_segment_detail]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('GLD1020_gld_sob_rules_result_ds').query();
+                });
+            }
+            
+            function GLD1020_onGldSobRuleSubmitSuccessFun() {
+                $au('GLD1020_gld_sob_rules_result_ds').query();
+            }
+            
+            function GLD1020_backGldSobRulesFun() {
+                $au('GLD1020_gld_sob_rules_window').close();
+                $au('GLD1020_gld_sob_rule_groups_result').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD1020_gld_sob_rules_query_ds" autoCreate="true" >
+                <a:fields>
+                    <a:field name="ruleCode" placeHolder="gld_sob_rule_group.rule_code"/>
+                    <a:field name="ruleName" placeHolder="gld_sob_rule_group.rule_name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD1020_gld_sob_rules_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/sob-rule" queryDataSet="GLD1020_gld_sob_rules_query_ds" queryUrl="$[/request/@context_path]/gld/sob-rule/query?ruleGroupId=$[/parameter/@ruleGroupId]" selectable="false">
+                <a:fields>
+                    <a:field name="ruleId"/>
+                    <a:field name="ruleCode" required="true" prompt="gld_sob_rule_group.rule_code"/>
+                    <a:field name="ruleName" required="true" prompt="gld_sob_rule_group.rule_name"/>
+                    <a:field name="ruleGroupId" defaultValue="$[/parameter/@ruleGroupId]" />
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD1020_onGldSobRuleSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:gridButton bind="GLD1020_gld_sob_rules_grid" type="add" width="80"/>
+                    <a:gridButton bind="GLD1020_gld_sob_rules_grid" type="save" width="80"/>
+                    <a:gridButton bind="GLD1020_gld_sob_rules_grid" click="GLD1020_backGldSobRulesFun" text="hap_back" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="GLD1020_gld_sob_rules_query_ds" resultTarget="GLD1020_gld_sob_rules_result_ds" style="width:100%;border:none">
+                    <a:formToolBar labelWidth="100">
+                        <a:textField name="ruleCode" bindTarget="GLD1020_gld_sob_rules_query_ds"/>
+                        <a:textField name="ruleName" bindTarget="GLD1020_gld_sob_rules_query_ds"/>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid id="GLD1020_gld_sob_rules_grid" bindTarget="GLD1020_gld_sob_rules_result_ds" marginHeight="150" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="ruleCode" align="center" editor="GLD1020_gld_sob_rules_grid_tf" editorFunction="GLD1020_ruleCodeEditFunc" width="80"/>
+                    <a:column name="ruleName" align="left" editor="GLD1020_gld_sob_rules_grid_tf" editorFunction="GLD1020_ruleCodeEditFunc" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="GLD1020_gld_sob_rules_grid_ck"  width="80"/>
+                    <a:column name="accountAssign" align="center" prompt="gld.account_assign" renderer="GLD1020_accountAssignRendererFun" width="80"/>
+                    <a:column name="accountSegmentDetails" align="center" prompt="gld.account_segment_detail" renderer="GLD1020_segmentDetailsRendererFun" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="GLD1020_gld_sob_rules_grid_tf"/>
+                    <a:checkBox id="GLD1020_gld_sob_rules_grid_ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

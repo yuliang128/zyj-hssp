@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2018/01/22 09:53:05 $
+    $Revision: 1.0 $
+    $Purpose: 核算主体层次定义主页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="GLD20240_gld_acc_entity_hierarchy_link" url="$[/request/@context_path]/gld/GLD2040/gld_acc_entity_hierarchy.screen"/>
+        <a:link id="GLD2040_gld_acc_entity_hierarchy_tree_link" url="$[/request/@context_path]/gld/acc-entity-hierarchy/gld_acc_entity_hierarchy_tree"/>
+        <script><![CDATA[
+            function GLD2040_childAccEntityDefine(value, record, name) {
+                var url = $au('GLD20240_gld_acc_entity_hierarchy_link').getUrl() + '?accEntityId=' + record.get('accEntityId');
+                return '<a href="javascript:GLD2040_viewChildAccEntity(\'' + url + '\')">' + '$[l:gld_accounting_entity.child_acc_entity]' + '</a>';
+            }
+            
+            function GLD2040_viewChildAccEntity(url) {
+                new Aurora.Window({
+                    id: 'Gld2040_View_Child_Acc_Entity',
+                    url: url,
+                    title: '$[l:gld_accounting_entity.child_acc_entity]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function GLD2040_accEntityHierarchyTreeView() {
+                new Aurora.Window({
+                    id: 'GLD2040_gld_acc_entity_hierarchy_tree_view',
+                    url: $au('GLD2040_gld_acc_entity_hierarchy_tree_link').getUrl(),
+                    title: '$[l:gld_accounting_entity.entity_hierarchy_query]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('GLD2040_acc_entities_for_hierarchy_result_ds').query();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2040_acc_entities_for_hierarchy_query_ds">
+                <a:fields>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2040_acc_entities_for_hierarchy_result_ds" autoQuery="true" queryUrl="$[/request/@context_path]/gld/account-entity/query?companyType=2" queryDataSet="GLD2040_acc_entities_for_hierarchy_query_ds">
+                <a:fields>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton click="GLD2040_accEntityHierarchyTreeView" text="gld_accounting_entity.view_hierarchy" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="GLD2040_acc_entities_for_hierarchy_query_ds" resultTarget="GLD2040_acc_entities_for_hierarchy_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:textField name="accEntityCode" bindTarget="GLD2040_acc_entities_for_hierarchy_query_ds" typeCase="upper"/>
+                    <a:textField name="accEntityName" bindTarget="GLD2040_acc_entities_for_hierarchy_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="GLD2040_acc_entities_for_hierarchy_grid" bindTarget="GLD2040_acc_entities_for_hierarchy_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="accEntityCode" align="center" sortable="true" width="80"/>
+                <a:column name="accEntityName" align="left" width="200"/>
+                <a:column name="childAccEntity" align="center" renderer="GLD2040_childAccEntityDefine" width="80"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

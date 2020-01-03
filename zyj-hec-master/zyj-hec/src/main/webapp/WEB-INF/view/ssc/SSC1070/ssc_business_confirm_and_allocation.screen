@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-28 上午10:52:16
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="wbc_confirm_and_allocation_link" url="$[/request/@context_path]/ssc/task-dispatch-record/conAndAsgn"/>
+        <div/>
+        <script><![CDATA[
+            function queryEmployees() {
+                $au('wbc_business_allocation_query_employees_ds').query();
+            }
+            
+            function setBusinessAllocation() {
+
+                //获取指派人员信息
+                var employeesRecords = $au('wbc_business_allocation_query_employees_ds').getSelected();
+                if (employeesRecords.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    $au('wbc_business_allocation_query_employees_ds').query();
+                    return;
+                }
+                var employeeId = employeesRecords[0].get('employeeId');
+                var workTeamId = employeesRecords[0].get('workTeamId');
+
+                //组装数据
+                var selRecordsData = $au('wbc_audit_require_return_dis_ds').getJsonData(true);
+                if (selRecordsData.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    return;
+                }
+                var reviewOpinion = document.getElementById('reviewOpinion').value;
+                for (var i = 0;i < selRecordsData.length;i++) {
+                    selRecordsData[i]['opinion'] = reviewOpinion;
+                    selRecordsData[i]['employeeId'] = employeeId;
+                    selRecordsData[i]['workTeamId'] = workTeamId;
+                }
+
+                Aurora.request({lockMessage:'$[l:hap_waiting]',lockMessage:'$[l:hap_waiting]',
+                    url: $au('wbc_confirm_and_allocation_link').getUrl(),
+                    para: selRecordsData,
+                    success: function() {
+                        $au('wbc_audit_require_return_dis_ds').query();
+                        $au('allocationPage').close();
+                    }
+                });
+            
+            }
+            
+            function resetEmployees() {
+                $au('wbc_business_allocation_query_employees_query_ds').reset();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="wbc_business_allocation_query_employees_query_ds"/>
+            <a:dataSet id="wbc_business_allocation_query_employees_ds" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/task-dispatch-record/conAndAgenQuery" queryDataSet="wbc_business_allocation_query_employees_query_ds" selectable="true" selectionModel="single"/>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="100" title="EXP_EMPLOYEE_ASSIGN.EMPLOYEE_INFO" width="430">
+                <a:textField name="workEmployeeName" bindTarget="wbc_business_allocation_query_employees_query_ds" prompt="exp_employee.name"/>
+                <a:textField name="workTeamName" bindTarget="wbc_business_allocation_query_employees_query_ds"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="queryEmployees" text="hap_query"/>
+                <a:button click="resetEmployees" text="hap_reset"/>
+                <a:button click="setBusinessAllocation" text="hap.ok"/>
+            </a:hBox>
+            <a:grid bindTarget="wbc_business_allocation_query_employees_ds" height="300" navBar="true" width="430">
+                <a:columns>
+                    <a:column name="workEmployeeName" align="center" prompt="exp_employee.name" width="194"/>
+                    <a:column name="workTeamName" prompt="exp_report_headers.position" width="210"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

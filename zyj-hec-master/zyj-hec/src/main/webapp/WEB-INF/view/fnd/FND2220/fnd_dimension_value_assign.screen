@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+            function setinitdata(ds, record, index) {
+                record.set('dimensionValueId', '$[/parameter/@dimensionValueId]');
+                record.set('companyLevel', '$[/parameter/@systemLevel]');
+                if (record.isNew) {
+                    var header_ds = $au('fnd_dimension_values_assign_query_ds').getAt(0);
+                    var systemLevel = header_ds.get('systemLevel');
+                    var meta = record.getMeta();
+                    var field = meta.getField('sourceCode');
+                    if (systemLevel == 'MANAGEMENT') {
+                        field.setLovCode('LOV_FND_DIMENSION_COMPANY');
+                        field.setTitle('$[l:company.selectcompany]');
+                    }
+                    if (systemLevel == 'ACCOUNTING') {
+                        field.setLovCode('LOV_DIMENSION_VALUE_ACC_ENTITY');
+                        field.setLovPara('companyId','$[/session/@companyId]');
+                        field.setLovPara('magOrgId','$[/session/@magOrgId]');
+                        field.setTitle('$[l:choose.accounting_distribution]');
+                    }
+                    if (systemLevel == 'BUDGET') {
+                        field.setLovCode('LOV_DIMENSION_VALUE_BGT_ENTITY');
+                        field.setLovPara('companyId','$[/session/@companyId]');
+                        field.setTitle('$[l:bgt_entitie_select]');
+                    }
+                }
+            }
+            
+            function editFunction(record, name) {
+                if (record.isNew) {
+                    return 'company_code_lov';
+                }
+                return '';
+            }
+            
+            
+            // 增添返回按钮 Author:Arthur.Chen Date:2017-08-09 09:26:06
+            
+            function fnd_dimension_values_assign_closeThisWin() {
+                $au('fnd_dimension_values_distribute_window').close();
+            }
+
+            function onDimensionValueAssignUpdate(ds,record,name,newValue,oldValue){
+                if(name == 'sourceId'){
+                    record.set('companyId',newValue);
+                }
+
+            }
+
+            function onDimensionValueAssignQuery(ds){
+                ds.setQueryUrl('$[/request/@context_path]/fnd/company-dimension-value/query');
+
+            }
+
+            function submitFndDimensionValue(){
+                var records = $au('fnd_dimension_values_assign_result_ds').getAll();
+                for(var i=0;i<records.length;i++){
+                    records[i].set('companyId',records[i].get('sourceId'));
+                    records[i].set('companyLevel',records[i].get('systemLevel'));
+                }
+                $au('fnd_dimension_values_assign_result_ds').submit();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="system_level_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SYS_ORGANIZATION_TYPE/"/>
+            <a:dataSet id="fnd_dimension_values_assign_query_ds" autoQuery="true" baseUrl="/fnd/dimension-value" queryUrl="$[/request/@context_path]/fnd/dimension-value/query?dimensionValueId=$[/parameter/@dimensionValueId]">
+                <a:fields>
+                    <a:field name="dimensionValueCode" readOnly="true" prompt="exp_mo_rep_type_ref_hd_dim.dim_value_code"/>
+                    <a:field name="description" readOnly="true" prompt="exp_mo_rep_type_ref_hd_dim.dim_value_desc"/>
+                    <a:field name="systemLevel"/>
+                    <a:field name="systemLevelName" prompt="fnd_dimensions.system_level" displayField="meaning" options="system_level_ds" readOnly="true" returnField="systemLevel" valueField="value"/>
+                    <a:field name="dimensionValueId" defaultValue="$[/parameter/@dimensionValueId]"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="fnd_dimension_values_assign_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/fnd/company-dimension-value" queryDataSet="fnd_dimension_values_assign_query_ds" queryUrl="$[/request/@context_path]/fnd/company-dimension-value/query?systemLevel=$[/parameter/@systemLevel]" submitUrl="$[/request/@context_path]/fnd/company-dimension-value/companySubmit" selectable="true">
+                <a:fields>
+                    <a:field name="dimensionValueId"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="sourceCode" lovGridHeight="320" lovHeight="450" lovWidth="500" prompt="sys_parameter_value.value_code" required="true">
+                        <a:mapping>
+                            <a:map from="sourceCode" to="sourceCode"/>
+                            <a:map from="sourceId" to="sourceId"/>
+                            <a:map from="sourceName" to="sourceName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sourceName" prompt="exp_mo_expense_object_value.description"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="setinitdata"/>
+                    <a:event name="load" handler="onDimensionValueAssignQuery"/>
+                    <a:event name="update" handler="onDimensionValueAssignUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="hap_assign_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="fnd_dimension_values_assign_grid" type="add" width="80"/>
+                    <a:gridButton bind="fnd_dimension_values_assign_grid" click="submitFndDimensionValue" text="hap_save" width="80"/>
+                    <a:gridButton bind="fnd_dimension_values_assign_grid" type="clear" width="80"/>
+                    <a:toolbarButton click="fnd_dimension_values_assign_closeThisWin" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:comboBox name="systemLevelName" bindTarget="fnd_dimension_values_assign_query_ds"/>
+                <a:textField name="description" bindTarget="fnd_dimension_values_assign_query_ds"/>
+                <a:textField name="dimensionValueCode" bindTarget="fnd_dimension_values_assign_query_ds"/>
+            </a:form>
+            <a:grid id="fnd_dimension_values_assign_grid" bindTarget="fnd_dimension_values_assign_result_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="sourceCode" align="center" editorFunction="editFunction" width="120"/>
+                    <a:column name="sourceName" align="left"  width="200"/>
+                    <a:column name="enabledFlag" editor="enabled_flag_assign_cb" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="company_code_lov"/>
+                    <a:textField id="company_short_name_tf"/>
+                    <a:checkBox id="enabled_flag_assign_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

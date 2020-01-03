@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Author: Arthur.Chen
+Date:2017-08-24 10:49:34
+Purpose: 中转科目定义   
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query fetchAll="true" model="hec_util.fnd_util.fnd_mag_organizations_form_query" rootPath="mag_orgs"/>-->
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function GLD1050_magOrgAndsetBookIsEmpty() {
+                var record = $au('gld_transit_accounts_query_ds').getAt(0);
+            
+                if (!Ext.isEmpty(record.get('magOrgName')) && !Ext.isEmpty(record.get('setOfBooksName'))) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function GLD1050_queryForm_crAccountName_enterdown() {
+                $au('gld_transit_accounts_result_ds').query();
+            }
+            
+            function GLD1050_addRecordIntoResultGrid() {
+                if (GLD1050_magOrgAndsetBookIsEmpty()) {
+                    new Aurora.showMessage('提示', '请在选择管理组织和账套并查询后，点击新增按钮。', null, 300, 100);
+                    return;
+                }
+                var queryDs = $au('gld_transit_accounts_query_ds');
+                var resultDs = $au('gld_transit_accounts_result_ds');
+                var fields = resultDs.fields;
+                var datas = {};
+                for (var field in fields) {
+                    datas[field] = '';
+                }
+                datas['magOrgId'] = queryDs.getAt(0).get('magOrgId');
+                datas['setOfBooksId'] = queryDs.getAt(0).get('setOfBooksId');
+                resultDs.create(datas);
+            }
+            
+            
+            function gld_transit_accounts_query_ds_update(ds, record, name, value, oldvalue) {
+                if (name == 'magOrgName') {
+                    record.set('setOfBooksName', '');
+                    record.set('setOfBooksId', '');
+                }
+                if (name == 'setOfBooksName') {
+                    if (!Ext.isEmpty(value)) {
+                        $au('gld_transit_accounts_result_ds').query();
+                    }
+                }
+            }
+            
+            function GLD1050_set_of_books_focus() {
+                var magOrgId = $au('gld_transit_accounts_query_ds').getCurrentRecord().get('magOrgId');
+                if (Ext.isEmpty(magOrgId)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    $au('set_of_books_ds').removeAll();
+                    return false;
+                } else {
+                    $au('set_of_books_ds').setQueryParameter('magOrgId', magOrgId);
+                    $au('set_of_books_ds').query();
+                }
+            }
+            
+            function GLD1050_mo_expense_item_focus() {
+                var magOrgId = $au('gld_transit_accounts_query_ds').getCurrentRecord().get('magOrgId');
+                var record = $au('gld_transit_accounts_query_ds').getCurrentRecord();
+                if (Ext.isEmpty(magOrgId)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null}', null, 300, 100);
+                    return false;
+                } else {
+                    record.getMeta().getField('moExpenseItemName').setLovPara('magOrgId', magOrgId);
+                }
+            
+            }
+            
+            function GLD1050_drAccountName_focus() {
+                var magOrgId = $au('gld_transit_accounts_query_ds').getCurrentRecord().get('magOrgId');
+                var record = $au('gld_transit_accounts_query_ds').getCurrentRecord();
+                if (Ext.isEmpty(magOrgId)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                } else {
+                    record.getMeta().getField('drAccountName').setLovPara('magOrgId', magOrgId);
+                }
+            }
+            
+            function GLD1050_crAccountName_focus() {
+                var magOrgId = $au('gld_transit_accounts_query_ds').getCurrentRecord().get('magOrgId');
+                var record = $au('gld_transit_accounts_query_ds').getCurrentRecord();
+                if (Ext.isEmpty(magOrgId)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                } else {
+                    record.getMeta().getField('crAccountName').setLovPara('magOrgId', magOrgId);
+                }
+            }
+            
+            function GLD1050_grid_cellclick(grid, row, name, record) {
+                var magOrgId = $au('gld_transit_accounts_query_ds').getCurrentRecord().get('magOrgId');
+                var setOfBooksId = $au('gld_transit_accounts_query_ds').getCurrentRecord().get('setOfBooksId');
+                var meta = record.getMeta();
+                if (name == 'moExpenseItemCode') {
+                    meta.getField('moExpenseItemCode').setLovPara('magOrgId', magOrgId);
+                }
+                if (name == 'moExpReportTypeCode') {
+                    meta.getField('moExpReportTypeCode').setLovPara('magOrgId', magOrgId);
+                }
+                if (name == 'accEntityCode') {
+                    meta.getField('accEntityCode').setLovPara('magOrgId', magOrgId);
+                    meta.getField('accEntityCode').setLovPara('setOfBooksId', setOfBooksId);
+                }
+                if (name == 'drAccountCode') {
+                    meta.getField('drAccountCode').setLovPara('magOrgId', magOrgId);
+                    meta.getField('drAccountCode').setLovPara('setOfBooksId', setOfBooksId);
+                }
+                if (name == 'crAccountCode') {
+                    meta.getField('crAccountCode').setLovPara('magOrgId', magOrgId);
+                    meta.getField('crAccountCode').setLovPara('setOfBooksId', setOfBooksId);
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="mag_orgs_ds" fetchAll="true" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/fnd-managing-organizations/query"/>
+            <a:dataSet id="set_of_books_ds" fetchAll="true" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/gld-set-of-book/query-by-mag-id"/>
+            <a:dataSet id="gld_transit_accounts_query_ds">
+                <a:fields>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgName" displayField="description" options="mag_orgs_ds" prompt="exp_mo_report_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="setOfBooksName" displayField="setOfBooksName" options="set_of_books_ds" prompt="gld_transit_account.set_of_book" required="true" returnField="setOfBooksId" valueField="setOfBooksId"/>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="moExpenseItemName" autoComplete="true" autoCompleteField="moExpenseItemCode" lovCode="EXP_MO_EXPENSE_ITEM_LOV">
+                        <a:mapping>
+                            <a:map from="moExpenseItemId" to="moExpenseItemId"/>
+                            <a:map from="moExpenseItemName" to="moExpenseItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="drAccountId"/>
+                    <a:field name="drAccountName" autoComplete="true" autoCompleteField="accountCode" lovCode="GLD_UTIL_ACCOUNT_LOV" title="gld_transit_account.dr_account_select">
+                        <a:mapping>
+                            <a:map from="accountId" to="drAccountId"/>
+                            <a:map from="accountName" to="drAccountName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="crAccountId"/>
+                    <a:field name="crAccountName" autoComplete="true" autoCompleteField="accountCode" lovCode="GLD_UTIL_ACCOUNT_LOV" title="gld_transit_account.cr_account_select">
+                        <a:mapping>
+                            <a:map from="accountId" to="crAccountId"/>
+                            <a:map from="accountName" to="crAccountName"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="gld_transit_accounts_query_ds_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="gld_transit_accounts_result_ds"  baseUrl="/gld/transit-account" queryDataSet="gld_transit_accounts_query_ds" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="transit_accountId"/>
+                    <a:field name="magOrgId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="moExpenseItemCode" autoComplete="true" autoCompleteField="moExpenseItemCode" lovCode="EXP_MO_EXPENSE_ITEM_LOV" prompt="exp_expense_item_descs.expense_item_code" required="true" title="pur_order_lines.expense_item_choice">
+                        <a:mapping>
+                            <a:map from="moExpenseItemId" to="moExpenseItemId"/>
+                            <a:map from="moExpenseItemCode" to="moExpenseItemCode"/>
+                            <a:map from="moExpenseItemName" to="moExpenseItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseItemName" prompt="exp_mo_expense_items.mo_expense_item_name"/>
+                    <a:field name="moExpReportTypeId"/>
+                    <a:field name="moExpReportTypeCode" autoComplete="true" autoCompleteField="moExpReportTypeCode" lovCode="EXP_MO_REPORT_TYPE_LOV" prompt="exp_report_interface.exp_report_type_code" title="exp_report_headers.mo_exp_report_type_select">
+                        <a:mapping>
+                            <a:map from="moExpReportTypeId" to="moExpReportTypeId"/>
+                            <a:map from="moExpReportTypeCode" to="moExpReportTypeCode"/>
+                            <a:map from="moExpReportTypeName" to="moExpReportTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpReportTypeName" prompt="exp_expense_report_types.description_id"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" autoComplete="true" autoCompleteField="accEntityCode" lovCode="GLD_ACC_ENTITY_SET_OF_BOOK_LOV" prompt="csh_pay_batch_rule_asgn.acc_entity_code" title="gld2030_responsibility_centers.acc_entity_choice">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName" prompt="csh_pay_batch_rule_asgn.acc_entity_name"/>
+                    <a:field name="drAccountId"/>
+                    <a:field name="drAccountCode" autoComplete="true" autoCompleteField="accountCode" lovCode="GLD_UTIL_ACCOUNT_LOV" prompt="gld_transit_account.dr_account_code" required="true" title="gld_transit_account.dr_account_select">
+                        <a:mapping>
+                            <a:map from="accountId" to="drAccountId"/>
+                            <a:map from="accountCode" to="drAccountCode"/>
+                            <a:map from="accountName" to="drAccountName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="drAccountName" prompt="gld_transit_account.dr_account_name"/>
+                    <a:field name="crAccountId"/>
+                    <a:field name="crAccountCode" autoComplete="true" autoCompleteField="accountCode" lovCode="GLD_UTIL_ACCOUNT_LOV" prompt="gld_transit_account.cr_account_code" required="true" title="gld_transit_account.cr_account_select">
+                        <a:mapping>
+                            <a:map from="accountId" to="crAccountId"/>
+                            <a:map from="accountCode" to="crAccountCode"/>
+                            <a:map from="accountName" to="crAccountName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="crAccountName" prompt="gld_transit_account.cr_account_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:button click="GLD1050_addRecordIntoResultGrid" height="26" style="margin-top:5px; margin-left:5px;" text="hap.add" width="80"/>
+                <a:gridButton bind="GLD1050_gld_transit_accounts_result_grid" height="26" text="hap_save" type="save" width="80"/>
+                <a:gridButton bind="GLD1050_gld_transit_accounts_result_grid" height="26" text="hap_delete" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="gld_transit_accounts_query_ds" resultTarget="gld_transit_accounts_result_ds" style="width:100%;border:none" title="gld_transit_account.transit_account">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgName" bindTarget="gld_transit_accounts_query_ds" prompt="exp_mo_report_types.mag_org_id"/>
+                    <a:comboBox name="setOfBooksName" bindTarget="gld_transit_accounts_query_ds" prompt="gld_transit_account.set_of_book">
+                        <a:events>
+                            <a:event name="focus" handler="GLD1050_set_of_books_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:lov name="moExpenseItemName" bindTarget="gld_transit_accounts_query_ds" prompt="exp_mo_expense_items.mo_expense_item_id">
+                        <a:events>
+                            <a:event name="focus" handler="GLD1050_mo_expense_item_focus"/>
+                        </a:events>
+                    </a:lov>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:lov name="drAccountName" bindTarget="gld_transit_accounts_query_ds" placeHolder="gld_transit_account.dr_account">
+                        <a:events>
+                            <a:event name="focus" handler="GLD1050_drAccountName_focus"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="crAccountName" bindTarget="gld_transit_accounts_query_ds" placeHolder="gld_transit_account.cr_account">
+                        <a:events>
+                            <a:event name="focus" handler="GLD1050_crAccountName_focus"/>
+                        </a:events>
+                    </a:lov>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="GLD1050_gld_transit_accounts_result_grid" bindTarget="gld_transit_accounts_result_ds" marginHeight="115" marginWidth="3">
+            <a:columns>
+                <a:column name="moExpenseItemCode" align="center" editor="GLD1050_gld_transit_accounts_result_grid_lov" width="100"/>
+                <a:column name="moExpenseItemName" width="120"/>
+                <a:column name="moExpReportTypeCode" align="center" editor="GLD1050_gld_transit_accounts_result_grid_lov" width="120"/>
+                <a:column name="moExpReportTypeName" width="120"/>
+                <a:column name="accEntityCode" align="center" editor="GLD1050_gld_transit_accounts_result_grid_lov" width="100"/>
+                <a:column name="accEntityName" width="120"/>
+                <a:column name="drAccountCode" align="center" editor="GLD1050_gld_transit_accounts_result_grid_lov" width="100"/>
+                <a:column name="drAccountName" width="100"/>
+                <a:column name="crAccountCode" align="center" editor="GLD1050_gld_transit_accounts_result_grid_lov" width="120"/>
+                <a:column name="crAccountName" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="GLD1050_gld_transit_accounts_result_grid_lov"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="GLD1050_grid_cellclick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

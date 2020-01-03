@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentBatchTpRuleMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentBatchTpRule">
+        <result column="TYPE_RULE_ID" property="typeRuleId" jdbcType="DECIMAL" />
+        <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL" />
+        <result column="DR_CR_CODE" property="drCrCode" jdbcType="VARCHAR" />
+        <result column="PARAMETER_TYPE" property="parameterType" jdbcType="VARCHAR" />
+        <result column="PARAMETER_VALUE" property="parameterValue" jdbcType="VARCHAR" />
+        <result column="DR_CR_CODE_DISPLAY" property="drCrCodeDisplay" jdbcType="VARCHAR" />
+        <result column="PARAMETER_TYPE_DISPLAY" property="parameterTypeDisplay" jdbcType="VARCHAR" />
+        <result column="PARAMETER_VALUE_DISPLAY" property="parameterValueDisplay" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="query" resultMap="BaseResultMap">
+        SELECT
+	      CASE
+            WHEN cpbtr.PARAMETER_TYPE = 'TRANSACTION' THEN
+	        (
+		      SELECT
+			      scvt.MEANING
+		        FROM
+			      sys_code_b scb
+		        INNER JOIN sys_code_value_b scvb ON (
+			      scb.CODE_ID = scvb.CODE_ID
+			    AND scb.`CODE` = 'CSH_PAYMENT_PARAMETER_TRX'
+		    )
+		    LEFT JOIN sys_code_value_tl scvt ON (
+			      scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+			    AND scvt.lang = #{request.locale,jdbcType = VARCHAR}
+		    )
+		    WHERE
+			    scvb.`VALUE` = cpbtr.parameter_value
+	        )
+            WHEN cpbtr.PARAMETER_TYPE = 'VOUCHER' AND cpbtr.DR_CR_CODE = 'DR' THEN
+	        (
+		      SELECT
+			      scvt.MEANING
+		      FROM
+			      sys_code_b scb
+		      INNER JOIN sys_code_value_b scvb ON (
+			      scb.CODE_ID = scvb.CODE_ID
+			  AND scb.`CODE` = 'CSH_PAYMENT_PARAMETER_DR_VCHR'
+		    )
+		    LEFT JOIN sys_code_value_tl scvt ON (
+			      scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+			    AND scvt.lang = #{request.locale,jdbcType = VARCHAR}
+		    )
+		    WHERE
+			    scvb.`VALUE` = cpbtr.parameter_value
+	        )
+            WHEN cpbtr.PARAMETER_TYPE = 'TRANSACTION' AND cpbtr.DR_CR_CODE != 'DR' THEN
+	        (
+		      SELECT
+			      scvt.MEANING
+		      FROM
+			      sys_code_b scb
+		      INNER JOIN sys_code_value_b scvb ON (
+			      scb.CODE_ID = scvb.CODE_ID
+			  AND scb.`CODE` = 'CSH_PAYMENT_PARAMETER_VCHR'
+		    )
+		    LEFT JOIN sys_code_value_tl scvt ON (
+			      scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+			    AND scvt.lang = #{request.locale,jdbcType = VARCHAR}
+		    )
+		    WHERE
+			    scvb.`VALUE` = cpbtr.parameter_value
+	        )
+          END PARAMETER_VALUE_DISPLAY,
+          v.MEANING PARAMETER_TYPE_DISPLAY,
+          cpbtr.PARAMETER_TYPE,
+          cpbtr.PARAMETER_VALUE,
+          cpbtr.DR_CR_CODE,
+          v1.MEANING dr_Cr_Code_Display,
+          cpbtr.TYPE_ID,
+          cpbtr.TYPE_RULE_ID
+        FROM
+	      csh_payment_batch_tp_rule cpbtr
+        LEFT JOIN (
+	        SELECT
+		        scvt.MEANING,
+		        scvb.`VALUE`
+	        FROM
+		        sys_code_b scb
+	        INNER JOIN sys_code_value_b scvb ON (
+		            scb.CODE_ID = scvb.CODE_ID
+		        AND scb.`CODE` = 'CSH_PAYMENT_PARAMETER_TYPE'
+	        )
+	        LEFT JOIN sys_code_value_tl scvt ON (
+		            scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+		        AND scvt.lang = #{request.locale,jdbcType = VARCHAR}
+	        )
+        ) v ON cpbtr.PARAMETER_TYPE = v.`VALUE`
+        LEFT JOIN (
+	        SELECT
+		        scvt.MEANING,
+		        scvb.`VALUE`
+	        FROM
+		        sys_code_b scb
+	        INNER JOIN sys_code_value_b scvb ON (
+		            scb.CODE_ID = scvb.CODE_ID
+		        AND scb.`CODE` = 'DR_CR_FLAG'
+	        )
+	        LEFT JOIN sys_code_value_tl scvt ON (
+		      scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+		    AND scvt.lang = #{request.locale,jdbcType = VARCHAR}
+	        )
+        ) v1 ON cpbtr.DR_CR_CODE = v1.`VALUE`
+        WHERE
+	        cpbtr.TYPE_ID = #{typeId}
+    </select>
+
+</mapper>

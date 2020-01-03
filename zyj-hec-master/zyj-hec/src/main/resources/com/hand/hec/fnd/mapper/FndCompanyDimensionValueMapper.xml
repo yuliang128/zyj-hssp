@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndCompanyDimensionValueMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndCompanyDimensionValue">
+        <result column="COMPANY_DIM_VALUE_ID" property="companyDimValueId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_LEVEL" property="companyLevel" jdbcType="VARCHAR"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="DIMENSION_VALUE_ID" property="dimensionValueId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="SOURCE_ID" property="sourceId" jdbcType="DECIMAL"/>
+        <result column="SOURCE_CODE" property="sourceCode" jdbcType="VARCHAR"/>
+        <result column="SOURCE_NAME" property="sourceName" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_LEVEL" property="systemLevel" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_VALUE_CODE" property="dimensionValueCode" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_VALUE_DESCRIPTION" property="dimensionValueDescription" jdbcType="VARCHAR"/>
+        <result column="SUMMARY_FLAG" property="summaryFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByDimension" parameterType="com.hand.hec.fnd.dto.FndCompanyDimensionValue"
+            resultMap="BaseResultMap">
+        SELECT
+            *
+        FROM
+            (
+        SELECT
+            fcd.dimension_value_id,
+            fcd.company_id source_id,
+            fcv.company_code source_code,
+            fcv.company_short_name source_name,
+            fcd.enabled_flag,
+            'MANAGEMENT' system_level
+        FROM
+            FND_COMPANY_DIMENSION_VALUE fcd,
+            fnd_company fcv
+        WHERE
+            fcd.company_id = fcv.company_id
+            AND fcd.dimension_value_id = #{dimensionValueId}
+            AND fcd.company_level = 'MANAGEMENT'
+        UNION ALL
+        SELECT
+            fcd.dimension_value_id,
+            fcd.company_id source_id,
+            be.entity_code source_code,
+            be.description source_name,
+            fcd.enabled_flag,
+            'BUDGET' system_level
+        FROM
+            FND_COMPANY_DIMENSION_VALUE fcd,
+            bgt_entity be
+        WHERE
+            fcd.company_id = be.entity_id
+            AND fcd.dimension_value_id = #{dimensionValueId}
+            AND fcd.company_level = 'BUDGET'
+        UNION ALL
+        SELECT
+            fcd.dimension_value_id,
+            fcd.company_id source_id,
+            ga.acc_entity_code source_code,
+            ga.acc_entity_name source_name,
+            fcd.enabled_flag,
+            'ACCOUNTING' system_level
+        FROM
+            FND_COMPANY_DIMENSION_VALUE fcd,
+            gld_accounting_entity ga
+        WHERE
+            fcd.company_id = ga.acc_entity_id
+            AND fcd.dimension_value_id = #{dimensionValueId}
+            AND fcd.company_level = 'ACCOUNTING'
+            ) t
+        WHERE
+            t.system_level = #{systemLevel}
+    </select>
+    
+    <select id="queryWithDimension" resultMap="BaseResultMap" parameterType="com.hand.hec.fnd.dto.FndCompanyDimensionValue">
+        SELECT
+            FV.DIMENSION_ID,
+            FV.DIMENSION_VALUE_CODE,
+            FVT.DESCRIPTION DIMENSION_VALUE_DESCRIPTION,
+            FV.DIMENSION_VALUE_ID,
+            FS.DIMENSION_CODE,
+            FV.SUMMARY_FLAG,
+            fcdv.ENABLED_FLAG ENABLED_FLAG,
+            FST.DESCRIPTION,
+            fcdv.company_level,
+            fcdv.company_id source_id
+        FROM
+            FND_DIMENSION_VALUE FV
+            LEFT OUTER JOIN fnd_dimension_value_tl FVT ON ( FV.DIMENSION_VALUE_ID = FVT.DIMENSION_VALUE_ID AND FVT.LANG = #{request.locale,jdbcType=VARCHAR} ),
+            FND_DIMENSION FS
+            LEFT OUTER JOIN fnd_dimension_tl FST ON ( FS.DIMENSION_ID = FST.DIMENSION_ID AND FST.LANG = #{request.locale,jdbcType=VARCHAR} ),
+            fnd_company_dimension_value fcdv
+        WHERE
+            FV.dimension_id = FS.dimension_id
+            AND fcdv.dimension_value_id = fv.dimension_value_id
+            <if test="dimensionId!=null">
+              AND  FS.dimension_id = #{dimensionId}
+            </if>
+            <if test="sourceId!=null">
+              AND  fcdv.company_id = #{sourceId}
+            </if>
+            <if test="dimensionValueCode!=null">
+              AND FV.DIMENSION_VALUE_CODE like concat('%',#{dimensionValueCode},'%')
+            </if>
+            <if test="dimensionValueDescription!=null">
+              AND FVT.DESCRIPTION like concat('%',#{dimensionValueDescription},'%')
+            </if>
+            <if test="enabledFlag!=null">
+                AND  fcdv.ENABLED_FLAG = #{enabledFlag}
+            </if>
+            <if test="summaryFlag!=null">
+                AND  FV.SUMMARY_FLAG = #{summaryFlag}
+            </if>
+
+    </select>
+    
+    <update id="updateByCompanyId" parameterType="com.hand.hec.fnd.dto.FndCompanyDimensionValue">
+        update fnd_company_dimension_value
+        set  enabled_flag     = #{enabledFlag},
+             last_update_date = CURRENT_TIMESTAMP,
+             last_updated_by  = #{request.userId}
+     where dimension_value_id = #{dimensionValueId}
+       and company_id = #{companyId}
+    </update>
+
+
+</mapper>

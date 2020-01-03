@@ -1,0 +1,54 @@
+package com.hand.hec.zyj.db
+
+import com.hand.hap.liquibase.MigrationHelper
+
+def mhi = MigrationHelper.getInstance()
+dbType = mhi.dbType()
+databaseChangeLog(logicalFilePath: "2018-09-20-panda-bpm-init-table-migration.groovy") {
+    /**
+     * BPM页面分组
+     */
+    changeSet(author: "MouseZ", id: "20180920-MouseZ-001") {
+        if (mhi.isDbType('oracle') || mhi.isDbType('hana') || mhi.isDbType('postgresql')) {
+            createSequence(sequenceName: 'bpm_js_template_s', startValue: "10001")
+        }
+
+        createTable(tableName: "bpm_js_template") {
+            if (mhi.isDbType('oracle') || mhi.isDbType('hana') || mhi.isDbType('postgresql')) {
+                column(name: "js_template_id", type: "bigint", remarks: "模板ID") {
+                    constraints(nullable: "false", primaryKey: "true", primaryKeyName: "bpm_js_template_pk")
+                }
+            } else {
+                column(name: "js_template_id", type: "bigint", autoIncrement: "true", startWith: "10001", remarks: "模板ID") {
+                    constraints(nullable: "false", primaryKey: "true", primaryKeyName: "bpm_js_template_pk")
+                }
+            }
+
+            column(name: "js_template_code", type: "nvarchar(30)", remarks: "模板代码") {
+                constraints(nullable: "false")
+            }
+            column(name: "js_template_desc", type: "nvarchar(240)", remarks: "模板描述") {
+                constraints(nullable: "false")
+            }
+
+            column(name: "js_content", type: "clob", remarks: "模板内容")
+
+
+            column(name: "CLIENT_ID", type: 'bigint', remarks: "租户ID")
+            column(name: "DELETED_FLAG", type: 'nvarchar(1)', remarks: "删除标志")
+            column(name: "OBJECT_VERSION_NUMBER", type: "BIGINT", defaultValue: "1")
+            column(name: "REQUEST_ID", type: "bigint", defaultValue: "-1")
+            column(name: "PROGRAM_ID", type: "bigint", defaultValue: "-1")
+            column(name: "CREATED_BY", type: "bigint", defaultValue: "-1")
+            column(name: "CREATION_DATE", type: "datetime", defaultValueComputed: "CURRENT_TIMESTAMP")
+            column(name: "LAST_UPDATED_BY", type: "bigint", defaultValue: "-1")
+            column(name: "LAST_UPDATE_DATE", type: "datetime", defaultValueComputed: "CURRENT_TIMESTAMP")
+            column(name: "LAST_UPDATE_LOGIN", type: "bigint", defaultValue: "-1")
+        }
+
+        createIndex(tableName: "bpm_js_template", indexName: "bpm_js_template_u1", unique: "true") {
+            column(name: "js_template_code", type: "nvarchar(30)")
+        }
+    }
+
+}

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: bo.zhang
+    $Date: 2019-03-04 10:01:33
+    $Revision: 1.1 $
+    $Purpose: 报盘文件导出格式定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="opentypeDetailWindow_link" url="$[/request/@context_path]/csh/CSH1090/csh_offer_format_detail.screen"/>
+        <a:link id="openAssignCompanyWindow_link" url="$[/request/@context_path]/csh/CSH1090/csh_offer_format_asgn_ae.screen"/>
+        <script><![CDATA[
+            function updateFunction(ds, record, name, value, oldVaule) {
+                if (name == 'exportTypeCode') {
+                    if (record.get('exportTypeCode') == 'EXCEL') {
+                        record.set('exportSeparatorCode','');
+                        record.set('exportSeparator','');
+                        record.getMeta().getField('exportSeparator').setReadOnly(true);
+                    } else {
+                        record.getMeta().getField('exportSeparator').setReadOnly(false);
+                    }
+                }
+            }
+            function girdCellClick(grid, row, name, record) {
+                if (name == 'exportSeparator') {
+                    if (record.get('exportTypeCode') == 'EXCEL') {
+                        record.getMeta().getField('exportSeparator').setReadOnly(true);
+                    } else {
+                        record.getMeta().getField('exportSeparator').setReadOnly(false);
+                    }
+
+                }
+            }
+
+            function typeDetailRenderer(value, record, name) {
+                var url = $au('opentypeDetailWindow_link').getUrl() + '?formatHdsId=' + record.get('formatHdsId');
+                return record.isNew ? '' : '<a href="javascript:opentypeDetailWindow(\'' + url + '\')">$[l:csh_offer_format.detailed]</a>';
+            }
+
+            function assignCompanyRenderer(value, record, name) {
+                var url = $au('openAssignCompanyWindow_link').getUrl() + '?formatHdsId=' + record.get('formatHdsId');
+                return record.isNew ? '' : '<a href="javascript:openAssignCompanyWindow(\'' + url + '\')">$[l:csh_offer_format.acc_entity]</a>';
+            }
+
+            function opentypeDetailWindow(url) {
+                new Aurora.Window({
+                    url: url,
+                    id: 'typeDetailWindow',
+                    title:'$[l:csh_offer_format.offer file format information]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+
+            function openAssignCompanyWindow(url) {
+                new Aurora.Window({
+                    url: url,
+                    id: 'openAssignCompanyWindow',
+                    title: '$[l:csh_offer_format.offer file format information]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+            function canedit(record, name) {
+                return record.isNew ? 'csh_offer_type_result_grid_tf' : '';
+            }
+            function CSH1090_Submitsuccess(ds){
+                ds.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="export_type_ds" fetchAll="true" loadData="true" model="csh.CSH1090.csh_offer_format_export_type"/>-->
+            <a:dataSet id="export_type_ds" autoQuery="true" fetchAll="true"
+                        queryUrl="$[/request/@context_path]/common/auroraCode/csh_offer_format_export_type/"/>
+            <!--<a:dataSet id="export_separator_ds" fetchAll="true" loadData="true" model="csh.CSH1090.csh_offer_format_export_separator"/>-->
+            <a:dataSet id="export_separator_ds">
+                <a:datas dataSource="cshOfferFormatHdsList/records"/>
+            </a:dataSet>
+            <a:dataSet id="csh_offer_type_query_ds">
+                <a:fields>
+                    <a:field name="formatCode"/>
+                    <a:field name="description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="csh_offer_type_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/offer-format-hds" queryDataSet="csh_offer_type_query_ds" queryUrl="$[/request/@context_path]/csh/offer-format-hds/query" selectable="true" submitUrl="$[/request/@context_path]/csh/offer-format-hds/submit">
+                <a:fields>
+                    <a:field name="formatHdsId"/>
+                    <a:field name="exportSeparatorCode"/>
+                    <a:field name="formatCode" prompt="csh_offer_format.offer_format_code" required="true"/>
+                    <a:field name="description" prompt="csh_offer_format.offer_format_name" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="exportTypeCode"/>
+                    <a:field name="exportTypeDesc" displayField="meaning" options="export_type_ds" prompt="csh_offer_format.export_format" required="true" returnField="exportTypeCode" valueField="value"/>
+                    <a:field name="exportSeparator" displayField="description" options="export_separator_ds" returnField="exportSeparatorCode" valueField="exportSeparator"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="updateFunction"/>
+                    <a:event name="submitsuccess" handler="CSH1090_Submitsuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="csh_offer_type_grid" type="add" width="80"/>
+                <a:gridButton bind="csh_offer_type_grid" type="save" width="80"/>
+                <a:gridButton bind="csh_offer_type_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="csh_offer_type_query_ds" resultTarget="csh_offer_type_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="formatCode" bindTarget="csh_offer_type_query_ds" prompt="csh_offer_format.format_code" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="csh_offer_type_query_ds" prompt="csh_offer_format.format_name"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="csh_offer_type_grid" bindTarget="csh_offer_type_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="formatCode" align="center" editorFunction="canedit" prompt="csh_offer_format.offer_format_code" sortable="true" width="80"/>
+                <a:column name="description" align="center" editor="csh_offer_type_result_grid_name" prompt="csh_offer_format.offer_format_name" width="150"/>
+                <a:column name="exportTypeDesc" editor="csh_offer_type_result_grid_com" prompt="csh_offer_format.export_format"/>
+                <a:column name="exportSeparator" editor="csh_offer_type_result_grid_com" prompt="csh_offer_format.delimiter"/>
+                <a:column name="enabledFlag" editor="csh_offer_type_result_grid_cb" prompt="bgt_budget_item.enabled_flag" width="80"/>
+                <a:column name="typeDetail" align="center" renderer="typeDetailRenderer" width="80"/>
+                <a:column name="formatHdsId" align="center" renderer="assignCompanyRenderer" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="csh_offer_type_result_grid_tf" typeCase="upper"/>
+                <a:textField id="csh_offer_type_result_grid_name"/>
+                <a:checkBox id="csh_offer_type_result_grid_cb"/>
+                <a:comboBox id="csh_offer_type_result_grid_com"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="girdCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

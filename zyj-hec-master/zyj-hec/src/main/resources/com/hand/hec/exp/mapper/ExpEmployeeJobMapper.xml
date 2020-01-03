@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpEmployeeJobMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpEmployeeJob">
+        <result column="EMPLOYEE_JOB_ID" property="employeeJobId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_JOB_CODE" property="employeeJobCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="LEVEL_SERIES_ID" property="levelSeriesId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_JOB_NAME" property="employeeJobName" jdbcType="VARCHAR"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkExpEmpJob" resultMap="BaseResultMap">
+        select ej.* from exp_employee ee,exp_employee_assign ea,exp_employee_job ej
+            where
+            ee.employee_id = #{employeeId}
+            and ee.EMPLOYEE_ID = ea.EMPLOYEE_ID
+            and ea.EMPLOYEE_JOB_ID = ej.EMPLOYEE_JOB_ID
+            and
+            (
+              (
+                #{filtrateMethod} = 'INCLUDE'
+                and (#{controlEmpJobCodeFrom} or ej.EMPLOYEE_JOB_CODE &gt;= #{controlEmpJobCodeFrom})
+                and (#{controlEmpJobCodeTo} or ej.EMPLOYEE_JOB_CODE &lt;= #{controlEmpJobCodeTo})
+              )
+              or
+              (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (#{controlEmpJobCodeFrom} or ej.EMPLOYEE_JOB_CODE &lt; #{controlEmpJobCodeFrom})
+                    or (#{controlEmpJobCodeTo} or ej.EMPLOYEE_JOB_CODE &gt; #{controlEmpJobCodeTo})
+                )
+              )
+            )
+            and ee.ENABLED_FLAG = 'Y'
+            and ea.ENABLED_FLAG = 'Y'
+            and ej.ENABLED_FLAG = 'Y'
+    </select>
+
+    <select id="queryForCb" parameterType="com.hand.hec.exp.dto.ExpEmployeeJob" resultMap="BaseResultMap">
+        SELECT
+            j.*,
+            concat( j.EMPLOYEE_JOB_CODE, '-', t.DESCRIPTION ) EMPLOYEE_JOB_NAME
+        FROM
+            exp_employee_job j
+            LEFT OUTER JOIN exp_employee_job_tl t ON ( j.EMPLOYEE_JOB_ID = t.EMPLOYEE_JOB_ID AND t.LANG = #{request.locale,jdbcType=VARCHAR} )
+        where j.ENABLED_FLAG = 'Y'
+        <if test="magOrgId!=null">
+          and j.MAG_ORG_ID = #{magOrgId}
+        </if>
+    </select>
+
+    <select id="queryEmpJobs" resultMap="BaseResultMap">
+        select
+            ej.EMPLOYEE_JOB_ID,
+            ej.MAG_ORG_ID,
+            ej.EMPLOYEE_JOB_CODE,
+            et.DESCRIPTION,
+            ej.LEVEL_SERIES_ID,
+            ej.ENABLED_FLAG
+        from
+            exp_employee_job ej
+        left join exp_employee_job_tl et
+        on(ej.employee_job_id = et.employee_job_id and et.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        <where>
+            <if test="magOrgId !=null and magOrgId!=''">
+                AND ej.MAG_ORG_ID = #{magOrgId}
+            </if>
+            <if test="employeeJobCode !=null and employeeJobCode!=''">
+                AND ej.EMPLOYEE_JOB_CODE like concat('%',#{employeeJobCode},'%')
+            </if>
+            <if test="description !=null and description!=''">
+                AND ej.DESCRIPTION like concat('%',#{description},'%')
+            </if>
+        </where>
+    </select>
+
+    <select id="getEmployeeJobListForQuery" resultMap="BaseResultMap">
+        SELECT
+            ej.*,
+            ea.position_id
+        FROM
+            exp_employee_job ej
+            LEFT JOIN exp_employee_assign ea ON ej.employee_job_id = ea.employee_job_id
+            LEFT JOIN exp_employee ee ON ea.employee_id = ee.employee_id
+        WHERE
+            ej.mag_org_id = #{request.magOrgId}
+            AND ej.enabled_flag = 'Y'
+            AND ea.enabled_flag = 'Y'
+            AND ee.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR ej.employee_job_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR ej.employee_job_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR ej.employee_job_code &lt;= #{parameterUpperLimit})
+    </select>
+</mapper>

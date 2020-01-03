@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/01/25 15:30:04 $
+    $Revision: 1 $
+    $Purpose: 管理公司定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND1020_fnd_companies_create_link"
+                url="$[/request/@context_path]/fnd/FND1020/fnd_companies_create.screen"/>
+        <a:link id="FND1020_fnd_companies_update_link"
+                url="$[/request/@context_path]/fnd/FND1020/fnd_companies_update.screen"/>
+        <script><![CDATA[
+        function FND1020_queryCompanyLevel() {
+            $au('FND1020_fnd_company_levels_result_ds').query();
+        }
+
+        function FND1020_resetCompanyLevel() {
+            $au('FND1020_fnd_company_levels_query_ds').reset();
+        }
+
+        function FND1020_companyLevelCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'company_level_code_grid_tf';
+            } else {
+                return '';
+            }
+        }
+
+        function FND1020_viewCompanyRenderer(value, record, name) {
+            var companyId = record.get('companyId');
+            var magOrgId = record.get('magOrgId');
+            var companyCode = record.get('companyCode');
+            return '<a href="javascript:FND1020_editCompany(' + companyId + ',' + magOrgId + ')">' + companyCode + '</a>';
+        }
+
+        function FND1020_editCompany(id, magOrgId) {
+
+            new Aurora.Window({
+                id: 'company_edit_window',
+                url: $au('FND1020_fnd_companies_update_link').getUrl() + '?companyId=' + id + '&magOrgId=' + magOrgId,
+                title: '$[l:fnd_company.define]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function FND1020_openCreateCompanyWindow(grid, record, row, index) {
+            if ($au('FND1020_fnd_company_levels_query_ds').validate()) {
+                var magOrgId = $au('FND1020_fnd_company_levels_query_ds').getAt(0).get('magOrgId');
+                var time = "";
+
+                new Aurora.Window({
+                    id: 'FND1020_company_create_window',
+                    url: $au('FND1020_fnd_companies_create_link').getUrl() + '?magOrgId=' + magOrgId+'&standardTimezoneCode=%2B08:00',
+                    title: '$[l:fnd_company.define]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        }
+
+        function FND1020_focus() {
+            $au('FND1020_csh_payment_groups_magOrgList_ds').query();
+        }
+
+        function FND1020_update(ds, record, name, value) {
+            if (name == 'magOrgId') {
+                $au('FND1020_fnd_company_levels_result_ds').query();
+            }
+        }
+
+        function FND1020_BeforeCreate() {
+            if (Ext.isEmpty($au('FND1020_fnd_company_levels_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="languageListDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/FND_LANGUAGE" />
+            <a:dataSet id="sysStandardTimezoneListDs" autoQuery="true" queryUrl="$[/request/@context_path]/sys/standard-timezone/query"/>
+            <a:dataSet id="FND1020_csh_payment_groups_magOrgList_ds" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="currencyListDs" autoQuery="true" loadData="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="companyLevelIdListDs" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd/company-level/query?enabledFlag=Y"/>
+            <a:dataSet id="parentCompanyListDs" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-company/queryFndCompany"/>
+            <a:dataSet id="FND1020_fnd_company_levels_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgName" prompt="exp_mo_req_types.mag_org_id"
+                             defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName"
+                             options="FND1020_csh_payment_groups_magOrgList_ds" required="true" returnField="magOrgId"
+                             valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="companyCode" prompt="fnd_companies.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_name"/>
+                    <a:field name="companyOrgDescribe" placeHolder="fnd_managing_organizations.description_id"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1020_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="FND1020_fnd_company_levels_result_ds" autoPageSize="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/fnd-company/queryFndCompany"
+                       queryDataSet="FND1020_fnd_company_levels_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_name"/>
+                    <a:field name="managingCurrency"/>
+                    <a:field name="managingCurrencyDisplay" prompt="fnd_managing_organization.managing_currency_name"
+                             options="currencyListDs" displayField="currencyName" required="true"
+                             returnField="managingCurrency" valueField="currencyCode"/>
+                    <a:field name="defaultAccEntityName" prompt="fnd_company.default_acc_entity_name"/>
+                    <a:field name="defaultBgtEntityName" prompt="fnd_company.default_bgt_entity_name"/>
+                    <a:field name="companyLevelId"/>
+                    <a:field name="companyLevelIdDisplay" prompt="fnd_company_level.company_level_id_display"
+                             options="companyLevelIdListDs"
+                             displayField="description" returnField="companyLevelId" valueField="companyLevelId"/>
+                    <a:field name="parentCompanyId"/>
+                    <a:field name="parentCompanyIdDisplay" prompt="fnd_company.parent_company_id_display"
+                    options="parentCompanyListDs" displayField="companyShortName" returnField="parentCompanyId" valueField="companyId"/>
+                    <a:field name="startDateActive" prompt="fnd_company.start_date_active"/>
+                    <a:field name="endDateActive" prompt="fnd_company.end_date_active"/>
+                    <a:field name="companyOrgDescribe"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="FND1020_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="FND1020_openCreateCompanyWindow" text="hap_new" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1020_fnd_company_levels_query_ds"
+                         resultTarget="FND1020_fnd_company_levels_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="FND1020_fnd_company_levels_query_ds" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="FND1020_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="companyCode" bindTarget="FND1020_fnd_company_levels_query_ds" typeCase="upper"/>
+                    <a:textField name="companyShortName" bindTarget="FND1020_fnd_company_levels_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1020_fnd_company_levels_grid" bindTarget="FND1020_fnd_company_levels_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="companyCode" align="center" renderer="FND1020_viewCompanyRenderer" width="80"/>
+                <a:column name="companyShortName" align="left" width="150"/>
+                <a:column name="managingCurrencyDisplay" align="center" width="80"/>
+                <a:column name="defaultAccEntityName" align="left" width="150"/>
+                <a:column name="defaultBgtEntityName" align="left" width="150"/>
+                <a:column name="companyLevelIdDisplay" align="center" width="80"/>
+                <a:column name="parentCompanyIdDisplay" align="left" width="80"/>
+                <a:column name="startDateActive" align="center" renderer="Aurora.formatDateTime" width="80"/>
+                <a:column name="endDateActive" align="center" renderer="Aurora.formatDateTime" width="80"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

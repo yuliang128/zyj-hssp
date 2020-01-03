@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndUnitDimAssignMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndUnitDimAssign">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="DIMENSION_ID" property="dimensionId" jdbcType="DECIMAL"/>
+        <result column="DIMENSION_DESC" property="dimensionDesc" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_CODE" property="dimensionCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_DIMENSION_VALUE_ID" property="defaultDimensionValueId" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_DIMENSION_VALUE_DESC" property="defaultDimensionValueDesc" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_DIMENSION_VALUE_CODE" property="defaultDimensionValueCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByUnit" parameterType="com.hand.hec.fnd.dto.FndUnitDimAssign" resultMap="BaseResultMap">
+        select fud.assign_id,
+            fud.unit_id,
+            eou.unit_code,
+            eou.description unit_name,
+            fud.dimension_id,
+            fd.dimension_sequence,
+            fd.dimension_code,
+            fd.description dimension_desc,
+            fud.default_dimension_value_id,
+            fdv.dimension_value_code default_dimension_value_code,
+            fdv.description default_dimension_value_desc
+        from fnd_unit_dim_assign fud,
+             fnd_dimension fd
+            left outer join fnd_dimension_tl fdt on (fd.DIMENSION_ID = fdt.DIMENSION_ID and fdt.LANG =
+            #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),
+            fnd_dimension_value fdv
+            left outer join fnd_dimension_value_tl fdvt on (fdvt.DIMENSION_VALUE_ID = fdv.DIMENSION_VALUE_ID and fdvt.LANG =
+            #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),
+            exp_org_unit eou
+            left outer join exp_org_unit_tl eout on(eou.UNIT_ID = eout.UNIT_ID and eout.LANG =
+            #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        where fd.dimension_id = fud.dimension_id
+        and fud.default_dimension_value_id = fdv.dimension_value_id
+        and eou.unit_id = fud.unit_id
+        <if test="unitId!=null">
+            and eou.UNIT_ID = #{unitId}
+        </if>
+        <if test="assignId!=null">
+            and fud.assign_id = #{assignId}
+        </if>
+    </select>
+
+</mapper>

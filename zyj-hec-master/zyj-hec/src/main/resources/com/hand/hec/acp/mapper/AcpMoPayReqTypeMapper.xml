@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.acp.mapper.AcpMoPayReqTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.acp.dto.AcpMoPayReqType">
+        <result column="MO_PAY_REQ_TYPE_ID" property="moPayReqTypeId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MO_PAY_REQ_TYPE_CODE" property="moPayReqTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="AUTO_APPROVE_FLAG" property="autoApproveFlag" jdbcType="VARCHAR"/>
+        <result column="AUTO_AUDIT_FLAG" property="autoAuditFlag" jdbcType="VARCHAR"/>
+        <result column="BUSINESS_FLAG" property="businessFlag" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_TYPE_CODE" property="paymentTypeCode" jdbcType="VARCHAR"/>
+        <result column="REPORT_NAME" property="reportName" jdbcType="VARCHAR"/>
+        <result column="ICON" property="icon" jdbcType="VARCHAR"/>
+        <result column="CAPTION_HDS_ID" property="captionHdsId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="MO_PAY_REQ_TYPE_NAME" property="moPayReqTypeName" jdbcType="VARCHAR"/>
+        <result column="ICON_FILE_NAME" property="iconFileName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByCompany" resultMap="BaseResultMap">
+        SELECT DISTINCT
+            amt.mo_pay_req_type_id,
+            amt.mo_pay_req_type_code,
+            amtl.DESCRIPTION mo_pay_req_type_name
+        FROM
+            acp_mo_pay_req_type amt
+            LEFT OUTER JOIN acp_mo_pay_req_type_tl amtl ON ( amt.MO_PAY_REQ_TYPE_ID = amtl.MO_PAY_REQ_TYPE_ID AND amtl.LANG = #{request.locale,jdbcType=VARCHAR} )
+            LEFT OUTER JOIN acp_mo_pay_req_tp_asgn_com amac ON ( amt.mo_pay_req_type_id = amac.mo_pay_req_type_id )
+        WHERE
+          amac.company_id = #{companyId}
+            AND amt.enabled_flag = 'Y'
+            AND amac.enabled_flag = 'Y'
+    </select>
+
+    <select id="getAcpMoPayReqTypeList" resultMap="BaseResultMap">
+       SELECT
+            amt.mo_pay_req_type_id,
+            amt.mo_pay_req_type_code,
+            amtl.DESCRIPTION mo_pay_req_type_name,
+            amt.currency_code,
+            (
+        SELECT
+            gct.CURRENCY_NAME
+        FROM
+            gld_currency gc
+            LEFT JOIN gld_currency_tl gct ON gc.CURRENCY_ID = gct.CURRENCY_ID
+            AND gct.LANG = #{request.locale}
+
+        WHERE
+            gc.COUNTRY_CODE = amt.CURRENCY_CODE
+            ) currency_name,
+            (case when amt.icon is null then 'images/4.0/documents/Default.png'
+            else amt.icon end) AS icon_file_name
+        FROM
+            acp_mo_pay_req_type amt
+            LEFT OUTER JOIN acp_mo_pay_req_type_tl amtl ON ( amt.MO_PAY_REQ_TYPE_ID = amtl.MO_PAY_REQ_TYPE_ID AND amtl.LANG = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+            amt.enabled_flag = 'Y'
+            AND EXISTS ( SELECT 1 FROM acp_mo_pay_req_tp_asgn_com amac WHERE amt.mo_pay_req_type_id = amac.mo_pay_req_type_id AND amac.company_id = #{request.companyId}
+            AND amac.enabled_flag = 'Y' )
+            AND EXISTS (
+            SELECT
+                1
+            FROM
+                acp_mo_pay_req_tp_ref_emp_gp cmeg,
+                exp_mo_emp_group eg,
+                exp_mo_emp_group_asgn_com emac,
+                exp_com_emp_group_ref_emp ecre
+            WHERE
+                cmeg.mo_pay_req_type_id = amt.mo_pay_req_type_id
+                AND cmeg.mo_emp_group_id = emac.mo_emp_group_id
+                AND cmeg.enabled_flag = 'Y'
+                AND emac.company_id = #{request.companyId}
+
+                AND emac.enabled_flag = 'Y'
+                AND emac.assign_id = ecre.emp_group_com_assign_id
+                AND ecre.employee_id = #{ employeeId }
+
+                AND ecre.enabled_flag = 'Y'
+                AND eg.mo_emp_group_id = emac.mo_emp_group_id
+                AND eg.enabled_flag = 'Y'
+                AND cmeg.mo_emp_group_id = eg.mo_emp_group_id
+            )
+            AND (
+            SELECT
+                COUNT( 1 )
+            FROM
+                exp_document_authoritY a,
+                exp_employee_assign t,
+                exp_employee_assign t2,
+                exp_org_position p,
+                exp_org_unit u,
+                sys_user su,
+                exp_employee ee
+            WHERE
+                a.doc_category = 'ACP_REQUISITION'
+                AND (
+                    (case when a.granted_position_id is null then t.position_id else a.granted_position_id end) = t.position_id
+                    AND t.enabled_flag = 'Y'
+                    AND t.company_id = a.company_id
+                    AND t.employee_id = ee.employee_id
+                )
+                AND ( (case when a.granted_employee_id is null then ee.employee_id else a.granted_employee_id end) = ee.employee_id )
+                AND ee.employee_id = su.employee_id
+                AND su.user_id = #{request.userId}
+
+                AND t2.employee_id = #{ employeeId }
+
+                AND t2.enabled_flag = 'Y'
+                AND p.enabled_flag = 'Y'
+                AND u.enabled_flag = 'Y'
+                AND p.position_id = t2.position_id
+                AND u.unit_id = p.unit_id
+                AND a.start_date_active &lt;= CURRENT_TIMESTAMP
+            AND ( a.end_date_active IS NULL OR a.end_date_active &gt;= CURRENT_TIMESTAMP )
+            AND ( a.inquire_flag = 'Y' OR a.maintain_flag = 'Y' )
+            AND t2.company_id = a.company_id
+            AND ( ( CASE WHEN a.UNIT_ID IS NULL THEN u.UNIT_ID ELSE a.UNIT_ID END ) = u.unit_id )
+            AND ( ( CASE WHEN a.POSITION_ID IS NULL THEN p.POSITION_ID ELSE a.POSITION_ID END ) = p.position_id )
+            AND ( ( CASE WHEN a.EMPLOYEE_ID IS NULL THEN t2.EMPLOYEE_ID ELSE a.EMPLOYEE_ID END ) = t2.employee_id )
+            AND a.doc_type_id IS NOT NULL
+        ) = 0 UNION
+        (
+            SELECT
+                amt.mo_pay_req_type_id,
+                amt.mo_pay_req_type_code,
+                amt.description mo_pay_req_type_name,
+                amt.currency_code,
+                (
+                SELECT
+                    gct.CURRENCY_NAME
+                FROM
+                    gld_currency gc
+                    LEFT JOIN gld_currency_tl gct ON gc.CURRENCY_ID = gct.CURRENCY_ID
+                    AND gct.LANG = #{request.locale}
+
+                WHERE
+                    gc.CURRENCY_CODE = amt.CURRENCY_CODE
+                ) currency_name,
+                (case when amt.icon is null then 'images/4.0/documents/Default.png'
+            else amt.icon end) AS icon_file_name
+            FROM
+                acp_mo_pay_req_type amt
+                LEFT OUTER JOIN acp_mo_pay_req_type_tl amtl ON ( amt.MO_PAY_REQ_TYPE_ID = amtl.MO_PAY_REQ_TYPE_ID AND amtl.LANG = #{request.locale,jdbcType=VARCHAR} )
+            WHERE
+                amt.enabled_flag = 'Y'
+                AND EXISTS ( SELECT 1 FROM acp_mo_pay_req_tp_asgn_com amac WHERE amt.mo_pay_req_type_id = amac.mo_pay_req_type_id AND amac.company_id = #{request.companyId}
+                AND amac.enabled_flag = 'Y' )
+                AND EXISTS (
+                SELECT
+                    1
+                FROM
+                    acp_mo_pay_req_tp_ref_emp_gp cmeg,
+                    exp_mo_emp_group eg,
+                    exp_mo_emp_group_asgn_com emac,
+                    exp_com_emp_group_ref_emp ecre
+                WHERE
+                    cmeg.mo_pay_req_type_id = amt.mo_pay_req_type_id
+                    AND cmeg.mo_emp_group_id = emac.mo_emp_group_id
+                    AND cmeg.enabled_flag = 'Y'
+                    AND emac.company_id = #{request.companyId}
+
+                    AND emac.enabled_flag = 'Y'
+                    AND emac.assign_id = ecre.emp_group_com_assign_id
+                    AND ecre.employee_id = #{employeeId}
+
+                    AND ecre.enabled_flag = 'Y'
+                    AND eg.mo_emp_group_id = emac.mo_emp_group_id
+                    AND eg.enabled_flag = 'Y'
+                    AND cmeg.mo_emp_group_id = eg.mo_emp_group_id
+                )
+                AND EXISTS (
+                SELECT
+                    1
+                FROM
+                    exp_document_authority a,
+                    exp_employee_assign t,
+                    exp_employee_assign t2,
+                    exp_org_position p,
+                    exp_org_unit u,
+                    sys_user su,
+                    exp_employee ee
+                WHERE
+                    a.doc_category = 'ACP_REQUISITION'
+                    AND (
+                        (case when a.granted_position_id is null then t.position_id else a.granted_position_id end) = t.position_id
+                        AND t.enabled_flag = 'Y'
+                        AND t.company_id = a.company_id
+                        AND t.employee_id = ee.employee_id
+                    )
+                    AND ( (case when a.granted_employee_id is null then ee.employee_id else a.granted_employee_id end) = ee.employee_id )
+                    AND ee.employee_id = su.employee_id
+                    AND su.user_id = #{request.userId}
+
+                    AND t2.employee_id = #{employeeId}
+
+                    AND t2.enabled_flag = 'Y'
+                    AND p.enabled_flag = 'Y'
+                    AND u.enabled_flag = 'Y'
+                    AND p.position_id = t2.position_id
+                    AND u.unit_id = p.unit_id
+                    AND a.start_date_active &lt;= CURRENT_TIMESTAMP
+                AND ( a.end_date_active IS NULL OR a.end_date_active &gt;= CURRENT_TIMESTAMP )
+                AND ( a.inquire_flag = 'Y' OR a.maintain_flag = 'Y' )
+                AND t2.company_id = a.company_id
+                AND ( ( CASE WHEN a.UNIT_ID IS NULL THEN u.UNIT_ID ELSE a.UNIT_ID END ) = u.unit_id )
+                AND ( ( CASE WHEN a.POSITION_ID IS NULL THEN p.POSITION_ID ELSE a.POSITION_ID END ) = p.position_id )
+                AND ( ( CASE WHEN a.EMPLOYEE_ID IS NULL THEN t2.EMPLOYEE_ID ELSE a.EMPLOYEE_ID END ) = t2.employee_id )
+                AND a.doc_type_id = amt.mo_pay_req_type_id
+            )
+        )
+    </select>
+
+    <!-- Modify Tagin/2019.04.30 根据付款单头ID/付款申请单类型ID获取付款单自审核标志 -->
+    <select id="getAuitFlag" parameterType="java.lang.Long" resultType="java.lang.String">
+        select
+        amrt.auto_audit_flag
+        from
+        acp_mo_pay_req_type amrt
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="moPayReqTypeId != null and moPayReqTypeId != ''">
+                and amrt.mo_pay_req_type_id = #{moPayReqTypeId}
+            </if>
+            <if test="requisitionHdsId != null and requisitionHdsId != ''">
+                and exists ( select
+                1
+                from
+                acp_requisition_hd arh
+                where
+                arh.requisition_hds_id = #{requisitionHdsId}
+                and arh.mo_pay_req_type_id = amrt.mo_pay_req_type_id)
+            </if>
+        </trim>
+    </select>
+</mapper>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong
+    $Date: 2017/04/06 11:47:59 $
+    $Revision: 1.0
+    $Purpose: 会计规则明细-科目段明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <!--<a:model-query defaultWhereClause="t1.ruleId=$[/parameter/@ruleId]" model="gld.GLD1020.gld_sob_rules_details" rootPath="rule_details_info"/>-->
+
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            function GLD1020_backRuleSegmentsFun() {
+                $au('GLD1020_gld_sob_rule_segments_window').close();
+                $au('GLD1020_gld_sob_rules_result_ds').query();
+            }
+            
+            function GLD1020_onRuleSegmentsSubmitSuccessFun() {
+                $au('GLD1020_rule_segments_result_ds').query();
+            }
+            
+            function GLD1020_ruleSegmentsEditorFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'accountSegmentCode') {
+                        return 'GLD1020_rule_segments_lov';
+                    }
+                }
+                return '';
+            }
+            
+            function GLD1020_onRuleSegmentsUpdateFun(dataSet, record, name, value, oldvalue) {
+                if (name == 'sourceCode' && value == 'DEFAULT') {
+                    record.getField('defaultValue').setRequired(true);
+                    record.getField('defaultValue').setReadOnly(false);
+                }
+                if (name == 'sourceCode' && value != 'DEFAULT') {
+                    record.set('defaultValue', '');
+                    record.getField('defaultValue').setRequired(false);
+                    record.getField('defaultValue').setReadOnly(true);
+                }
+            }
+            
+            function GLD1020_onRuleSegmentsLoadingFun() {
+                var records = $au('GLD1020_rule_segments_result_ds').getAll();
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i].get('sourceCode') == 'DEFAULT') {
+                        records[i].getField('defaultValue').setRequired(true);
+                        records[i].getField('defaultValue').setReadOnly(false);
+                    }
+                    if (records[i].get('sourceCode') != 'DEFAULT') {
+                        records[i].set('defaultValue', '');
+                        records[i].getField('defaultValue').setRequired(false);
+                        records[i].getField('defaultValue').setReadOnly(true);
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD1020_rule_segment_source_code_ds" autoQuery="true" fetchAll="true"  queryUrl="$[/request/@context_path]/common/auroraCode/GLD_SOB_RULE_SEGMENT_SOURCE/"/>
+<!--            <a:dataSet id="GLD1020_rule_details_segment_info_ds" autoCreate="true" model="gld.GLD1020.gld_sob_rules_details">
+                <a:fields>
+                    <a:field name="ruleCode" defaultValue="$[/model/rule_details_info/record/@ruleCode]"/>
+                    <a:field name="ruleName" defaultValue="$[/model/rule_details_info/record/@ruleName]"/>
+                </a:fields>
+            </a:dataSet>-->
+
+            <!--<a:dataSet id="GLD1020_rule_segments_result_ds" autoPageSize="true" autoQuery="true" model="gld.GLD1020.gld_sob_rule_segments" queryUrl="$[/request/@context_path]/autocrud/gld.GLD1020.gld_sob_rule_segments/query?ruleId=$[/parameter/@ruleId]" selectable="true">-->
+           <!---->
+
+            <a:dataSet id="GLD1020_rule_segments_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/sob-rule-segment" queryUrl="$[/request/@context_path]/gld/sob-rule-segment/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="ruleSegmentId"/>
+                    <!--<a:field name="accountSegmentCode" lovAutoQuery="true" lovGridHeight="320" lovHeight="450" lovService="gld.GLD1020.gld_sob_segments?setOfBookId=$[/parameter/@setOfBookId]&amp;ruleId=$[/parameter/@ruleId]" lovWidth="500" prompt="gld_sob_segment.segment_code" required="true" title="gld_sob_segments.segment_choice">-->
+                        <!--<a:mapping>-->
+                            <!--<a:map from="segmentCode" to="accountSegmentCode"/>-->
+                            <!--<a:map from="segmentId" to="segmentId"/>-->
+                            <!--<a:map from="segmentName" to="accountSegmentName"/>-->
+                        <!--</a:mapping>-->
+                    <!--</a:field>-->
+
+                    <a:field name="segmentId"/>
+                    <a:field name="accountSegmentName" prompt="gld_sob_segment.segment_name"/>
+                    <a:field name="accountSegmentCode" lovCode="LOV_GLD_SOB_RULE_REF_SEGMENT?setOfBookId=$[/parameter/@setOfBookId]&amp;ruleId=$[/parameter/@ruleId]"  required="true" prompt="gld_sob_segment.segment_code" title="gld_sob_segment.segment_choice">
+                        <a:mapping>
+                            <a:map from="segmentId" to="segmentId"/>
+                            <a:map from="segmentCode" to="accountSegmentCode"/>
+                            <a:map from="segmentName" to="accountSegmentName"/>
+                        </a:mapping>
+                    </a:field>
+
+
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                    <a:field name="requiredFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="parameterconfig.required"/>
+                    <a:field name="sourceCodeDisplay" displayField="meaning" options="GLD1020_rule_segment_source_code_ds" prompt="gld_sob_rule_segment.source_code" required="true" returnField="sourceCode" valueField="value"/>
+                    <a:field name="sourceCode"/>
+                    <a:field name="defaultValue" prompt="parameterconfig.defaultvalue"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD1020_onRuleSegmentsSubmitSuccessFun"/>
+                    <a:event name="update" handler="GLD1020_onRuleSegmentsUpdateFun"/>
+                    <a:event name="load" handler="GLD1020_onRuleSegmentsLoadingFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD1020_rule_segments_form" column="2" title="gld.rule_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD1020_rule_segments_grid" type="add" width="80"/>
+                    <a:gridButton bind="GLD1020_rule_segments_grid" type="save" width="80"/>
+                    <a:gridButton bind="GLD1020_rule_segments_grid" type="delete" width="80"/>
+                    <a:gridButton click="GLD1020_backRuleSegmentsFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="GLD1020_gld_sob_rules_result_ds"  readOnly="true"  prompt="gld_sob_rule_group.rule_code"/>
+                <a:textField name="ruleName" bindTarget="GLD1020_gld_sob_rules_result_ds" readOnly="true" prompt="gld_sob_rule_group.rule_name"/>
+            </a:form>
+            <a:grid id="GLD1020_rule_segments_grid" bindTarget="GLD1020_rule_segments_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountSegmentCode" align="center" editor="GLD1020_rule_segments_lov" editorFunction="GLD1020_ruleSegmentsEditorFun" width="80"/>
+                    <a:column name="accountSegmentName" align="left" width="150"/>
+                    <a:column name="enabledFlag" align="center" editor="GL1020_rule_segments_cx" width="80"/>
+                    <a:column name="requiredFlag" align="center" editor="GL1020_rule_segments_cx" width="80"/>
+                    <a:column name="sourceCodeDisplay" align="center" editor="GLD1020_rule_segments_cb" width="80"/>
+                    <a:column name="defaultValue" align="left" editor="GLD1020_rule_segments_tf" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="GLD1020_rule_segments_tf"/>
+                    <a:lov id="GLD1020_rule_segments_lov"/>
+                    <a:checkBox id="GL1020_rule_segments_cx"/>
+                    <a:comboBox id="GLD1020_rule_segments_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-16 14:01:47
+    $Revision: 1.0  
+    $Purpose: 核算主体定义-批量分配预算实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function GLD2020_BatchAssignBeBack() {
+                var id = this.__host.id;
+                $au(id).close();
+            }
+            
+            function GLD2020_BatchAssignBeFun() {
+                var records = $au('GLD2020_bgt_entity_ds').getSelected();
+                if(records.length == 0){
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for(var i =0;i<records.length;i++){
+                    var record = $au('GLD2020_acc_ref_be_ds').create();
+                    record.set('accEntityId',$[/parameter/@accEntityId]);
+                    record.set('bgtEntityId',records[i].get('bgtEntityId'));
+                    record.set('defaultFlag','N');
+                    record.set('enabledFlag','Y');
+                }
+                $au('GLD2020_acc_ref_be_ds').submit();
+                /*var bgt_entities_datas = $au('GLD2020_bgt_entity_ds').getJsonData(true);
+                if (bgt_entities_datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:hap.tip.noselect]', null, 200);
+                    return;
+                }
+                for (var i = 0;i < bgt_entities_datas.length;i++) {
+                    bgt_entities_datas[i]['entity_data'] = [{
+                        accEntityId: '$[/parameter/@accEntityId]'
+                    }];
+                }
+                Aurora.request({
+                    url: $au('GLD2020_entities_batch_asgn_accunt_link').getUrl(),
+                    para: bgt_entities_datas,
+                    success: GLD2020_BatchAssignBeBack,
+                    scope: this
+                });*/
+            }
+
+            function GLD2020_onAccBeSubmitSuccessFun(){
+                $au('GLD2020_batch_assign_be_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_bgt_entity_ds" autoCount="true" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/gld/acc-entity-ref-be/batchSelect?accEntityId=$[/parameter/@accEntityId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityCode" prompt="bgt_entity.entity_code"/>
+                    <a:field name="bgtEntityName" prompt="bgt_entity.description"/>
+                    <a:field name="defaultFlag" defaultValue="N"/>
+                    <a:field name="enabledFlag" defaultValue="Y"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_onAccBeSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_acc_ref_be_ds" autoCount="true" autoPageSize="true" autoQuery="true" submitUrl="$[/request/@context_path]/gld/acc-entity-ref-be/submit" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityCode"/>
+                    <a:field name="bgtEntityName"/>
+                    <a:field name="defaultFlag"/>
+                    <a:field name="enabledFlag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_onAccBeSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="gld_accounting_entity.acc_entity_message">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="GLD2020_BatchAssignBeFun" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="GLD2020_BatchAssignBeBack" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_code" readOnly="true"/>
+                <a:textField name="accEntityName" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="GLD2020_bgt_entity_grid" bindTarget="GLD2020_bgt_entity_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="bgtEntityCode" align="center" width="120"/>
+                    <a:column name="bgtEntityName" align="left" width="120"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

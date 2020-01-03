@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.fnd.mapper.FndCompanyRefAccBeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.fnd.dto.FndCompanyRefAccBe">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="ACC_REF_ID" property="accRefId" jdbcType="DECIMAL"/>
+        <result column="BGT_ENTITY_ID" property="bgtEntityId" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="bgt_entity_code" property="bgtEntityCode" jdbcType="VARCHAR"/>
+        <result column="bgt_entity_name" property="bgtEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <resultMap id="BgtEntity" type="com.hand.hap.fnd.dto.FndCompanyRefAccBe">
+        <result column="BGT_ENTITY_ID" property="bgtEntityId" jdbcType="DECIMAL"/>
+        <result column="bgt_entity_code" property="bgtEntityCode" jdbcType="VARCHAR"/>
+        <result column="bgt_entity_name" property="bgtEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryBgtEntity" resultMap="BgtEntity" parameterType="com.hand.hap.fnd.dto.FndCompanyRefAccBe">
+    SELECT
+	bev.entity_id bgt_entity_id,
+	bev.entity_code bgt_entity_code,
+	bt.description bgt_entity_name
+    FROM
+	bgt_entity bev
+	LEFT OUTER JOIN bgt_entity_tl bt ON (
+	bev.entity_id = bt.entity_id
+	AND bt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+    WHERE
+	EXISTS ( SELECT 1 FROM fnd_mag_org_ref_bgt_org a WHERE a.mag_org_id = #{magOrgId} AND
+	a.bgt_org_id = bev.bgt_org_id AND a.enabled_flag = 'Y' )
+	AND bev.enabled_flag = 'Y'
+	AND bev.entity_type = 'details'
+	AND NOT EXISTS ( SELECT 1 FROM fnd_company_ref_acc_be fab WHERE bev.ENTITY_ID = fab.BGT_ENTITY_ID AND fab.acc_ref_id = #{accRefId}
+	)
+    ORDER BY
+    bev.entity_code
+    </select>
+    <select id="queryFndCompanyRefAccBe" resultMap="BaseResultMap"
+            parameterType="com.hand.hap.fnd.dto.FndCompanyRefAccBe">
+        select REF_ID from fnd_company_ref_acc_be where ACC_REF_ID = #{accRefId} and BGT_ENTITY_ID = #{bgtEntityId}
+    </select>
+    <update id="setDefaultFlagN" parameterType="java.lang.Long">
+         update fnd_company_ref_acc_be set  DEFAULT_FLAG = 'N',ENABLED_FLAG = 'N'  where ACC_REF_ID = #{accRefId} and DEFAULT_FLAG = 'Y'
+    </update>
+    <select id="queryCompanyAccRefBgtByAccRefId" parameterType="com.hand.hap.fnd.dto.FndCompanyRefAccBe"
+            resultMap="BaseResultMap">
+        SELECT
+        fb.REF_ID,
+        fb.ACC_REF_ID,
+        fb.BGT_ENTITY_ID,
+        b.ENTITY_CODE bgt_entity_code,
+        bt.DESCRIPTION bgt_entity_name,
+        fb.DEFAULT_FLAG,
+        fb.ENABLED_FLAG
+        FROM
+        fnd_company_ref_acc_be fb
+        LEFT JOIN bgt_entity b
+        LEFT JOIN bgt_entity_tl bt ON ( b.ENTITY_ID = bt.ENTITY_ID AND bt.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( fb.BGT_ENTITY_ID = b.ENTITY_ID )
+        <where>
+            <if test="refId != null">
+                fb.REF_ID = #{refId}
+            </if>
+            <if test="accRefId != null">
+                and fb.ACC_REF_ID = #{accRefId}
+            </if>
+            <if test="bgtEntityId != null">
+                and fb.BGT_ENTITY_ID = #{bgtEntityId}
+            </if>
+            <if test="defaultFlag != null">
+                and fb.DEFAULT_FLAG = #{defaultFlag}
+            </if>
+            <if test="enabledFlag != null">
+                and fb.ENABLED_FLAG = #{enabledFlag}
+            </if>
+        </where>
+        order by
+        fb.REF_ID
+
+    </select>
+    <select id="getBgtEntityByComAndAcc" resultType="com.hand.hap.fnd.dto.FndCompanyRefAccBe">
+        select b.bgt_entity_id,
+               (select bet.DESCRIPTION from bgt_entity be left join bgt_entity_tl bet on be.ENTITY_ID = bet.ENTITY_ID and bet.LANG = #{request.locale} where be.ENTITY_ID = b.BGT_ENTITY_ID) bgt_entity_name
+          from fnd_company_ref_acc_be b
+         where b.default_flag = 'Y'
+               and b.enabled_flag = 'Y'
+               and exists (select 1
+                  from fnd_company_ref_acc_entity c
+                 where c.ref_id = b.acc_ref_id
+                       and c.company_id = #{companyId}
+                       and c.acc_entity_id = #{accEntityId}
+                       and c.enabled_flag = 'Y'
+                       and c.default_flag = 'Y')
+    </select>
+
+</mapper>

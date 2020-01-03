@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-04-164 下午03:01:44  
+    $Revision: 1.0  
+    $Purpose: 管理组织级员工组分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP2410_exp_mo_assign_companies_batch_link"
+                url="$[/request/@context_path]/exp/mo-emp-group-asgn-com/insertCompany"/>
+        <script><![CDATA[
+        function EXP2410_saveAssignComBatchFun() {
+            var companyRecordsData = $au('EXP2410_exp_mo_emp_group_companies_ds').getJsonData(true);
+            var groupRecordsData = $au('EXP2410_exp_mo_groups_result_ds').getJsonData(true);
+            var data = new Array(companyRecordsData.length * groupRecordsData.length);
+            if (companyRecordsData.length == 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            var k = 0;
+            console.log(companyRecordsData)
+            for (var i = 0; i < groupRecordsData.length; i++){
+                for (var j = 0; j < companyRecordsData.length; j++){
+                    data[k] = {};
+                    data[k]["companyId"] = companyRecordsData[j]["companyId"];
+                    data[k]["moEmpGroupId"] = groupRecordsData[i]["moEmpGroupId"];
+                    data[k]["__status"] = "add";
+                    data[k]["enabledFlag"] = "Y";
+                    k++;
+                }
+            }
+
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('EXP2410_exp_mo_assign_companies_batch_link').getUrl(),
+                para: data,
+                success: EXP2410_AssignComBatchReturnFun,
+                scope: this
+            });
+        }
+
+        function EXP2410_AssignComBatchReturnFun() {
+            $au('EXP2410_exp_mo_emp_group_com_ass_batch_window').close();
+            $au('EXP2410_exp_mo_groups_result_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2410_exp_mo_emp_group_companies_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-emp-group-asgn-com/queryAllCompanyInformation?magOrgId=$[/parameter/@magOrgId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="exp_mo_employee_group.batch_disp_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="EXP2410_saveAssignComBatchFun" text="HEC_ASSIGN" width="80"/>
+                    <a:gridButton click="EXP2410_AssignComBatchReturnFun" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="EXP2410_exp_mo_groups_query_ds"
+                             prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="EXP2410_exp_mo_groups_query_ds"
+                             prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP2410_exp_mo_emp_group_companies_grid" Width="1010"
+                    bindTarget="EXP2410_exp_mo_emp_group_companies_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode"   width="150"/>
+                    <a:column name="companyShortName"  width="250"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

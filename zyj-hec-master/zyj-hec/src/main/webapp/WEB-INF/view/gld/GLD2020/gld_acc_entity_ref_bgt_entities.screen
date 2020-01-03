@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhiu
+    $Date: 2019-01-16 16:26:31
+    $Revision: 1.0
+    $Purpose: 核算主体定义-预算实体分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:view>
+        <a:link id="GLD2020_batch_assign_be_link" url="$[/request/@context_path]/gld/GLD2020/gld_accounting_entities_batch_assign_be.screen"/>
+        <script><![CDATA[
+            function GLD2020_AeRefBeBack() {
+                var id = this.__host.id;
+                $au(id).close();
+            } 
+            
+            function GLD2020_AeRefBeUpdate(dataSet, record, name, value, oldvalue) {
+                if (name == 'defaultFlag') {
+                    if (value == 'Y' && record.get('enabledFlag') == 'N') {
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:enabled_default_bgt_entity]', null, 300, 150);
+                        record.set('defaultFlag','N');
+                        return;
+                    }
+                    var records = dataSet.getAll();
+                    var count = 0;
+                    for(var i = 0;i<records.length;i++){
+                        if('Y' == records[i].get('defaultFlag')){
+                            count = count+1;
+                        }
+                    }
+                    if(count == 0 && value == 'N'){
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld_acc_entity_ref_be.atleast_one_default]', null, 300, 150);
+                        record.set('enabledFlag','Y');
+                        record.set('defaultFlag','Y');
+                        return;
+                    }
+                    if(count > 1 && value == 'Y'){
+                        var records = dataSet.getAll();
+                        for(var i = 0;i<records.length;i++){
+                            if(records[i].get('bgtEntityId')!=record.get('bgtEntityId')){
+                                records[i].set('defaultFlag','N');
+                            }
+                        }
+                        return;
+                    }
+
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+            }
+            
+            function GLD2020_BatchAssignBe() {
+                var accEntityId = '$[/parameter/@accEntityId]';
+                new Aurora.Window({
+                    id: 'GLD2020_batch_assign_be_window',
+                    url: $au('GLD2020_batch_assign_be_link').getUrl() + '?accEntityId=' + accEntityId,
+                    title: '$[l:bgt_entity_batch_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close',function(){
+                    $au('GLD2020_acc_entity_ref_be_ds').query();
+                });
+            }
+            function GLD2020_AccRefBeSave(){
+                if (!$au('GLD2020_acc_entity_ref_be_ds').validate()) {
+                    return;
+                }
+                $au('GLD2020_acc_entity_ds').submit();
+            }
+
+            function GLD2020_submit() {
+                var ds = $au('GLD2020_acc_entity_ref_be_ds');
+                var records = ds.getAll();
+                var flag = 0;
+                for(var i = 0;i<records.length;i++){
+                    if('Y' == records[i].get('defaultFlag')){
+                        //如果保存时存在默认标志，则flag置为1
+                        flag = 1;
+                    }
+                }
+                if(0 == flag){
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:atleast_one_default_org]', null, 250, 100);
+                    return;
+                }
+                ds.submit();
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_acc_entity_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_acc_entity_ref_be_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/acc-entity-ref-be" queryUrl="$[/request/@context_path]/gld/acc-entity-ref-be/query?accEntityId=$[/parameter/@accEntityId]" selectable="true"
+                       submitUrl="$[/request/@context_path]/gld/acc-entity-ref-be/submit">
+                <a:fields>
+                    <a:field name="ref_id"/>
+                    <a:field name="accEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityCode" lovCode="LOV_ACC_ASGN_BGT?accEntityId=$[/parameter/@accEntityId]" prompt="bgt_entity.entity_code" required="true" title="bgt_entity.description">
+                        <a:mapping>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                            <a:map from="entityCode" to="bgtEntityCode"/>
+                            <a:map from="description" to="bgtEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtEntityName" prompt="bgt_entity.description"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" prompt="gld_acc_entity_ref_be.default_flag" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="gld_acc_entity_ref_be.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD2020_AeRefBeUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD_info_fs" column="2" title="gld_accounting_entity.acc_entity_message" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD2020_acc_entity_ref_be_grid" type="add" width="80"/>
+                    <a:gridButton click="GLD2020_submit" text="hap.save" width="80"/>
+                    <a:gridButton click="GLD2020_BatchAssignBe" text="hec_batch_assign" width="80"/>
+                    <a:gridButton click="GLD2020_AeRefBeBack" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_code" readOnly="true"/>
+                <a:textField name="accEntityName" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="GLD2020_acc_entity_ref_be_grid" bindTarget="GLD2020_acc_entity_ref_be_ds" marginHeight="200" navBar="true" width="1000">
+                <a:columns>
+                    <a:column name="bgtEntityCode" align="center" editor="GLD2020_acc_entity_ref_Lov" width="120"/>
+                    <a:column name="bgtEntityName" align="left" width="200"/>
+                    <a:column name="defaultFlag" editor="GLD2020_acc_entity_ref_Ck"/>
+                    <a:column name="enabledFlag" editor="GLD2020_acc_entity_ref_Ck"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD2020_acc_entity_ref_Lov"/>
+                    <a:checkBox id="GLD2020_acc_entity_ref_Ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

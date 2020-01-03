@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-02-28 13:23:08
+    $Revision: 1.0  
+    $Purpose: 付款批规则定义-生成规则
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1095_csh_payment_batch_rules_detail_detail_link" url="$[/request/@context_path]/csh/CSH1095/csh_pay_batch_rule_dtl.screen"/>
+        <script><![CDATA[
+            function CSH1095_paymentRuleLnsEditorFunc(record, name) {
+                if (record.isNew) {
+                    return 'CSH1095_paymentRuleLns_Text_upper';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH1095_TypeCodeEditorFunc(record, name) {
+                if (record.isNew) {
+                    return 'CSH1095_paymentRuleLns_com';
+                } else {
+                    return '';
+                }
+            }
+            //add lcy 2018/1/2 15:25:34 调整数据update时函数、明细字段的editor状态
+            function CSH1095_paymentRuleLns_custom(record, name) {
+                if (record.get('typeCode') == '10') {
+                    record.getField('customFunction').setReadOnly(true);
+                    record.getField('ruleDetail').setReadOnly(false);
+                    record.getField('customFunction').setRequired(false);
+                }
+                return 'CSH1095_paymentRuleLns_Text';
+            }
+            
+            //明细
+            function CSH1095_paymentRuleLnsRuleDetailFunc(value, record, name) {
+                var ruleId = record.get('ruleLnsId');
+                if (!record.isNew) {
+                    if (record.get('typeCode') == '10') {
+                        record.getField('customFunction').setReadOnly(true);
+                        record.getField('ruleDetail').setReadOnly(false);
+                        record.getField('customFunction').setRequired(false);
+                        return '<a href="javascript:CSH1095_OpenDetail(' + ruleId + ')">' + '$[l:hap.details]' + '</a>';
+            
+                    } else {
+                        return '';
+                    }
+                }
+            }
+            
+            function CSH1095_OpenDetail(id) {
+                url = $au('CSH1095_csh_payment_batch_rules_detail_detail_link').getUrl() + '?ruleLnsId=' + id;
+                new Aurora.Window({
+                    id: 'CSH1095_csh_payment_batch_rules_detail_detail_window',
+                    url: url,
+                    title: '$[l:csh_payment_batch_rule.detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1095_paymentRuleLnsBack() {
+                $au('CSH1095_csh_payment_batch_rules_details_window').close();
+            }
+            
+            function CSH1095_LnsSubmit() {
+            
+                $au('CSH1095_paymentRuleLnsResult_ds').query();
+            }
+            
+            function CSH1095_LnsUpdate(ds, record, name, value, oldValue) {
+                if (record.isNew) {
+                    if (name == 'typeCode') {
+                        var typeCode = value;
+                        if (typeCode == '10') {
+                            record.getField('customFunction').setReadOnly(true);
+                             record.getField('ruleDetail').setReadOnly(false);
+                            record.getField('customFunction').setRequired(false);
+            
+                        } else if (typeCode == '20') {
+                            record.getField('ruleDetail').setReadOnly(true);
+                            record.getField('customFunction').setReadOnly(false);
+                            record.getField('customFunction').setRequired(true);
+                        }
+                    }
+                }
+            }
+            
+            function dateValidator(record, name, value) { //日期校验方法
+                debugger;
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var dateFrom = record.get('startDateActive');
+                    var dateTo = record.get('endDateActive');
+                    if ( !! dateTo) {
+                        if (!compareDate(dateFrom, dateTo)) {
+                            return '$[l:time_error]'; //校验不通过返回字符串
+                        }
+                    }
+                    return true; //校验通过返回true
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start > end ) {
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="type_code_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BGT_STRATEGY_TYPE/"/>
+            <a:dataSet id="CSH1095_paymentRuleLnsResult_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-batch-rule-ln" queryUrl="$[/request/@context_path]/csh/payment-batch-rule-ln/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="ruleLnsId"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                    <a:field name="ruleCode" prompt="csh_pay_batch_rule_ln.detail_code" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto" dtoId="ruleLnsId" prompt="csh_pay_batch_rule_ln.detaile_name" required="true"/>
+                    <a:field name="typeCode"/>
+                    <a:field name="typeCodeName" displayField="meaning" options="type_code_ds" prompt="sys_function.type" required="true" returnField="typeCode" valueField="value"/>
+                    <a:field name="customFunction" prompt="csh_pay_batch_rule_ln.custom_function" required="true"/>
+                    <a:field name="startDateActive" datatype="date" prompt="csh_pay_batch_rule_ln.date_from" required="true" validator="dateValidator"/>
+                    <a:field name="endDateActive" datatype="date" prompt="csh_pay_batch_rule_ln.date_to" validator="dateValidator"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1095_LnsSubmit"/>
+                    <a:event name="update" handler="CSH1095_LnsUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1095_paymentRuleLns_form" column="2" labelWidth="100" title="csh_payment_batch_rule.generation_rule_detail" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1095_paymentRuleLns_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1095_paymentRuleLns_grid" type="save" width="80"/>
+                    <a:toolbarButton click="CSH1095_paymentRuleLnsBack" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" prompt="csh_payment_batch_rule.rule_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" prompt="csh_payment_batch_rule.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1095_paymentRuleLns_grid" bindTarget="CSH1095_paymentRuleLnsResult_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="ruleCode" align="center" editorFunction="CSH1095_paymentRuleLnsEditorFunc" wsidth="120"/>
+                    <a:column name="description" editor="CSH1095_paymentRuleLns_tledit" width="200"/>
+                    <a:column name="typeCodeName" align="center" editorFunction="CSH1095_TypeCodeEditorFunc" width="120"/>
+                    <a:column name="customFunction" align="center" editorFunction="CSH1095_paymentRuleLns_custom" width="120"/>
+                    <a:column name="startDateActive" align="center" editor="CSH1095_paymentRuleLns_Date" renderer="Aurora.formatDate" width="120"/>
+                    <a:column name="endDateActive" align="center" editor="CSH1095_paymentRuleLns_Date" renderer="Aurora.formatDate" width="120"/>
+                    <a:column name="ruleDetail" align="center" renderer="CSH1095_paymentRuleLnsRuleDetailFunc" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:tledit id="CSH1095_paymentRuleLns_tledit"/>
+                    <a:comboBox id="CSH1095_paymentRuleLns_com"/>
+                    <a:textField id="CSH1095_paymentRuleLns_Text_upper" typeCase="upper"/>
+                    <a:textField id="CSH1095_paymentRuleLns_Text"/>
+                    <a:datePicker id="CSH1095_paymentRuleLns_Date"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

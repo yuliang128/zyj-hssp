@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-10-18 下午3:39:12  
+    $Revision: 1.0  
+    $Purpose: 还款申请单主页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query model="hec_util.get_current_date_and_period" rootPath="current_date_and_period"/>
+        <a:model-query model="gl.gl_segment_description" rootPath="segment_descs"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH7040_get_period_name_link" model="hec_util.get_period_name" modelaction="query"/>
+        <a:link id="CSH7040_repaymentRegisterAccountingDistsLink"
+                url="$[/request/@context_path]/csh/CSH7040/csh_repayment_register_view_dists_maintain.screen"/>
+        <a:link id="CSH7040_repaymentRegisterAccountingConfirmLink"
+                url="$[/request/@context_path]/csh/repayment-register/accounting/confirm"/>
+        <a:link id="CSH7040_repaymentRegisterAccountingRejectLink"
+                url="$[/request/@context_path]/csh/repayment-register/accounting/reject"/>
+        <a:link id="CSH7040_repaymentRegisterAccountingHistoryLink"
+                url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <a:link id="CSH7040_repaymentRegisterAccountingFileLink"
+                url="$[/request/@context_path]/app/APP2030/app_uploadFile.screen"/>
+        <script><![CDATA[
+        /**
+         * @return {string}
+         */
+        function CSH7040_assignDistributes(value, record, name) {
+            return '<a href="javascript:CSH7040_openDistMaintainWindow(' + record.get('registerLnsId') + ')">$[l:distribute_payment]</a>';
+        }
+
+        function CSH7040_openDistMaintainWindow(id) {
+            new Aurora.Window({
+                id: 'CSH7040_repaymentRegisterDists_maintain_window',
+                url: $au('CSH7040_repaymentRegisterAccountingDistsLink').getUrl() + '?registerLnsId=' + id,
+                side: 'right',
+                width: 1000
+            });
+        }
+
+        function CSH7040_saveFunc() {
+            $au('CSH7040_repaymentRegisterHdsDs').submit();
+        }
+
+        function CSH7040_confirmFunc() {
+            if (!$au('CSH7040_repaymentRegisterHdsDs').validate()) {
+                return;
+            }
+            if ($au('CSH7040_repaymentRegisterHdsDs').isModified()) {
+                Aurora.showInfoMessage('$[l:PROMPT]', '$[l:SAVE_FIRST]');
+                return;
+            }
+            Aurora.request({
+                lockMessage: '$[l:HAP_WAITING]',
+                url: $au('CSH7040_repaymentRegisterAccountingConfirmLink').getUrl() + '?registerHdsId=$[/parameter/@registerHdsId]',
+                success: function () {
+                    $au('repayment_register_accounting_window').close();
+                },
+                failure: function () {
+                    $au('repayment_register_accounting_window').close();
+                },
+                scope: this
+            });
+        }
+
+        function CSH7040_rejectFunc() {
+            Aurora.request({
+                lockMessage: '$[l:HAP_WAITING]',
+                url: $au('CSH7040_repaymentRegisterAccountingRejectLink').getUrl() + '?registerHdsId=$[/parameter/@registerHdsId]',
+                success: function () {
+                    $au('repayment_register_accounting_window').close();
+                },
+                failure: function () {
+                    $au('repayment_register_accounting_window').close();
+                },
+                scope: this
+            });
+        }
+
+        function CSH7040_historyFunc() {
+            new Aurora.Window({
+                id: 'CSH7040_repayment_history_window',
+                url: $au('CSH7040_repaymentRegisterAccountingHistoryLink').getUrl() + '?documentId=$[/parameter/@registerHdsId]&documentType=CSH_REPAYMENT_REGISTER',
+                fullScreen: true,
+                title: '$[l:rec_requisition_history]'
+            });
+        }
+
+        function CSH7040_uploadFileFunc() {
+            new Aurora.Window({
+                url: $au('CSH7040_repaymentRegisterAccountingFileLink').getUrl() + '?table_name=csh_repayment_register_hd&tablePkValue=$[/parameter/@registerHdsId]',
+                title: '$[l:atm.upload_attachment]',
+                id: 'CSH7040_check_upload_file_screen',
+                width: 600,
+                height: 400
+            });
+        }
+
+        function CSH7040_cellClickFunc(grid, row, name, record) {
+            if (name === 'cashFlowItemName') {
+                var dataSet = $au('CSH7040_repaymentFlowDs');
+                dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                dataSet.query();
+            }
+        }
+
+        function CSH7040_onJournalDateUpdateFun(ds, record, name, value, oldValue) {
+            if (name === 'journalDate' && value) {
+                Aurora.request({
+                    lockMessage: '$[l:HAP_HANDLE_WAITING]',
+                    url: $au('CSH7040_get_period_name_link').getUrl(),
+                    para: {
+                        date: value,
+                        acc_entity_id: $au('CSH7040_audit_query_ds').getAt(0).get('accEntityId'),
+                        status: 'O'
+                    },
+                    success: function (resp) {
+                        if (resp && resp.result && resp.result.record && resp.result.record.period_name) {
+                            record.set('periodName', resp.result.record.period_name);
+                        } else {
+                            record.set('periodName', '');
+                            Aurora.showErrorMessage('$[l:HAP_ERROR]', '$[l:CURREN_AVAILABLE_OPENED_PERIOD]');
+                        }
+                    }
+                });
+            }
+        }
+
+        function CSH7040_save() {
+            $au('CSH7040_audit_je_lines_ds').submit();
+        }
+
+        function CSH7040_onJeUpdateFun(ds, record, name, value, oldValue) {
+            if (name === 'accEntityId') {
+                record.set('respCenterName', '');
+                record.set('respCenterId', '');
+            }
+        }
+
+        function CSH7040_onJeCellClickFun(grid, row, name, record) {
+            if (name !== 'accEntityName') {
+                record.getField(name).setLovPara('accEntityId', record.get('accEntityId'));
+            }
+        }
+
+        /**
+         * @return {string}
+         */
+        function CSH7040_formatMoney(value, record, name) {
+            return '<div style="font-weight:bold;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7040_repaymentFlowDs"
+                       queryUrl="$[/request/@context_path]/csh/cash-flow-item/getCashFlowItem"/>
+            <a:dataSet id="CSH7040_repaymentRegisterHdsDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/header/detail?registerHdsId=$[/parameter/@registerHdsId]"
+                       submitUrl="$[/request/@context_path]/csh/repayment-register/save">
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="registerNumber" prompt="csh_repayment_register_hd.register_number" readOnly="true"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name" readOnly="true"/>
+                    <a:field name="repaymentDate" prompt="csh_repayment_register_hd.repayment_date" readOnly="true"/>
+                    <a:field name="amount" prompt="csh_repayment_register_hd.amount" readOnly="true"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeName" prompt="csh_repayment_register_hd.employee" readOnly="true"/>
+                    <a:field name="unitName" prompt="csh_repayment_register_hd.unit" readOnly="true"/>
+                    <a:field name="unitId"/>
+                    <a:field name="createdName" prompt="csh_repayment_register_hd.created_name" readOnly="true"/>
+                    <a:field name="repaymentStatus"/>
+                    <a:field name="repaymentStatusName" prompt="csh_repayment_register_hd.repayment_status"
+                             readOnly="true"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName" prompt="csh_repayment_register_hd.repayment_method"
+                             readOnly="true"/>
+                    <a:field name="bankAccountId"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="bankAccountNum" prompt="csh_repayment_register_hd.company_account_number"
+                             readOnly="true"/>
+                    <a:field name="repaymentBankNote" prompt="csh_repayment_register_ln.repayment_bank_note"
+                             readOnly="true"/>
+                    <a:field name="description" prompt="csh_repayment_register_hd.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH7040_repaymentRegisterLnsDs" bindName="lines" bindTarget="CSH7040_repaymentRegisterHdsDs"
+                       fetchAll="true"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/line/query?registerHdsId=$[/parameter/@registerHdsId]">
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="registerLnsId"/>
+                    <a:field name="lineNumber"/>
+                    <a:field name="paymentRequisitionLineId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:field name="accountName" prompt="csh_repayment_register_ln.account_name" required="true"/>
+                    <a:field name="accountNumber" prompt="csh_repayment_register_ln.account_number"/>
+                    <a:field name="amount" prompt="csh_repayment_register_ln.amount"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryName"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeName"/>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="cashFlowItemName" displayField="description"
+                             options="CSH7040_repaymentFlowDs" prompt="csh_repayment_register_ln.cash_flow_item"
+                             required="true" returnField="cashFlowItemId" valueField="cashFlowItemId"/>
+                    <a:field name="description" prompt="CSH_REPAYMENT_REGISTER_LN.DESCRIPTION"/>
+                    <a:field name="requisitionNumber" prompt="csh_repayment_register_ln.requisition_number"/>
+                    <a:field name="assignDists"/>
+                    <a:field name="transactionLineId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH7040_audit_je_lines_ds" autoQuery="true" bindName="je_lines"
+                       bindTarget="CSH7040_repaymentRegisterLnsDs" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/csh/transaction-account/queryByLineId"
+                       submitUrl="$[/request/@context_path]/csh/transaction-account/submit">
+                <a:fields>
+                    <a:field name="transactionLineId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterName" prompt="fnd_responsibility_centers.responsibility_center_name">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountName" prompt="csh_account_code">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="periodName" prompt="exp_report_header.period_name">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enteredAmountDr" prompt="csh_write_off_account.entered_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="exp_report_account.entered_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="csh_payment_req_account.functional_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="csh_write_off_account.functional_amount_cr"/>
+                    <a:field name="exchangeRateType"/>
+                    <a:field name="exchangeRate"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="journalDate"/>
+                    <a:field name="description" prompt="acp_invoice_header.description"/>
+                    <a:field name="currencyName" prompt="exp_requisition_header.currency_name"/>
+                    <a:field name="accountSegment1" prompt="$[/model/segmentDescs/records/record/@segment1Desc]"/>
+                    <a:field name="accountSegment2" prompt="$[/model/segmentDescs/records/record/@segment2Desc]"/>
+                    <a:field name="accountSegment3" prompt="$[/model/segmentDescs/records/record/@segment3Desc]"/>
+                    <a:field name="accountSegment4" prompt="$[/model/segmentDescs/records/record/@segment4Desc]"/>
+                    <a:field name="accountSegment5" prompt="$[/model/segmentDescs/records/record/@segment5Desc]"/>
+                    <a:field name="accountSegment6" prompt="$[/model/segmentDescs/records/record/@segment6Desc]"/>
+                    <a:field name="accountSegment7" prompt="$[/model/segmentDescs/records/record/@segment7Desc]"/>
+                    <a:field name="accountSegment8" prompt="$[/model/segmentDescs/records/record/@segment8Desc]"/>
+                    <a:field name="accountSegment9" prompt="$[/model/segmentDescs/records/record/@segment9Desc]"/>
+                    <a:field name="accountSegment10" prompt="$[/model/segmentDescs/records/record/@segment10Desc]"/>
+                    <a:field name="accountSegment11" prompt="$[/model/segmentDescs/records/record/@segment11Desc]"/>
+                    <a:field name="accountSegment12" prompt="$[/model/segmentDescs/records/record/@segment12Desc]"/>
+                    <a:field name="accountSegment13" prompt="$[/model/segmentDescs/records/record/@segment13Desc]"/>
+                    <a:field name="accountSegment14" prompt="$[/model/segmentDescs/records/record/@segment14Desc]"/>
+                    <a:field name="accountSegment15" prompt="$[/model/segmentDescs/records/record/@segment15Desc]"/>
+                    <a:field name="accountSegment16" prompt="$[/model/segmentDescs/records/record/@segment16Desc]"/>
+                    <a:field name="accountSegment17" prompt="$[/model/segmentDescs/records/record/@segment17Desc]"/>
+                    <a:field name="accountSegment18" prompt="$[/model/segmentDescs/records/record/@segment18Desc]"/>
+                    <a:field name="accountSegment19" prompt="$[/model/segmentDescs/records/record/@segment19Desc]"/>
+                    <a:field name="accountSegment20" prompt="$[/model/segmentDescs/records/record/@segment20Desc]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH7040_onJeUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="1" marginWidth="0" title="CSH_REPAYMENT_REGISTER">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH7040_saveFunc" text="HAP_SAVE" width="80"/>
+                    <a:toolbarButton click="CSH7040_confirmFunc" text="CONFIRM" width="80"/>
+                    <a:toolbarButton click="CSH7040_rejectFunc" text="PROMPT.REJECT" width="80"/>
+                    <a:toolbarButton click="CSH7040_historyFunc" text="PROMPT.HISTORY" width="80"/>
+                    <a:toolbarButton click="CSH7040_uploadFileFunc" text="PROMPT.UPLOAD_ATTACHMENT" width="80"/>
+                </a:formToolbar>
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="registerNumber" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="accEntityName" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:datePicker name="repaymentDate" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:numberField name="amount" bindTarget="CSH7040_repaymentRegisterHdsDs"
+                                   renderer="Aurora.formatMoney"/>
+                    <a:comboBox name="employeeName" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="unitName" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:textField name="createdName" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="repaymentStatusName" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:lov name="bankAccountNum" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                    <a:textField name="repaymentBankNote" bindTarget="CSH7040_repaymentRegisterHdsDs"/>
+                </a:box>
+                <a:box style="width:100%;margin-top:-5px;">
+                    <a:textArea name="description" bindTarget="CSH7040_repaymentRegisterHdsDs"
+                                calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" width="800"/>
+                </a:box>
+            </a:form>
+            <a:grid id="CSH7040_repaymentRegisterGrid" bindTarget="CSH7040_repaymentRegisterLnsDs" marginHeight="500"
+                    marginWidth="0" minHeight="200" navBar="true">
+                <a:columns>
+                    <a:column name="requisitionNumber" align="center" width="80"/>
+                    <a:column name="accEntityName" align="center" width="100"/>
+                    <a:column name="accountName" align="center" width="80"/>
+                    <a:column name="accountNumber" align="center" width="120"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="cashFlowItemName" align="center" editor="CSH7040_flowItemComboBox" width="80"/>
+                    <a:column name="description" align="left" width="180"/>
+                    <a:column name="assignDists" align="center" renderer="CSH7040_assignDistributes" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="CSH7040_flowItemComboBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH7040_cellClickFunc"/>
+                </a:events>
+            </a:grid>
+            <a:form marginWidth="3" padding="0" showmargin="false" title="HAP_ACC_INFORMATION">
+                <a:grid id="CSH7040_accountGrid" autoAdjustHeight="true" bindTarget="CSH7040_audit_je_lines_ds"
+                        height="600" marginWidth="3" navBar="true" style="box-shadow:none;">
+                    <a:columns>
+                        <a:column name="accEntityName" align="center" width="150"/>
+                        <a:column name="respCenterName" align="center" width="150"/>
+                        <a:column name="accountName" align="center" width="150"/>
+                        <a:column name="periodName" align="center" width="100"/>
+                        <a:column name="currencyName" align="center" width="100"/>
+                        <a:column name="enteredAmountDr" align="right" renderer="CSH7040_formatMoney" width="100"/>
+                        <a:column name="enteredAmountCr" align="right" renderer="CSH7040_formatMoney" width="100"/>
+                        <a:column name="functionalAmountDr" align="right" renderer="CSH7040_formatMoney" width="100"/>
+                        <a:column name="functionalAmountCr" align="right" renderer="CSH7040_formatMoney" width="100"/>
+                        <a:column name="description" align="left" width="250"/>
+                        <a:column name="accountSegment1" align="center"/>
+                        <a:column name="accountSegment2" align="center"/>
+                        <a:column name="accountSegment3" align="center"/>
+                        <a:column name="accountSegment4" align="center"/>
+                        <a:column name="accountSegment5" align="center"/>
+                        <a:column name="accountSegment6" align="center"/>
+                        <a:column name="accountSegment7" align="center"/>
+                        <a:column name="accountSegment8" align="center"/>
+                        <a:column name="accountSegment9" align="center"/>
+                        <a:column name="accountSegment10" align="center"/>
+                        <a:column name="accountSegment11" align="center"/>
+                        <a:column name="accountSegment12" align="center"/>
+                        <a:column name="accountSegment13" align="center"/>
+                        <a:column name="accountSegment14" align="center"/>
+                        <a:column name="accountSegment15" align="center"/>
+                        <a:column name="accountSegment16" align="center"/>
+                        <a:column name="accountSegment17" align="center"/>
+                        <a:column name="accountSegment18" align="center"/>
+                        <a:column name="accountSegment19" align="center"/>
+                        <a:column name="accountSegment20" align="center"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:lov id="CSH7040_lov"/>
+                        <a:textField id="CSH7040_tf"/>
+                        <a:numberField id="CSH7040_nf" allowDecimals="true" allowNegative="false" decimalPrecision="2"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

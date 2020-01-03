@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+<!--        <a:model-query model="hec_util.get_acc_entity_name" rootPath="acc_entity"/>-->
+<!--        <a:model-query model="hec_util.get_current_date_and_period" rootPath="current_date"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="ACP5035_acp_requisition_finance_query_link" url="$[/request/@context_path]/acp/ACP3100/acp_requisition_view_maintain_main.screen.ftl"/>
+        <a:link id="CSH5230_csh_payment_requisition_view_main_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="CSH5230_exp_report_view_main_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="CSH5230_post_reverse_transaction_link" url="$[/request/@context_path]/csh/CSH3200/postReverseTransaction"/>
+        <a:link id="CSH5230_get_period_name_link" url="$[/request/@context_path]/fnd/gld-period/getPeriodName"/>
+        <a:link id="CSH5230_csh_payment_reverse_detail_link" url="$[/request/@context_path]/csh/CSH5230/csh_payment_reverse_detail.screen"/>
+        <script><![CDATA[
+            function CSH5230_onPayeeNameFocus() {
+                var record = $au('CSH5230_paymentReverseQueryDs').getAt(0);
+                record.getField('payeeName').setLovPara('payeeCategory', record.get('payeeCategory'));
+            }
+            
+            function CSH5230_onPaymentReverseUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'payeeCategory') {
+                    record.set('payeeName', '');
+                    record.set('payeeId', '');
+                    // modify  lcy 2018/1/10 22:45:40 收款对象空时收款方只读
+                    if (value) {
+                        record.getField('payeeName').setReadOnly(false);
+                    } else {
+                        record.getField('payeeName').setReadOnly(true);
+                    }
+                }
+                if (name == 'accEntityId') {
+                    $au('CSH5230_paymentReverseResultDs').query();
+                    $au('CSH5230_paymentReverseQueryDs').getCurrentRecord().getMeta().getField('payeeName').setLovPara('accEntityId', value);
+                    $au('CSH5230_paymentReverseQueryDs').getCurrentRecord().getMeta().getField('bankAccountNum').setLovPara('accEntityId', value);
+                }
+            }
+            
+            function CSH5230_query() {
+                $au('CSH5230_paymentReverseResultDs').query();
+            }
+            
+            function CSH5230_reverse() {
+                var para = [];
+                var selectedRecords = $au('CSH5230_paymentReverseResultDs').getSelected();
+                if (!selectedRecords.length && selectedRecords.length == 0) {
+                    Aurora.showErrorMessage('$[l:hap_error]', '$[l:choose_transaction_which_reversed]');
+                    return;
+                }
+            
+                if (!$au('CSH5230_paymentReverseDateDs').validate()) {
+                    return;
+                }
+            
+                for (var i = 0;i < selectedRecords.length;i++) {
+                    para.push({
+                        transactionHeaderId: selectedRecords[i].get('transactionHeaderId'),
+                        reverseDate: $au('CSH5230_paymentReverseDateDs').getAt(0).get('reversedDate')
+                    });
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_handle_waiting]',
+                    url: $au('CSH5230_post_reverse_transaction_link').getUrl(),
+                    para: para,
+                    success: function() {
+                        CSH5230_query();
+                    }
+                });
+            }
+            
+            function CSH5230_transactionNumRenderer(value, record, name) {
+                return '<a href="javascript:CSH5230_openReverseDetail(\'' + record.get('transactionHeaderId') + '\')">' + value + '</a>';
+            }
+            
+            function CSH5230_openReverseDetail(transactionHeaderId) {
+                new Aurora.Window({
+                    url: $au('CSH5230_csh_payment_reverse_detail_link').getUrl() + '?transactionHeaderId=' + transactionHeaderId,
+                    id: 'CSH5230_csh_payment_reverse_detail_window',
+                    title: '$[l:bgt_period_sets.detail]',
+                    fullScreen: true
+                });
+            }
+            //modify:2017/11/24  by:lcy  Purpose:新增付款申请类型单据
+            
+            function CSH5230_docNumRenderer(value, record, name) {
+                return '<a href="javascript:CSH5230_openDocument(\'' + record.get('docCategory') + '\',\'' + record.get('docId') + '\')">' + value + '</a>';
+            }
+            //修改函数名,原因:在此页面的子页面存在同名函数，出现冲突   Y.duan  2017-8-28 15:43:51
+            
+            function CSH5230_openDocument(docCategory, docId) {
+                var url = '';
+                var id = '';
+                if (docCategory == 'EXP_REPORT') {
+                    url = $au('CSH5230_exp_report_view_main_link').getUrl() + '?expReportHeaderId=' + docId;
+                    id = 'exp_report_view_main_screen';
+                } else if (docCategory == 'PAYMENT_REQUISITION') {
+                    url = $au('CSH5230_csh_payment_requisition_view_main_link').getUrl() + '?paymentRequisitionHeaderId=' + docId;
+                    id = 'CSH5010_pay_requisition_view_main_window';
+                } else if (docCategory == 'ACP_REQUISITION') {
+                    url = $au('ACP5035_acp_requisition_finance_query_link').getUrl() + '?requisitionHdsId=' + docId;
+                    id = 'ACP5035_acp_requisition_finance_query_window';
+                }
+                new Aurora.Window({
+                    url: url,
+                    id: id,
+                    title: '$[l:csh_prepayment_balance_openning_write_off_detail.reportdetail]',
+                    fullScreen: true
+                });
+            }
+            
+            function CSH5230_onReverseDateUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'reversedDate') {
+                    Aurora.request({
+                        lockMessage: '$[l:hap_handle_waiting]',
+                        url: $au('CSH5230_get_period_name_link').getUrl(),
+                        para: {
+                            date: record.get('reversedDate'),
+                            accEntityId: $au('CSH5230_paymentReverseQueryDs').getAt(0).get('accEntityId'),
+                            status: 'O'
+                        },
+                        success: function(resp) {
+                            if (resp && resp.rows) {
+                                record.set('periodName', resp.rows);
+                            } else {
+                                record.set('periodName', '');
+                                Aurora.showErrorMessage('$[l:hap.error]', '$[l:curren_available_opened_period]');
+                            }
+                        }
+                    });
+                }
+            }
+            
+            function CSH5230_accEntityQuery() {
+                $au('CSH5230_accEntity_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5230_payeeCategoryDs" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="CSH5230_accEntity_ds" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/gld/account-entity/queryAccEntityByCompany"/>
+            <a:dataSet id="CSH5230_paymentMethodDs" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?magOrgId=$[/session/@magOrgId]&amp;companyId=$[/session/@companyId]"/>
+            <a:dataSet id="CSH5230_currencyDs" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/gld-currency/getGldCurrencyOption"/>
+            <a:dataSet id="CSH5230_paymentReverseQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityName" displayField="accEntityName" options="CSH5230_accEntity_ds" placeHolder="gld_accounting_entities.acc_entity_name" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="CSH5230_payeeCategoryDs" placeHolder="exp_report_header.payee_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="transactionNum" placeHolder="csh_transaction_headers.transaction_num"/>
+                    <a:field name="payeeName" lovCode="LOV_GLD_PAYEE" placeHolder="exp_report_header.payee_id" readOnly="true" title="exp_report_header.payee_id">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="agentEmployeeName" lovCode="	EXP_EMPLOYEES_LOV" placeHolder="csh_transaction_line.agent_employee_id" title="exp_employee.employee_select">
+                        <a:mapping>
+                            <a:map from="name" to="agentEmployeeName"/>
+                            <a:map from="employeeId" to="agentEmployeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="transactionDateFrom" placeHolder="csh_prepayment_write_off.transaction_date_from"/>
+                    <a:field name="transactionDateTo" placeHolder="csh_prepayment_write_off.transaction_date_to"/>
+                    <a:field name="bankAccountNum" lovCode="LOV_PAYMENT_REVERSE_ACCOUNT" placeHolder="csh_bank_balance.bank_account_id" title="csh_bank_balance.bank_account_id">
+                        <a:mapping>
+                            <a:map from="bankAccountNum" to="bankAccountNum"/>
+                            <a:map from="bankAccountId" to="bankAccountId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="paymentMethodName" displayField="description" options="CSH5230_paymentMethodDs" placeHolder="csh_payment_method.payment_method_id" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="currencyName" displayField="currencyName" options="CSH5230_currencyDs" placeHolder="exp_mo_report_type.currency_code" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="transactionAmountFrom" placeHolder="csh_prepayment_write_off.number_from"/>
+                    <a:field name="transactionAmountTo" placeHolder="csh_prepayment_write_off.number_to"/>
+                    <a:field name="docNumber" placeHolder="ssc_task_pool.doc_number"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5230_onPaymentReverseUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5230_paymentReverseDateDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="reversedDate" defaultValue="$[/model/current_date/records/record/@currentDate]" prompt="csh_transaction_header.reversed_date"/>
+                    <a:field name="periodName" defaultValue="$[/model/current_date/records/record/@currentOpenPeriodName]" prompt="reversed_period" readOnly="true" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5230_onReverseDateUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5230_paymentReverseResultDs" autoPageSize="true" autoQuery="false" queryUrl="$[/request/@context_path]/csh/payment/reverse/query" queryDataSet="CSH5230_paymentReverseQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="transactionDate" prompt="csh_transaction_header.transaction_date"/>
+                    <a:field name="docCategoryName" prompt="wfl_page.doc_category"/>
+                    <a:field name="docNumber" prompt="exp_report_header.exp_report_number"/>
+                    <a:field name="description" prompt="code.description"/>
+                    <a:field name="currencyName" prompt="exp_mo_report_type.currency_code"/>
+                    <a:field name="transactionAmount" prompt="csh_transaction_line.transaction_amount"/>
+                    <a:field name="bankAccountName" prompt="exp_employee_account.bank_account_name"/>
+                    <a:field name="bankAccountNum" prompt="csh_bank_account.bank_account_num"/>
+                    <a:field name="payeeCategoryName" prompt="exp_report_header.payee_category"/>
+                    <a:field name="payeeName" prompt="exp_report_header.payee_id"/>
+                    <a:field name="agentEmployeeName" prompt="csh_transaction_line.agent_employee_id"/>
+                    <a:field name="paymentEmployeeName" prompt="payment_employee_id"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar id="csh_payment_revese_top_bar">
+                <a:hBox>
+                    <a:toolbarButton click="CSH5230_reverse" text="prompt.reverse" width="80"/>
+                </a:hBox>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH5230_paymentReverseQueryDs" resultTarget="CSH5230_paymentReverseResultDs" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="accEntityName" bindTarget="CSH5230_paymentReverseQueryDs">
+                        <a:events>
+                            <a:event name="focus" handler="CSH5230_accEntityQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="transactionNum" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:textField name="docNumber" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="payeeCategoryName" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:lov name="payeeName" bindTarget="CSH5230_paymentReverseQueryDs">
+                        <a:events>
+                            <a:event name="focus" handler="CSH5230_onPayeeNameFocus"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="agentEmployeeName" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:datePicker name="transactionDateFrom" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:datePicker name="transactionDateTo" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:lov name="bankAccountNum" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:comboBox name="currencyName" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:textField name="transactionAmountFrom" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                    <a:textField name="transactionAmountTo" bindTarget="CSH5230_paymentReverseQueryDs"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form column="2" marginWidth="0" padding="0" title="csh_transaction_header.reversed_date">
+            <a:datePicker name="reversedDate" bindTarget="CSH5230_paymentReverseDateDs" renderer="Aurora.formatDate"/>
+            <a:textField name="periodName" bindTarget="CSH5230_paymentReverseDateDs"/>
+        </a:form>
+        <a:grid id="csh_payment_reverse_grid" bindTarget="CSH5230_paymentReverseResultDs" marginHeight="187" marginWidth="3" navBar="true" style="margin-top:5px;">
+            <a:columns>
+                <a:column name="transactionNum" align="center" renderer="CSH5230_transactionNumRenderer" width="100"/>
+                <a:column name="transactionDate" align="center" width="80"/>
+                <a:column name="docCategoryName" align="center" width="120"/>
+                <a:column name="docNumber" align="center" renderer="CSH5230_docNumRenderer" width="100"/>
+                <a:column name="description" align="left" width="200"/>
+                <a:column name="currencyName" align="center" width="80"/>
+                <a:column name="transactionAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                <a:column name="bankAccountName" align="center" width="150"/>
+                <a:column name="bankAccountNum" align="center" width="150"/>
+                <a:column name="payeeCategoryName" align="center" width="80"/>
+                <a:column name="payeeName" align="center" width="80"/>
+                <a:column name="agentEmployeeName" align="center" width="80"/>
+                <a:column name="paymentEmployeeName" align="center" width="80"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

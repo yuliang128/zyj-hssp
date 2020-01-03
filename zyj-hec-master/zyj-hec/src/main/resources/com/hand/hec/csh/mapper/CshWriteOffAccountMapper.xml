@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshWriteOffAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshWriteOffAccount">
+        <result column="WRITE_OFF_JE_LINE_ID" property="writeOffJeLineId" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_ID" property="writeOffId" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="SOURCE_CODE" property="sourceCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="RESP_CENTER_ID" property="respCenterId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE_TYPE" property="exchangeRateType" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE" property="exchangeRate" jdbcType="DECIMAL"/>
+        <result column="ENTERED_AMOUNT_DR" property="enteredAmountDr" jdbcType="DECIMAL"/>
+        <result column="ENTERED_AMOUNT_CR" property="enteredAmountCr" jdbcType="DECIMAL"/>
+        <result column="FUNCTIONAL_AMOUNT_DR" property="functionalAmountDr" jdbcType="DECIMAL"/>
+        <result column="FUNCTIONAL_AMOUNT_CR" property="functionalAmountCr" jdbcType="DECIMAL"/>
+        <result column="GLD_INTERFACE_FLAG" property="gldInterfaceFlag" jdbcType="VARCHAR"/>
+        <result column="CASH_CLEARING_FLAG" property="cashClearingFlag" jdbcType="VARCHAR"/>
+        <result column="JOURNAL_DATE" property="journalDate" jdbcType="DATE"/>
+        <result column="USAGE_CODE" property="usageCode" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT1" property="accountSegment1" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT2" property="accountSegment2" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT3" property="accountSegment3" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT4" property="accountSegment4" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT5" property="accountSegment5" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT6" property="accountSegment6" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT7" property="accountSegment7" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT8" property="accountSegment8" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT9" property="accountSegment9" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT10" property="accountSegment10" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT11" property="accountSegment11" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT12" property="accountSegment12" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT13" property="accountSegment13" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT14" property="accountSegment14" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT15" property="accountSegment15" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT16" property="accountSegment16" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT17" property="accountSegment17" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT18" property="accountSegment18" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT19" property="accountSegment19" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_SEGMENT20" property="accountSegment20" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="getWriteOffAccounts" resultMap="BaseResultMap">
+        select
+            wo.write_off_id
+            wo.write_off_type
+            wo.csh_transaction_line_id
+            wo.csh_write_off_amount
+            wo.document_source
+            wo.document_header_id
+            wo.document_line_id
+            wo.document_write_off_amount
+            wo.write_off_date
+            wo.period_name
+            wo.source_csh_trx_line_id
+            wo.source_write_off_amount
+            wo.gld_interface_flag
+          from csh_write_off wo
+         where wo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+           and wo.document_line_id = #{paymentScheduleLineId}
+           and woa.entered_amount_dr is not null
+    </select>
+
+    <select id="cshPaymentFinanceInfo" resultType="java.util.Map">
+        SELECT
+                    a.description as description,
+                    a.acc_entity_id as accEntityId,
+                    (SELECT
+        gaet.acc_entity_name
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_accounting_entity_tl gaet ON gae.acc_entity_id = gaet.acc_entity_id AND gaet.lang =
+        #{request.locale}
+        WHERE gae.acc_entity_id = a.acc_entity_id) AS accEntityName,
+                    a.resp_center_id as respCenterId,
+                    (SELECT
+        grc.responsibility_center_name
+        FROM
+        gld_responsibility_center grc
+        LEFT JOIN gld_responsibility_center_tl grct ON grc.responsibility_center_id = grct.responsibility_center_id AND
+        grct.lang = #{request.locale}
+        WHERE grc.responsibility_center_id = a.resp_center_id) AS respCenterName,
+                    a.account_id as accountId,
+                    (select cbat.BANK_ACCOUNT_NAME from csh_bank_account cba left join csh_bank_account_tl cbat on cba.BANK_ACCOUNT_ID = cbat.BANK_ACCOUNT_ID and cbat.LANG = #{request.locale}
+where cba.BANK_ACCOUNT_ID = a.account_id) AS accountName,
+                    (select cba.BANK_ACCOUNT_NUM from csh_bank_account cba
+where cba.BANK_ACCOUNT_ID = a.account_id) AS accountCode,
+                    a.currency_code as currencyCode,
+                    (select gct.currency_name from gld_currency gc left join gld_currency_tl gct on gc.CURRENCY_ID = gct.CURRENCY_ID and gct.lang = #{request.locale} where gc.currency_code = a.currency_code) AS currencyName,
+                    a.entered_amount_dr as enteredAmountDr,
+                    a.entered_amount_cr as enteredAmountCr,
+                    a.functional_amount_dr as functionalAmountDr,
+                    a.functional_amount_cr as functionalAmountCr,
+                    a.exchange_rate_type as exchangeRateType,
+                    (select gtt.DESCRIPTION from gld_exchangerate_type gt left join gld_exchangerate_type_tl gtt on gt.TYPE_ID = gtt.TYPE_ID and gtt.LANG = #{request.locale}
+where gt.TYPE_CODE =  a.exchange_rate_type) AS exchangeRateTypeName,
+                    a.exchange_rate as exchangeRate,
+                    a.account_segment1 as accountSegment1,
+                    a.account_segment2 as accountSegment2,
+                    a.account_segment3 as accountSegment3,
+                    a.account_segment4 as accountSegment4,
+                    a.account_segment5 as accountSegment5,
+                    a.account_segment6 as accountSegment6,
+                    a.account_segment7 as accountSegment7,
+                    a.account_segment8 as accountSegment8,
+                    a.account_segment9 as accountSegment9,
+                    a.account_segment10 as accountSegment10,
+                    a.account_segment11 as accountSegment11,
+                    a.account_segment12 as accountSegment12,
+                    a.account_segment13 as accountSegment13,
+                    a.account_segment14 as accountSegment14,
+                    a.account_segment15 as accountSegment15,
+                    a.account_segment16 as accountSegment16,
+                    a.account_segment17 as accountSegment17,
+                    a.account_segment18 as accountSegment18,
+                    a.account_segment19 as accountSegment19,
+                    a.account_segment20 as accountSegment20
+                FROM
+                    csh_transaction_account a,
+                    csh_transaction_header h,
+                    csh_transaction_line l
+                WHERE
+                    a.transaction_line_id   = l.transaction_line_id AND
+                    l.transaction_header_id = h.transaction_header_id AND
+                    h.transaction_header_id = #{transactionHeaderId}
+                UNION ALL
+                SELECT
+                    woa.description as description,
+                    woa.acc_entity_id as accEntityId,
+                    (SELECT
+        gaet.acc_entity_name
+        FROM
+        gld_accounting_entity gae
+        LEFT JOIN gld_accounting_entity_tl gaet ON gae.acc_entity_id = gaet.acc_entity_id AND gaet.lang =
+        #{request.locale}
+        WHERE gae.acc_entity_id = woa.acc_entity_id) AS accEntityName,
+                    woa.resp_center_id as respCenterId,
+                    (SELECT
+        grc.responsibility_center_name
+        FROM
+        gld_responsibility_center grc
+        LEFT JOIN gld_responsibility_center_tl grct ON grc.responsibility_center_id = grct.responsibility_center_id AND
+        grct.lang = #{request.locale}
+        WHERE grc.responsibility_center_id = woa.resp_center_id) AS respCenterName,
+                    woa.account_id as accountId,
+                    (select cbat.BANK_ACCOUNT_NAME from csh_bank_account cba left join csh_bank_account_tl cbat on cba.BANK_ACCOUNT_ID = cbat.BANK_ACCOUNT_ID and cbat.LANG = #{request.locale}
+where cba.BANK_ACCOUNT_ID = woa.account_id) AS accountName,
+                    (select cba.BANK_ACCOUNT_NUM from csh_bank_account cba
+where cba.BANK_ACCOUNT_ID = woa.account_id) AS accountCode,
+                    woa.currency_code as currencyCode,
+                    (select gct.currency_name from gld_currency gc left join gld_currency_tl gct on gc.CURRENCY_ID = gct.CURRENCY_ID and gct.lang = #{request.locale} where gc.currency_code = woa.currency_code) AS currencyName,
+                    woa.entered_amount_dr as enteredAmountDr,
+                    woa.entered_amount_cr as enteredAmountCr,
+                    woa.functional_amount_dr as functionalAmountDr,
+                    woa.functional_amount_cr as functionalAmountCr,
+                    woa.exchange_rate_type as exchangeRateType,
+                    (select gtt.DESCRIPTION from gld_exchangerate_type gt left join gld_exchangerate_type_tl gtt on gt.TYPE_ID = gtt.TYPE_ID and gtt.LANG = #{request.locale}
+where gt.TYPE_CODE = woa.exchange_rate_type) AS exchangeRateTypeName,
+                    woa.exchange_rate as exchangeRate,
+                    woa.account_segment1 as accountSegment1,
+                    woa.account_segment2 as accountSegment2,
+                    woa.account_segment3 as accountSegment3,
+                    woa.account_segment4 as accountSegment4,
+                    woa.account_segment5 as accountSegment5,
+                    woa.account_segment6 as accountSegment6,
+                    woa.account_segment7 as accountSegment7,
+                    woa.account_segment8 as accountSegment8,
+                    woa.account_segment9 as accountSegment9,
+                    woa.account_segment10 as accountSegment10,
+                    woa.account_segment11 as accountSegment11,
+                    woa.account_segment12 as accountSegment12,
+                    woa.account_segment13 as accountSegment13,
+                    woa.account_segment14 as accountSegment14,
+                    woa.account_segment15 as accountSegment15,
+                    woa.account_segment16 as accountSegment16,
+                    woa.account_segment17 as accountSegment17,
+                    woa.account_segment18 as accountSegment18,
+                    woa.account_segment19 as accountSegment19,
+                    woa.account_segment20 as accountSegment20
+                FROM
+                    csh_write_off_account woa,
+                    csh_write_off wo,
+                    csh_transaction_header h,
+                    csh_transaction_line l
+                WHERE
+                    woa.write_off_id           = wo.write_off_id AND
+                    wo.csh_transaction_line_id = l.transaction_line_id AND
+                    l.transaction_header_id    = h.transaction_header_id AND
+                    h.transaction_header_id    = #{transactionHeaderId}
+    </select>
+
+    <select id="queryAccount" resultMap="BaseResultMap">
+        select
+        cwoa.write_off_je_line_id,
+        cwoa.write_off_id,
+        cwoa.description,
+        cwoa.period_name,
+        cwoa.source_code,
+        cwoa.company_id,
+        cwoa.acc_entity_id,
+        cwoa.resp_center_id,
+        cwoa.account_id,
+        cwoa.currency_code,
+        cwoa.exchange_rate_type,
+        cwoa.exchange_rate,
+        cwoa.entered_amount_dr,
+        cwoa.entered_amount_cr,
+        cwoa.functional_amount_dr,
+        cwoa.functional_amount_cr,
+        cwoa.gld_interface_flag,
+        cwoa.cash_clearing_flag,
+        cwoa.journal_date,
+        cwoa.usage_code,
+        cwoa.account_segment1,
+        cwoa.account_segment2,
+        cwoa.account_segment3,
+        cwoa.account_segment4,
+        cwoa.account_segment5,
+        cwoa.account_segment6,
+        cwoa.account_segment7,
+        cwoa.account_segment8,
+        cwoa.account_segment9,
+        cwoa.account_segment10,
+        cwoa.account_segment11,
+        cwoa.account_segment12,
+        cwoa.account_segment13,
+        cwoa.account_segment14,
+        cwoa.account_segment15,
+        cwoa.account_segment16,
+        cwoa.account_segment17,
+        cwoa.account_segment18,
+        cwoa.account_segment19,
+        cwoa.account_segment20
+        from
+        csh_write_off_account cwoa
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="writeOffId != null and writeOffId != ''">
+                and cwoa.write_off_id = #{writeOffId, javaType=java.lang.Long, jdbcType=DECIMAL}
+            </if>
+            <if test="usageCode != null and usageCode != ''">
+                and cwoa.usage_code = #{usageCode, javaType=java.lang.String, jdbcType=VARCHAR}
+            </if>
+            <if test="drFlag != null and drFlag != ''">
+                and cwoa.entered_amount_dr is not null
+                and cwoa.functional_amount_dr is not null
+            </if>
+            <if test="crFlag != null and crFlag != ''">
+                and cwoa.entered_amount_cr is not null
+                and cwoa.functional_amount_cr is not null
+            </if>
+        </trim>
+    </select>
+
+    <select id="cshPrepaymentFinanceInfo" resultType="java.util.Map">
+        SELECT distinct
+                cwoa.write_off_je_line_id writeOffJeLineId,
+                cwoa.write_off_id writeOffId,
+                gaev.acc_entity_id accEntityId,
+                gaev.acc_entity_name accEntityName,
+                grcv.responsibility_center_id responsibilityCenterId,
+                grcv.responsibility_center_name responsibilityCenterName,
+                gav.account_id accountId,
+                gav.account_code accountCode,
+                gav.description accountName,
+                cwoa.period_name periodName,
+                cwoa.currency_code currencyCode,
+                (select ct.currency_name from gld_currency c
+                left join gld_currency_tl ct
+                on c.currency_id = ct.currency_id
+                where c.currency_code = cwoa.currency_code and ct.lang = #{request.locale}) AS currencyName,
+                cwoa.entered_amount_dr enteredAmountDr,
+                cwoa.entered_amount_cr enteredAmountCr,
+                cwoa.functional_amount_dr functionalAmountDr,
+                cwoa.functional_amount_cr functionalAmountCr,
+                cwoa.description
+            FROM
+                csh_write_off_account cwoa
+                left join gld_account_v gav
+                                    on cwoa.account_id = gav.account_id
+                left join gld_responsibility_center_vl grcv
+                                    on cwoa.resp_center_id = grcv.responsibility_center_id
+                left join gld_accounting_entity_vl gaev
+                                    on cwoa.acc_entity_id  = gaev.acc_entity_id
+             WHERE
+                 cwoa.write_off_id   = #{writeOffId}
+
+            ORDER BY
+                cwoa.entered_amount_dr
+</select>
+</mapper>

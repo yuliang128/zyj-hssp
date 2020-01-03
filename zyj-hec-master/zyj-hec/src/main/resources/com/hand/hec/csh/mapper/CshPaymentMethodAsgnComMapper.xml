@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentMethodAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentMethodAsgnCom">
+        <result column="ASSIGN_COM_ID" property="assignComId" jdbcType="DECIMAL" />
+        <result column="ASSIGN_MO_ID" property="assignMoId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR" />
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR" />
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL" />
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE" />
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE" />
+    </resultMap>
+
+    <select id="query" parameterType="com.hand.hec.csh.dto.CshPaymentMethodAsgnCom" resultMap="BaseResultMap">
+        select cpmac.assign_com_id,
+        cpmam.assign_mo_Id,
+        cpmam.payment_method_id,
+        fc.company_id,
+        fc.company_code,
+        fct.company_short_name,
+        fc.start_date_active,
+        fc.end_date_active,
+        cpmac.enabled_flag
+        FROM
+        csh_payment_method_asgn_com cpmac
+        LEFT JOIN csh_payment_method_asgn_mo cpmam on cpmac.ASSIGN_MO_ID = cpmam.ASSIGN_MO_ID
+        LEFT JOIN	fnd_company fc ON cpmac.COMPANY_ID = fc.COMPANY_ID
+        LEFT JOIN fnd_company_tl fct ON (fc.COMPANY_ID = fct.company_id and fct.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        1=1
+        <if test = "companyCode != null">
+            and fc.company_code like '%${companyCode}%'
+        </if>
+        <if test = "companyShortName != null">
+            and fct.company_short_name like '%${companyShortName}%'
+        </if>
+        <if test = "paymentMethodId != null">
+            and cpmam.payment_method_id = #{paymentMethodId}
+        </if>
+        <if test = "assignMoId != null">
+            and cpmam.assign_mo_Id = #{assignMoId}
+        </if>
+        ORDER BY
+        fc.company_code
+    </select>
+
+    <select id="queryLov" parameterType="com.hand.hec.csh.dto.CshPaymentMethodAsgnCom" resultMap="BaseResultMap">
+        SELECT
+        fv.company_id,
+        fv.company_code,
+        fct.company_short_name
+        FROM
+        fnd_company fv left join fnd_company_tl fct on (fv.COMPANY_ID = fct.company_id and fct.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        1=1
+        <if test = "assignMoId != null and paymentMethodId != null">
+            and
+            EXISTS
+            (SELECT
+            1
+            FROM
+            csh_payment_method_asgn_mo cm
+            WHERE
+            cm.mag_org_id        = fv.mag_org_id
+            AND
+            cm.assign_mo_id      = #{assignMoId}
+            AND
+            cm.payment_method_id = #{paymentMethodId}
+            )
+            AND
+            (
+            fv.end_date_active IS NULL
+            OR
+            now() BETWEEN fv.start_date_active AND fv.end_date_active
+            )
+            AND
+            NOT EXISTS
+            (SELECT
+            1
+            FROM
+            csh_payment_method_asgn_com cc
+            WHERE
+            cc.company_id  = fv.company_id
+            AND
+            cc.assign_mo_id = #{assignMoId}
+            )
+        </if>
+        ORDER BY
+        fv.company_code
+    </select>
+
+</mapper>

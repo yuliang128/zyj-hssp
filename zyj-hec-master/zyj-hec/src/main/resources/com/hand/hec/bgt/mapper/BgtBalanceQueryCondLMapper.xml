@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBalanceQueryCondLMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtBalanceQueryCondL">
+        <result column="BALANCE_QUERY_COND_H_ID" property="balanceQueryCondHId" jdbcType="DECIMAL"/>
+        <result column="BALANCE_QUERY_COND_L_ID" property="balanceQueryCondLId" jdbcType="DECIMAL"/>
+        <result column="SESSION_ID" property="sessionId" jdbcType="VARCHAR"/>
+        <result column="PARAMETER" property="parameter" jdbcType="VARCHAR"/>
+        <result column="PARAMETER_ID" property="parameterId" jdbcType="DECIMAL"/>
+        <result column="PARAMETER_CODE" property="parameterCode" jdbcType="VARCHAR"/>
+        <result column="PARAMETER_UPPER_LIMIT" property="parameterUpperLimit" jdbcType="VARCHAR"/>
+        <result column="PARAMETER_LOWER_LIMIT" property="parameterLowerLimit" jdbcType="VARCHAR"/>
+        <result column="CONTROL_RULE_RANGE" property="controlRuleRange" jdbcType="VARCHAR"/>
+        <result column="CREATION_DATE" property="creationDate" jdbcType="DATE"/>
+        <result column="LAST_UPDATE_DATE" property="lastUpdateDate" jdbcType="DATE"/>
+
+        <result column="PARAMETER_NAME" property="parameterName" jdbcType="VARCHAR"/>
+        <result column="POSITION_CODE_FROM_DESC" property="positionCodeFromDesc" jdbcType="VARCHAR"/>
+        <result column="POSITION_CODE_TO_DESC" property="positionCodeToDesc" jdbcType="VARCHAR"/>
+        <result column="POSITION_CODE" property="positionCode" jdbcType="VARCHAR"/>
+        <result column="POSITION_CODE_FROM" property="positionCodeFrom" jdbcType="VARCHAR"/>
+        <result column="POSITION_CODE_TO" property="positionCodeTo" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_SEQUENCE" property="dimensionSequence" jdbcType="DECIMAL"/>
+        <result column="SYSTEM_LEVEL" property="systemLevel" jdbcType="VARCHAR"/>
+        <result column="COMPANY_LEVEL" property="companyLevel" jdbcType="VARCHAR"/>
+        <result column="BALANCE_QUERY_CONDITION_CODE" property="balanceQueryConditionCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="getControlRuleRange" resultType="java.util.Map">
+        SELECT
+            v.value,
+            v.meaning
+        FROM
+            sys_code_value_b V,
+            sys_code_b c
+        WHERE
+            c.code = 'BGT_CONTROL_RULE_RANGE'
+            and v.code_id = c.code_id
+        ORDER BY
+            v.value
+    </select>
+    
+    <select id="getBalanceQueryCondLBgt" resultMap="BaseResultMap">
+        SELECT
+            v.meaning AS parameter_name,
+            v.value AS parameter_code,
+            (SELECT
+                concat(t.parameter_lower_limit,'-', v4.description)
+            FROM
+                bgt_center v4,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                v4.center_code        = t.parameter_lower_limit AND
+                t.parameter                = 'BGT_CENTER' AND
+                v4.bgt_org_id              = #{bgtOrgId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v0.description)
+            FROM
+                bgt_budget_item v0,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                v0.budget_item_code        = t.parameter_lower_limit AND
+                t.parameter                = 'BUDGET_ITEM' AND
+                v0.bgt_org_id              = #{bgtOrgId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v1.description)
+            FROM
+                bgt_budget_item_type v1,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                v1.budget_item_type_code   = t.parameter_lower_limit AND
+                t.parameter                = 'BUDGET_ITEM_TYPE' AND
+                v1.bgt_org_id              = #{bgtOrgId}
+            ) position_code_from_desc,
+            (SELECT
+                concat(t.parameter_upper_limit,'-', v4.description)
+            FROM
+                bgt_center v4,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                v4.center_code        = t.parameter_upper_limit AND
+                t.parameter                = 'BGT_CENTER' AND
+                v4.bgt_org_id              = #{bgtOrgId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v0.description)
+            FROM
+                bgt_budget_item v0,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                v0.budget_item_code        = t.parameter_upper_limit AND
+                t.parameter                = 'BUDGET_ITEM' AND
+                v0.bgt_org_id              = #{bgtOrgId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v1.description)
+            FROM
+                bgt_budget_item_type v1,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                v1.budget_item_type_code   = t.parameter_upper_limit AND
+                t.parameter                = 'BUDGET_ITEM_TYPE' AND
+                v1.bgt_org_id              = #{bgtOrgId}
+            ) position_code_to_desc,
+            (SELECT
+                t.parameter_id
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) parameter_id,
+            (SELECT
+                parameter_code
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code,
+            (SELECT
+                t.parameter_lower_limit
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_from,
+            (SELECT
+                t.parameter_upper_limit
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_to,
+            (SELECT
+                t.control_rule_range
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) control_rule_range,
+            (SELECT
+                t.balance_query_cond_l_id
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) balance_query_cond_l_id,
+            #{balanceQueryCondHId} balance_query_cond_h_id
+        FROM
+            sys_code_value_b v,
+            sys_code_b c
+        WHERE
+            c.code = 'BGT_BUDGET_PARAMETER_BUDGET'
+            AND v.code_id = c.code_id
+    </select>
+    
+    <select id="getBalanceQueryCondLOrg" resultMap="BaseResultMap">
+        SELECT
+            v.meaning AS parameter_name,
+            v.value AS parameter_code,
+            (SELECT
+                concat(t.parameter_lower_limit,'-', v3.description)
+            FROM
+                exp_mo_emp_group v3,
+                bgt_balance_query_cond_l t
+            WHERE
+                v3.enabled_flag            = 'Y' AND
+                v3.mag_org_id              = #{request.magOrgId} AND
+                t.parameter                = 'EMPLOYEE_GROUP' AND
+                t.parameter                = v.value AND
+                v3.mo_emp_group_code       = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v.description)
+            FROM
+                exp_employee_job v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                t.parameter                = 'EMPLOYEE_JOB' AND
+                t.parameter                = v.value AND
+                v.employee_job_code        = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v.description)
+            FROM
+                exp_employee_level v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                t.parameter                = 'EMPLOYEE_LEVEL' AND
+                t.parameter                = v.value AND
+                v.employee_levels_code     = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', t1.name)
+            FROM
+                exp_employee t1,
+                exp_employee_assign eea,
+                bgt_balance_query_cond_l t
+            WHERE
+                t1.enabled_flag            = 'Y' AND
+                t1.employee_id             = eea.employee_id AND
+                eea.company_id             = #{request.companyId} AND
+                t.parameter                = 'EMPLOYEE' AND
+                t.parameter                = v.value AND
+                t1.employee_code           = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v.description)
+            FROM
+                fnd_operation_unit v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                v.company_id               = #{request.companyId} AND
+                t.parameter                = 'OPERATION_UNIT' AND
+                t.parameter                = v.value AND
+                v.operation_unit_code      = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v.description)
+            FROM
+                exp_position_group v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                v.company_id               = #{request.companyId} AND
+                t.parameter                = 'ORG_POSITION_GROUP' AND
+                t.parameter                = v.value AND
+                v.position_group_code      = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v.description)
+            FROM
+                exp_org_position v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                v.company_id               = #{request.companyId} AND
+                t.parameter                = 'ORG_POSITION' AND
+                t.parameter                = v.value AND
+                v.position_code            = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', e.description)
+            FROM
+                exp_mo_unit_group e,
+                bgt_balance_query_cond_l t
+            WHERE
+                e.enabled_flag             = 'Y' AND
+                e.mo_unit_group_id         = #{request.magOrgId} AND
+                t.parameter                = 'ORG_UNIT_GROUP' AND
+                t.parameter                = v.value AND
+                e.mo_unit_group_code       = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', r.description)
+            FROM
+                exp_org_unit r,
+                bgt_balance_query_cond_l t
+            WHERE
+                r.enabled_flag             = 'Y' AND
+                r.company_id               = #{request.companyId} AND
+                t.parameter                = 'ORG_UNIT' AND
+                t.parameter                = v.value AND
+                r.unit_code                = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_lower_limit,'-', v.description)
+            FROM
+                exp_org_unit_level v,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = 'ORG_UNIT_LEVEL' AND
+                t.parameter                = v.value AND
+                v.org_unit_level_code      = t.parameter_lower_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_from_desc,
+            (SELECT
+                concat(t.parameter_upper_limit,'-', v3.description)
+            FROM
+                exp_mo_emp_group v3,
+                bgt_balance_query_cond_l t
+            WHERE
+                v3.enabled_flag            = 'Y' AND
+                v3.mag_org_id              = #{request.magOrgId} AND
+                t.parameter                = 'EMPLOYEE_GROUP' AND
+                t.parameter                = v.value AND
+                v3.mo_emp_group_code       = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v.description)
+            FROM
+                exp_employee_job v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                t.parameter                = 'EMPLOYEE_JOB' AND
+                t.parameter                = v.value AND
+                v.employee_job_code        = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v.description)
+            FROM
+                exp_employee_level v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                t.parameter                = 'EMPLOYEE_LEVEL' AND
+                t.parameter                = v.value AND
+                v.employee_levels_code     = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', t1.name)
+            FROM
+                exp_employee t1,
+                exp_employee_assign eea,
+                bgt_balance_query_cond_l t
+            WHERE
+                t1.enabled_flag            = 'Y' AND
+                t1.employee_id             = eea.employee_id AND
+                eea.company_id             = #{request.companyId} AND
+                t.parameter                = 'EMPLOYEE' AND
+                t.parameter                = v.value AND
+                t1.employee_code           = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v.description)
+            FROM
+                fnd_operation_unit v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                v.company_id               = #{request.companyId} AND
+                t.parameter                = 'OPERATION_UNIT' AND
+                t.parameter                = v.value AND
+                v.operation_unit_code      = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v.description)
+            FROM
+                exp_position_group v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                v.company_id               = #{request.companyId} AND
+                t.parameter                = 'ORG_POSITION_GROUP' AND
+                t.parameter                = v.value AND
+                v.position_group_code      = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v.description)
+            FROM
+                exp_org_position v,
+                bgt_balance_query_cond_l t
+            WHERE
+                v.enabled_flag             = 'Y' AND
+                v.company_id               = #{request.companyId} AND
+                t.parameter                = 'ORG_POSITION' AND
+                t.parameter                = v.value AND
+                v.position_code            = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', e.description)
+            FROM
+                exp_mo_unit_group e,
+                bgt_balance_query_cond_l t
+            WHERE
+                e.enabled_flag             = 'Y' AND
+                e.mag_org_id               = #{request.magOrgId} AND
+                t.parameter                = 'ORG_UNIT_GROUP' AND
+                t.parameter                = v.value AND
+                e.mo_unit_group_code       = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', r.description)
+            FROM
+                exp_org_unit r,
+                bgt_balance_query_cond_l t
+            WHERE
+                r.enabled_flag             = 'Y' AND
+                r.company_id               = #{request.companyId} AND
+                t.parameter                = 'ORG_UNIT' AND
+                t.parameter                = v.value AND
+                r.unit_code                = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            UNION
+            SELECT
+                concat(t.parameter_upper_limit,'-', v.description)
+            FROM
+                exp_org_unit_level v,
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = 'ORG_UNIT_LEVEL' AND
+                t.parameter                = v.value AND
+                v.org_unit_level_code      = t.parameter_upper_limit AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_to_desc,
+            (SELECT
+                t.parameter_id
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) parameter_id,
+            (SELECT
+                t.parameter_code
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code,
+            (SELECT
+                t.parameter_lower_limit
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_from,
+            (SELECT
+                t.parameter_upper_limit
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_to,
+            (SELECT
+                t.control_rule_range
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) control_rule_range,
+            (SELECT
+                t.balance_query_cond_l_id
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.value AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) balance_query_cond_l_id,
+            #{balanceQueryCondHId} balance_query_cond_h_id,
+            (CASE WHEN v.value='RESPONSIBILITY_CENTER' THEN 1 ELSE 2 END) num
+        FROM
+            sys_code_value_b v,
+            sys_code_b c
+        WHERE
+            c.code = 'BGT_BUDGET_PARAMETER_ORG'
+            AND v.code_id = c.code_id
+        ORDER BY
+            num
+    </select>
+    
+    <select id="getBalanceQueryCondLDim" resultMap="BaseResultMap">
+        SELECT
+            v.description AS parameter_name,
+            v.dimension_code AS parameter_code,
+            (SELECT
+                concat(t.parameter_lower_limit,'-', f1.description)
+            FROM
+                bgt_balance_query_cond_l t,
+                fnd_dimension_value f1
+                LEFT JOIN fnd_company_dimension_value c ON (c.dimension_value_id =f1.dimension_value_id AND c.company_id = #{request.companyId})
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                f1.dimension_value_code    =t.parameter_lower_limit AND
+                v.dimension_id             =f1.dimension_id
+            ) position_code_from_desc,
+            (SELECT
+                concat(t.parameter_upper_limit,'-', f1.description)
+            FROM
+                bgt_balance_query_cond_l t,
+                fnd_dimension_value f1
+                LEFT JOIN fnd_company_dimension_value c ON (c.dimension_value_id =f1.dimension_value_id AND c.company_id = #{request.companyId})
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId} AND
+                f1.dimension_value_code    =t.parameter_upper_limit AND
+                v.dimension_id             =f1.dimension_id
+            ) position_code_to_desc,
+            (SELECT
+                t.parameter_id
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) parameter_id,
+            (SELECT
+                t.parameter_code
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code,
+            (SELECT
+                t.parameter_lower_limit
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_from,
+            (SELECT
+                t.parameter_upper_limit
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) position_code_to,
+            (SELECT
+                t.control_rule_range
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id = #{balanceQueryCondHId}
+            ) control_rule_range,
+            (SELECT
+                t.balance_query_cond_l_id
+            FROM
+                bgt_balance_query_cond_l t
+            WHERE
+                t.parameter                = v.dimension_code AND
+                t.balance_query_cond_h_id =#{balanceQueryCondHId}
+            ) balance_query_cond_l_id,
+            v.dimension_sequence,
+            v.company_level,
+            v.system_level
+        FROM
+            fnd_dimension v
+        WHERE
+            v.system_flag = 'N' AND
+            v.dimension_sequence BETWEEN 1 AND 20
+    </select>
+    
+    <select id="getBalanceQueryCondLByCondHId" resultMap="BaseResultMap">
+        SELECT
+            l.*
+        FROM
+            bgt_balance_query_cond_l l
+        WHERE
+            l.balance_query_cond_h_id = #{balanceQueryCondHId}
+    </select>
+
+</mapper>

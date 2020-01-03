@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-5-31 下午6:42:37  
+    $Revision: 1.0  
+    $Purpose: 供应商银行账户分配核算主体
+
+    $Author: jialin.xing
+    $Date: 2019/2/20 11:47:05 $
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2410_pur_vender_account_ref_ae_batch_page"
+                url="$[/request/@context_path]/fnd/FND2410/pur_vender_account_ref_ae_batch_asgn.screen"/>
+        <script><![CDATA[
+        function FND2410_closeAccEntityCreateWindow() {
+            $au('FND2410_pur_vender_account_ref_ae_window').close();
+        }
+
+        function FND2410_submit() {
+            var datas = $au('FND2410_pur_vender_account_ref_ae_ds').getJsonData();
+
+            for (var i = 0; i < datas.length; i++) {
+                datas[i]['venderId'] = '$[/parameter/@venderId]';
+            }
+
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('FND2410_pur_vender_account_ref_ae_ds').submiturl,
+                para: datas,
+                success: FND2410_accountRefAeSubmit,
+                scope: this
+            });
+        }
+
+        function FND2410_batchAssignAccEntity() {
+            var url = $au('FND2410_pur_vender_account_ref_ae_batch_page').getUrl() + '?accountId=' + '$[/parameter/@accountId]' + '&venderId=' + '$[/parameter/@venderId]';
+            new Aurora.Window({
+                id: 'FND2410_pur_vender_account_ref_ae_batch_window',
+                url: url,
+                title: '$[l:hec_batch_assign]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND2410_accountRefAeEdit(record) {
+            if (record.isNew) {
+                return "FND2410_accountRefAe_lov";
+            }
+            return '';
+        }
+
+        function FND2410_accountRefAeSubmit() {
+            $au('FND2410_pur_vender_account_ref_ae_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2410_pur_vender_account_ref_ae_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/pur/vender-account-ref-ae"
+                       queryUrl="$[/request/@context_path]/pur/vender-account-ref-ae/query?accountId=$[/parameter/@accountId]">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityCode" autoComplete="true" autoCompleteField="accEntityCodeName"
+                             lovCode="LOV_VENDER_ACCOUNT_ASSIGN_ACC_ENTITY?venderId=$[/parameter/@venderId]&amp;accountId=$[/parameter/@accountId]"
+                             prompt="gld_accounting_entity.acc_entity_code" required="true"
+                             title="gld_responsibility_centers.acc_entitychoice">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="primaryFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="accountId" defaultValue="$[/parameter/@accountId]"/>
+                    <a:field name="venderId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2410_pur_vender_account_ref_ae_form" column="2" title="csh_bank.information" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2410_pur_vender_account_ref_ae_grid" type="add" width="80"/>
+                    <a:toolbarButton click="FND2410_submit" text="hap.save" width="80"/>
+                    <a:toolbarButton click="FND2410_batchAssignAccEntity" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="FND2410_closeAccEntityCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accountName" bindTarget="FND2410_pur_vender_accounts_ds"
+                             prompt="exp_employee_account.bank_account_name" readOnly="true"/>
+                <a:textField name="accountNumber" bindTarget="FND2410_pur_vender_accounts_ds"
+                             prompt="csh_bank_account.bank_account_num" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2410_pur_vender_account_ref_ae_grid" bindTarget="FND2410_pur_vender_account_ref_ae_ds"
+                    marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="FND2410_accountRefAeEdit"
+                              prompt="gld_accounting_entity.acc_entity_code" width="80"/>
+                    <a:column name="accEntityName" align="left"
+                              prompt="gld_accounting_entity.acc_entity_name" width="200"/>
+                    <a:column name="primaryFlag" align="center" editor="FND2410_accountRefAe_checkBox"
+                              prompt="exp_employee_account.bank_account_main" width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2410_accountRefAe_checkBox"
+                              prompt="hap_enabled_flag" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="FND2410_accountRefAe_checkBox"/>
+                    <a:lov id="FND2410_accountRefAe_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

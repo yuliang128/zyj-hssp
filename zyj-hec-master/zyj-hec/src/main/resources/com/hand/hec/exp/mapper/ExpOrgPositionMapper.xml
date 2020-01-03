@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpOrgPositionMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpOrgPosition">
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="POSITION_CODE" property="positionCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PARENT_POSITION_ID" property="parentPositionId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_JOB_ID" property="employeeJobId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="UNIT_NAME" property="unitName" jdbcType="VARCHAR"/>
+        <result column="PARENT_POSITION_NAME" property="parentPositionName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_JOB_NAME" property="employeeJobName" jdbcType="VARCHAR"/>
+        <result column="POSITION_NAME" property="positionName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryPosition" resultMap="BaseResultMap" parameterType="com.hand.hec.exp.dto.ExpOrgPosition">
+        SELECT
+            b.REQUEST_ID,
+            b.PROGRAM_ID,
+            b.OBJECT_VERSION_NUMBER,
+            b.CREATED_BY,
+            b.CREATION_DATE,
+            b.LAST_UPDATED_BY,
+            b.LAST_UPDATE_DATE,
+            b.LAST_UPDATE_LOGIN,
+            b.POSITION_ID,
+            b.UNIT_ID,
+            (
+            SELECT
+            concat( u.UNIT_CODE, '-', eou.DESCRIPTION )
+            FROM
+            exp_org_unit u
+            WHERE
+            u.UNIT_ID = b.UNIT_ID
+            ) unit_name,
+            b.POSITION_CODE,
+            t.DESCRIPTION  positionName,
+            t.DESCRIPTION,
+            b.PARENT_POSITION_ID,
+            (
+            SELECT
+             eop.DESCRIPTION
+            FROM
+            exp_org_position p
+            WHERE
+            p.POSITION_ID = b.PARENT_POSITION_ID
+            ) PARENT_POSITION_NAME,
+            b.COMPANY_ID,
+            (
+            SELECT
+            fc.COMPANY_SHORT_NAME
+            FROM
+            fnd_company c
+            WHERE
+            c.company_id = b.COMPANY_ID
+            ) COMPANY_SHORT_NAME,
+            b.EMPLOYEE_JOB_ID,
+            (
+            SELECT
+             EEJ.DESCRIPTION
+            FROM
+            exp_employee_job j
+            WHERE
+            j.EMPLOYEE_JOB_ID = b.EMPLOYEE_JOB_ID
+            ) EMPLOYEE_JOB_NAME,
+            b.ENABLED_FLAG
+            FROM exp_org_position b
+            LEFT OUTER JOIN exp_org_position_TL t ON ( b.position_Id = t.position_Id AND t.LANG =
+            #{request.locale,jdbcType=VARCHAR} )
+            LEFT OUTER JOIN exp_org_unit_tl eou ON ( eou.UNIT_ID = b.UNIT_ID AND eou.LANG =
+            #{request.locale,jdbcType=VARCHAR} )
+            LEFT OUTER JOIN exp_org_position_TL eop ON ( eop.POSITION_ID = b.PARENT_POSITION_ID AND eop.LANG =
+            #{request.locale,jdbcType=VARCHAR} )
+            LEFT OUTER JOIN fnd_company_tl fc ON ( fc.COMPANY_ID = b.COMPANY_ID AND FC.LANG =
+            #{request.locale,jdbcType=VARCHAR} )
+            LEFT OUTER JOIN exp_employee_job_tl eej ON ( eej.EMPLOYEE_JOB_ID = b.EMPLOYEE_JOB_ID AND eej.LANG =
+            #{request.locale,jdbcType=VARCHAR} )
+        WHERE 1=1
+        <if test="companyId!=null">
+            and b.company_id = #{companyId}
+        </if>
+        <if test="enabledFlag!=null">
+            and b.ENABLED_FLAG = #{enabledFlag}
+        </if>
+        <if test="positionCode!=null">
+            and b.POSITION_CODE like concat('%', concat(#{positionCode,jdbcType=VARCHAR}, '%'))
+        </if>
+        <if test="positionName!=null">
+            and t.description like concat('%', concat(#{positionName,jdbcType=VARCHAR}, '%'))
+        </if>
+        <if test="description!=null">
+            and t.description like concat('%', concat(#{description,jdbcType=VARCHAR}, '%'))
+        </if>
+        <if test="unitId!=null">
+            and b.unit_id = #{unitId}
+        </if>
+        <if test="employeeJobId!=null">
+            and b.EMPLOYEE_JOB_ID = #{employeeJobId}
+        </if>
+        <if test="parentPositionId!=null">
+            and b.PARENT_POSITION_ID = #{parentPositionId}
+        </if>
+        ORDER BY
+        b.position_Id ASC
+    </select>
+    <select id="checkExpPosition" resultMap="BaseResultMap">
+        select * from exp_org_position p
+        where
+        p.position_id = #{positionId}
+        and
+        (
+          (
+            #{filtrateMethod} = 'INCLUDE'
+            and (#{controlPositionCodeFrom} is null or p.position_code &gt;= #{controlPositionCodeFrom})
+            and (#{controlPositionCodeTo} is null or p.position_code &lt;= #{controlPositionCodeTo})
+          )
+          or
+          (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (#{controlPositionCodeFrom} is null or p.position_code &lt; #{controlPositionCodeFrom})
+                or (#{controlPositionCodeTo} is null or p.position_code &gt; #{controlPositionCodeTo})
+            )
+          )
+        )
+        and p.enabled_flag = 'Y'
+    </select>
+    
+    <select id="getPositionListForQuery" resultMap="BaseResultMap">
+        SELECT
+            p.*
+        FROM
+            exp_org_position p
+        WHERE
+            p.company_id = #{request.companyId}
+            AND p.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR p.position_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR p.position_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR p.position_code &lt;= #{parameterUpperLimit})
+    </select>
+
+    <select id="queryPositionAndUnit" resultMap="BaseResultMap">
+		SELECT
+			eop.position_id,
+			eop.position_code,
+			eopl.description position_name,
+			eou.unit_id,
+			eou.unit_code,
+			eoul.description unit_name
+		FROM
+			exp_employee_assign eea
+			LEFT OUTER JOIN exp_org_position eop ON ( eea.POSITION_ID = eop.POSITION_ID )
+			LEFT OUTER JOIN exp_org_position_tl eopl ON ( eop.POSITION_ID = eopl.POSITION_ID AND eopl.LANG = #{request.locale} )
+			LEFT OUTER JOIN exp_org_unit eou ON ( eop.UNIT_ID = eou.UNIT_ID )
+			LEFT OUTER JOIN exp_org_unit_tl eoul ON ( eou.UNIT_ID = eoul.UNIT_ID AND eoul.LANG = #{request.locale} )
+		WHERE
+			eea.employee_id = #{ employeeId }
+			AND eea.company_id = #{request.companyId}
+			AND eea.enabled_flag = 'Y'
+			AND eop.enabled_flag = 'Y'
+	</select>
+
+    <select id="getPositionByUnitId" resultMap="BaseResultMap">
+        select
+            p.position_id as positionId,
+            p.position_code as positionCode,
+            pt.description as positionName,
+            concat(p.position_code,'-',pt.description)
+        from
+            exp_org_position p left join exp_org_position_tl pt on p.position_id = pt.position_id and pt.lang = #{request.locale}
+        <where>
+            p.company_id = #{companyId} and
+            p.enabled_flag = 'Y'
+            <if test="unitId!=null">
+                and p.unit_id = #{unitId}
+            </if>
+            <if test="positionCode!=null">
+                and p.position_code like concat('%', concat(#{positionCode,jdbcType=VARCHAR}, '%'))
+            </if>
+            <if test="positionName!=null">
+                and pt.description like concat('%', concat(#{positionName,jdbcType=VARCHAR}, '%'))
+            </if>
+        </where>
+    </select>
+
+</mapper>

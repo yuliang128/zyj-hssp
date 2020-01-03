@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-04-164 下午03:01:44  
+    $Revision: 1.0  
+    $Purpose: 管理组织级员工组分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP2410_exp_mo_companies_batch_link" url="$[/request/@context_path]/exp/EXP2410/exp_mo_companies_batch.screen"/>
+        <script><![CDATA[
+            function EXP2410_closeAssignPage() {
+                $au('EXP2410_exp_mo_employee_assign_com_window').close();
+                $au('EXP2410_exp_mo_groups_result_ds').query();
+            }
+            
+            function EXP2410_batchAssignCompanyFun() {
+                new Aurora.Window({
+                    url: $au('EXP2410_exp_mo_companies_batch_link').getUrl() + '?moEmpGroupId=' + '$[/parameter/@moEmpGroupId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    id: 'EXP2410_exp_mo_companies_batch_window',
+                    title:'$[l:prompt.batch_disp_company]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP2410_exp_mo_companies_ds').query();
+                });
+            }
+            
+            
+            function EXP2410_expCompanyLovEditFunction(record) {
+                var companyCode = record.get("companyCode");
+                if (record.isNew || !companyCode) {
+                    return "EXP2410_exp_company_lov";
+                }
+                return "";
+            }
+            
+            function EXP2410_onExpMoCompaniesSubmitSuccessFun() {
+                $au('EXP2410_exp_mo_companies_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2410_exp_mo_companies_ds" autoQuery="true"  pageSize="50" submitUrl="$[/request/@context_path]/exp/mo-emp-group-asgn-com/submit" queryUrl="$[/request/@context_path]/exp/mo-emp-group-asgn-com/query?magOrgId=$[/parameter/@magOrgId]&amp;moEmpGroupId=$[/parameter/@moEmpGroupId]" selectable="true">
+                <a:fields>
+                    <a:field name="moEmpGroupId" defaultValue="$[/parameter/@moEmpGroupId]"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"  lovCode="EXP_MO_EMP_COMPANY_LOV?moEmpGroupId=$[/parameter/@moEmpGroupId]&amp;magOrgId=$[/parameter/@magOrgId]"  title="company_selected">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="assignId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                    <a:field name="enabledFlag" prompt="exp_employee_group.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP2410_onExpMoCompaniesSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <!--Modified by caoke/2017-07-03 修改布局，增加标题，原来是row="1"-->
+            <a:form id="EXP2410_exp_sob_companies_form" column="2" title="exp_mo_employee_group_assign_com">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP2410_exp_mo_companies_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP2410_exp_mo_companies_grid" type="save" width="80"/>
+                    <a:toolbarButton click="EXP2410_batchAssignCompanyFun" text="prompt.batch_disp_company" width="80"/>
+                    <a:toolbarButton click="EXP2410_closeAssignPage" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moEmpGroupCode" bindTarget="EXP2410_exp_mo_groups_result_ds" prompt="exp_employee_group.expense_user_group_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP2410_exp_mo_groups_result_ds" prompt="exp_employee_group.expense_user_group_desc" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP2410_exp_mo_companies_grid" bindTarget="EXP2410_exp_mo_companies_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editor="EXP2410_exp_company_lov" editorFunction="EXP2410_expCompanyLovEditFunction"  width="80"/>
+                    <a:column name="companyShortName" width="200"/>
+                    <a:column name="enabledFlag" editor="EXP2410_flag_cb" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP2410_exp_company_lov"/>
+                    <a:checkBox id="EXP2410_flag_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

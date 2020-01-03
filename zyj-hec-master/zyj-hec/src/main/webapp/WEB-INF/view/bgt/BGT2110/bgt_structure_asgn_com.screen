@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/18 $
+    $Revision: 1.1 $
+    $Purpose: 预算表定义-分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:view>
+        <a:link id="BGT2110_structure_company_batch_link" url="$[/request/@context_path]/bgt/BGT2110/bgt_structure_asgn_com_batch.screen"/>
+        <script><![CDATA[
+            function BGT2110_ReturnStructure() {
+                $au('bgt2110_period_asgn_com_window').close();
+            }
+            
+            function BGT1070_CompanyDesc(record, name) {
+                if (record.isNew) {
+                    return 'BGT2110_grid_com_tf';
+                }
+                return '';
+            }
+            
+            function BGT2110_BatchAllCompany() {
+                var bgtAssignMoId = '$[/parameter/@assignMoId]';
+                var bgtMagOrgId = '$[/parameter/@magOrgId]';
+                new Aurora.Window({
+                    id: 'bgt2110_structure_asgn_com_batch_window',
+                    url: $au('BGT2110_structure_company_batch_link').getUrl() + '?assignMoId=' + bgtAssignMoId + '&magOrgId=' + bgtMagOrgId,
+                    title: '$[l:bgt_journal_type.company_id]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2110_structure_com_init_ds" autoQuery="true" baseUrl="/bgt/structure" queryUrl="$[/request/@context_path]/bgt/structure/query?structureId=$[/parameter/@structureId]">
+                <a:fields>
+                    <a:field name="structureId"/>
+                    <a:field name="structureCode" prompt="bgt_budget_structure.budget_strc_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_structure.bgt_structure_desc" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2110_structure_asgn_com_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/structure-asgn-com" queryUrl="$[/request/@context_path]/bgt/structure-asgn-com/query?assignMoId=$[/parameter/@assignMoId]" selectable="true">
+                <a:fields>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="assignComId"/>
+                    <a:field name="companyCode" prompt="csh_mo_pay_req_asgn_com.company_code" autoComplete="true" autoCompleteField="companyCode" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="LOV_BGT_STRUCTURE_ASSIGN?magOrgId=$[/parameter/@magOrgId]&amp;assignMoId=$[/parameter/@assignMoId]" lovWidth="540" required="true" title="fnd.choose_company">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyDesc" to="companyDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyDesc" prompt="fnd_company.company_short_name" readOnly="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="bgt_journal_type.company_id">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2110_structure_asgn_com_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT2110_structure_asgn_com_grid" type="save" width="80"/>
+                    <a:toolbarButton click="BGT2110_BatchAllCompany" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:toolbarButton click="BGT2110_ReturnStructure" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="structureCode" bindTarget="BGT2110_structure_com_init_ds"/>
+                <a:textField name="description" bindTarget="BGT2110_structure_com_init_ds"/>
+            </a:form>
+            <a:grid id="BGT2110_structure_asgn_com_grid" bindTarget="BGT2110_structure_asgn_com_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editor="BGT2110_grid_com_lov" width="80"/>
+                    <a:column name="companyDesc" align="left" editorFunction="BGT1070_CompanyDesc" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="BGT2110_grid_com_ck" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT2110_grid_com_lov"/>
+                    <a:checkBox id="BGT2110_grid_com_ck"/>
+                    <a:textField id="BGT2110_grid_com_tf"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

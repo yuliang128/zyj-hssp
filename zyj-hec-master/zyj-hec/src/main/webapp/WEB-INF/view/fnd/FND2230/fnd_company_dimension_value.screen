@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="fnd_dimension_value_hierarchy_com_link" url="$[/request/@context_path]/fnd/FND2230/fnd_dimension_value_hierarchy_com.screen"/>
+        <script><![CDATA[
+            function queryFndDimensionValues() {
+                var record = $au('fnd_dimension_value_query_ds').getAt(0);
+                var status_ds = value;
+                if (status_ds == 'summary;enabled' || status_ds == 'enabled;summary') {
+                    record.set('summaryFlag', 'Y');
+                    record.set('enabledFlag', 'Y');
+                } else if (status_ds == 'summary') {
+                    record.set('summaryFlag', 'Y');
+                    record.set('enabledFlag', 'N');
+                } else if (status_ds == 'enabled') {
+                    record.set('summaryFlag', 'N');
+                    record.set('enabledFlag', 'Y');
+                } else {
+                    record.set('summaryFlag', '');
+                    record.set('enabledFlag', '');
+                }
+                $au('fnd_dimension_value_result_ds').query();
+                var para = $au('fnd_dimension_value_query_ds').getCurrentRecord().get('dimensionId');
+                $au('syscom_ds').setQueryParameter('dimensionId', para);
+                $au('syscom_ds').query();
+            
+            }
+            
+            function fnd_dimension_values_query_onUpdate(ds, record, name, value, oldValue) {
+                if (name == 'status') {
+                    var record = $au('fnd_dimension_value_query_ds').getAt(0);
+                    var status_ds = value;
+                    if (status_ds == 'summary;enabled' || status_ds == 'enabled;summary') {
+                        record.set('summaryFlag', 'Y');
+                        record.set('enabledFlag', 'Y');
+                    } else if (status_ds == 'summary') {
+                        record.set('summaryFlag', 'Y');
+                        record.set('enabledFlag', 'N');
+                    } else if (status_ds == 'enabled') {
+                        record.set('enabledFlag', 'Y');
+                        record.set('summaryFlag', 'N');
+                    } else {
+                        record.set('summaryFlag', '');
+                        record.set('enabledFlag', '');
+                    }
+                }
+                if (name == 'organizationType') {
+                    record.set('organizationEntityName', '');
+                    record.set('sourceId', '');
+                    record.set('dimensionCodeDisplay', '');
+                    record.set('dimensionId', '');
+                    var organization_type = record.get('organizationType');
+                    if (organization_type == 'MANAGEMENT') {
+                        debugger;
+                        //record.getField('dimension_code_display').setReadOnly(false);
+                        // 选择管理组织时组织实体默认取当前公司
+                        var defaultValue_company_ds = $au('defaultValue_company_ds').getCurrentRecord();
+                        var companyName = defaultValue_company_ds.get('sourceName');
+                        var companyId = defaultValue_company_ds.get('sourceId');
+                        record.set('sourceId', companyId);
+                        record.set('organizationEntityName', companyName);
+                        record.getField('organizationEntityName').setReadOnly(true);
+            
+                        $au('fnd_dimension').setQueryParameter('systemLevel', 'MANAGEMENT');
+                        $au('fnd_dimension').setQueryParameter('companyLevel', 'MANAGEMENT');
+                        $au('fnd_dimension').query();
+            
+                    } else if (organization_type == 'BUDGET') {
+                        // record.getField('dimension_code_display').setReadOnly(false);
+                        record.getField('organizationEntityName').setReadOnly(false);
+                        record.getField('organizationEntityName').setOptions('bgt_entity_ds');
+                        $au('bgt_entity_ds').query();
+                        $au('fnd_dimension').setQueryParameter('systemLevel', 'BUDGET');
+                        $au('fnd_dimension').setQueryParameter('companyLevel', 'BUDGET');
+                        $au('fnd_dimension').query();
+            
+                    } else if (organization_type == 'ACCOUNTING') {
+                        debugger;
+                        //record.getField('dimension_code_display').setReadOnly(false);
+                        record.getField('organizationEntityName').setReadOnly(false);
+                        record.getField('organizationEntityName').setOptions('gld_accounting_entity_ds');
+                        $au('gld_accounting_entity_ds').query();
+                        $au('fnd_dimension').setQueryParameter('systemLevel', 'ACCOUNTING');
+                        $au('fnd_dimension').setQueryParameter('companyLevel', 'ACCOUNTING');
+                        $au('fnd_dimension').query();
+                    } else if (organization_type == '' || organization_type == undefined || organization_type == null) {
+                        $au('fnd_dimension').setQueryParameter('systemLevel', '');
+                        $au('fnd_dimension').setQueryParameter('companyLevel', '');
+                        $au('fnd_dimension').query();
+                        record.getField('organizationEntityName').setOptions('');
+                    }
+                }
+            
+                if (name == 'sourceId') {
+                    record.set('dimensionCodeDisplay', '');
+                    record.set('dimensionId', '');
+                }
+                if (name == 'dimensionId') {
+                    $au('fnd_dimension_value_result_ds').query();
+                }
+            }
+            
+            function fnd_dimension_values_query_afterwait(ds) {
+                var para = $au('fnd_dimension_value_query_ds').getCurrentRecord().get('dimensionId');
+                if (para != undefined || para != null) {
+                    $au('syscom_ds').setQueryParameter('dimensionId', para);
+                    $au('syscom_ds').query();
+                }
+            }
+            
+            function resetFndDimensionValues() {
+                $au('fnd_dimension_value_query_ds').getCurrentRecord().set('dimensionDescription', '');
+                $au('fnd_dimension_value_query_ds').reset();
+            }
+            
+            function difValueComRenderer(value, record, name) {
+                var summaryFlag = record.get('summaryFlag');
+                if (!record.isNew && summaryFlag == "Y") {
+                    var dimensionValueId = record.get('dimensionValueId');
+                    return '<a href="javascript:difValueComRendererWindow(' + dimensionValueId + ')">$[l:fnd_dimension_value.dif_value]</a>';
+                }
+            }
+            
+            function difValueComRendererWindow(dimensionValueId) {
+                new Aurora.Window({
+                    id: 'fnd_dimension_values_dif_value_com_window',
+                    url: $au('fnd_dimension_value_hierarchy_com_link').getUrl() + '?dimensionValueId=' + dimensionValueId,
+                    title: '$[l:fnd_dimension_value.dif_value]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function setinitdata(ds, record, index) {
+                record.set('dimensionId', $au('fnd_dimension_value_query_ds').getAt(0).get('dimensionId'));
+                record.set('dimensionCode', $au('fnd_dimension_value_query_ds').getAt(0).get('dimensionCode'));
+                record.set('enabledFlag', 'Y');
+                //行上的source_id和organization_type取对应头上的值
+                record.set('sourceId', $au('fnd_dimension_value_query_ds').getAt(0).get('sourceId'));
+                record.set('organizationType', $au('fnd_dimension_value_query_ds').getAt(0).get('organizationType'));
+            }
+            
+            function dimensionValueCodeEdit(record, name) {
+                if (!record.isNew) {
+                    return '';
+                }
+                return 'dimension_value_code_tf';
+            }
+            
+            function descriptionEdit(record, name) {
+                if($au('syscom_ds').getAll().length>0){
+                    var flag = $au('syscom_ds').getAt(0).get('levelFlag');
+                    if (flag == 1) {
+                        return 'description_tf';
+                    }
+                }
+                return '';
+            }
+            
+            function summaryFlagEdit(record, name) {
+                if (!record.isNew) {
+                    return '';
+                }
+                return 'summary_flag_cb';
+            }
+            
+            function enabledFlagEdit(record, name) {
+                if($au('syscom_ds').getAll().length>0){
+                    var flag = $au('syscom_ds').getAt(0).get('levelFlag');
+                    if (flag == 1 || flag == 3) {
+                        return 'enabled_flag_cb';
+                    }
+                }
+                return '';
+            }
+            
+            function syscomLoadFunction() {
+                flagset();
+            }
+            
+            function flagset() {
+                var flag = 0;
+                var syscomflag = $au('syscom_ds').getAt(0);
+                if (syscomflag != null && syscomflag != undefined) {
+                    if (syscomflag.get('systemLevel') == null || syscomflag.get('systemLevel') == undefined) {
+                        if (syscomflag.get('companyLevel') != null && syscomflag.get('companyLevel') != undefined) {
+                            flag = 1;
+                            $au('addRecord').enable();
+                            $au('btnSave').enable();
+                        } else if (syscomflag.get('companyLevel') == null || syscomflag.get('companyLevel') == undefined) {
+                            flag = 2;
+                            $au('addRecord').disable();
+                            $au('btnSave').disable();
+                        }
+                    } else {
+                        flag = 3;
+                        if (syscomflag.get('companyLevel') != null && syscomflag.get('companyLevel') != undefined) {
+                            $au('addRecord').disable();
+                            $au('btnSave').enable();
+                        } else if (syscomflag.get('companyLevel') == null || syscomflag.get('companyLevel') == undefined) {
+                            $au('addRecord').disable();
+                            $au('btnSave').enable();
+                        }
+                    }
+                }
+                syscomflag.set('levelFlag', flag);
+            }
+            //保存
+            
+            function saveDimension() {
+                var records = $au('fnd_dimension_value_result_ds').getAll();
+                for(var i=0;i<records.length;i++){
+                    records[i].set('companyId',records[i].get('sourceId'));
+                    records[i].set('companyLevel',$au('syscom_ds').getAt(0).get('companyLevel'));
+                }
+                $au('fnd_dimension_value_result_ds').submit();
+                return 'summary_flag_cb';
+            }
+            //focus事件
+            
+            function organizationTypeFocusFun() {
+                $au('organization_type_ds').query();
+            }
+            
+            function dimensionCodeFocusFun() {
+                $au('fnd_dimension').query();
+            }
+            
+            function organizationEntitiesFocusFun() {
+                $au('bgt_entity_ds').query();
+                $au('gld_accounting_entity_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="fnd_dimension" autoQuery="true" fetchAll="true" loadData="true" baseUrl="/fnd/dimension" queryUrl="$[/request/@context_path]/fnd/dimension/queryForCompanyDimValue"/>
+            <a:dataSet id="organization_type_ds" queryUrl="$[/request/@context_path]/common/auroraCode/SYS_ORGANIZATION_TYPE/"/>
+            <!-- 选择管理组织时默认取当前公司 -->
+            <a:dataSet id="defaultValue_company_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/fnd-company/queryDefaultCompany?companyId=$[/session/@companyId]&amp;magOrgId=$[/session/@magOrgId]"/>
+            <a:dataSet id="bgt_entity_ds" autoQuery="true" fetchAll="true" loadData="true" baseUrl="/bgt/entity" queryUrl="$[/request/@context_path]/bgt/entity/queryByCompany?companyId=$[/session/@companyId]"/>
+            <a:dataSet id="gld_accounting_entity_ds" autoQuery="true" fetchAll="true" loadData="true" baseUrl="/gld/account-entity" queryUrl="$[/request/@context_path]/gld/account-entity/queryByMagOrg?companyId=$[/session/@companyId]&amp;magOrgId=$[/session/@magOrgId]"/>
+            <a:dataSet id="summary_enabled_name_ds" autoCreate="true">
+                <a:datas>
+                    <a:record name="汇总" code="summary"/>
+                    <a:record name="启用" code="enabled"/>
+                </a:datas>
+            </a:dataSet>
+            <a:dataSet id="fnd_dimension_value_query_ds" baseUrl="/fnd/company-dimension-value">
+                <a:fields>
+                    <a:field name="dimensionId"/>
+                    <a:field name="organizationType"/>
+                    <a:field name="organizationTypeDisplay"  displayField="meaning" options="organization_type_ds" prompt="hrorgunit.unitcategoryname" required="true" returnField="organizationType" valueField="value"/>
+                    <a:field name="organizationEntityName" prompt="organization_entity_id" displayField="sourceName" required="true">
+                        <a:mapping>
+                            <a:map from="sourceName" to="sourceName"/>
+                            <a:map from="sourceCode" to="sourceCode"/>
+                            <a:map from="sourceId" to="sourceId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sourceId"/>
+                    <a:field name="dimensionValueId"/>
+                    <a:field name="dimensionCodeDisplay" displayField="dimensionCodeDisplay" options="fnd_dimension" prompt="fnd_dimension.dimension_code" required="true">
+                        <a:mapping>
+                            <a:map from="dimensionId" to="dimensionId"/>
+                            <a:map from="dimensionCode" to="dimensionCode"/>
+                            <a:map from="description" to="dimensionDescription"/>
+                            <a:map from="dimensionCodeDisplay" to="dimensionCodeDisplay"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="dimensionDescription" readOnly="true"/>
+                    <a:field name="dimensionValueCode"/>
+                    <a:field name="dimensionValueDescription"/>
+                    <a:field name="summaryEnabledName" displayField="name" options="summary_enabled_name_ds" returnField="status" valueField="code"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="fnd_dimension_values_query_onUpdate"/>
+                    <a:event name="afterwait" handler="fnd_dimension_values_query_afterwait"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="fnd_dimension_value_result_ds" autoPageSize="true" baseUrl="/fnd/company-dimension-value" queryUrl="$[/request/@context_path]/fnd/company-dimension-value/queryWithDimension" submitUrl="$[/request/@context_path]/fnd/company-dimension-value/companySubmit" queryDataSet="fnd_dimension_value_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="dimensionId"/>
+                    <a:field name="dimensionValueId"/>
+                    <a:field name="dimensionValueCode" prompt="exp_mo_rep_type_ref_hd_dim.dim_value_code" required="true"/>
+                    <a:field name="dimensionValueDescription" prompt="exp_mo_rep_type_ref_hd_dim.dim_value_desc" required="true"/>
+                    <a:field name="summaryFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="gld_account.summary_flag"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                    <a:field name="sourceId"/>
+                    <a:field name="organizationType"/>
+                    <a:field name="companyLevel"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="setinitdata"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="syscom_ds" baseUrl="/fnd/dimension">
+                <a:fields>
+                    <a:field name="systemLevel"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="levelFlag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="syscomLoadFunction"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton id="addRecord" bind="grid" disabled="true" type="add" width="80"/>
+                <a:gridButton id="btnSave" bind="grid" click="saveDimension" text="hap_save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="fnd_dimension_value_query_ds" resultTarget="fnd_dimension_value_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:comboBox name="organizationTypeDisplay" bindTarget="fnd_dimension_value_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="organizationTypeFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="organizationEntityName" bindTarget="fnd_dimension_value_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="organizationEntitiesFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="dimensionCodeDisplay" id="dimension_code_cb" bindTarget="fnd_dimension_value_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="dimensionCodeFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:textField name="dimensionValueCode" bindTarget="fnd_dimension_value_query_ds" prompt="exp_mo_rep_type_ref_hd_dim.dim_value_code"/>
+                    <a:textField name="dimensionValueDescription" bindTarget="fnd_dimension_value_query_ds" prompt="exp_mo_rep_type_ref_hd_dim.dim_value_desc"/>
+                    <a:multiComboBox name="summaryEnabledName" bindTarget="fnd_dimension_value_query_ds" prompt="bgt_journal_main.status"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="grid" bindTarget="fnd_dimension_value_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="dimensionValueCode" align="center" editorFunction="dimensionValueCodeEdit" sortable="true" width="100"/>
+                <a:column name="dimensionValueDescription" align="left" editorFunction="descriptionEdit" sortable="true" width="150"/>
+                <a:column name="summaryFlag" align="center" editorFunction="summaryFlagEdit" sortable="true" width="100"/>
+                <a:column name="enabledFlag" align="center" editorFunction="enabledFlagEdit" sortable="true" width="100"/>
+                <a:column name="difValue" align="center" prompt="fnd_dimension_value.dif_value" renderer="difValueComRenderer" sortable="true" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="dimension_value_code_tf" typeCase="upper"/>
+                <a:textField id="description_tf"/>
+                <a:checkBox id="summary_flag_cb"/>
+                <a:checkBox id="enabled_flag_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

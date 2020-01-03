@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpTypeAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpTypeAsgnCom">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="MO_EXPENSE_TYPE_ID" property="moExpenseTypeId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="company_code" property="companyCode" jdbcType="VARCHAR" />
+        <result column="company_short_name" property="companyShortName" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="queryRemainAllCompany" resultMap="BaseResultMap" parameterType="com.hand.hec.exp.dto.ExpMoExpTypeAsgnCom">
+        SELECT
+        fv.company_id,
+        fv.company_code,
+        ft.company_short_name
+        FROM
+        fnd_company fv LEFT JOIN fnd_company_tl ft ON ( fv.company_id = ft.company_id AND ft.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+        fv.mag_org_id = #{magOrgId} AND
+        (
+        fv.end_date_active IS NULL OR
+        sysdate() BETWEEN fv.start_date_active AND fv.end_date_active
+        )
+        <if test="moExpenseTypeId != null">
+          AND NOT EXISTS
+        (SELECT
+        1
+        FROM
+        exp_mo_exp_type_asgn_com ec
+        WHERE
+        ec.company_id     = fv.company_id AND
+        ec.mo_expense_type_id =  #{moExpenseTypeId}
+        )
+        </if>
+        ORDER BY
+        fv.company_code
+    </select>
+    <select id="queryExpTypeAsgnCompany" parameterType="com.hand.hec.exp.dto.ExpMoExpTypeAsgnCom" resultType="long">
+        select count(*) from exp_mo_exp_type_asgn_com where MO_EXPENSE_TYPE_ID = #{moExpenseTypeId} and COMPANY_ID =#{companyId}
+    </select>
+
+</mapper>

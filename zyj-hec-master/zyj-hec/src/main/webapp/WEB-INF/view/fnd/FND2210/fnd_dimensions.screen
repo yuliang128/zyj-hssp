@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/02/18 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 维度定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+            function sequenceValidator(record, name, value) {
+                var dimensionSequence = record.get('dimensionSequence');
+                if (record.isNew) {
+                    if (!(dimensionSequence >= 2 && dimensionSequence <= 20)) {
+                        Aurora.showErrorMessage('$[l:prompt.error]', '$[l:user_defined_dimensions_error]');
+                        return false;
+                    }
+                }
+                return true;
+            }
+            
+            function enableValidator(record, name, value) {
+                debugger;
+                if (name == 'enabledFlag' || name == 'systemLevel' || name == 'companyLevel') {
+                    var enableFlag = record.get('enabledFlag');
+                    var systemLevel = record.get('systemLevel');
+                    var companyLevel = record.get('companyLevel');
+                    if (enableFlag == "Y" && systemLevel == null && companyLevel == null) {
+                        Aurora.showErrorMessage('$[l:prompt.error]', '$[l:enabled_dimension_error]');
+                        return false;
+                    }
+                }
+                return true;
+            }
+            
+            // function dimensionSquenceEdit(record, name) {
+            //     var dimensionSequence = record.get('dimensionSequence');
+            //     if (!record.isNew && (dimensionSequence >= 11 && dimensionSequence <= 15)) {
+            //         return '';
+            //     }
+            //     return 'dimensionSequence_tf';
+            // }
+            
+            function dimensionCodeEdit(record, name) {
+                if (!record.isNew) {
+                    return '';
+                }
+                return 'dimensionCode_tf_upper';
+            }
+            
+            function dimensionSequenceEdit(record, name) {
+                if (!record.isNew) {
+                    return '';
+                }
+                return 'dimensionSequence_tf';
+            }
+            
+            function descriptionEdit(record, name) {
+                var dimensionSequence = record.get('dimensionSequence');
+                if (!record.isNew && (dimensionSequence >= 11 && dimensionSequence <= 15)) {
+                    return '';
+                }
+                return 'description_tf';
+            }
+            
+            function sysLevelEdit(record, name) {
+                var dimensionSequence = record.get('dimensionSequence');
+                if (!record.isNew && (dimensionSequence >= 11 && dimensionSequence <= 15)) {
+                    return '';
+                }
+                // modify lcy 2018/1/22 11:30:20 系统预制则不可编辑级别
+                if (record.get('systemFlag') == 'Y') {
+                    return '';
+                }
+                return 'systemLevel_cb';
+            }
+            
+            
+            
+            function enbFlagFunction(record, name) {
+                var dimensionSequence = record.get('dimensionSequence');
+                if (!record.isNew && (dimensionSequence >= 11 && dimensionSequence <= 15)) {
+                    return '';
+                }
+                return 'enabledFlag_cb';
+            }
+            
+            function updateFunction(dataSet, record, name, value, oldValue) {
+                if (!record.isNew) {
+                    if (name == 'companyLevel' && value != oldValue) {
+                        if (record.get('valueExistFlag') != '0') {
+                            record.data['companyLevel'] = oldValue;
+                            Aurora.showInfoMessage('$[l:prompt]', '$[l:dimension_value_exist_warning]', null, 250, 100);
+                        }
+                    }
+                    if (name == 'systemLevel' && value != oldValue) {
+                        if (record.get('valueExistFlag') != '0') {
+                            record.data['systemLevel'] = oldValue;
+                            Aurora.showInfoMessage('$[l:prompt]', '$[l:dimension_value_exist_warning]', null, 250, 100);
+                        }
+                    }
+                }
+                if (name == 'systemLevel') {
+                    record.set('companyLevelName', '');
+                    record.set('companyLevel', '');
+                    if (value == null || value == '' || value == undefined) {
+                        record.set('companyLevelName', '');
+                        record.set('companyLevel', '');
+                        record.getField('companyLevelName').setOptions('');
+                    }
+                }
+            }
+            
+            function saveDimensions() {
+                var records = $au('fnd_dimension_result_ds').getAll();
+                for (var i = 0;i < records.length;i++) {
+                    var record = records[i];
+                    var enableFlag = record.get('enabledFlag');
+                    var systemLevel = record.get('systemLevel');
+                    var companyLevel = record.get('companyLevel');
+                    debugger;
+                    if (enableFlag == "Y" && systemLevel == null && companyLevel == null) {
+                        Aurora.showErrorMessage('$[l:prompt.error]', '$[l:enabled_dimension_error]');
+                        return false;
+                    }
+            
+                }
+                $au('fnd_dimension_result_ds').submit();
+            }
+            
+            /*
+             date:2014/04/11
+             added by:wangyujiao
+             purpose:保存后刷新数据，解决保存后不能更改公司级别，系统级别标识
+             */
+            
+            function submitSuccess() {
+                $au("fnd_dimension_result_ds").getCurrentRecord().getField('companyLevelName').setOptions('companyLevel_from_systemLevel_ds');
+                $au('fnd_dimension_result_ds').query();
+            }
+            //实现公司级别系统级别联动
+            
+            function cellclickFun(grid, row, name, record) {
+            
+                if (name == 'companyLevelName') {
+                    var value = record.get('systemLevel');
+                    if (value == null || value == '' || value == undefined) {
+                        record.getField('companyLevelName').setOptions('companyLevel_ds');
+                        $au('companyLevel_ds').query();
+                    } else {
+                        record.getField('companyLevelName').setOptions('companyLevel_from_systemLevel_ds');
+                        $au('companyLevel_from_systemLevel_ds').setQueryParameter('value', value);
+                        $au('companyLevel_from_systemLevel_ds').query();
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="systemLevel_ds" loadData="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/SYS_ORGANIZATION_TYPE/"/>
+            <a:dataSet id="companyLevel_ds" loadData="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/SYS_ORGANIZATION_TYPE"/>
+            <a:dataSet id="companyLevel_from_systemLevel_ds"  loadData="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/fnd/dimension/queryCodeValue"/>
+            <a:dataSet id="fnd_dimension_query_ds">
+                <a:fields>
+                    <a:field name="dimensionCode" prompt="fnd_dimension.dimension_code"/>
+                    <a:field name="description" prompt="fnd_dimension.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="fnd_dimension_result_ds" autoPageSize="true" autoQuery="true"  pageSize="10" queryDataSet="fnd_dimension_query_ds" queryUrl="$[/request/@context_path]/fnd/dimension/queryAll" selectable="true" submitUrl="$[/request/@context_path]/fnd/dimension/submit">
+                <a:fields>
+                    <a:field name="dimensionSequence" required="true" validator="sequenceValidator" prompt="fnd_dimensions.dimension_sequence"/>
+                    <a:field name="dimensionCode" required="true" prompt="fnd_dimension.dimension_code"/>
+                    <a:field name="description" dto="com.hand.hec.fnd.dto.FndDimension" dtoId="dimensionId" required="true" prompt="fnd_dimension.description"/>
+                    <a:field name="systemLevel"/>
+                    <a:field name="systemLevelName" displayField="meaning" options="systemLevel_ds" prompt="fnd_dimensions.system_level" returnField="systemLevel" validator="enableValidator" valueField="value"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="companyLevelName" displayField="meaning" options="companyLevel_ds" returnField="companyLevel" valueField="value"   prompt="fnd_dimensions.company_level" validator="enableValidator"/>
+                    <a:field name="systemFlag" checkedValue="Y" defaultValue="N" prompt="fnd_dimension.sys_preset" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="fnd_dimension.enabled_flag" validator="enableValidator"/>
+                    <a:field name="valueExistFlag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="updateFunction"/>
+                    <a:event name="submitsuccess" handler="submitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="fnd_dimensions_grid" type="add" width="80"/>
+                <a:toolbarButton click="saveDimensions" text="hap_save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="fnd_dimension_query_ds" resultTarget="fnd_dimension_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="dimensionCode" bindTarget="fnd_dimension_query_ds" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="fnd_dimension_query_ds" />
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="fnd_dimensions_grid" bindTarget="fnd_dimension_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="dimensionSequence" align="center" editorFunction="dimensionSequenceEdit" sortable="true" width="50"/>
+                <a:column name="dimensionCode" align="center" editorFunction="dimensionCodeEdit" sortable="true" width="100"/>
+                <a:column name="description" align="left" editorFunction="descriptionEdit" sortable="true" width="150"/>
+                <a:column name="systemLevelName" align="center" editorFunction="sysLevelEdit" sortable="true" width="80"/>
+                <a:column name="companyLevelName" align="center" editorFunction="sysLevelEdit" sortable="true" width="80"/>
+                <a:column name="systemFlag" align="center" sortable="true" width="80"/>
+                <a:column name="enabledFlag" align="center" editorFunction="enbFlagFunction" sortable="true" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="dimensionSequence_tf" allowDecimals="false" allowNegative="false"/>
+                <a:textField id="dimensionCode_tf_upper" typeCase="upper"/>
+                <a:tledit id="description_tf"/>
+                <a:comboBox id="systemLevel_cb"/>
+                <a:comboBox id="companyLevel_cb"/>
+                <a:checkBox id="systemFlag_cb"/>
+                <a:checkBox id="enabledFlag_cb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="cellclickFun"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '${/parameter/@component_id}';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('layout_queryForm_ds').getAt(0);
+                 cmp.initRecord(record);
+                 if(bpm_type=='tplt'){
+                    record.getField('layout_code').setRequired(true); 
+                    record.getField('layout_desc').setRequired(true);
+                 }
+                 else if(bpm_type=='page'){
+                    record.getField('layout_code').setReadOnly(true); 
+                    record.getField('layout_desc').setReadOnly(true);
+                    // record.getField('id').setReadOnly(true); 
+                    record.getField('dataset').setReadOnly(true);
+                 }
+            });
+            
+            function saveQueryForm() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('layout_queryForm_ds').getAt(0);
+                cmp.setAttr(record);
+              
+                cancelQueryForm();
+            }
+            
+            function cancelQueryForm() {
+                $au('QueryForm_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="layout_type_list" autoCreate="true" autoQuery="true" lookupCode="BPM_COMPONENT_TYPE"/>
+            <a:dataSet id="layout_queryForm_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="layout_code" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_CODE"/>
+                    <a:field name="layout_desc" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_DESC"/>
+                    <a:field name="prompt" prompt="BPM_TPLT_TAGS_BASIC.PROMPT"/>
+                    <a:field name="dataset" displayField="datasetId" options="bpm_bindtarget_lists" prompt="BPM_TPLT_LAYOUT_BASIC.DATASET" returnField="dataset" valueField="datasetId"/>
+                    <a:field name="id" prompt="PROMPT.LAYOUT_ID" readOnly="true"/>
+                    <a:field name="labelwidth" prompt="BPM_TPLT_LAYOUT_BASIC.LABELWIDTH"/>
+                    <a:field name="row" defaultValue="1" prompt="BPM_TPLT_LAYOUT_BASIC.ROW"/>
+                    <a:field name="column" defaultValue="1" prompt="BPM_TPLT_LAYOUT_BASIC.COLUMN"/>
+                    <a:field name="layout_sequence" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_SEQUENCE" readOnly="true"/>
+                    <a:field name="layout_type_desc" displayfield="code_value_name" options="layout_type_list" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_TYPE" readOnly="true" returnField="layout_type" valueField="code_value"/>
+                    <a:field name="layout_type" readOnly="true"/>
+                    <a:field name="view_parent_layout_id" prompt="BPM_TPLT_LAYOUT_BASIC.PARENT_LAYOUT_ID" readOnly="true"/>
+                    <a:field name="template_flag" checkedValue="Y" defaultValue="N" prompt="BPM_PAGE_LAYOUT_BASIC.TEMPLATE_FLAG" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="parent_layout_desc" autoComplete="true" autoCompleteField="layout_desc" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1010.bpm_tplt_layout_basic" lovWidth="540" prompt="BPM_TPLT_LAYOUT_BASIC.PARENT_LAYOUT_ID" title="BPM_TPLT_LAYOUT_BASIC.PARENT_LAYOUT_ID">
+                        <a:mapping>
+                            <a:map from="layout_desc" to="parent_layout_desc"/>
+                            <a:map from="layout_id" to="parent_layout_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parent_layout_id"/>
+                    <a:field name="template_id"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_LAYOUT_BASIC.HIDDEN" uncheckedValue="false"/>
+                    <a:field name="screen_id"/>
+                    <a:field name="title" prompt="BPM_PAGE_LAYOUT_BASIC.TITLE"/>
+                    <a:field name="width" prompt="BPM_PAGE_LAYOUT_BASIC.WIDTH"/>
+                    <a:field name="height" prompt="BPM_PAGE_LAYOUT_BASIC.HEIGHT"/>
+                    <a:field name="style" prompt="BPM_PAGE_LAYOUT_BASIC.STYLE"/>
+                    <a:field name="marginwidth" prompt="BPM_PAGE_LAYOUT_BASIC.MARGINWIDTH"/>
+                    <a:field name="marginheight" prompt="BPM_PAGE_LAYOUT_BASIC.MARGINHEIGHT"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="QueryForm">
+                <a:textField name="layout_sequence" bindTarget="layout_queryForm_ds"/>
+                <a:comboBox name="layout_type_desc" bindTarget="layout_queryForm_ds"/>
+                <a:textField name="id" bindTarget="layout_queryForm_ds"/>
+                <a:numberField name="labelwidth" allowDecimals="false" bindTarget="layout_queryForm_ds"/>
+                <a:numberField name="column" allowDecimals="false" bindTarget="layout_queryForm_ds"/>
+                <a:numberField name="marginwidth" allowDecimals="false" bindTarget="layout_queryForm_ds"/>
+                <a:numberField name="marginheight" allowDecimals="false" bindTarget="layout_queryForm_ds"/>
+                <a:textArea name="style" bindTarget="layout_queryForm_ds"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="saveQueryForm" skin="green" text="HAP_CONFIRM"/>
+                <a:button click="cancelQueryForm" skin="red" text="HAP_CANCEL"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="datasetConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="tplt">
+                    <c:process-config>
+                        <a:comboBox name="dataset" bindTarget="layout_queryForm_ds"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="page">
+                    <c:process-config>
+                        <a:checkBox name="template_flag" bindTarget="layout_queryForm_ds"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <!--<a:init-procedure>
+        <a:model-query model="ssc.SSC2010.ssc_my_work_status_query" rootPath="work_status"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="SSC2010_manual_dispatch_link" url="$[/request/@context_path]/ssc/task-pool/manual-dispatch" />
+        <a:link id="SSC2010_start_work_status_link" url="$[/request/@context_path]/ssc/work-record/start-work"/>
+        <a:link id="SSC2010_pause_work_status_link" url="$[/request/@context_path]/ssc/work-record/pause-work"/>
+        <a:link id="SSC2010_stop_work_status_link" url="$[/request/@context_path]/ssc/work-record/stop-work"/>
+        <a:link id="SSC2010_ssc_my_task_process_link" url="$[/request/@context_path]/ssc/SSC2010/ssc_my_task_process.screen"/>
+        <a:link id="SSC2010_ssc_process_link" url="$[/request/@context_path]/ssc/SSC2010/ssc_process.screen"/>
+        <a:link id="SSC2010_ssc_view_link" url="$[/request/@context_path]/ssc/SSC2010/ssc_view.screen"/>
+        <script><![CDATA[
+            var autoDispatchFlag = false;
+            
+            Aurora.onReady(function() {
+                var workStatus = '$[/model/@workStatus]';
+                var workStatusRecord = $au('SSC2010_work_status_ds').getAt(0);
+                if (!workStatus) {
+                    workStatusRecord.set('workStatus', '');
+                    workStatusRecord.set('workStatusName', '$[l:not_yet_operated]');
+                } else if (workStatus == 'WORK') {
+                    workStatusRecord.set('workStatus', 'WORK');
+                    workStatusRecord.set('workStatusName', '$[l:start_work]');
+                } else if (workStatus == 'PAUSE') {
+                    workStatusRecord.set('workStatus', 'PAUSE');
+                    workStatusRecord.set('workStatusName', '$[l:pause_work]');
+                } else if (workStatus == 'STOP') {
+                    workStatusRecord.set('workStatus', 'STOP');
+                    workStatusRecord.set('workStatusName', '$[l:stop_work]');
+                }
+            });
+            
+            function SSC2010_workStatusRenderer(value, record, name) {
+                var color = '#659BE0';
+                if (!record.get('workStatus')) {
+                    color = '#659BE0';
+                } else if (record.get('workStatus') == 'WORK') {
+                    color = '#36C6D3';
+                } else if (record.get('workStatus') == 'PAUSE') {
+                    color = '#F1C40F';
+                } else if (record.get('workStatus') == 'STOP') {
+                    color = '#ED6B75';
+                }
+            
+                return '<span style="font-weight:bold;color:' + color + ';">' + value + '</span>';
+            }
+            
+            function SSC2010_doDispatch() {
+                var workStatus = $au('SSC2010_work_status_ds').getAt(0).get('workStatus');
+                if (workStatus != 'WORK') {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:please_start_work]');
+                    return;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:wbc_document_dispatch.get_documenting]',
+                    url: $au('SSC2010_manual_dispatch_link').getUrl(),
+                    success: function(resp) {
+                        $au('SSC2010_my_task_result_ds').query();
+                    }
+                });
+            }
+            
+            function SSC2010_autoDispatch() {
+                var workStatus = $au('SSC2010_work_status_ds').getAt(0).get('workStatus');
+                if (workStatus != 'WORK') {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:please_start_work]');
+                    return;
+                }
+                if (autoDispatchFlag) {
+                    $au('SSC2010_auto_dispatch_btn').setText('$[l:automatic_dispatch]');
+                    autoDispatchFlag = false;
+                } else {
+                    $au('SSC2010_auto_dispatch_btn').setText('$[l:not_automatic_dispatch]');
+                    autoDispatchFlag = true;
+                }
+            }
+            
+            function SSC2010_process(processType) {
+                if (processType != 'CANCEL_HOLD') {
+                    var records = $au('SSC2010_my_task_result_ds').getSelected();
+                } else {
+                    records = $au('SSC2010_my_task_hold_ds').getSelected();
+                }
+            
+                if (!records || records.length == 0) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return;
+                }
+                new Aurora.Window({
+                    url: $au('SSC2010_ssc_my_task_process_link').getUrl() + '?processType=' + processType,
+                    id: 'SSC2010_ssc_my_task_process_window',
+                    title: '$[l:hap_operation]',
+                    width: 500,
+                    height: 250
+                });
+            }
+            
+            function SSC2010_approve() {
+                SSC2010_process('APPROVE');
+            }
+            
+            function SSC2010_reject() {
+                SSC2010_process('REJECT');
+            }
+            
+            function SSC2010_hold() {
+                SSC2010_process('HOLD');
+            }
+            
+            function SSC2010_cancelHold() {
+                SSC2010_process('CANCEL_HOLD');
+            }
+            
+            function SSC2010_returnBack() {
+                SSC2010_process('RETURN_BACK');
+            }
+            
+            function SSC2010_applyReturn() {
+                SSC2010_process('APPLY_RETURN');
+            }
+            
+            function SSC2010_startWork() {
+                Aurora.request({
+                    lockMessage: '$[l:start_working]',
+                    url: $au('SSC2010_start_work_status_link').getUrl(),
+                    success: function(resp) {
+                        $au('SSC2010_work_status_ds').getAt(0).set('workStatus', 'WORK');
+                        $au('SSC2010_work_status_ds').getAt(0).set('workStatusName', '$[l:start_work]');
+                    }
+                });
+            }
+            
+            function SSC2010_pauseWork() {
+                Aurora.request({
+                    lockMessage: '$[l:start_working]',
+                    url: $au('SSC2010_pause_work_status_link').getUrl(),
+                    success: function(resp) {
+                        $au('SSC2010_work_status_ds').getAt(0).set('workStatus', 'PAUSE');
+                        $au('SSC2010_work_status_ds').getAt(0).set('workStatusName', '$[l:pause_work]');
+                    }
+                });
+            }
+            
+            function SSC2010_stopWork() {
+                Aurora.request({
+                    lockMessage: '$[l:start_working]',
+                    url: $au('SSC2010_stop_work_status_link').getUrl(),
+                    success: function(resp) {
+                        $au('SSC2010_work_status_ds').getAt(0).set('workStatus', 'STOP');
+                        $au('SSC2010_work_status_ds').getAt(0).set('workStatusName', '$[l:stop_work]');
+                    }
+                });
+            }
+            
+            function SSC2010_taskRenderer(value, record, name) {
+                return '<a href="javascript:SSC2010_openProcess(' + record.get('dispatchRecordId') + ');">' + value + '</a>';
+            }
+            
+            function SSC2010_openProcess(dispatchRecordId) {
+                new Aurora.Window({
+                    url: $au('SSC2010_ssc_process_link').getUrl() + '?dispatchRecordId=' + dispatchRecordId,
+                    id: 'SSC2010_ssc_process_window',
+                    title: '$[l:ssc_workflow_nodes.process_page]',
+                    fullScreen: true
+                });
+            }
+            
+            function SSC2010_viewRenderer(value, record, name) {
+                var task_id = record.get('task_id');
+                return '<a href="javascript:SSC2010_openView(' + record.get('dispatchRecordId') + ',' + taskId + ');">' + value + '</a>';
+            }
+            
+            function SSC2010_openView(dispatchRecordId, taskId) {
+                new Aurora.Window({
+                    url: $au('SSC2010_ssc_view_link').getUrl() + '?dispatchRecordId=' + dispatchRecordId + '&taskId=' + taskId,
+                    id: 'SSC2010_ssc_view_window',
+                    title: '$[l:ssc_workflow_nodes.process_page]',
+                    fullScreen: true
+                });
+            }
+            
+            var autoDispatchTask = {
+                run: function() {
+                    //当前员工开始工作且开启了自动派工，则每隔60秒自动进行一次取单操作
+                    if ($au('SSC2010_work_status_ds').getAt(0).get('workStatus') == 'WORK' && autoDispatchFlag) {
+                        SSC2010_doDispatch();
+                    }
+                },
+                interval: 60000
+            };
+            
+            Ext.TaskMgr.start(autoDispatchTask);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC2010_work_status_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="workStatus" prompt="work_status"/>
+                    <a:field name="workStatusName" prompt="work_status"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SSC2010_my_task_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="docNumber" prompt="ipm.document_number"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SSC2010_my_task_result_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/task-pool/doing-task-query" queryDataSet="SSC2010_my_task_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="docNumber" prompt="ipm.document_number"/>
+                    <a:field name="accEntityName" prompt="csh_offer_format.acc_entity"/>
+                    <a:field name="docTypeName" prompt="pm_document_type"/>
+                    <a:field name="employeeName" prompt="gld.employee_name"/>
+                    <a:field name="docCreationDateStr" prompt="ast_requisition_date"/>
+                    <a:field name="enterTime" prompt="wbc_document_dispatch.start_time"/>
+                    <a:field name="nodeName" prompt="wfl_workflow_instance.node_name"/>
+                    <a:field name="lastRejectOpinion" prompt="last_reject_reasons"/>
+                    <a:field name="lastNodeName" prompt="last_operations_node"/>
+                    <a:field name="lastEmployeeName" prompt="last_operations_employee"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SSC2010_my_task_hold_ds" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/task-pool/hold-task-query" queryDataSet="SSC2010_my_task_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="docNumber" prompt="ipm.document_number"/>
+                    <a:field name="processOpinion" prompt="HOLD_REASON"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SSC2010_my_task_return_back_ds" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/task-pool/return-task-query"  queryDataSet="SSC2010_my_task_query_ds">
+                <a:fields>
+                    <a:field name="docNumber" prompt="ipm.document_number"/>
+                    <a:field name="processOpinion" prompt="HOLD_REASON"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar width="500">
+            <a:button click="SSC2010_doDispatch" text="wbc_document_dispatch.get_document" width="80"/>
+            <a:button id="SSC2010_auto_dispatch_btn" click="SSC2010_autoDispatch" text="automatic_dispatch" width="80"/>
+            <a:buttonGroup text="hap_work">
+                <a:groupButtons>
+                    <a:button click="SSC2010_startWork" text="start_work"/>
+                    <a:button click="SSC2010_pauseWork" text="pause_work"/>
+                    <a:button click="SSC2010_stopWork" text="end_work"/>
+                </a:groupButtons>
+            </a:buttonGroup>
+            <a:buttonGroup text="hap_operation">
+                <a:groupButtons>
+                    <a:button click="SSC2010_approve" text="wfl_workflow_btn_aggree"/>
+                    <a:button click="SSC2010_reject" text="prompt.reject"/>
+                    <a:button click="SSC2010_hold" text="sys_alert_rule_jobs.is_broken"/>
+                    <a:button click="SSC2010_cancelHold" text="con_contract_headers.cancle_hold_status"/>
+                    <a:button click="SSC2010_returnBack" text="wfl_workflow.taken_back"/>
+                    <a:button click="SSC2010_applyReturn" text="apply_heavy_job"/>
+                </a:groupButtons>
+            </a:buttonGroup>
+            <a:box>
+                <a:label name="workStatusName" bindTarget="SSC2010_work_status_ds" renderer="SSC2010_workStatusRenderer"/>
+            </a:box>
+        </a:screenTopToolbar>
+        <!-- <div style="width:100%;height:50px;"> -->
+        <a:queryForm bindTarget="SSC2010_my_task_query_ds" resultTarget="SSC2010_my_task_result_ds" style="width:100%;border:none;">
+            <a:formToolBar>
+                <a:textField name="docNumber" bindTarget="SSC2010_my_task_query_ds"/>
+            </a:formToolBar>
+        </a:queryForm>
+        <!-- </div> -->
+        <div style="width:100%;">
+            <a:box column="2" padding="0">
+                <a:vBox padding="0">
+                    <a:form padding="0" showmargin="false" shrinkable="false" title="hap_work_space">
+                        <a:grid id="SSC2010_my_task_grid" bindTarget="SSC2010_my_task_result_ds" navBar="true" marginHeight="165" marginWidth="400" minHeight="600">
+                            <a:columns>
+                                <a:column name="docNumber" align="center" prompt="ipm.document_number" renderer="SSC2010_taskRenderer"/>
+                                <a:column name="accEntityName" align="center" prompt="csh_offer_format.acc_entity"/>
+                                <a:column name="docTypeName" align="center" prompt="pm_document_type"/>
+                                <a:column name="employeeName" align="center" prompt="gld.employee_name"/>
+                                <a:column name="docCreationDate" align="center" prompt="ast_requisition_date"/>
+                                <a:column name="enterTime" align="center" prompt="wbc_document_dispatch.start_time"/>
+                                <a:column name="nodeName" align="center" prompt="wfl_workflow_instance.node_name"/>
+                                <a:column name="lastRejectOpinion" prompt="last_reject_reason"/>
+                                <a:column name="lastNodeName" align="center" prompt="last_operations_node"/>
+                                <a:column name="lastEmployeeName" align="center" prompt="last_operations_employee"/>
+                            </a:columns>
+                        </a:grid>
+                    </a:form>
+                </a:vBox>
+                <a:vBox padding="0">
+                    <a:form padding="0" showmargin="false" shrinkable="false" title="hap_pending_space">
+                        <a:grid id="SSC2010_my_task_hold_grid" autoAdjust="false" bindTarget="SSC2010_my_task_hold_ds" marginWidth="3" minHeight="100" navBar="true">
+                            <a:columns>
+                                <a:column name="docNumber" align="center" prompt="ipm.document_number" renderer="SSC2010_viewRenderer" width="150"/>
+                                <a:column name="opinion" prompt="hold_reason" width="200"/>
+                            </a:columns>
+                        </a:grid>
+                    </a:form>
+                    <a:form padding="0" showmargin="false" shrinkable="false" title="hap_back_space">
+                        <a:grid id="SSC2010_my_task_return_back_grid" autoAdjust="false" bindTarget="SSC2010_my_task_return_back_ds" marginWidth="3" minHeight="100" navBar="true">
+                            <a:columns>
+                                <a:column name="docNumber" align="center" prompt="ipm.document_number" renderer="SSC2010_viewRenderer" width="180"/>
+                                <a:column name="opinion" prompt="back_reason" width="200"/>
+                            </a:columns>
+                        </a:grid>
+                    </a:form>
+                </a:vBox>
+            </a:box>
+        </div>
+        <script purpose="auto_resize"><![CDATA[
+            function WFL2070_InitSize() {
+                var vh = this.innerHeight;
+                //设置组件的自适应宽度
+                var rightHeight = vh - 170;
+                var autoHeight = (rightHeight - 40) / 2;
+                if (Aurora.CmpManager.get('SSC2010_my_task_grid')) {
+                    $au('SSC2010_my_task_grid').setHeight(rightHeight);
+                }
+                if (Aurora.CmpManager.get('SSC2010_my_task_hold_grid')) {
+                    $au('SSC2010_my_task_hold_grid').setHeight(autoHeight);
+                }
+                if (Aurora.CmpManager.get('SSC2010_my_task_return_back_grid')) {
+                    $au('SSC2010_my_task_return_back_grid').setHeight(autoHeight);
+                }
+            }
+            
+            WFL2070_InitSize();
+        ]]></script>
+    </a:view>
+</a:screen>

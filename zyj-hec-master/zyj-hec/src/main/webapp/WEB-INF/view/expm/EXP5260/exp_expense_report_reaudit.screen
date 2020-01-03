@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <a:model-query fetchAll="true" model="gld.gld_currency_vl" rootpath="currencylist"/>
+        <a:model-query model="gl.gl_segment_description" rootPath="segment_descs"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP5260_exp_report_reaudit_reject_link" url="$[/request/@context_path]/modules/expm/public/exp_report_reject.screen"/>
+        <a:link id="EXP5260_audit_exp_report_recheck_link" model="db.exp_report_pkg.audit_exp_report_recheck" modelaction="batch_update"/>
+        <a:link id="EXP5260_exp_report_reaudit_history_link" url="$[/request/@context_path]/modules/exp/public/exp_report_query_history.screen"/>
+        <a:link id="EXP5260_exp_report_reaudit_log_link" url="$[/request/@context_path]/modules/expm/public/exp_expense_report_audit_log.screen"/>
+        <a:link id="exp_report_readonly_wfl_link_5" url="$[/request/@context_path]/modules/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="EXP5260_exp_report_reaudit_delete_accountL_link" model="db.exp_report_pkg.delete_exp_report_rec_accounts" modelaction="batch_update"/>
+        <script><![CDATA[
+            function doQuery() {
+                $au('EXP5260_audit_result_ds').query();
+            }
+            
+            function seeDetail(value, record, name) {
+                var header_id = record.get('exp_report_header_id');
+                return '<a href="javascript:detailNewWindow(' + header_id + ');">' + value + '</a>';
+            }
+            
+            function detailNewWindow(header_id) {
+                var url = $au('exp_report_readonly_wfl_link_5').getUrl() + '?exp_report_header_id=' + header_id + '&canUploadFlag=false';
+                new Aurora.Window({
+                    url: url,
+                    title: '$[l:EXP_REPORT_QUERY_DETAIL]',
+                    id: 'exp_report_detail',
+                    fullScreen: true
+                });
+            }
+            
+            function EXP5260_doDelete() {
+                var records = $au('EXP5260_audit_result_ds').getJsonData(true);
+                if (records.length < 1) {
+                    Aurora.showWarningMessage('', '$[l:PROMPT.PLEASE_SELECT]', null, 200, 100);
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    records[i]['_status'] = 'execute';
+                }
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('EXP5260_exp_report_reaudit_delete_accountL_link').getUrl(),
+                    para: records,
+                    success: function() {
+                        doQuery();
+                    },
+                    scope: this
+                });
+            }
+            
+            function EXP5260_seeLog() {
+                var url = $au('EXP5260_exp_report_reaudit_log_link').getUrl() + '?batch_id=' + '$[/model/batch_id/record/@batch_id]';
+                new Aurora.Window({
+                    url: url,
+                    title: '$[l:LOGS_MESSAGE]',
+                    id: 'exp_expense_report_audit_log_screen',
+                    fullScreen: false,
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function EXP5260_doHistory() {
+                var myRecords = $au('EXP5260_audit_result_ds').getSelected();
+                if (myRecords.length != 1) {
+                    Aurora.showWarningMessage('', '$[l:PROMPT.PLEASE_SELECT_ONE]', null, 200, 100);
+                    return;
+                }
+                var head_id = myRecords[0].get('exp_report_header_id');
+                if (head_id) {
+                    var url = $au('EXP5260_exp_report_reaudit_history_link').getUrl() + '?head_id=' + head_id;
+                    new Aurora.Window({
+                        url: url,
+                        title: '$[l:REC_REQUISITION_HISTORY]',
+                        id: 'exp_report_history_window',
+                        fullScreen: false,
+                        width: 1020,
+                        side: 'right'
+                    });
+                }
+            }
+            
+            function EXP5260_doReaudit() {
+                var showMessage = '';
+                var records = $au('EXP5260_audit_result_ds').getJsonData(true);
+                if (records.length < 1) {
+                    Aurora.showWarningMessage('', '$[l:PROMPT.PLEASE_SELECT]', null, 200, 100);
+                    return;
+                }
+                for (var i = 0;i < records.length;i++) {
+                    var flow_item_flag = records[i]['flow_item_flag'];
+                    if (flow_item_flag == 'Y') {
+                        showMessage = showMessage == '' ? records[i]['exp_report_number'] : showMessage + ',' + records[i]['exp_report_number'];
+                    }
+                    records[i]['_status'] = 'execute';
+                }
+                if (showMessage != '') {
+                    showMessage = '<span style="word-wrap:break-word;overflow:hidden;"><pre>$[l:EXP_REQ.REPORT]' + showMessage + '$[l:MISSING_CASH_FLOW_ITEMS_RETURN_MODIFY] </pre></span>';
+                    Aurora.showWarningMessage('', showMessage, null, 400, 200);
+                    return;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('EXP5260_audit_exp_report_recheck_link').getUrl(),
+                    para: records,
+                    success: function() {
+                        doQuery();
+                    },
+                    scope: this
+                });
+            }
+            
+            function EXP5260_doReject() {
+                var myRecords = $au('EXP5260_audit_result_ds').getSelected();
+                if (myRecords.length < 1) {
+                    Aurora.showWarningMessage('', '$[l:PROMPT.PLEASE_SELECT]', null, 200, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'EXP5260_exp_report_reject_window',
+                    url: $au('EXP5260_exp_report_reaudit_reject_link').getUrl(),
+                    height: 240,
+                    width: 640
+                });
+            }
+            
+            function EXP5260_formatMoney(value, record, name) {
+                return '<div style="font-weight:bold;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="currency_ds">
+                <a:datas dataSource="/model/currencylist"/>
+            </a:dataSet>
+            <a:dataSet id="audit_query_ds" model="expm.exp_expense_report_audit_query">
+                <a:fields>
+                    <a:field name="expReprotTypeDisplay" autoComplete="true" autoCompleteField="description" lovGridHeight="320" lovHeight="450" lovService="expm.exp_expense_report_types_lov" lovWidth="500" title="EXP_REPORT_HEADERS.EXP_REPORT_TYPE_ID">
+                        <a:mapping>
+                            <a:map from="moExpReportTypeId" to="moExpReportTypeId"/>
+                            <a:map from="description" to="expReprotTypeDisplay"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpReportTypeId"/>
+                    <a:field name="employeeDisplay" autoComplete="true" autoCompleteField="nameCode" lovGridHeight="320" lovHeight="450" lovService="exp.exp_com_employees_v_lov" lovWidth="500" title="EXP_EMPLOYEES.QUERY">
+                        <a:mapping>
+                            <a:map from="nameCode" to="employeeDisplay"/>
+                            <a:map from="EmployeeId" to="EmployeeId"/>
+                            <a:map from="employeeCode" to="employeeCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="EmployeeId"/>
+                    <a:field name="employeeCode"/>
+                    <a:field name="currencyDisplay" displayField="currencyName" options="currency_ds" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="currencyCode"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5260_audit_result_ds" autoPageSize="true" autoQuery="true" model="expm.EXP5260.exp_expense_report_reaudit_query" pageSize="30" queryDataSet="audit_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityName" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME" required="true"/>
+                    <a:field name="exp_report_number" prompt="EXP_REPORT_HEADERS.EXP_REPORT_NUMBER"/>
+                    <a:field name="amortization_flag" checkedValue="Y" defaultValue="Y" prompt="EXP_MO_REPORT_TYPES.AMORTIZATION_FLAG" uncheckedValue="N"/>
+                    <a:field name="mo_exp_report_type_name" prompt="EXP_EXPENSE_REPORT_TYPES.EXPENSE_REPORT_TYPE_CODE"/>
+                    <a:field name="employee_name" prompt="EXP_EMPLOYEES.EXP_EMPLOYEES_CHOOSE"/>
+                    <a:field name="currencyName" prompt="CSH_PAYMENT.CURRENCY_CODE"/>
+                    <a:field name="report_amount" prompt="EXP_REPORT_DISTS.REPORT_AMOUNT"/>
+                    <a:field name="report_date" prompt="EXP_REPORT_HEADERS.REPORT_DATE"/>
+                    <a:field name="report_status_name" prompt="EXP_REQUISITION_HEADERS.REQUISITION_STATUSII"/>
+                    <a:field name="description" prompt="EXP_REPORT_LINES.DESCRIPTION"/>
+                    <a:field name="je_creation_status" checkedValue="SUCCESS" prompt="PROMPT.CREATE_JE" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5260_account_result" autoQuery="true" bindName="je_lines" bindTarget="EXP5260_audit_result_ds" fetchAll="true" model="expm.EXP5240.exp_report_audit_exp_report_accounts_query" selectable="false">
+                <a:fields>
+                    <a:field name="acc_entity_name" lovService="hec_util.gld_accounting_entities_vl_lov" prompt="GLD_ACCOUNTING_ENTITIES.ACC_ENTITY_NAME"/>
+                    <a:field name="resp_center_name" lovService="hec_util.gld_responsibility_centers_vl_lov" prompt="FND_RESPONSIBILITY_CENTERS.RESPONSIBILITY_CENTER_ID"/>
+                    <a:field name="account_name" lovService="hec_util.gld_accounts_vl_lov" prompt="CSH_ACCOUNT_CODE"/>
+                    <a:field name="period_name" lovService="hec_util.gld_periods_lov" prompt="EXP_REPORT_HEADERS.PERIOD_NAME"/>
+                    <a:field name="entered_amount_dr" prompt="GL_ACCOUNT_ENTRY.ENTERED_AMOUNT_DR"/>
+                    <a:field name="entered_amount_cr" prompt="GL_ACCOUNT_ENTRY.ENTERED_AMOUNT_CR"/>
+                    <a:field name="functional_amount_dr" prompt="GL_ACCOUNT_ENTRY.FUNCTIONAL_AMOUNT_DR"/>
+                    <a:field name="functional_amount_cr" prompt="GL_ACCOUNT_ENTRY.FUNCTIONAL_AMOUNT_CR"/>
+                    <a:field name="description" prompt="EXP_REQUISITION_DISTS.DESCRIPTION"/>
+                    <a:field name="currencyName" prompt="EXP_REPORT_DISTS.CURRENCY_CODE"/>
+                    <a:field name="account_segment1" prompt="$[/model/segment_descs/record/@segment1_desc]"/>
+                    <a:field name="account_segment2" prompt="$[/model/segment_descs/record/@segment2_desc]"/>
+                    <a:field name="account_segment3" prompt="$[/model/segment_descs/record/@segment3_desc]"/>
+                    <a:field name="account_segment4" prompt="$[/model/segment_descs/record/@segment4_desc]"/>
+                    <a:field name="account_segment5" prompt="$[/model/segment_descs/record/@segment5_desc]"/>
+                    <a:field name="account_segment6" prompt="$[/model/segment_descs/record/@segment6_desc]"/>
+                    <a:field name="account_segment7" prompt="$[/model/segment_descs/record/@segment7_desc]"/>
+                    <a:field name="account_segment8" prompt="$[/model/segment_descs/record/@segment8_desc]"/>
+                    <a:field name="account_segment9" prompt="$[/model/segment_descs/record/@segment9_desc]"/>
+                    <a:field name="account_segment10" prompt="$[/model/segment_descs/record/@segment10_desc]"/>
+                    <a:field name="account_segment11" prompt="$[/model/segment_descs/record/@segment11_desc]"/>
+                    <a:field name="account_segment12" prompt="$[/model/segment_descs/record/@segment12_desc]"/>
+                    <a:field name="account_segment13" prompt="$[/model/segment_descs/record/@segment13_desc]"/>
+                    <a:field name="account_segment14" prompt="$[/model/segment_descs/record/@segment14_desc]"/>
+                    <a:field name="account_segment15" prompt="$[/model/segment_descs/record/@segment15_desc]"/>
+                    <a:field name="account_segment16" prompt="$[/model/segment_descs/record/@segment16_desc]"/>
+                    <a:field name="account_segment17" prompt="$[/model/segment_descs/record/@segment17_desc]"/>
+                    <a:field name="account_segment18" prompt="$[/model/segment_descs/record/@segment18_desc]"/>
+                    <a:field name="account_segment19" prompt="$[/model/segment_descs/record/@segment19_desc]"/>
+                    <a:field name="account_segment20" prompt="$[/model/segment_descs/record/@segment20_desc]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="EXP5260_doDelete" text="PROMPT.DELETE_JE" width="80"/>
+                <a:toolbarButton click="EXP5260_doReaudit" text="PROMPT.REAUDIT" width="80"/>
+                <a:toolbarButton click="EXP5260_doReject" text="PROMPT.REJECT" width="80"/>
+                <a:toolbarButton click="EXP5260_seeLog" text="PROMPT.VIEW_LOG" width="80"/>
+                <a:toolbarButton click="EXP5260_doHistory" text="PROMPT.HISTORY" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="audit_query_ds" resultTarget="EXP5260_audit_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="exp_report_number" bindTarget="audit_query_ds" prompt="EXP_REPORT_HEADERS.EXP_REPORT_NUMBER"/>
+                    <a:lov name="expReprotTypeDisplay" bindTarget="audit_query_ds" prompt="EXP_REPORT_HEADERS.EXP_REPORT_TYPE_ID"/>
+                    <a:lov name="employeeDisplay" bindTarget="audit_query_ds" prompt="EXP_REPORT_HEADERS.EMPLOYEE_NAME"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="currencyDisplay" bindTarget="audit_query_ds" placeHolder="EXP_REPORT_HEADERS.CURRENCY_CODE"/>
+                    <a:datePicker name="report_date_f" bindTarget="audit_query_ds" placeHolder="EXP_EXPENSE_REPORT_AUDIT.REPORT_DATE_F"/>
+                    <a:datePicker name="report_date_t" bindTarget="audit_query_ds" placeHolder="EXP_EXPENSE_REPORT_AUDIT.REPORT_DATE_T"/>
+                    <a:numberField name="requisition_amount_from" bindTarget="audit_query_ds" placeHolder="EXP_REPORT_HEADERS.REQUISITION_AMOUNT_FROM"/>
+                    <a:numberField name="requisition_amount_to" bindTarget="audit_query_ds" placeHolder="EXP_REPORT_HEADERS.REQUISITION_AMOUNT_TO"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:form marginWidth="12" padding="0" showmargin="false" title="HAP_DOC_INFORMATION">
+            <a:grid id="audit_result_ds_grid" bindTarget="EXP5260_audit_result_ds" marginHeight="970" marginWidth="12" navBar="true">
+                <a:columns>
+                    <a:column name="exp_report_number" align="center" renderer="seeDetail" width="80"/>
+                    <a:column name="acc_entity_name" align="center" width="150"/>
+                    <a:column name="amortization_flag" align="center" editor="edt_cbx" width="80"/>
+                    <a:column name="mo_exp_report_type_name" align="center" width="150"/>
+                    <a:column name="employee_name" align="center" width="80"/>
+                    <a:column name="currencyName" align="center" width="80"/>
+                    <a:column name="report_amount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="report_date" align="center" width="80"/>
+                    <a:column name="report_status_name" align="center" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="je_creation_status" align="center" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="edt_cbx"/>
+                </a:editors>
+            </a:grid>
+        </a:form>
+        <a:form padding="0" showmargin="false" title="HAP_ACC_INFORMATION">
+            <a:grid id="EXP5260_account_result_grid" autoAdjustHeight="true" bindTarget="EXP5260_account_result" height="600" marginWidth="12" navBar="true">
+                <a:columns>
+                    <a:column name="acc_entity_name" align="center" width="150"/>
+                    <a:column name="resp_center_name" align="center" width="150"/>
+                    <a:column name="account_name" align="center" width="150"/>
+                    <a:column name="period_name" align="center" width="100"/>
+                    <a:column name="currencyName" align="center" width="100"/>
+                    <a:column name="entered_amount_dr" align="right" renderer="EXP5260_formatMoney" width="100"/>
+                    <a:column name="entered_amount_cr" align="right" renderer="EXP5260_formatMoney" width="100"/>
+                    <a:column name="functional_amount_dr" align="right" renderer="EXP5260_formatMoney" width="100"/>
+                    <a:column name="functional_amount_cr" align="right" renderer="EXP5260_formatMoney" width="100"/>
+                    <a:column name="description" align="left" width="250"/>
+                    <a:column name="account_segment1" align="center"/>
+                    <a:column name="account_segment2" align="center"/>
+                    <a:column name="account_segment3" align="center"/>
+                    <a:column name="account_segment4" align="center"/>
+                    <a:column name="account_segment5" align="center"/>
+                    <a:column name="account_segment6" align="center"/>
+                    <a:column name="account_segment7" align="center"/>
+                    <a:column name="account_segment8" align="center"/>
+                    <a:column name="account_segment9" align="center"/>
+                    <a:column name="account_segment10" align="center"/>
+                    <a:column name="account_segment11" align="center"/>
+                    <a:column name="account_segment12" align="center"/>
+                    <a:column name="account_segment13" align="center"/>
+                    <a:column name="account_segment14" align="center"/>
+                    <a:column name="account_segment15" align="center"/>
+                    <a:column name="account_segment16" align="center"/>
+                    <a:column name="account_segment17" align="center"/>
+                    <a:column name="account_segment18" align="center"/>
+                    <a:column name="account_segment19" align="center"/>
+                    <a:column name="account_segment20" align="center"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+    </a:view>
+</a:screen>

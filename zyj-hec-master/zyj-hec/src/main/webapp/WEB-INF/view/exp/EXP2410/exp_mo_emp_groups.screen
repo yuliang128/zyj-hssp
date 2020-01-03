@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-04-164 下午03:01:44  
+    $Revision: 1.0  
+    $Purpose: 管理组织级员工组定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <!--<a:init-procedure>-->
+        <!--<a:model-query fetchAll="true" model="hec_util.get_company_default_mag_org" rootPath="EXP2410_defaultMagList"/>-->
+    <!--</a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP2410_exp_mo_employee_assign_com_link" url="$[/request/@context_path]/exp/EXP2410/exp_mo_employee_group_assign_com.screen"/>
+        <a:link id="EXP2410_exp_mo_emp_group_com_ass_batch_link" url="$[/request/@context_path]/exp/EXP2410/exp_mo_emp_group_com_ass_batch.screen"/>
+        <a:link id="EXP2410_exp_mo_emp_groups_select_link" url="$[/request/@context_path]/exp/EXP2410/exp_mo_emp_groups_select.screen"/>
+        <script><![CDATA[
+            function EXP2410_batchAssignCompanyFun() {
+                 //add lcy 2017/12/22 16:46:12 保批量分配前检验管理组织
+                if (Ext.isEmpty($au('EXP2410_exp_mo_groups_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                var typeDs = $au('EXP2410_exp_mo_groups_result_ds');
+                var typeRecordsData = typeDs.getJsonData(true);
+                if (typeRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                var record = typeDs.getAll();
+                var currentRecord = typeDs.getAt(record.length - 1);
+                if (currentRecord.isNew) {
+                    Aurora.showInfoMessage('$l[:prompt]', '$[l:prompt.data_check_failure]', null, 250, 100);
+                    return;
+                }
+                var magOrgId = $au('EXP2410_exp_mo_groups_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP2410_exp_mo_emp_group_com_ass_batch_window',
+                    url: $au('EXP2410_exp_mo_emp_group_com_ass_batch_link').getUrl() + '?magOrgId=' + magOrgId,
+                    title: '$[l:fnd_sys_venders.batch_disp_company]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP2410_exp_mo_groups_result_ds').query();
+                });
+            }
+            
+            function EXP2410_groupsCodeEditFunction(record) {
+                var moEmpGroupCode = record.get("moEmpGroupCode");
+                if (record.isNew || !moEmpGroupCode) {
+                    return "EXP2410_exp_mo_emp_code_tf";
+                }
+                return "";
+            }
+            
+            function EXP2410_assignCompanyFun(value, record, name) {
+            
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:EXP2410_openAssignCM(\'' + record.get('moEmpGroupId') + '\')">$[l:fnd_system_venders.company_assign]</>';
+            
+            }
+            
+            function EXP2410_openAssignCM(moEmpGroupId) {
+                var magOrgId = $au('EXP2410_exp_mo_groups_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP2410_exp_mo_employee_assign_com_window',
+                    url: $au('EXP2410_exp_mo_employee_assign_com_link').getUrl() + '?moEmpGroupId=' + moEmpGroupId + '&magOrgId=' + magOrgId,
+                    title: '$[l:fnd_system_venders.company_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('EXP2410_exp_mo_groups_result_ds').query();
+                });
+            }
+            
+            function EXP2410_expMoGroupsBackFun() {
+                window.location.href = $au('EXP2410_exp_mo_emp_groups_select_link').getUrl();
+            }
+            
+            function EXP2410_onGroupDsSubmitSuccess(ds, res) {
+                ds.query();
+            }
+            
+            function Exp2140_add(ds) {
+                var magOrgId = $au('EXP2410_exp_mo_groups_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function EXP2140_focus() {
+                $au('EXP2410_mange_organizationlist_ds').query();
+            }
+            
+            function EXP2140_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('EXP2410_exp_mo_groups_result_ds').query();
+                }
+            }
+            //add lcy 2017/12/22 16:46:12 保存前检验管理组织
+             function EXP2140_beforeSubmit() {
+                if (Ext.isEmpty($au('EXP2410_exp_mo_groups_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            function EXP2140_BeforeCreate() {
+                if (Ext.isEmpty($au('EXP2410_exp_mo_groups_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2410_mange_organizationlist_ds" autoQuery="true"  loadData="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP2410_exp_mo_groups_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgCodeName" defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP2410_mange_organizationlist_ds" prompt="exp_mo_req_type.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId">
+                        <!-- modify lcy  2017/12/21  14:47:12 新增mapping值，用于批量分配时form显示 -->
+                        <a:mapping>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/@description]"/>
+                    <a:field name="magOrgCode" defaultValue="$[/model/@magOrgCode]"/>
+                    <a:field name="moEmpGroupCode" prompt="exp_employee_group.expense_user_group_code"/>
+                    <a:field name="description" prompt="exp_employee_group.expense_user_group_desc"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP2140_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP2410_exp_mo_groups_result_ds" autoPageSize="true" autoQuery="true"  pageSize="10" queryDataSet="EXP2410_exp_mo_groups_query_ds" queryUrl="$[/request/@context_path]/exp/mo-emp-group/query" submitUrl="$[/request/@context_path]/exp/mo-emp-group/submit" selectable="true">
+                <a:fields>
+                    <a:field name="moEmpGroupCode"  prompt="exp_employee_group.expense_user_group_code" required="true"/>
+                    <a:field name="description" prompt="exp_employee_group.expense_user_group_desc" dto="com.hand.hec.exp.dto.ExpMoEmpGroup" dtoId="moEmpGroupId" required="true"/>
+                    <a:field name="enabledFlag" prompt="exp_employee_group.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="moEmpGroupId"/>
+                    <a:field name="magOrgId" prompt="EXP_MO_REQ_TYPES.magOrgId" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP2410_onGroupDsSubmitSuccess"/>
+                    <a:event name="add" handler="Exp2140_add"/>
+                    <a:event name="beforecreate" handler="EXP2140_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP2140_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP2410_exp_mo_groups_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP2410_exp_mo_groups_grid" type="save" width="80"/>
+                <a:toolbarButton click="EXP2410_batchAssignCompanyFun" text="prompt.batch_disp_company" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP2410_exp_mo_groups_query_ds" resultTarget="EXP2410_exp_mo_groups_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgCodeName" bindTarget="EXP2410_exp_mo_groups_query_ds"  width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2140_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moEmpGroupCode" bindTarget="EXP2410_exp_mo_groups_query_ds" />
+                    <a:textField name="description" bindTarget="EXP2410_exp_mo_groups_query_ds" />
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP2410_exp_mo_groups_grid" bindTarget="EXP2410_exp_mo_groups_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moEmpGroupCode" align="center" editor="EXP2410_exp_mo_emp_code_tf" editorFunction="EXP2410_groupsCodeEditFunction" width="150"/>
+                <a:column name="description" align="left" editor="EXP2410_exp_mo_emp_name_tf"  width="300"/>
+                <a:column name="enabledFlag" align="center" editor="EXP2410_exp_mo_emp_grid_cb"  width="100"/>
+                <a:column name="asignCm" align="center" renderer="EXP2410_assignCompanyFun" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP2410_exp_mo_emp_code_tf" typeCase="upper"/>
+                <a:tledit id="EXP2410_exp_mo_emp_name_tf"/>
+                <a:checkBox id="EXP2410_exp_mo_emp_grid_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

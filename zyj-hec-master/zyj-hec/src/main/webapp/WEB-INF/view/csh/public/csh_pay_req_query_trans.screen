@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure />
+    <a:view>
+        <a:link id="csh_pay_req_trans_detail_link" url="$[/request/@context_path]/csh/public/csh_pay_req_trans_detail.screen"/>
+        <script><![CDATA[
+            function transNumRendererFunction(value, record, name) {
+                return '<a href="javascript:newWindow_trans(' + record.get('paymentHeaderId') + ')">' + value + '</a>';
+            }
+            
+            function newWindow_trans(paymentHeaderId) {
+                new Aurora.Window({
+                    id: 'csh_pay_req_trans_detail_screen',
+                    url: $au('csh_pay_req_trans_detail_link').getUrl() + '?transactionHeaderId=' + paymentHeaderId,
+                    title: '$[l:csh_payment_transaction_detail.title]',
+                    fullScreen: true
+                });
+            }
+            
+            function backFunction() {
+                $au('csh_pay_req_query_trans_screen').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="trans_init_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/query?paymentRequisitionHeaderId=$[/parameter/@headerId]">
+                <a:fields>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number" readOnly="true"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date" readOnly="true"/>
+                    <a:field name="employeeName" prompt="csh_payment_requisition_hd.employee_name" readOnly="true"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.amount" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="trans_result_ds" autoQuery="true" pageSize="20" queryUrl="$[/request/@context_path]/csh/transaction-header/queryByPayReqHeaderId?headerId=$[/parameter/@headerId]">
+                <a:fields>
+                    <a:field name="paymentHeaderId"/>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="transactionTypeName" prompt="csh_transaction_header.transaction_type_name"/>
+                    <a:field name="charTransactionDate" prompt="csh_transaction_headers.transaction_date"/>
+                    <a:field name="currencyCode" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="transactionAmount" prompt="csh_transaction_line.transaction_amount"/>
+                    <a:field name="bankAccountNum" prompt="csh_transaction_line.bank_account_num"/>
+                    <a:field name="bankAccountName" prompt="csh_transaction_line.bank_account_name"/>
+                    <a:field name="payeeCategory" prompt="csh_transaction_line.payee_category"/>
+                    <a:field name="payeeCodeName" prompt="csh_transaction_line.payee_name"/>
+                    <a:field name="documentNum" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="agentEmployeeName" prompt="csh_transaction_line.agent_employee_name"/>
+                    <a:field name="userDesc" prompt="csh_transaction_line.created_by"/>
+                    <a:field name="returned" prompt="prompt.returned"/>
+                    <a:field name="reversed" prompt="prompt.reversed"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="trans_form" column="4" title="csh_payment_requisition_hd.transaction_view">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="backFunction" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="requisitionNumber" bindTarget="trans_init_ds"/>
+                <a:textField name="requisitionDate" bindTarget="trans_init_ds" renderer="Aurora.formatDate"/>
+                <a:textField name="employeeName" bindTarget="trans_init_ds"/>
+                <a:textField name="amount" bindTarget="trans_init_ds" renderer="Aurora.formatMoney"/>
+            </a:form>
+            <a:grid id="csh_pay_req_query_trans_grid" bindTarget="trans_result_ds" marginHeight="205" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="transactionNum" align="center" renderer="transNumRendererFunction" width="100"/>
+                    <a:column name="transactionTypeName" align="center" width="80"/>
+                    <a:column name="charTransactionDate" align="center" width="80"/>
+                    <a:column name="currencyCode" align="center" width="80"/>
+                    <a:column name="transactionAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="bankAccountNum" align="center" width="80"/>
+                    <a:column name="bankAccountName" align="center" width="80"/>
+                    <a:column name="payeeCategory" align="center" width="80"/>
+                    <a:column name="payeeCodeName" align="center" width="120"/>
+                    <a:column name="documentNum" align="center" width="100"/>
+                    <a:column name="agentEmployeeName" align="center" width="80"/>
+                    <a:column name="userDesc" align="center" width="80"/>
+                    <a:column name="returned" align="center" width="80"/>
+                    <a:column name="reversed" align="center" width="80"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

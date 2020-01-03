@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: guiyuting
+    $Date: 2019-02-22 上午10:02:31
+    $Revision: 客户银行账户分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2515_ord_customer_account_ref_ae_link" url="$[/request/@context_path]/fnd/FND2515/ord_customer_account_ref_ae.screen"/>
+        <script><![CDATA[
+            function FND2515_closeCustomerAccountsCreateWindow() {
+                $au('FND2515_ord_customer_accounts_window').close();
+            }
+            
+            function FND2515_customerAccountsUpdate(ds, record, name, value) {
+                if (name == 'provinceCode') {
+                    var field = record.getMeta().getField('cityName');
+                    field.setLovPara('districtCode', record.get('provinceCode'));
+                    record.set("cityCode", null);
+                    record.set("cityName", null);
+                }
+                //modify lcy 2018/3/15  16:20:33  银行改变清空分行，省名，市名
+                if (name == 'bankId') {
+                    record.set('cnapsCode', '');
+                    record.set('bankLocation', '');
+                    record.set('provinceCode', '');
+                    record.set('provinceName', '');
+                    record.set('cityCode', '');
+                    record.set('cityName', '');
+                }
+            }
+            
+            function FND2515_customerAccountsAdd(ds, record, index) {
+                var name = $au("FND2515_ord_system_customer_result_ds").getCurrentRecord().get("description");
+                record.set("accountName", name);
+            }
+            
+            function FND2515_customerAccountsSubmit(ds) {
+                ds.query();
+            }
+            
+            //分配核算主体-跳转
+            
+            function FND2515_accountsAssignAe(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:FND2515_openAccountAssignAE(' + record.get('customerId') + ',\'' + record.get('accountId') + '\')">$[l:hec_assign]</>';
+            }
+            
+            function FND2515_openAccountAssignAE(customerId, accountId) {
+                new Aurora.Window({
+                    id: 'FND2515_ord_customer_account_ref_ae_window',
+                    url: $au('FND2515_ord_customer_account_ref_ae_link').getUrl() + '?customerId=' + customerId + '&accountId=' + accountId,
+                    title: '$[l:hec_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function FND2515_onCellClick(grid, row, name, record) {
+                //modify lcy 2018/3/15  16:20:33  把bank_id传给分行
+                if (name == 'cnapsCode') {
+                    var field = record.getMeta().getField('cnapsCode');
+                    field.setLovPara('bankId', record.get('bankId'));
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2515_ord_customer_accounts_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/ord/customer-account" queryUrl="$[/request/@context_path]/ord/customer-account/queryBySysCustomer?customerId=$[/parameter/@customerId]" selectable="false">
+                <a:fields>
+                    <a:field name="accountId"/>
+                    <a:field name="bankCode" autoComplete="true" autoCompleteField="code_name" lovGridHeight="320" lovHeight="450" lovCode="LOV_BANK" lovWidth="500" prompt="csh_bank.bank_code" required="true" title="csh_bank.bank_code">
+                        <a:mapping>
+                            <a:map from="bankId" to="bankId"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankId"/>
+                    <a:field name="bankName"/>
+                    <!--  modify lcy 2018/3/15  16:20:33  分行带出 省名，市名 -->
+                    <a:field name="cnapsCode" lovCode="LOV_BANK_CNAP" prompt="csh_bank_branch.cnap" required="true" title="csh_bank_branch.cnap">
+                        <a:mapping>
+                            <a:map from="bankLocationCode" to="cnapsCode"/>
+                            <a:map from="bankLocationName" to="bankLocation"/>
+                            <a:map from="provinceCode" to="provinceCode"/>
+                            <a:map from="provinceName" to="provinceName"/>
+                            <a:map from="cityCode" to="cityCode"/>
+                            <a:map from="cityName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="provinceCode"/>
+                    <a:field name="provinceName"  prompt="fnd_region_province.prov_name">
+                        <a:mapping>
+                            <a:map from="districtCode" to="provinceCode"/>
+                            <a:map from="districtDesc" to="provinceName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cityCode"/>
+                    <a:field name="cityName"  prompt="fnd_region_province.city_name">
+                        <a:mapping>
+                            <a:map from="placeCode" to="cityCode"/>
+                            <a:map from="placeName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountName" required="true"/>
+                    <a:field name="accountNumber" prompt="csh_bank_account.bank_account_num" required="true"/>
+                    <a:field name="notes"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="customerId" defaultValue="$[/parameter/@customerId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND2515_customerAccountsUpdate"/>
+                    <a:event name="add" handler="FND2515_customerAccountsAdd"/>
+                    <a:event name="submitsuccess" handler="FND2515_customerAccountsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2515_ord_customer_accounts_form" column="2" title="ord_system_customer.asgn_bank_account">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2515_ord_customer_accounts_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2515_ord_customer_accounts_grid" type="save" width="80"/>
+                    <a:toolbarButton click="FND2515_closeCustomerAccountsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="customerCode" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.customer_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2515_ord_customer_accounts_grid" bindTarget="FND2515_ord_customer_accounts_ds" marginHeight="195" marginWidth="0" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="bankCode" align="center" editor="FND2515_customerAccounts_lov" prompt="csh_bank.bank_code" width="120"/>
+                    <a:column name="bankName" align="left" prompt="csh_bank.bank_name" width="200"/>
+                    <a:column name="cnapsCode" editor="FND2515_customerAccounts_lov" prompt="csh_bank_branch.cnaps" width="200"/>
+                    <a:column name="provinceName" align="left" prompt="fnd_region_province.prov_name" width="120"/>
+                    <a:column name="cityName" align="left" prompt="fnd_region_province.city_name" width="120"/>
+                    <a:column name="accountName" align="left" editor="FND2515_customerAccounts_tf" prompt="exp_employee_account.bank_account_name" width="200"/>
+                    <a:column name="accountNumber" align="left" editor="FND2515_customerAccounts_tf" prompt="csh_bank_account.bank_account_num" width="200"/>
+                    <a:column name="notes" align="left" editor="FND2515_customerAccounts_tf" prompt="hap.comment" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2515_customerAccounts_cb" prompt="hap_enabled_flag" width="100"/>
+                    <a:column name="asgnAccEntity" align="center" prompt="" renderer="FND2515_accountsAssignAe" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND2515_customerAccounts_lov"/>
+                    <a:textField id="FND2515_customerAccounts_tf"/>
+                    <a:numberField id="FND2515_customerAccounts_nf" allowDecimals="false" allowNegative="false"/>
+                    <a:checkBox id="FND2515_customerAccounts_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="FND2515_onCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

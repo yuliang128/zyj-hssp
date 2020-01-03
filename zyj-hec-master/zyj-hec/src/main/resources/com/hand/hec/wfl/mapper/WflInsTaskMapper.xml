@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflInsTaskMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflInsTask">
+        <result column="ins_task_id" property="insTaskId" jdbcType="DECIMAL"/>
+        <result column="instance_id" property="instanceId" jdbcType="DECIMAL"/>
+        <result column="task_id" property="taskId" jdbcType="DECIMAL"/>
+        <result column="result" property="result" jdbcType="VARCHAR"/>
+        <result column="arrival_status" property="arrivalStatus" jdbcType="VARCHAR"/>
+        <result column="arrival_date" property="arrivalDate" jdbcType="DATE"/>
+        <result column="departure_date" property="departureDate" jdbcType="DATE"/>
+        <result column="enabled_flag" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getPeopleAgreeCount" resultType="java.lang.Long">
+    select count(1) as agree_count
+    from wfl_ins_task_hierarchy h,wfl_approve_record  r
+    where h.ins_hierarchy_id = r.ins_hierarchy_id
+    and h.ins_task_id = #{insTaskId}
+    and r.action_type = 'AGREE'
+  </select>
+    <select id="getPeopleRejectCount" resultType="java.lang.Long">
+    select count(1) as agree_count
+    from wfl_ins_task_hierarchy h,wfl_approve_record r
+    where h.ins_hierarchy_id = r.ins_hierarchy_id
+    and h.ins_task_id = #{insTaskId}
+    and r.action_type = 'REJECT'
+  </select>
+    <select id="getRuleAgreeCount" resultType="java.lang.Long">
+      select count(1) as rule_agree_count
+      from wfl_ins_task_hierarchy h,wfl_approve_record r
+      where h.ins_hierarchy_id = r.ins_hierarchy_id
+      and h.ins_task_id = #{insTaskId}
+      and r.action_type = 'AGREE'
+      and not exists (select 1
+                      from wfl_ins_task_hierarchy th
+                      where th.disabled_flag != 'Y'
+                      and th.posted_flag = 'N')
+      and not exists
+                    (select 1
+                    from wfl_ins_task_hierarchy th2,
+                    wfl_approve_record     ar2
+                    where th2.ins_hierarchy_id = ar2.ins_hierarchy_id
+                    and ar2.action_type = 'REJECT'
+                    and th2.ins_receiver_id = h.ins_receiver_id)
+      group by h.ins_receiver_id
+  </select>
+    <select id="getRuleRejectCount" resultType="java.lang.Long">
+    select count(1) as rule_reject_count
+    from wfl_ins_task_hierarchy h,wfl_approve_record r
+    where h.ins_hierarchy_id = r.ins_hierarchy_id
+    and h.ins_task_id = #{insTaskId}
+    and r.action_type = 'REJECT'
+    group by h.ins_receiver_id
+  </select>
+    <select id="getLineAgreeCount" resultType="java.lang.Long">
+    with recursive r as
+    (select th.*,
+    th.ins_hierarchy_id as root_ins_hierarchy_id,
+    0                   as depth
+    from wfl_ins_task_hierarchy th
+    where th.ins_task_id = #{insTaskId}
+    and th.disabled_flag = 'N'
+    and th.parent_ins_hierarchy_id is null
+    union all
+    select th2.*,
+    r.root_ins_hierarchy_id,
+    r.depth + 1 as depth
+    from wfl_ins_task_hierarchy th2,
+    r
+    where th2.parent_ins_hierarchy_id = r.ins_hierarchy_id)
+    select count(1)
+    from r
+    where not exists (select 1
+    from wfl_ins_task_hierarchy th3
+    where th3.ins_hierarchy_id = r.ins_hierarchy_id
+    and th3.posted_flag = 'N'
+    and th3.disabled_flag = 'N')
+    and not exists (select 1
+    from wfl_approve_record ar
+    where ar.ins_hierarchy_id = ar.ins_hierarchy_id
+    and ar.action_type = 'REJECT')
+    group by r.root_ins_hierarchy_id
+  </select>
+    <select id="getLineRejectCount" resultType="java.lang.Long">
+    with recursive r as
+    (select th.*,
+    th.ins_hierarchy_id as root_ins_hierarchy_id,
+    0                   as depth
+    from wfl_ins_task_hierarchy th
+    where th.ins_task_id = #{insTaskId}
+    and th.disabled_flag = 'N'
+    and th.parent_ins_hierarchy_id is null
+    union all
+    select th2.*,
+    r.root_ins_hierarchy_id,
+    r.depth + 1 as depth
+    from wfl_ins_task_hierarchy th2,
+    r
+    where th2.parent_ins_hierarchy_id = r.ins_hierarchy_id)
+    select count(1)
+    from r
+    where exists (select 1
+    from wfl_approve_record ar
+    where ar.ins_hierarchy_id = ar.ins_hierarchy_id
+    and ar.action_type = 'REJECT')
+    group by r.root_ins_hierarchy_id
+  </select>
+    <select id="getAllPeopleCount" resultType="java.lang.Long">
+    select count(1) from wfl_ins_task_hierarchy th where th.ins_task_id = #{insTaskId} and th.disabled_flag = 'N'
+  </select>
+    <select id="getAllRuleCount" resultType="java.lang.Long">
+    select count(1) from wfl_ins_task_hierarchy th where th.ins_task_id = #{insTaskId} and th.disabled_flag = 'N' group by th.ins_receiver_id
+  </select>
+</mapper>

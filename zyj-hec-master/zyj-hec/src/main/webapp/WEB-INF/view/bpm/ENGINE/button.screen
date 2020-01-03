@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '$[/parameter/@componentId]';
+            var bpm_type = '$[/parameter/@bpm_type]';
+            
+            Aurora.onReady(function() {
+                 var cmp = $AE.get(cmpId);
+                 var record = $au('buttonDs').getAt(0);
+                 cmp.initRecord(record);
+                 if(bpm_type=='page'){
+                     record.getField('buttonSequence').setReadOnly(true);
+                     record.getField('buttonCode').setReadOnly(true);
+                     record.getField('id').setReadOnly(true);
+                     record.getField('operationTypeDesc').setReadOnly(true);
+                     record.getField('buttonTypeDesc').setReadOnly(true);
+                     record.getField('text').setReadOnly(true);
+                     record.getField('buttonDesc').setReadOnly(true);
+                     record.getField('operationTypeDesc').setReadOnly(true);
+                 }
+              	
+            });
+            
+            function saveButton() {
+                 var cmp = $AE.get(cmpId);
+                 var record = $au('buttonDs').getAt(0);
+                 var url='';
+                if(bpm_type == 'page'){
+                    if(!record.isNew || record.get('buttonId')){
+	                    url=$au('engineButtonPageUpdateLink').getUrl();
+                    }else{
+                        url=$au('engineButtonPageInsertLink').getUrl();
+                    }
+                }
+                if($au('buttonDs').validate()){
+	                Aurora.request({
+	                    url: url,
+	                    para: record.data,
+	                    success: function(result) {
+                            if(result.rows && result.rows[0]){
+                                for(var field in result.rows[0]){
+                                    record.set(field,result.rows[0][field]);
+                                }
+                                cmp.setAttr(record);
+                            }
+	                        cancelButton();
+	                    },
+	                    scope: this
+	                });
+                }
+            }
+            
+            function cancelButton() {
+                $au('Button_window').close();
+            }
+            
+            function onUpdateFunction(ds,record,name,newValue,oldValue){
+                if(name=='operationType' && newValue=='OPERATION'){
+                    record.getField('typeDesc').setReadOnly(false);
+                }
+                else if(name=='operationType' && newValue=='VIEW'){
+                    record.getField('typeDesc').setReadOnly(true);
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="buttonDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="buttonCode" prompt="bpm_tplt_button.button_code" typeCase="upper"/>
+                    <a:field name="buttonDesc" prompt="bpm_tplt_layout_button.button_desc"/>
+                    <a:field name="operationTypeDesc" displayfield="meaning" options="engineOperationTypeDs" prompt="bpm_page_layout_button.operation_type" returnField="operationType" valueField="value"/>
+                    <a:field name="operationType"/>
+                    <a:field name="id" prompt="bpm_tplt_button.button_id"/>
+                    <a:field name="text" prompt="bpm_page_layout_button.text"/>
+                    <a:field name="textDisplay"/>
+                    <a:field name="click"/>
+                    <a:field name="buttonType"/>
+                    <a:field name="buttonTypeDesc" displayfield="meaning" options="engineButtonTypeDs" prompt="bpm_tplt_button.type" returnField="buttonType" valueField="value"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" prompt="bpm_tplt_layout_basic.disabled" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="bpm_tplt_button.hidden" uncheckedValue="false"/>
+                    <a:field name="style"/>
+                    <a:field name="btnstyle"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" prompt="bpm_page_layout_basic.template_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="buttonSequence" prompt="bpm_page_button.button_sequence" readOnly="true"/>
+                    <a:field name="pageId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdateFunction"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="Button">
+                <a:textField name="buttonSequence" bindTarget="buttonDs"/>
+                <a:textField name="buttonCode" bindTarget="buttonDs"/>
+                <a:textField name="id" bindTarget="buttonDs"/>
+                <a:comboBox name="operationTypeDesc" bindTarget="buttonDs"/>
+                <a:textField name="text" bindTarget="buttonDs"/>
+                <a:textField name="buttonDesc" bindTarget="buttonDs"/>
+                <a:checkBox name="templateFlag" bindTarget="buttonDs"/>
+                <a:checkBox name="disabled" bindTarget="buttonDs"/>
+                <a:checkBox name="hidden" bindTarget="buttonDs"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="saveButton" skin="green" text="hap_confirm"/>
+                <a:button click="cancelButton" skin="red" text="hap_cancel"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+</a:screen>

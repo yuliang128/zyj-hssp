@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-4-13 下午05:24:32  
+    $Revision: 1.0  
+    $Purpose: 计量单位分配公司选择
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND1040_fnd_uom_com_batch_assign_link" url="$[/request/@context_path]/fnd/uom-asgn-com/batchAssignCompanyOnetoMany"/>
+        <script><![CDATA[
+				function FND1040_comAddAssignFun(){
+				    var datas = $au('FND1040_add_com_result_ds').getJsonData(true);
+				    if(datas.length == 0){
+						Aurora.showInfoMessage('$[l:prompt]','$[l:prompt.select_line_date]',null,250,100);
+				        return ;				    
+				    }
+				    for(var i = 0; i < datas.length ; i ++){
+				        datas[i]['objs'] = [{assignMoId:'$[/parameter/@assignMoId]',enabledFlag:'Y',companyId:datas[i].companyId}];
+				    }
+				    
+				    Aurora.request({lockMessage:'$[l:hap_waiting]',
+						url:$au('FND1040_fnd_uom_com_batch_assign_link').getUrl(),
+						para:datas,
+						success:function(){
+                            FND1040_comAddReturnFun()
+						},
+						scope:this
+				    });
+				}
+				function FND1040_comAddReturnFun(){
+				    $au('FND1040_fnd_uom_add_com_window').close();
+				    FND1040_comBatchAssignQuery();
+				}		
+			
+		]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1040_add_com_result_ds" autoQuery="true" baseUrl="/fnd/uom-asgn-com"  pageSize="20" queryUrl="$[/request/@context_path]/fnd/uom-asgn-com/queryNoAssignedCompanyForUoms?assignMoId=$[/parameter/@assignMoId]&amp;magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="fnd_uoms.assign_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="FND1040_comAddAssignFun" text="HEC_ASSIGN" width="80"/>
+                    <a:gridButton click="FND1040_comAddReturnFun" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="uomCode" bindTarget="FND1040_fnd_uom_assign_mo_query_ds" prompt="fnd_uom.uom_code" readOnly="true"/>
+                <a:textField name="uomName" bindTarget="FND1040_fnd_uom_assign_mo_query_ds" prompt="fnd_uom.uom_name" readOnly="true"/>
+            </a:form>
+            <a:grid Width="1010" bindTarget="FND1040_add_com_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="80"/>
+                    <a:column name="companyShortName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

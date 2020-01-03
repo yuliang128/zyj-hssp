@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-11-01 09:34:31
+    $Revision: 1.0  
+    $Purpose: 付款申请类型定义-分配现金事务分类
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function ACP1135_closeAsgnTrxWin() {
+                $au('ACP1135_asgnTrxWin').close();
+            }
+            
+            function ACP1135_onAsgnTrxDsAdd(ds, record, idx) {
+                var rdFromPay = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                record.set('moPayReqTypeId', rdFromPay.get('moPayReqTypeId'));
+            }
+            
+            function ACP1135_onGridCellClick(grid, idx, name, record) {
+                if (name == 'moCshTrxClassCode') {
+                    var rdFromPay = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                    record.getField('moCshTrxClassCode').setLovPara('magOrgId', rdFromPay.get('magOrgId'));
+                    record.getField('moCshTrxClassCode').setLovPara('moPayReqTypeId', rdFromPay.get('moPayReqTypeId'));
+                }
+            }
+            
+            function ACP1135_onAsgnTrxDsSubmitSucess(ds, res){
+                ds.query();
+                
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ACP1135_asgnTrxShowDs" autoCreate="true">
+                <a:field name="moPayReqTypeId"/>
+                <a:field name="moPayReqTypeCode" readOnly="true"/>
+                <a:field name="moPayReqTypeName" readOnly="true"/>
+            </a:dataSet>
+            <a:dataSet id="acp_mo_pay_req_tp_asgn_trx_result_ds" autoCreate="true" autoQuery="true" baseUrl="/acp/mo-pay-req-tp-ref-trx" queryDataSet="ACP1135_asgnTrxShowDs" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="moPayReqTypeId"/>
+                    <a:field name="moCshTrxClassId"/>
+                    <a:field name="moCshTrxClassCode" autoComplete="true" autoCompleteField="mo_csh_trx_class_code" lovCode="LOV_CSH_MO_TRX_CLS" prompt="csh_transaction_classes.csh_transaction_class_code" required="true" title="csh_transaction_classes.csh_transaction_class_code">
+                        <a:mapping>
+                            <a:map from="moCshTrxClassId" to="moCshTrxClassId"/>
+                            <a:map from="moCshTrxClassCode" to="moCshTrxClassCode"/>
+                            <a:map from="description" to="moCshTrxClassName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moCshTrxClassName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="ACP1135_onAsgnTrxDsAdd"/>
+                    <a:event name="submitsuccess" handler="ACP1135_onAsgnTrxDsSubmitSucess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="acp_mo_pay_req_type.asgn_trx">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="ACP1135_asgnTrx_grid" type="add" width="80"/>
+                    <a:gridButton bind="ACP1135_asgnTrx_grid" type="save" width="80"/>
+                    <a:gridButton bind="ACP1135_asgnTrx_grid" type="delete" width="80"/>
+                    <a:button click="ACP1135_closeAsgnTrxWin" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moPayReqTypeCode" bindTarget="ACP1135_asgnTrxShowDs" prompt="hap.doc_type_code"/>
+                <a:textField name="moPayReqTypeName" bindTarget="ACP1135_asgnTrxShowDs" prompt="hap.doc_type_name"/>
+            </a:form>
+            <a:grid id="ACP1135_asgnTrx_grid" bindTarget="acp_mo_pay_req_tp_asgn_trx_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="moCshTrxClassCode" align="center" editor="ACP1135_asgnCom_grid_lov" width="120"/>
+                    <a:column name="moCshTrxClassName" align="left" prompt="csh_mo_transaction_classes.mo_csh_trx_class_name" width="120"/>
+                    <a:column name="enabledFlag" align="center" editor="ACP1135_asgnCom_grid_cb" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="ACP1135_asgnCom_grid_lov"/>
+                    <a:checkBox id="ACP1135_asgnCom_grid_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="ACP1135_onGridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function initPage() {
+                var record = $au('ACP1135_asgnTrxShowDs').getAt(0);
+                var rdFromReq = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                record.set('moPayReqTypeCode', rdFromReq.get('moPayReqTypeCode'));
+                record.getField('moPayReqTypeCode').setReadOnly(true);
+                record.set('moPayReqTypeName', rdFromReq.get('description'));
+                record.getField('moPayReqTypeName').setReadOnly(true);
+                record.set('moPayReqTypeId', rdFromReq.get('moPayReqTypeId'));
+            }
+            initPage();
+        ]]></script>
+    </a:view>
+</a:screen>

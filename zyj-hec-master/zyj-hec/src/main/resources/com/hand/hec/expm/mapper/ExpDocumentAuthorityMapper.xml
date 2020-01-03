@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.expm.mapper.ExpDocumentAuthorityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.expm.dto.ExpDocumentAuthority">
+        <result column="AUTHORITY_ID" property="authorityId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="GRANTED_POSITION_ID" property="grantedPositionId" jdbcType="DECIMAL"/>
+        <result column="GRANTED_EMPLOYEE_ID" property="grantedEmployeeId" jdbcType="DECIMAL"/>
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR"/>
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="INQUIRE_FLAG" property="inquireFlag" jdbcType="VARCHAR"/>
+        <result column="MAINTAIN_FLAG" property="maintainFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryDocAuthEmployee" parameterType="com.hand.hec.expm.dto.ExpDocumentAuthority"
+            resultMap="com.hand.hap.exp.mapper.ExpEmployeeMapper.BaseResultMap">
+        SELECT
+            ee2.EMPLOYEE_ID,
+            ee2.EMPLOYEE_code,
+            ee2.NAME,
+            concat(ee2.employee_code,'-',ee2.name) as code_name
+        FROM
+            (
+        SELECT
+            employee_id
+        FROM
+            (
+        SELECT
+            eea.employee_id
+        FROM
+            exp_employee_assign eea
+            INNER JOIN exp_org_position p ON eea.position_id = p.position_id
+            AND p.ENABLED_FLAG = 'Y'
+            INNER JOIN (
+        SELECT
+            a.COMPANY_ID,
+            a.UNIT_ID,
+            a.POSITION_ID,
+            a.EMPLOYEE_ID
+        FROM
+            exp_document_authority a
+        WHERE
+            (
+            a.GRANTED_EMPLOYEE_ID = #{request.employeeId}
+            OR (
+            a.GRANTED_EMPLOYEE_ID IS NULL
+            AND EXISTS ( SELECT 1 FROM exp_employee_assign ea WHERE a.GRANTED_POSITION_ID = ea.POSITION_ID AND ea.EMPLOYEE_ID = #{request.employeeId} AND ea.ENABLED_FLAG = 'Y' )
+            )
+            )
+            and a.DOC_CATEGORY = #{docCategory}
+            ) v ON ( v.employee_id IS NULL OR eea.EMPLOYEE_ID = v.employee_id )
+            AND ( v.position_id IS NULL OR eea.position_id = v.position_id )
+            AND ( v.unit_id IS NULL OR p.unit_id = v.unit_id )
+            AND ( v.company_id IS NULL OR eea.COMPANY_ID = v.company_id ) UNION
+        SELECT
+            #{request.employeeId} employee_id
+            ) v2
+        GROUP BY
+            employee_id
+            ) v3
+            INNER JOIN exp_employee ee2 ON v3.employee_id = ee2.employee_id
+    </select>
+    <select id="getEmpCurCompAuth" parameterType="com.hand.hec.expm.dto.ExpDocumentAuthority"
+            resultMap="com.hand.hap.exp.mapper.ExpEmployeeMapper.BaseResultMap">
+        select              ee.employee_id,
+                            ee.employee_code,
+                            ee.name,
+                            concat(ee.employee_code,'-',ee.name) as code_name
+                       from (SELECT
+                                ee2.employee_id
+                            FROM
+                                (
+                            SELECT
+                                employee_id
+                            FROM
+                                (
+                            SELECT
+                                eea.employee_id
+                            FROM
+                                exp_employee_assign eea
+                                INNER JOIN exp_org_position p ON eea.position_id = p.position_id
+                                AND p.ENABLED_FLAG = 'Y'
+                                INNER JOIN (
+                            SELECT
+                                a.COMPANY_ID,
+                                a.UNIT_ID,
+                                a.POSITION_ID,
+                                a.EMPLOYEE_ID
+                            FROM
+                                exp_document_authority a
+                            WHERE
+                                (
+                                a.GRANTED_EMPLOYEE_ID = #{request.employeeId}
+                                OR (
+                                a.GRANTED_EMPLOYEE_ID IS NULL
+                                AND EXISTS ( SELECT 1 FROM exp_employee_assign ea WHERE a.GRANTED_POSITION_ID = ea.POSITION_ID AND ea.EMPLOYEE_ID = #{request.employeeId} AND ea.ENABLED_FLAG = 'Y' )
+                                )
+                                )
+                                and a.DOC_CATEGORY = #{docCategory}
+                                ) v ON ( v.employee_id IS NULL OR eea.EMPLOYEE_ID = v.employee_id )
+                                AND ( v.position_id IS NULL OR eea.position_id = v.position_id )
+                                AND ( v.unit_id IS NULL OR p.unit_id = v.unit_id )
+                                AND ( v.company_id IS NULL OR eea.COMPANY_ID = v.company_id ) UNION
+                            SELECT
+                                #{request.employeeId} employee_id
+                                ) v2
+                            GROUP BY
+                                employee_id
+                                ) v3
+                            INNER JOIN exp_employee ee2 ON v3.employee_id = ee2.employee_id) emps,
+                            exp_employee_assign ea,
+                            exp_employee ee
+                      where emps.employee_id = ee.employee_id
+                            and ee.employee_id = ea.employee_id
+                            and ea.company_id = #{companyId}
+                            and ee.enabled_flag = 'Y'
+                            and ea.enabled_flag = 'Y'
+                      group by ee.employee_id,
+                               ee.employee_code,
+                               ee.name,
+                               concat(ee.employee_code,'-',ee.name)
+    </select>
+</mapper>

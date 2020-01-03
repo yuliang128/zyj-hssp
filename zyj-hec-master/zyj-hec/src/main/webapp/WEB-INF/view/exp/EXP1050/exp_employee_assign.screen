@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-25 15:00
+    $Revision: 1.0
+    $Purpose: 员工定义 - 员工分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1050_exp_employee_group_assign_link"
+                url="$[/request/@context_path]/exp/EXP1050/exp_employee_group_assign.screen"/>
+        <script><![CDATA[
+        function EXP1050_closeEmployeeAsgnCreateWindow() {
+            $au('EXP1050_exp_employee_assigns_window').close();
+        }
+
+        function EXP1050_onEmployeeAssignUpdate(ds, record, name, value) {
+            if (name == 'companyId') {
+                var field = record.getMeta().getField('positionCode');
+                field.setLovPara('companyId', record.get('companyId'));
+            } else if (name == "levelSeriesId") {
+                var levelField = record.getMeta().getField('employeeLevelsCode');
+                levelField.setLovPara('levelSeriesId', value);
+            } else if (name == 'enabledFlag') {
+                if (value == 'Y') {
+                    record.set('enabledFlagChecked', 'Y');
+                } else {
+                    record.set('enabledFlagChecked', 'N');
+                }
+            } else if (name == 'companyCode') {
+                record.set('positionCode', null);
+                record.set('positionName', null);
+                record.set('employeeJobCode', null);
+                record.set('employeeJobName', null);
+                record.set('employeeLevelsCode', null);
+                record.set('employeeLevelsDescription', null);
+            } else if (name == 'positionCode') {
+                record.set('employeeLevelsCode', null);
+                record.set('employeeLevelsDescription', null);
+                //add by penglei 20171201 修改核算主体，将筛选责任中心  begin
+            } else if (name == 'accEntityId') {
+                record.set('responsibilityCenterId', '');
+                record.set('responsibilityCenterName', '');
+                if (value != null && value != '') {
+                    record.getField('responsibilityCenterName').setLovPara('accEntityId', value);
+                } else {
+                    record.getField('responsibilityCenterName').setLovPara('accEntityId', null);
+                }
+                //add by penglei 20171201 修改核算主体，将筛选责任中心  end
+                //add by penglei 20171201 修改预算实体，将筛选预算中心  begin
+            } else if (name == 'entityId') {
+                record.set('centerId', '');
+                record.set('centerName', '');
+                if (value != null && value != '') {
+                    record.getField('centerName').setLovPara('entityId', value);
+                } else {
+                    record.getField('centerName').setLovPara('entityId', null);
+                }
+                //add by penglei 20171201 修改预算实体，将筛选预算中心  end
+            }
+        }
+
+        function EXP1050_employeeAsgn_edit(record, name) {
+            if (name == 'employeeLevelsCode') {
+                if (record.get('levelSeriesId')) {
+                    return 'EXP1050_employeeAsgn_lov';
+                }
+                return '';
+            } else if (name == 'responsibilityCenterName') {
+                if (record.get('accEntityId')) {
+                    return 'EXP1050_employeeAsgn_lov';
+                }
+                return '';
+            } else if (name == 'centerName') {
+                if (record.get('entityId')) {
+                    return 'EXP1050_employeeAsgn_lov';
+                }
+                return '';
+            }
+        }
+
+        function EXP1050_gridCellClick(grid, row, name, record) {
+            if (name == 'positionCode') {
+                var companyId = record.get('companyId');
+                if (typeof(companyId) == 'undefined' || Ext.isEmpty(companyId)) {
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_fnd_company]');
+                    return;
+                } else {
+                    record.getMeta().getField('positionCode').setLovPara('companyId', companyId);
+                }
+            }
+            if (name == 'accEntityName') {
+                var companyId = record.get('companyId');
+                if (typeof(companyId) == 'undefined' || Ext.isEmpty(companyId)) {
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_fnd_company]');
+                    return;
+                } else {
+                    record.getMeta().getField('accEntityName').setLovPara('companyId', companyId);
+                }
+            }
+            if (name == 'entityName') {
+                var companyId = record.get('companyId');
+                if (typeof(companyId) == 'undefined' || Ext.isEmpty(companyId)) {
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_fnd_company]');
+                    return;
+                } else {
+                    record.getMeta().getField('entityName').setLovPara('companyId', companyId);
+                }
+            }
+            if (name == 'employeeLevelsCode') {
+                var positionCode = record.get('positionCode');
+                if (typeof(positionCode) == 'undefined' || Ext.isEmpty(positionCode)) {
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_position_code]');
+                    return;
+                } else {
+                    record.getMeta().getField('employeeLevelsCode').setLovPara('levelSeriesId', record.get('levelSeriesId'));
+                }
+            }
+            //add by penglei 20171201 修改核算主体，将筛选责任中心
+            if (name == 'responsibilityCenterName') {
+                var accEntityName = record.get('accEntityName');
+                if (accEntityName != null && accEntityName != '') {
+                    record.getField('responsibilityCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else {
+                    record.getField('responsibilityCenterName').setLovPara('accEntityId', null);
+                }
+            }
+            //add by penglei 20171201 修改核算主体，将筛选责任中心 end
+            //add by penglei 20171201 修改预算实体，将筛选预算中心  begin
+            if (name == 'centerName') {
+                var entityName = record.get('entityName');
+                var companyId = record.get('companyId');
+                if (entityName != null && entityName != '') {
+                    record.getField('centerName').setLovPara('companyId', companyId);
+                    record.getField('centerName').setLovPara('entityId', record.get('entityId'));
+                } else {
+                    record.getField('centerName').setLovPara('entityId', null);
+                }
+            }
+            //add by penglei 20171201 修改预算实体，将筛选预算中心  end
+        }
+
+        function EXP1050_employeeGroupAssign(value, record, name) {
+            if (!record.isNew && record.get('enabledFlag') == 'Y') {
+                var employeeId = record.get('employeeId');
+                var companyId = record.get('companyId');
+                return '<a href="javascript:EXP1050_employeeGroupAssignInfo(' + employeeId + ',' + companyId + ')">$[l:exp_employee_assign.employee_group_assign]</a>';
+            } else {
+                return '';
+            }
+        }
+
+        function EXP1050_employeeGroupAssignInfo(employeeId, companyId) {
+            new Aurora.Window({
+                id: 'EXP1050_exp_employee_group_assign_window',
+                url: /*exp_employee_group_assign.screen*/
+                $au('EXP1050_exp_employee_group_assign_link').getUrl() + '?employeeId=' + employeeId + '&companyId=' + companyId,
+                title: '$[l:exp_employee_assign.employee_group_assign]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function EXP1050_employeeAsgnSubmit(ds) {
+            ds.query();
+        }
+
+        function EXP1050_employeeBeforeSubmit(ds) {
+            if (!ds.validate()){
+                return false
+            }
+            var r = ds.getAll();
+            for (var i = 0; i < r.length; i++) {
+                for (var j = i + 1; j < r.length; j++) {
+                    if (r[i].get("companyId") == r[j].get("companyId")) {
+                        if (r[i].get("primaryPositionFlag") == "Y" && r[j].get("primaryPositionFlag") == "Y") {
+                            Aurora.showMessage('$[l:prompt.error]', r[i].get("companyShortName") + '$[l:fnd_company.primary_only_one]');
+                            return false;
+                        }
+                    }
+                }
+            }
+            for (var i = 0; i < r.length; i++) {
+                var flag = false;
+                if (r[i].get("enabledFlag") == "Y" && r[i].get("primaryPositionFlag") == "N") {
+                    for (var j = 0; j < r.length; j++) {
+                        if (j == i) {
+                            continue;
+                        }
+                        if (r[i].get("companyId") == r[j].get("companyId")) {
+                            if (r[j].get("enabledFlag") == "Y" && r[j].get("primaryPositionFlag") == "Y") {
+                                flag = true;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    flag = true;
+                }
+                if (!flag) {
+                    Aurora.showMessage('$[l:prompt.error]', r[i].get("companyShortName") + '$[l:fnd_company.primary_select_one]');
+                    return false;
+                }
+            }
+            return true;
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1050_exp_employee_assigns_ds" autoCount="true" autoPageSize="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/employee-assign/queryAll?employeeId=$[/parameter/@employeeId]"
+                       selectable="true" submitUrl="$[/request/@context_path]/exp/employee-assign/submit">
+                <a:fields>
+                    <!--将autoCompleteField由companyCode_name修改为companyCode    Y.duan  2017-9-4 10:13:18-->
+                    <a:field name="companyCode" prompt="exp_employee_assign.org_fnd_company_code"
+                             LovCode="FND_COMPANIES_QUERY" required="true" title="fnd.choose_company">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="companyOrgDescribe" to="companyOrgDescribe"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionCode" prompt="exp_org_position.position_code" autoComplete="true" autoCompleteField="code_name" autoCompleteSize="1"
+                             lovCode="EXP_ORG_POSITION_LOV" required="true" title="position.selectposition">
+                        <a:mapping>
+                            <a:map from="positionId" to="positionId"/>
+                            <a:map from="positionCode" to="positionCode"/>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="employeeJobId" to="employeeJobId"/>
+                            <a:map from="jobCode" to="employeeJobCode"/>
+                            <a:map from="jobName" to="employeeJobName"/>
+                            <a:map from="levelSeriesId" to="levelSeriesId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeLevelsCode" autoComplete="true" autoCompleteField="code_name" lovHeight="450"
+                             LovCode="EXP_EMPLOYEE_LEVEL_LOV" title="exp_employee_assign.choose_employee_level">
+                        <a:mapping>
+                            <a:map from="employeeLevelsId" to="employeeLevelsId"/>
+                            <a:map from="employeeLevelsCode" to="employeeLevelsCode"/>
+                            <a:map from="employeeLevelsDescription" to="employeeLevelsDescription"/>
+                        </a:mapping>
+                    </a:field>
+                    <!--add by penglei 20171201 新增字段核算主体、责任中心、预算实体、预算中心  begin-->
+                    <a:field name="accEntityName" autoComplete="true" autoCompleteField="code_name"
+                             lovCode="GLD_ACCOUNTING_ENTITIES_VL_LOV" title="gld_accounting_entities.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="responsibilityCenterName" autoComplete="true" autoCompleteField="code_name"
+                             lovCode="GLD_RESP_CENTER_ACC_ENTITY_LOV" title="exp_org_unit.responsibility_center">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterId" to="responsibilityCenterId"/>
+                            <a:map from="responsibilityCenterName" to="responsibilityCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="responsibilityCenterId"/>
+                    <a:field name="entityName" autoComplete="true" autoCompleteField="code_name"
+                             lovCode="BGT_ENTITIES_MAG_ORG_DEFAULT_BGT_ORG_LOV" title="bgt_entity.bgt_entity">
+                        <a:mapping>
+                            <a:map from="entityId" to="entityId"/>
+                            <a:map from="entityName" to="entityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entityId"/>
+                    <a:field name="centerName" autoComplete="true" autoCompleteField="code_name"
+                             lovCode="BGT_CENTER_REF_BGT_ORG_LOV" title="bgt_center.bgt_center">
+                        <a:mapping>
+                            <a:map from="centerId" to="centerId"/>
+                            <a:map from="centerName" to="centerName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="centerId"/>
+                    <!--add by penglei 20171201 新增字段核算主体、责任中心、预算实体、预算中心  end-->
+                    <a:field name="employeeId" defaultValue="$[/parameter/@employeeId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="primaryPositionFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1050_onEmployeeAssignUpdate"/>
+                    <a:event name="submitsuccess" handler="EXP1050_employeeAsgnSubmit"/>
+                    <a:event name="beforesubmit" handler="EXP1050_employeeBeforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="exp_employee_assign.employee_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1050_exp_employee_assigns_grid" type="add" width="80"/>
+                    <!-- <a:gridButton bind="EXP1050_exp_employee_assigns_grid" type="delete" width="80"/> -->
+                    <a:gridButton bind="EXP1050_exp_employee_assigns_grid" type="save" width="80"/>
+                    <a:toolbarButton click="EXP1050_closeEmployeeAsgnCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="employeeCode" bindTarget="EXP1050_exp_employees_result_ds"
+                             prompt="exp_employee.employee_code" readOnly="true"/>
+                <a:textField name="name" bindTarget="EXP1050_exp_employees_result_ds"
+                             prompt="exp_employee.employee_type" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP1050_exp_employee_assigns_grid" bindTarget="EXP1050_exp_employee_assigns_ds"
+                    marginHeight="195" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editor="EXP1050_employeeAsgn_lov"
+                              prompt="exp_employee_assign.org_fnd_company_code" width="80"/>
+                    <a:column name="companyShortName" prompt="exp_employee_assign.org_fnd_company_name" width="120"/>
+                    <a:column name="companyOrgDescribe" prompt="exp_mo_report_type.mag_org_id" width="120"/>
+                    <a:column name="positionCode" align="center" editor="EXP1050_employeeAsgn_lov"
+                              prompt="exp_org_position.position_code" width="80"/>
+                    <a:column name="positionName" prompt="exp_org_position.position_name" width="120"/>
+                    <a:column name="employeeJobCode" align="center" prompt="exp_employee_job.employee_job_code"
+                              width="80"/>
+                    <a:column name="employeeJobName" prompt="exp_employee_job.employee_job_description" width="120"/>
+                    <a:column name="employeeLevelsCode" align="center" editorFunction="EXP1050_employeeAsgn_edit"
+                              prompt="exp_employee_level.employee_level_code" width="80"/>
+                    <a:column name="employeeLevelsDescription" prompt="exp_employee_level.employee_level_description"
+                              width="120"/>
+                    <a:column name="accEntityName" align="center" editor="EXP1050_employeeAsgn_lov" width="120"
+                              prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:column name="responsibilityCenterName" align="center" editorFunction="EXP1050_employeeAsgn_edit"
+                              width="120" prompt="exp_employee_assign.responsibility_center"/>
+                    <a:column name="entityName" align="center" editor="EXP1050_employeeAsgn_lov" width="120"
+                              prompt="bgt_entity.bgt_entity"/>
+                    <a:column name="centerName" align="center" editorFunction="EXP1050_employeeAsgn_edit" width="120"
+                              prompt="bgt_center.bgt_center"/>
+                    <a:column name="primaryPositionFlag" editor="EXP1050_employeeAsgn_checkBox"
+                              prompt="exp_employee_assign.primary_position_flag" width="60"/>
+                    <a:column name="enabledFlag" editor="EXP1050_employeeAsgn_checkBox"
+                              prompt="exp_employee_assign.enabled_flag" width="60"/>
+                    <a:column name="enabledFlagChecked" align="center" renderer="EXP1050_employeeGroupAssign"
+                              width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1050_employeeAsgn_lov"/>
+                    <a:textField id="EXP1050_employeeAsgn_textField"/>
+                    <a:checkBox id="EXP1050_employeeAsgn_checkBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP1050_gridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

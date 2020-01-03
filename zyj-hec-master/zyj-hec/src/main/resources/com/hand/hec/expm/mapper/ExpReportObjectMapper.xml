@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.expm.mapper.ExpReportObjectMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.expm.dto.ExpReportObject">
+        <result column="EXP_REPORT_HEADER_ID" property="expReportHeaderId" jdbcType="DECIMAL"/>
+        <result column="EXP_REPORT_LINE_ID" property="expReportLineId" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_OBJ_TYPE_ID" property="moExpObjTypeId" jdbcType="DECIMAL"/>
+        <result column="MO_EXPENSE_OBJECT_ID" property="moExpenseObjectId" jdbcType="DECIMAL"/>
+        <result column="MO_EXPENSE_OBJECT_NAME" property="moExpenseObjectName" jdbcType="VARCHAR"/>
+
+        <result column="RETURN_FIELD" property="returnField" jdbcType="DECIMAL"/>
+        <result column="DISPLAY_FIELD" property="displayField" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_OBJ_TYPE_NAME" property="moExpObjTypeName" jdbcType="VARCHAR"/>
+        <result column="REQUIRED_FLAG" property="requiredFlag" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_METHOD" property="expenseObjectMethod" jdbcType="VARCHAR"/>
+        <result column="SQL_QUERY" property="sqlQuery" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <update id="updateExpReportObject" parameterType="com.hand.hec.expm.dto.ExpReportObject">
+        update exp_report_object a
+         set a.last_updated_by        = #{lastUpdatedBy},
+             a.last_update_date       = #{lastUpdateDate},
+             a.mo_expense_object_id   = #{moExpenseObjectId},
+             a.mo_expense_object_name = #{moExpenseObjectName}
+       where a.exp_report_header_id = #{expReportHeaderId}
+             and (case when a.exp_report_line_id is null then -1 else a.exp_report_line_id end) = (case when #{expReportLineId} is null then -1 else #{expReportLineId} end)
+             and a.mo_exp_obj_type_id = #{moExpObjTypeId};
+    </update>
+
+    <select id="queryHdObjectByReport" resultMap="BaseResultMap">
+        SELECT
+                    o.mo_exp_obj_type_id,
+                    o.mo_expense_object_id,
+                    o.mo_expense_object_name,
+                    concat('#',o.mo_exp_obj_type_id) AS return_field,
+                    concat('^#',o.mo_exp_obj_type_id) AS display_field,
+                    #{expReportHeaderId} as exp_report_header_id
+                FROM
+                    exp_report_object o
+                WHERE
+                    o.exp_report_header_id = #{expReportHeaderId} AND
+                    o.exp_report_line_id  IS NULL
+    </select>
+    <delete id="deleteExpObject">
+        <if test="expReportHeaderId!=null and ''!=expReportHeaderId">
+            DELETE ero FROM exp_report_object ero
+            WHERE ero.EXP_REPORT_HEADER_ID = #{expReportHeaderId}
+        </if>
+        <if test="expReportLineId!=null and ''!=expReportLineId">
+            DELETE ero FROM exp_report_object ero
+            WHERE ero.EXP_REPORT_LINE_ID = #{expReportLineId}
+        </if>
+    </delete>
+
+    <select id="queryLnObjectByReport" resultMap="BaseResultMap">
+        SELECT
+                    o.mo_exp_obj_type_id,
+                    o.mo_expense_object_id,
+                    o.mo_expense_object_name,
+                    concat('#',o.mo_exp_obj_type_id) AS return_field,
+                    concat('^#',o.mo_exp_obj_type_id) AS display_field,
+                    #{expReportHeaderId} as exp_report_header_id,
+                    #{expReportLineId} as exp_report_line_id
+                FROM
+                    exp_report_object o
+                WHERE
+                    o.exp_report_header_id = #{expReportHeaderId} AND
+                    o.exp_report_line_id   = #{expReportLineId}
+    </select>
+</mapper>

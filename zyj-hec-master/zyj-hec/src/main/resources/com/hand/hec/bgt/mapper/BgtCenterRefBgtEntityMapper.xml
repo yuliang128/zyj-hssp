@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtCenterRefBgtEntityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtCenterRefBgtEntity">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="CENTER_ID" property="centerId" jdbcType="DECIMAL" />
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="entity_code" property="entityCode" jdbcType="VARCHAR" />
+        <result column="description" property="description" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryMain" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            ref.ref_id,
+            ref.center_id,
+            ref.entity_id,
+            be.entity_code,
+            bel.description,
+            ref.enabled_flag
+        FROM
+            bgt_center_ref_bgt_entity ref,
+            bgt_entity be
+            LEFT OUTER JOIN bgt_entity_tl bel ON
+            (be.entity_id = bel.entity_id AND bel.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+            ref.entity_id = be.entity_id
+            AND ref.center_id = ${centerId}
+
+    </select>
+
+    <select id="queryEntityCanAsgn" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+          t.entity_id,
+          t.entity_code,
+          tl.description
+        FROM
+          bgt_entity t,
+          bgt_entity_tl tl
+        WHERE
+          t.bgt_org_id = #{bgtOrgId}
+        AND t.enabled_flag = 'Y'
+        AND t.ENTITY_TYPE = 'DETAILS'
+        AND t.ENTITY_ID = tl.ENTITY_ID
+        AND t.SOURCE_TYPE_CODE = 'CUSTOMIZE'
+        AND tl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        <if test="centerId != null">
+            AND NOT EXISTS (
+              SELECT
+                1
+              FROM
+                bgt_center_ref_bgt_entity bcr
+              WHERE
+                bcr.entity_id = t.entity_id
+              AND bcr.enabled_flag = 'Y'
+
+                  AND bcr.center_id = #{centerId}
+            )
+        </if>
+        ORDER BY
+        t.entity_code
+
+    </select>
+
+</mapper>

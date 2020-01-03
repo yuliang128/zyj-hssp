@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.account.mapper.UserRoleMapper" >
+
+    <resultMap id="BaseResultMap" type="com.hand.hap.account.dto.UserRole" extends="com.hand.hap.mapper.StdMapper.STD" >
+        <id column="SUR_ID" property="surId" jdbcType="DECIMAL" />
+        <result column="USER_ID" property="userId" jdbcType="DECIMAL" />
+        <result column="ROLE_ID" property="roleId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="ROLE_CODE" property="roleCode" jdbcType="VARCHAR"/>
+        <result column="ROLE_NAME" property="roleName" jdbcType="VARCHAR"/>
+        <result column="START_ACTIVE_DATE" property="startActiveDate" jdbcType="DATE"/>
+        <result column="END_ACTIVE_DATE" property="endActiveDate" jdbcType="DATE"/>
+        <result column="ROLE_START_ACTIVE_DATE" property="roleStartActiveDate" jdbcType="DATE"/>
+        <result column="ROLE_END_ACTIVE_DATE" property="roleEndActiveDate" jdbcType="DATE"/>
+        <result column="COMPANY_START_ACTIVE_DATE" property="companyStartActiveDate" jdbcType="DATE"/>
+        <result column="COMPANY_END_ACTIVE_DATE" property="companyEndActiveDate" jdbcType="DATE"/>
+    </resultMap>
+  
+    <sql id="Base_Column_List" >
+        SUR_ID, USER_ID, ROLE_ID
+    </sql>
+    
+    <delete id="deleteByUserId" parameterType="java.lang.Long" >
+        DELETE FROM SYS_USER_ROLE
+        WHERE USER_ID = #{userId,jdbcType=DECIMAL}
+    </delete>
+    
+    <delete id="deleteByRecord" parameterType="com.hand.hap.account.dto.UserRole">
+        DELETE FROM SYS_UESR_ROLE
+        WHERE USER_ID = #{userId,jdbcType=DECIMAL}
+            AND ROLE_ID = #{roleId,jdbcType=DECIMAL} AND COMPANY_ID = #{companyId,jdbcType=DECIMAL}
+    </delete>
+
+    <delete id="deleteByRoleId" parameterType="java.lang.Long">
+      DELETE FROM SYS_USER_ROLE
+      WHERE ROLE_ID = #{roleId,jdbcType=DECIMAL}
+    </delete>
+
+    <select id="selectUserRoleCompanies" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            UR.SUR_ID,
+            UR.USER_ID,
+            FC.COMPANY_ID,
+            FC.COMPANY_CODE,
+            FC.COMPANY_SHORT_NAME,
+            FC.START_DATE_ACTIVE COMPANY_START_ACTIVE_DATE,
+            FC.END_DATE_ACTIVE COMPANY_END_ACTIVE_DATE,
+            R.ROLE_ID,
+            R.ROLE_CODE,
+            R.ROLE_NAME,
+            R.ROLE_DESCRIPTION,
+            R.ENABLE_FLAG,
+            R.END_ACTIVE_DATE ROLE_END_ACTIVE_DATE,
+            R.START_ACTIVE_DATE ROLE_START_ACTIVE_DATE,
+            UR.START_ACTIVE_DATE,
+            UR.END_ACTIVE_DATE
+        FROM
+            SYS_USER_ROLE UR
+            LEFT JOIN FND_COMPANY FC ON UR.COMPANY_ID = FC.COMPANY_ID
+            LEFT JOIN FND_COMPANY_TL FCT
+            ON (FCT.COMPANY_ID = FC.COMPANY_ID AND FCT.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),
+            SYS_ROLE_B R
+            LEFT OUTER JOIN SYS_ROLE_TL TL
+            ON (R.ROLE_ID = TL.ROLE_ID AND TL.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+            UR.USER_ID = #{userId,jdbcType=DECIMAL,javaType=java.lang.Long}
+            AND UR.ROLE_ID = R.ROLE_ID
+        ORDER BY R.ROLE_CODE ASC
+    </select>
+
+    <select id="selectDistinctCompanies" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            URC.SUR_ID,
+            URC.USER_ID,
+            URC.ROLE_ID,
+            R.ROLE_CODE,
+            R.ROLE_NAME,
+            R.ROLE_DESCRIPTION,
+            R.ENABLE_FLAG,
+            R.START_ACTIVE_DATE ROLE_START_ACTIVE_DATE,
+            R.END_ACTIVE_DATE ROLE_END_ACTIVE_DATE,
+            FC.COMPANY_ID,
+            FC.COMPANY_CODE,
+            FC.COMPANY_SHORT_NAME,
+            FC.START_DATE_ACTIVE COMPANY_START_ACTIVE_DATE,
+            FC.END_DATE_ACTIVE COMPANY_END_ACTIVE_DATE,
+            URC.START_ACTIVE_DATE,
+            URC.END_ACTIVE_DATE
+        FROM
+            (
+            SELECT
+                UR.SUR_ID,
+                UR.USER_ID,
+                UR.COMPANY_ID,
+                UR.ROLE_ID,
+                UR.START_ACTIVE_DATE,
+                UR.END_ACTIVE_DATE
+            FROM
+                SYS_USER_ROLE UR
+            WHERE
+                UR.USER_ID = #{userId,jdbcType=DECIMAL,javaType=java.lang.Long}
+                AND EXISTS ( SELECT 1 FROM SYS_USER_ROLE GROUP BY COMPANY_ID,USER_ID HAVING MIN( SUR_ID ) = UR.SUR_ID )
+            ) URC
+            LEFT JOIN FND_COMPANY FC ON URC.COMPANY_ID = FC.COMPANY_ID
+            LEFT JOIN FND_COMPANY_TL FCT ON ( FCT.COMPANY_ID = FC.COMPANY_ID AND FCT.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ),
+            SYS_ROLE_B R
+            LEFT OUTER JOIN SYS_ROLE_TL TL ON ( R.ROLE_ID = TL.ROLE_ID AND TL.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+            URC.ROLE_ID = R.ROLE_ID
+        ORDER BY
+            R.ROLE_CODE ASC
+    </select>
+
+</mapper>

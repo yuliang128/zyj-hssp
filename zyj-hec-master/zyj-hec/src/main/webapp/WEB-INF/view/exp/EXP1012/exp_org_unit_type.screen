@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Description: 管理组织级部门类型定义
+ * Version: 1.0
+ * Author: rui.shi@hand-china.com
+ * Copyright Hand China Co.,Ltd.
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:init-procedure>
+          <p:echo/>
+        <!-- <a:model-query fetchAll="true" model="hec_util.get_company_default_mag_org" rootPath="FND1012_defaultMagList"/>-->
+    </a:init-procedure>
+
+    <a:view>
+        <a:link id="EXP1012_exp_org_unit_types_assign_com_link" url="$[/request/@context_path]/exp/EXP1012/exp_org_unit_type_assign_com.screen"/>
+        <a:link id="EXP1012_exp_org_unit_types_batch_assign_com_all_link" url="$[/request/@context_path]/exp/EXP1012/exp_org_unit_type_batch_assign_com_all.screen"/>
+        <script><![CDATA[
+        function EXP1012_unitTypeIdEditFun(record, name) {
+            if (record.isNew) {
+                return 'EXP1012_org_unit_type_code_grid_tf';
+            }
+            return '';
+        }
+
+        function EXP1012_assignCompany(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:EXP1012_openAssignCM( \'' + record.get('unitTypeId') + '\')">$[l:fnd_system_venders.company_assign]</>';
+
+
+        }
+
+        function EXP1012_openAssignCM(unitTypeId) {
+            var magOrgId = $au('EXP1012_exp_org_unit_types_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'EXP1012_exp_org_unit_types_assign_com_window',
+                url: $au('EXP1012_exp_org_unit_types_assign_com_link').getUrl() + '?unitTypeId=' + unitTypeId + '&magOrgId=' + magOrgId,
+                title: '$[l:fnd_system_venders.company_assign]',
+                side:'right',
+                width:1020
+            }).on('close', function() {
+                $au('EXP1012_exp_org_unit_types_result_ds').query();
+            });
+        }
+
+        function EXP1012_batchAssignCompanyFun() {
+            var typeDs = $au('EXP1012_exp_org_unit_types_result_ds');
+            var typeRecordsData = typeDs.getJsonData(true);
+            if (typeRecordsData.length == 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            var magOrgId = $au('EXP1012_exp_org_unit_types_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'EXP1012_exp_org_unit_types_batch_assign_com_all_window',
+                url: $au('EXP1012_exp_org_unit_types_batch_assign_com_all_link').getUrl() + '?magOrgId=' + magOrgId,
+                title: '$[l:fnd_system_venders.company_assign]',
+                side:'right',
+                width:1020
+            }).on('close', function() {
+                $au('EXP1012_exp_org_unit_types_result_ds').query();
+            });
+        }
+
+        function EXP1012_onOrgUnitTypesSubmitSuccessFun() {
+            $au('EXP1012_exp_org_unit_types_result_ds').query();
+        }
+
+        function EXP1012_orgUnitTypesreturnBackFun() {
+            history.go(-1);
+        }
+        function EXP1012_add(ds){
+            var magOrgId = $au('EXP1012_exp_org_unit_types_query_ds').getCurrentRecord().get('magOrgId');
+            if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+        function EXP1012_focus(){
+            $au('EXP1012_mange_organizationlist_ds').query();
+        }
+        function EXP1012_queryUpdate(ds,record,name,value){
+            if(name=='magOrgId'){
+                $au('EXP1012_exp_org_unit_types_result_ds').query();
+            }
+        }
+        function EXP1012_BeforeCreate(){
+            if (Ext.isEmpty($au('EXP1012_exp_org_unit_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+        ]]></script>
+        <a:dataSets>
+            <!-- <a:dataSet id="EXP1012_mange_organizationlist_ds" autoQuery="true" fetchAll="true" loadData="true" model="hec_util.fnd_util.fnd_mag_organizations_form_query" />-->
+
+            <a:dataSet id="EXP1012_mange_organizationlist_ds">
+                <a:datas dataSource="fndManagingOrganizationList/records"/>
+            </a:dataSet>
+
+            <a:dataSet id="EXP1012_exp_org_unit_types_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgCodeName" defaultValue="$[/model/defaultFndManagingOrganization/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP1012_mange_organizationlist_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId">
+                        <!--  modify lcy 2017/12/20  新增mapping内容，用于批量分配页面中form显示-->
+                        <a:mapping>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultFndManagingOrganization/records/record/@magOrgId]" prompt="exp_mo_req_types.mag_org_id"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/defaultFndManagingOrganization/records/record/@description]"/>
+                    <a:field name="magOrgCode" defaultValue="$[/model/defaultFndManagingOrganization/records/record/@magOrgCode]"/>
+                    <a:field name="unitTypeCode" prompt="exp_org_unit_types.unit_type_code"/>
+                    <a:field name="description" prompt="exp_org_unit_types.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1012_queryUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1012_exp_org_unit_types_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/exp/org-unit-type" queryDataSet="EXP1012_exp_org_unit_types_query_ds" queryUrl="$[/request/@context_path]/exp/org-unit-type/query" selectable="true">
+                <a:fields>
+                    <a:field name="unitTypeCode" required="true" prompt="exp_org_unit_types.unit_type_code"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_types.mag_org_id" required="true"/>
+                    <a:field name="description" required="true" prompt="exp_org_unit_types.description"/>
+                    <a:field name="enabledFlag" prompt="prompt.enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1012_onOrgUnitTypesSubmitSuccessFun"/>
+                    <a:event name="add" handler="EXP1012_add"/>
+                    <a:event name="beforecreate" handler="EXP1012_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1012_exp_org_unit_tyes_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1012_exp_org_unit_tyes_grid" type="save" width="80"/>
+                <a:toolbarButton click="EXP1012_batchAssignCompanyFun" text="prompt.batch_disp_company" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1012_exp_org_unit_types_query_ds" resultTarget="EXP1012_exp_org_unit_types_result_ds" style="width:100%;border:none">
+                <a:formToolBar LabelWidth="120">
+                    <a:comboBox name="magOrgCodeName" bindTarget="EXP1012_exp_org_unit_types_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1012_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="unitTypeCode" bindTarget="EXP1012_exp_org_unit_types_query_ds" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="EXP1012_exp_org_unit_types_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1012_exp_org_unit_tyes_grid" bindTarget="EXP1012_exp_org_unit_types_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="unitTypeCode" align="center" editorFunction="EXP1012_unitTypeIdEditFun" sortable="true" width="120"/>
+                <a:column name="description" align="left" editor="EXP1012_exp_org_unit_types_tf" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP1012_exp_org_unit_types_cb" sortable="true" width="80"/>
+                <a:column name="asignCm" align="center" renderer="EXP1012_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP1012_org_unit_type_code_grid_tf" typeCase="upper"/>
+                <a:textField id="EXP1012_exp_org_unit_types_tf"/>
+                <a:checkBox id="EXP1012_exp_org_unit_types_cb"/>
+            </a:editors>
+        </a:grid>
+        <script>
+            Aurora.onReady(function (){
+                console.log('1111111111111111');
+                // console.log('$[/model/@magOrgId]');
+                // console.log('$[/model/@magOrgCodeName]');
+                 console.log('$[/model/defaultFndManagingOrganization/records/record/@magOrgCodeName]');
+            });
+        </script>
+    </a:view>
+</a:screen>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndCustomerTypeRefAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndCustomerTypeRefAe">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="CUSTOMER_TYPE_ID" property="customerTypeId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+    </resultMap>
+    <resultMap id="GldAccountingEntityMap" type="com.hand.hec.gld.dto.GldAccountingEntity">
+        <result column="acc_entity_id" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="acc_entity_code" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="acc_entity_name" property="accEntityName" jdbcType="VARCHAR" />
+    </resultMap>
+<select id="queryAllAccountingEntity" parameterType="com.hand.hec.fnd.dto.FndCustomerTypeRefAe" resultMap="GldAccountingEntityMap">
+    SELECT DISTINCT
+    gae.acc_entity_id,
+    gae.acc_entity_code,
+    gt.acc_entity_name
+    FROM
+    gld_accounting_entity gae
+    LEFT OUTER JOIN gld_accounting_entity_tl gt ON (
+    gae.acc_entity_id = gt.acc_entity_id
+    AND gt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}),
+    fnd_company_ref_acc_entity fcae
+    WHERE
+    gae.acc_entity_id = fcae.acc_entity_id
+    AND
+    fcae.company_id   = #{request.companyId}
+    AND fcae.enabled_flag = 'Y'
+    <if test = "customerTypeId != null">
+        AND NOT EXISTS ( SELECT 1 FROM ord_customer_type_ref_ae octa WHERE octa.customer_type_id = #{customerTypeId} AND
+        octa.acc_entity_id = gae.acc_entity_id )
+    </if>
+    <if test = "accEntityCodeFrom != null">
+        and gae.acc_entity_code &gt;=  #{accEntityCodeFrom}
+    </if>
+    <if test = "accEntityCodeTo != null">
+        and gae.acc_entity_code &lt;= #{accEntityCodeTo}
+    </if>
+
+</select>
+
+    <select id="queryFndCustomerTypeRefAe" resultType="long" parameterType="com.hand.hec.fnd.dto.FndCustomerTypeRefAe">
+        select count(*) from ord_customer_type_ref_ae where CUSTOMER_TYPE_ID = #{customerTypeId} and ACC_ENTITY_ID = #{accEntityId}
+    </select>
+
+</mapper>

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: weikunWang21888 $
+    $Date: 2019/2/27  $
+    $Revision: 1.2 $
+    $Purpose: “科目层次定义”模块中，grid中的“子科目”页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <!--<a:init-procedure>
+        <a:model-query autoCount="false" fetchAll="true" model="gld.gld_account_set_sub_fieldset" rootPath="fieldset"/>
+        <a:model-query autoCount="false" fetchAll="true" model="gld.gld_account_hierarchy_error_massage" rootPath="error"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="gld_account_hierarchy_tree_link" url="$[/request/@context_path]/fnd/FND2150/gld_account_hierarchy_tree.screen"/>
+        <a:link id="gld_account_hierarchy_details_arrange_link" url="$[/request/@context_path]/gld/account-hierarchy/refreshGldAccountHierarchy?accountSetId=$[/parameter/@accountSetId]"/>
+        <script><![CDATA[
+            function saveFuncgtion() {
+                ///主题: [44964]汇总科目定义的子科目无法保存
+                var new_records = $au('detail_result_ds').getNewRecords();
+                ///主题: [44964]汇总科目定义的子科目无法保存
+                var all_records = $au('detail_result_ds').getAll();
+                var p_error = 0;
+                var v_error = 0;
+                if (new_records.length > 0) {
+                    for (var i = 0;i < new_records.length;i++) {
+                        var new_from = new_records[i].get('fromAccountCode');
+                        var new_to = new_records[i].get('toAccountCode');
+                        if (parseInt(new_from) > parseInt(new_to)) {
+                            Aurora.showInfoMessage('$[l:PROMPT]', '$[l:gld_account_code.verified]');
+                        } else {
+                            for (var j = 0;j < all_records.length;j++) {
+                                if (all_records[j].isNew == false) {
+            
+                                    var old_from = all_records[i].get('fromAccountCode');
+                                    var old_to = all_records[i].get('toAccountCode');
+                                    if (parseInt(new_to) < parseInt(old_from) || parseInt(new_from) < parseInt(old_from)) {
+                                        p_error = p_error + 1;
+                                    } else if ((parseInt(old_from) < parseInt(new_to) && parseInt(new_to) < parseInt(old_to)) || (parseInt(old_from) < parseInt(new_from) && parseInt(new_from) < parseInt(old_to))) {
+                                        v_error = v_error + 1;
+                                    }
+            
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    for (var i = 0;i < all_records.length;i++) {
+                        if (all_records[i].dirty == true) {
+                            var new_from = all_records[i].get('fromAccountCode');
+                            var new_to = all_records[i].get('toAccountCode');
+                            for (var j = 0;j < all_records.length;j++) {
+                                if (all_records[j].dirty == false) {
+                                    var old_from = all_records[j].get('fromAccountCode');
+                                    var old_to = all_records[j].get('toAccountCode');
+                                    if (parseInt(new_to) < parseInt(old_from) || parseInt(new_from) < parseInt(old_from)) {
+                                        p_error = p_error + 1;
+                                    } else if ((parseInt(old_from) < parseInt(new_to) && parseInt(new_to) < parseInt(old_to)) || (parseInt(old_from) < parseInt(new_from) && parseInt(new_from) < parseInt(old_to))) {
+                                        v_error = v_error + 1;
+                                    }
+                                }
+                            }
+                        }
+            
+                    }
+                }
+                if (p_error > 0) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:gld_account_code.interval]');
+                } else if (v_error > 0) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:gld_account_code.overlapping]');
+                } else {
+                    for (var i = 0;i < all_records.length;i++) {
+                        var old_from = all_records[i].get('fromAccountCode');
+                        var old_to = all_records[i].get('toAccountCode');
+                    }
+                    if (parseInt(old_from) > parseInt(old_to)) {
+                        Aurora.showInfoMessage('$[l:PROMPT]', '$[l:gld_account_code.verified]');
+                    } else {
+                        $au('detail_result_ds').submit();
+                    }
+                }
+            }
+            
+            
+            function hierarchyArrange() {
+                console.log('$[/parameter/@accountSetId]');
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('gld_account_hierarchy_details_arrange_link').getUrl(),
+                    success: function() {
+                        Aurora.showMessage('$[l:PROMPT]', '$[l:fnd_dimension_values.opr_suc]');
+                    },
+                    scope: this
+                });
+            }
+            
+            function viewTree() {
+                var urlString = /*gld_account_hierarchy_tree.screen*/
+                $au('gld_account_hierarchy_tree_link').getUrl() + '?accountSetId=$[/parameter/@accountSetId]';
+                new Aurora.Window({
+                    id: 'tree_window',
+                    url: urlString,
+                    title: '$[l:FND_COMPANY_HIERARCHY.VIEW_HIERARCHY]',
+                    height: 450,
+                    width: 500
+                });
+            }
+            
+            function setinitdata(ds, record, index) {
+                record.set('accountSetId', '$[/parameter/@accountSetId]');
+                record.set('parentAccountId', '$[/parameter/@accountId]');
+            }
+            function backFuncgtion(){
+                if (Aurora.CmpManager.get('gld_account_hierarchy_details_window')) {
+                    $au('gld_account_hierarchy_details_window').close();
+                }else if(Aurora.CmpManager.get('handleWindow')){
+                    $au('handleWindow').close();
+                }
+            
+                
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="detail_fieldset_ds">
+                <a:fields>
+                    <a:field name="accountSetId" defaultValue="$[/parameter/@accountSetId]"></a:field>
+                    <a:field name="parentAccountId" defaultValue="$[/parameter/@accountId]"></a:field>
+                </a:fields>
+            </a:dataSet>
+            <!--pageSize="14" -->
+            <a:dataSet id="detail_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/gld/account-hierarchy" queryDataSet="detail_fieldset_ds" queryUrl="$[/request/@context_path]/gld/account-hierarchy/query?parentAccountId=$[/parameter/@accountId]" selectable="true">
+                <a:fields>
+                    <a:field name="subAccountCode"/>
+                    <a:field name="accountSetId" />
+                    <a:field name="parentAccountId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="setinitdata"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="detail_result_fs" column="2" title="gld_account.subject_information">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="viewTree" text="FND_COMPANY_HIERARCHY.VIEW_HIERARCHY" width="80"/>
+                    <a:toolbarButton click="hierarchyArrange" text="REGULATE_HIERARCHY" width="80"/>
+                    <a:gridButton bind="detail_result_grid" type="add" width="80"/>
+                    <a:toolbarButton click="saveFuncgtion" text="PROMPT.SAVE" width="80"/>
+                    <a:gridButton bind="detail_result_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="backFuncgtion" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accountSetCode" bindTarget="account_hierarchy_query_ds" prompt="gld_account_set.account_code" readOnly="true"/>
+                <a:textField name="accountSetName" bindTarget="account_hierarchy_query_ds" prompt="fnd_calendar.description" readOnly="true"/>
+                <a:textField name="accountCode" bindTarget="account_hierarchy_result_ds" prompt="gld_account.account_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="account_hierarchy_result_ds" prompt="fnd_calendar.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="detail_result_grid" bindTarget="detail_result_ds" marginHeight="231" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="subAccountCode" align="center" editor="detail_tfu" prompt="gld_account.account_code" sortable="true" width="120"/>
+                    <a:column name="fromAccountCode" align="center" editor="from_account" prompt="gld_account_set.account_code_from" sortable="true" width="120"/>
+                    <a:column name="toAccountCode" align="center" editor="to_account" prompt="gld_account_set.account_code_to" sortable="true" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="detail_tfu" typeCase="upper"/>
+                    <a:textField id="from_account"/>
+                    <a:textField id="to_account"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: leiwang12 $
+    $Date: 2017/03/22 07:47:04 $
+    $Revision: 1.3 $
+    $Purpose: 汇率定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+   <a:init-procedure><![CDATA[
+    ]]></a:init-procedure>
+    <a:view>
+    <a:link id="FND1090_gld_exchangerate_rate_have_back_link" url="$[/request/@context_path]/fnd/FND1090/gld_exchange_rate.screen"/>
+   <script><![CDATA[
+   var mode = '$[/parameter/@methodCode]';
+   var typeId = '$[/parameter/@typeId]';
+   /*var periodFrom = '$[/parameter/@periodFrom]';
+   var periodTo = '$[/parameter/@periodTo]';
+   var dateFrom = '$[/parameter/@dateFrom]';
+   var dateTo = '$[/parameter/@dateTo]';*/
+   // console.log(mode+periodFrom+dateTo);
+    //modifid by liliang 2018/7/2
+    //当mode为daily时，那么期间隐藏，日期必输
+    //当mode为period_name时，那么日期隐藏，期间必输
+    //当mode为FIXED或者MANUAL时，那么日期和期间隐藏
+
+   function FND1090_qs_load(ds, record, name, value) {
+       alert('dasd'+'$[/parameter/@dateFrom]');
+       if (mode == 'DAILY') {
+           record.getMeta().getField('periodFromDisplay').setReadOnly(true);
+           record.getMeta().getField('periodToDisplay').setReadOnly(true);
+           record.getMeta().getField('dateFrom').setDefaultValue("$[/parameter/@dateFrom]");
+           record.getMeta().getField('dateTo').setDefaultValue("$[/parameter/@dateTo]");
+       }else if (mode == 'PERIOD') {
+           record.getMeta().getField('dateFrom').setReadOnly(true);
+           record.getMeta().getField('dateTo').setReadOnly(true);
+       }else if (mode == 'FIXED' || mode == 'MANUAL') {
+           record.getMeta().getField('periodFromDisplay').setReadOnly(true);
+           record.getMeta().getField('periodToDisplay').setReadOnly(true);
+           record.getMeta().getField('dateFrom').setReadOnly(true);
+           record.getMeta().getField('dateTo').setReadOnly(true);
+       }
+   }
+    function FND1090_load() {
+        var period_name_re = false;
+        var conversion_date_re = false;
+        /*var qUrl='$[/request/@context_path]/gld/exchange-rate/query?typeId=$[/parameter/@typeId]'
+       if ('$[/parameter/@dateFrom]'!='undefined'){
+            console.log($au('FND1090_gld_exchangerate_type_query_ds'))
+        }
+        if ('$[/parameter/@dateTo]'!='undefined'){
+            ds.setQueryUrl('queryUrl',qUrl+'&amp;dateTo=$[/parameter/@dateTo]');
+        }*/
+        $au('from_currency_ds').query();
+        if (mode == 'DAILY') {
+            $au('FND1090_fnd_company_ref_acc_entities_grid').hideColumn('periodName');
+            $au('periodFromDisplay_lov').readonly =true;
+            $au('periodToDisplay_lov').readonly =true;
+            $au('FND1090_fnd_company_ref_acc_entities_grid').showColumn('conversionDate');
+            period_name_re = false;
+            conversion_date_re = true;
+        } else if (mode == 'PERIOD') {
+            $au('FND1090_fnd_company_ref_acc_entities_grid').hideColumn('conversionDate');
+            $au('dateFrom_dp').readonly =true;
+            $au('dateTo_dp').readonly =true;
+            $au('FND1090_fnd_company_ref_acc_entities_grid').showColumn('periodName');
+            period_name_re = true;
+            conversion_date_re = false;
+        } else if (mode == 'FIXED' || mode == 'MANUAL') {
+            $au('FND1090_fnd_company_ref_acc_entities_grid').hideColumn('conversionDate');
+            $au('dateFrom_dp').readonly =true;
+            $au('dateTo_dp').readonly =true;
+            $au('periodFromDisplay_lov').readonly =true;
+            $au('periodToDisplay_lov').readonly =true;
+            $au('FND1090_fnd_company_ref_acc_entities_grid').hideColumn('periodName');
+            period_name_re = false;
+            conversion_date_re = false;
+        } else {
+            $au('FND1090_fnd_company_ref_acc_entities_grid').showColumn('conversionDate');
+            $au('FND1090_fnd_company_ref_acc_entities_grid').showColumn('periodName');
+            period_name_re = false;
+            conversion_date_re = false;
+        }
+        allRecords = $au('FND1090_fnd_company_ref_acc_entities_ds').getAll();
+        Ext.each(allRecords, function(record) {
+            record.getMeta().getField('conversionDate').setRequired(conversion_date_re);
+            record.getMeta().getField('periodName').setRequired(period_name_re);
+        }, this);
+    }
+
+
+    function FND1090_queryCompanyAcc() {
+        $au('FND1090_fnd_company_ref_acc_entities_grid').query();
+    }
+
+    function FND1090_resetCompanyAcc() {
+        $au('FND1090_fnd_company_acc_entities_query_ds').reset();
+    }
+
+    function FND1090_closeAssignPage() {
+        Aurora.showInfoMessage('$[l:PROMPT]', '$[l:FND_DIMENSION_VALUES.OPR_SUC]', null, 250, 100);
+        $au('company_acc_window').close();
+    }
+
+    function FND1090_fnd_ref_closeWindow() { /!* window.history.go(-1); *!/
+        window.location.href = $au('FND1090_gld_exchangerate_rate_have_back_link').getUrl();
+    }
+
+    function FND1090_gridDataAdd(ds, record, index) {
+        /*debugger;*/
+        var dateField = record.getMeta().getField('conversionDate');
+        var periodField = record.getMeta().getField('periodName');
+        if (mode == 'PERIOD') {
+            periodField.setRequired(true);
+        }
+        if (mode == 'DAILY') {
+            dateField.setRequired(true);
+        }
+    }
+    ]]></script>
+   <a:dataSets>
+        <a:dataSet id="from_currency_ds" fetchAll="true" loadData="true" baseUrl="/gld-currency" queryUrl="$[/request/@context_path]/gld-currency/query">
+        </a:dataSet>
+        <a:dataSet id="FND1090_gld_exchangerate_type_query_ds" autoCreate="true">
+            <a:fields>
+                <a:field name="periodFrom" defaultValue="$[/parameter/@periodFrom]"/>
+                <a:field name="periodTo" defaultValue="$[/parameter/@periodTo]"/>
+                <a:field name="periodFromDisplay"  displayField="periodName" returnField="periodName"  valueField="periodName" autoComplete="true" autoCompleteField="period_name" lovGridHeight="320" lovHeight="450" lovCode="LOV_GLD_EXCHANGE_RATE_PERIOD" lovWidth="500" placeHolder="gld_exchange_rate.period_from" title="gld_exchange_rate.period_from">
+                    <a:mapping>
+                        <a:map from="periodName" to="periodFrom"/>
+                        <a:map from="periodName" to="periodFromDisplay"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="periodToDisplay" displayField="periodName" returnField="periodName"  autoComplete="true" valueField="periodName" lovGridHeight="320" lovHeight="450" lovCode="LOV_GLD_EXCHANGE_RATE_PERIOD" lovWidth="500" placeHolder="gld_exchange_rate.period_to" title="gld_exchange_rate.period_to">
+                    <a:mapping>
+                        <a:map from="periodName" to="periodTo"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="fromCurrency"></a:field>
+                <a:field name="toCurrency"></a:field>
+                <a:field name="dateFrom"     placeHolder="gld_exchange_rate.start_date">
+                </a:field>
+                <a:field name="dateTo"   placeHolder="gld_exchange_rate.end_date">
+                </a:field>
+                <a:field name="fromCurrencyDisplay" displayField="currencyName" valueField="currencyCode" returnField="currencyCode" options="from_currency_ds" prompt="gld_exchange_rates.from_currency">
+                    <a:mapping>
+                        <a:map from="currencyCode" to="fromCurrency"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="toCurrencyDisplay" displayField="currencyName" valueField="currencyCode" returnField="currencyCode" options="from_currency_ds" prompt="gld_exchange_rates.to_currency">
+                <a:mapping>
+                    <a:map from="currencyCode" to="toCurrency"/>
+                </a:mapping>
+            </a:field>
+            </a:fields>
+            <a:events>
+                <a:event name="beforeload" handler="FND1090_qs_load"/>
+            </a:events>
+        </a:dataSet>
+        <a:dataSet id="FND1090_fnd_company_ref_acc_entities_ds" queryUrl="$[/request/@context_path]/gld/exchange-rate/query?typeId=$[/parameter/@typeId]" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/gld/exchange-rate" queryDataSet="FND1090_gld_exchangerate_type_query_ds"  selectable="true">
+            <a:fields>
+                <a:field name="exchangeRateId"/>
+                <a:field name="typeId" defaultValue="$[/parameter/@typeId]"/>
+                <a:field name="fromCurrencyName" lovCode="GLD_CURRENCY_LOV"  required="true">
+                    <a:mapping>
+                        <a:map from="currencyCode" to="fromCurrency"/>
+                        <a:map from="currencyName" to="fromCurrencyName"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="toCurrencyName" lovCode="GLD_CURRENCY_LOV" required="true">
+                    <a:mapping>
+                        <a:map from="currencyCode" to="toCurrency" />
+                        <a:map from="currencyName" to="toCurrencyName" />
+                    </a:mapping>
+                </a:field>
+                <a:field name="fromCurrency" >
+                </a:field>
+                <a:field name="currencyVolume"/>
+                <a:field name="exchangeRateId"/>
+                <a:field name="toCurrency" >
+                </a:field>
+                <a:field name="conversionRate"/>
+                <a:field name="conversionDate"/>
+               <a:field name="fromCurrencyDispaly" displayField="fromCurrencyDispaly" autoComplete="true" autoCompleteField="codenName" lovGridHeight="300" lovHeight="460" lovCode="GLD_CURRENCY_LOV" lovWidth="490" prompt="gld_exchange_rates.from_currency" required="false" title="gld_exchange_rates.to_currency_code">
+                    <a:mapping>
+                        <a:map from="currencyCode" to="fromCurrency"/>
+                        <a:map from="currencyName" to="fromCurrencyDispaly"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="toCurrencyDisplay" displayField="toCurrencyDispaly" autoComplete="true" autoCompleteField="codeName" lovGridHeight="300" lovHeight="460" lovCode="GLD_CURRENCY_LOV" lovWidth="490" prompt="gld_exchange_rates.to_currency" required="false" title="gld_exchange_rates.to_currency_code">
+                    <a:mapping>
+                        <a:map from="currencyCode" to="toCurrency"/>
+                        <a:map from="currencyName" to="toCurrencyDispaly"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="periodName" autoComplete="true" autoCompleteField="period_name" lovGridHeight="320" lovHeight="450" lovCode="LOV_GLD_EXCHANGE_RATE_PERIOD" lovWidth="500" title="gld_exchange_rate.period_from">
+                    <a:mapping>
+                        <a:map from="periodName" to="periodName"/>
+                    </a:mapping>
+                </a:field>
+                <a:field name="dateFrom"  placeHolder="gld_exchange_rate.start_date">
+                </a:field>
+                <a:field name="dateTo"  placeHolder="gld_exchange_rate.end_date">
+                </a:field>
+                <a:field name="periodFrom"  placeHolder="gld_exchange_rate.start_date">
+                </a:field>
+                <a:field name="periodTo"   placeHolder="gld_exchange_rate.end_date">
+                </a:field>
+            </a:fields>
+            <a:events>
+                <a:event name="add" handler="FND1090_gridDataAdd"/>
+                <a:event name="load" handler="FND1090_load"/>
+            </a:events>
+        </a:dataSet>
+    </a:dataSets>
+    <span>
+        <a:screenTopToolbar>
+            <a:gridButton bind="FND1090_fnd_company_ref_acc_entities_grid" type="add" width="80"/>
+            <a:gridButton bind="FND1090_fnd_company_ref_acc_entities_grid" type="save" width="80"/>
+            <a:gridButton bind="FND1090_fnd_company_ref_acc_entities_grid" type="delete" width="80"/>
+            <a:toolbarButton click="FND1090_fnd_ref_closeWindow" text="HAP_BACK" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm id="FND1090_gld_exchangerate_type_query_ds_fo" bindTarget="FND1090_gld_exchangerate_type_query_ds" resultTarget="FND1090_fnd_company_ref_acc_entities_ds" style="width:100%;border:none">
+            <a:formToolBar>
+                <a:comboBox name="fromCurrencyDisplay" bindTarget="FND1090_gld_exchangerate_type_query_ds" typeCase="upper"/>
+                <a:comboBox name="toCurrencyDisplay" bindTarget="FND1090_gld_exchangerate_type_query_ds" typeCase="upper"/>
+            </a:formToolBar>
+            <a:formBody>
+                <a:hBox>
+                    <a:lov id="periodFromDisplay_lov" readOnly="false"  name="periodFromDisplay" bindTarget="FND1090_gld_exchangerate_type_query_ds"/>
+                    <a:lov id="periodToDisplay_lov" readOnly="false" name="periodToDisplay" bindTarget="FND1090_gld_exchangerate_type_query_ds"/>
+                    <a:dateTimePicker id="dateFrom_dp" renderer="Aurora.formatDateTime" readOnly="false" name="dateFrom" bindTarget="FND1090_gld_exchangerate_type_query_ds"/>
+                    <a:dateTimePicker id="dateTo_dp" renderer="Aurora.formatDateTime" readOnly="false" name="dateTo" bindTarget="FND1090_gld_exchangerate_type_query_ds"/>
+                </a:hBox>
+            </a:formBody>
+        </a:queryForm>
+    </span>
+    <a:grid id="FND1090_fnd_company_ref_acc_entities_grid" bindTarget="FND1090_fnd_company_ref_acc_entities_ds" marginHeight="115" marginWidth="3" navBar="true">
+        <a:columns>
+            <a:column name="fromCurrencyName" align="center" editor="gerg_lov" prompt="gld_exchange_rates.from_currency" width="80"/>
+            <a:column name="currencyVolume" align="right" editor="gerg_nf" prompt="gld_exchange_rates.currency_volume" width="80"/>
+            <a:column name="toCurrencyName" align="center" editor="gerg_lov" prompt="gld_exchange_rates.to_currency" width="80"/>
+            <a:column name="conversionRate" align="right" editor="rate_nf" prompt="gld_exchange_rates.conversion_rate" width="80"/>
+            <a:column name="periodName" align="center" editor="gerg_lov" prompt="gld_exchange_rates.conversion_datein" width="80"/>
+            <a:column name="conversionDate" align="center" editor="gerg_dp" prompt="gld_exchange_rates.conversion_date" renderer="Aurora.formatDate" width="80"/>
+        </a:columns>
+        <a:editors>
+            <a:lov id="gerg_lov"/>
+            <a:numberField id="gerg_nf" decimalPrecision="6"/>
+            <a:numberField id="rate_nf" decimalPrecision="6"/>
+            <a:comboBox id="gerg_cmb"/>
+            <a:dateTimePicker id="gerg_dp"/>
+        </a:editors>
+    </a:grid>
+            
+</a:view>
+    
+
+</a:screen>

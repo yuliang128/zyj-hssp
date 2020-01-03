@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoRepEleRefLnObjMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoRepEleRefLnObj">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="REP_PAGE_ELE_REF_ID" property="repPageEleRefId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_OBJ_TYPE_ID" property="moExpObjTypeId" jdbcType="DECIMAL" />
+        <result column="REQUIRED_FLAG" property="requiredFlag" jdbcType="VARCHAR" />
+        <result column="LAYOUT_PRIORITY" property="layoutPriority" jdbcType="DECIMAL" />
+        <result column="DEFAULT_MO_OBJECT_ID" property="defaultMoObjectId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="MO_EXP_OBJ_TYPE_CODE" property="moExpObjTypeCode" jdbcType="VARCHAR"/>
+        <result column="MO_EXP_OBJ_TYPE_NAME" property="moExpObjTypeName" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_MO_OBJECT_CODE" property="defaultMoObjectCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_MO_OBJECT_NAME" property="defaultMoObjectName" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_METHOD" property="expenseObjectMethod" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryRepEleRefLnObj" resultType="int" parameterType="com.hand.hec.exp.dto.ExpMoRepTypeRefHdObj">
+        select count(*)
+          from exp_mo_rep_ele_ref_ln_obj l
+         where exists
+                (select 1
+                   from exp_mo_rep_type_ref_ele e
+                  where e.rep_page_ele_ref_id = l.rep_page_ele_ref_id
+                    and e.mo_exp_report_type_id = #{moExpReportTypeId})
+                    and l.mo_exp_obj_type_id = #{moExpObjTypeId}
+                    and l.enabled_flag = 'Y';
+    </select>
+
+    <select id="queryLnDftObject" resultMap="BaseResultMap">
+        SELECT
+	         ld.MO_EXP_OBJ_TYPE_ID,
+	        (SELECT ot.EXPENSE_OBJECT_METHOD FROM exp_mo_expense_object_type ot WHERE ot.MO_EXP_OBJ_TYPE_ID = ld.MO_EXP_OBJ_TYPE_ID ) AS expense_object_method,
+	        (SELECT ot.MO_EXP_OBJ_TYPE_CODE FROM exp_mo_expense_object_type ot WHERE ot.MO_EXP_OBJ_TYPE_ID = ld.MO_EXP_OBJ_TYPE_ID ) AS mo_exp_obj_type_code,
+	        (SELECT ott.DESCRIPTION FROM exp_mo_expense_object_type ot LEFT JOIN exp_mo_expense_object_type_tl ott ON ot.MO_EXP_OBJ_TYPE_ID = ott.MO_EXP_OBJ_TYPE_ID AND ott.lang = #{request.locale} WHERE ot.ENABLED_FLAG = 'Y' AND ot.MO_EXP_OBJ_TYPE_ID = ld.MO_EXP_OBJ_TYPE_ID) AS mo_exp_obj_type_name,
+	        ld.DEFAULT_MO_OBJECT_ID,
+	        ld.LAYOUT_PRIORITY,
+	        ld.REQUIRED_FLAG
+        FROM
+	        exp_mo_rep_ele_ref_ln_obj ld
+        WHERE
+	        EXISTS (SELECT 1 FROM exp_mo_rep_type_ref_ele re
+	                        WHERE re.rep_page_ele_ref_id = ld.REP_PAGE_ELE_REF_ID
+	                          AND re.ENABLED_FLAG = 'Y'
+	                          AND re.mo_exp_report_type_id = #{moExpReportTypeId}
+	                          AND EXISTS ( SELECT 1 FROM exp_report_page_element pe WHERE pe.report_page_element_id = re.report_page_element_id AND pe.ENABLED_FLAG = 'Y' AND pe.report_page_element_code = #{reportPageElementCode} ))
+	        AND ld.ENABLED_FLAG = 'Y'
+	    order by ld.LAYOUT_PRIORITY
+    </select>
+
+
+</mapper>

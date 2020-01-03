@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/19 $
+    $Revision: 1.1 $
+    $Purpose: 预算实体定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:view>
+        <a:link id="BGT1090_entity_hierarchy_link" url="$[/request/@context_path]/bgt/BGT1090/bgt_entity_hierarchy.screen"/>
+        <a:link id="BGT1090_sync_bgt_entity_link" url="$[/request/@context_path]/bgt/entity/sync"/>
+        <a:link id="BGT1090_sync_bgt_centers_link" url="$[/request/@context_path]/bgt/entity/centerSync"/>
+        <script><![CDATA[
+        function BGT1090_ReturnOrg() {
+            $au('BGT1090_entity_window').close();
+        }
+
+        function BGT1090_ENTITY_DETAIL(value, record, name) {
+            // if (record.get('entity_type') == 'SUMMARY' && !record.isNew) {
+            //Modified by caoke/2018-03-29 使用 entityTypeOldValue ，数据库中真实值判断
+            if (record.get('entityTypeOldValue') == 'SUMMARY' && record.get('entityType') == 'SUMMARY' && !record.isNew) {
+                var bgtOrgId = record.get('bgtOrgId');
+                var entityId = record.get('entityId');
+                return "<a href=\"javascript:BGT1090_OPEN_DETAIL('" + bgtOrgId + "','" + entityId + "')\">$[l:bgt_entity.entity_type_detail]</a>";
+            } else {
+                return '';
+            }
+        }
+
+        function BGT1090_OPEN_DETAIL(bgtOrgId, entityId) {
+            new Aurora.Window({
+                id: 'bgt1090_entity_hierarchy_window',
+                url: $au('BGT1090_entity_hierarchy_link').getUrl() + '?bgtOrgId=' + bgtOrgId + '&parentEntityId=' + entityId,
+                title: '$[l:bgt_entity.entity_type_detail]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function BGT1090_SOURCE_FOCUS() {
+            var record = $au('BGT1090_entity_query_ds').getAt(0);
+            var sourceType = (record.get('sourceTypeCode') == undefined || record.get('sourceTypeCode') == '') ? 'CUSTOMIZE' : record.get('sourceTypeCode');
+            $au('BGT1090_source_ds').setQueryParameter('sourceTypeCode', sourceType);
+            $au('BGT1090_source_ds').query();
+        }
+
+        function BGT1090_EditorFunction(record, name) {
+            if (record.isNew) {
+                if (name == 'entityCode') {
+                    return 'BGT1090_grid_tf';
+                } else if (name == 'description') {
+                    return 'BGT1090_grid_tld';
+                } else if (name == 'entityTypeName') {
+                    return 'BGT1090_grid_cb';
+                } else if (name == 'enabledFlag') {
+                    return 'BGT1090_grid_ck';
+                }
+            } else {
+                if (record.get('existsFlag') == 'N') {
+                    if (name == 'description') {
+                        return 'BGT1090_grid_tld';
+                    } else if (name == 'enabledFlag') {
+                        return 'BGT1090_grid_ck';
+                    }
+                }
+            }
+            // Modify Tagin/2018.01.12 增加若来源类型为自定义则可维护实体类型
+            if (name == 'entityTypeName' && record.get('sourceTypeCode') == 'CUSTOMIZE') {
+                return 'BGT1090_grid_cb';
+            }
+
+        }
+
+        function BGT1090_sync_entity() {
+            /**
+             *  TODO
+             *  预算中心部分未测试
+             */
+            var source_type = $au('BGT1090_entity_ds').getAt(0).get('bgtSourceTypeCode');
+            if (source_type == 'ACCOUNTING' || source_type == 'MANAGEMENT') {
+                Aurora.request({
+                    url: $au('BGT1090_sync_bgt_entity_link').getUrl(),
+                    para: {
+                        'bgtOrgId': $au('BGT1090_entity_query_ds').getAt(0).get('bgtOrgId')
+                    },
+                    success: function(res) {
+                        $au('BGT1090_entity_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            if (source_type == 'CUSTOMIZE') {
+                var entity_data = $au('BGT1090_entity_ds').getJsonData(true);
+                var param = [];
+                if (entity_data.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.select_line_date]');
+                    return;
+                }
+                for (var i = 0;i < entity_data.length;i++) {
+                    param.push(entity_data[i].entityId);
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('BGT1090_sync_bgt_centers_link').getUrl(),
+                    para: param,
+                    success:function(res) {
+                        $au('BGT1090_entity_ds').query();
+                    },
+                    scope: this
+                });
+            }
+        }
+
+        function BGT1090_beforeEntitiesDsCreate() {
+            var bgtOrgName = $au('BGT1090_entity_query_ds').getAt(0).get('bgtOrgName');
+            if (Ext.isEmpty(bgtOrgName)) {
+                new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function BGT1090_onEntityDsAdd(ds, rd, idx) {
+            var bgtOrgId = $au('BGT1090_entity_query_ds').getAt(0).get('bgtOrgId');
+            rd.set('bgtOrgId', bgtOrgId);
+        }
+
+        function BGT1090_bgtOrgsDsQuery() {
+            $au('BGT1090_bgtOrgsDs').query();
+        }
+
+
+        function BGT1090_onQueryDsUpdate(dataSet, record, name, value, old) {
+            if (name == 'bgtOrgName') {
+                $au('BGT1090_entity_ds').query();
+            }
+            if (name == 'orgSourceTypeCode') {
+                var grid = $au('BGT1090_entity_grid_ds');
+                if (value == 'ACCOUNTING' || value == 'MANAGEMENT') {
+                    $au('BGT1090_ADD_BTN').disable();
+                    grid.setEditor('sourceTypeName', '');
+                } else {
+                    $au('BGT1090_ADD_BTN').enable();
+                    grid.setEditor('sourceTypeName', 'BGT1090_grid_cb');
+                }
+                grid.setEditor('sourceName', '');
+            }
+        }
+
+        function BGT1090_onEntitisSubmitsuccess(ds) {
+            ds.query();
+        }
+
+        function BGT1090_onUpdateDs(ds, record, name, value, old) {
+            var grid = $au('BGT1090_entity_grid_ds');
+            var bgtOrgId = $au('BGT1090_entity_query_ds').getAt(0).get('bgtOrgId');
+            if (name == 'sourceTypeCode') {
+                if (value == 'ACCOUNTING' || value == 'MANAGEMENT') {
+                    record.set('sourceName', '');
+                    grid.setEditor('sourceName', 'BGT1090_grid_lov');
+                    record.getField('sourceName').setRequired(true);
+                    record.getField('sourceName').setReadOnly(false);
+                    if (value == 'ACCOUNTING') {
+                        record.getField('sourceName').setLovCode('LOV_BGT_ORG_REF_BOOK_GLD_AE');
+                        record.getField('sourceName').setLovPara('bgtOrgId', bgtOrgId);
+                    }
+                    if (value == 'MANAGEMENT') {
+                        //record.getField('sourceName').setLovService('bgt.BGT1090.bgt_org_ref_mag_fnd_company_lov');
+                        record.getField('sourceName').setLovCode('LOV_BGT_ORG_REF_MAG_FND_COMPANY');
+                        record.getField('sourceName').setLovPara('bgtOrgId', bgtOrgId);
+                    }
+                }
+                if (value == 'CUSTOMIZE') {
+                    record.getField('sourceName').setRequired(false);
+                    record.getField('sourceName').setReadOnly(true);
+                }
+            }
+        }
+
+        function BGT1090_entityGrid(grid, row, name, record) {
+            var sourceTypeCode = record.get('sourceTypeCode');
+            var bgtOrgId = $au('BGT1090_entity_query_ds').getAt(0).get('bgtOrgId');
+            var bgtSourceTypeCode = record.get('bgtSourceTypeCode');
+            if (name == 'sourceName' && bgtSourceTypeCode == 'CUSTOMIZE') {
+                grid.setEditor('sourceName', 'BGT1090_grid_lov');
+                record.getField('sourceName').setRequired(true);
+                record.getField('sourceName').setReadOnly(false);
+                if (sourceTypeCode == 'ACCOUNTING') {
+                    record.getField('sourceName').setLovCode('LOV_BGT_ORG_REF_BOOK_GLD_AE');
+                    record.getField('sourceName').setLovPara('bgtOrgId', bgtOrgId);
+                    record.getField('sourceName').setRequired(true);
+                    record.getField('sourceName').setReadOnly(false);
+                }
+                if (sourceTypeCode == 'MANAGEMENT') {
+                    record.getField('sourceName').setLovCode('LOV_BGT_ORG_REF_MAG_FND_COMPANY');
+                    record.getField('sourceName').setLovPara('bgtOrgId', bgtOrgId);
+                    record.getField('sourceName').setRequired(true);
+                    record.getField('sourceName').setReadOnly(false);
+                }
+                if (sourceTypeCode == 'CUSTOMIZE') {
+                    record.getField('sourceName').setRequired(false);
+                    record.getField('sourceName').setReadOnly(true);
+                }
+            }
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1090_bgtOrgsDs">
+                <a:datas dataSource="bgtOrgList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_defaultBgtOrgsDs">
+                <a:datas dataSource="defaultBgtOrgList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_currencyList_ds">
+                <a:datas dataSource="currencyList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_source_type_code_ds">
+                <a:datas dataSource="bgtOrgSourceTypeList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_source_ds" fetchAll="true" model="bgt.BGT1090.bgt_entity_source_lov"/>
+            <a:dataSet id="BGT1090_bgt_entity_type_ds">
+                <a:datas dataSource="bgtEntityTypeList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_bgt_entity_source_type_ds">
+                <a:datas dataSource="bgtOrgSourceTypeList/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_entity_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgList/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgList/records/record/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT1090_bgtOrgsDs" prompt="bgt_budget_items.budget_org_id" required="true">
+                        <a:mapping>
+                            <a:map from="bgtOrgId" to="bgtOrgId"/>
+                            <a:map from="sourceTypeCode" to="orgSourceTypeCode"/>
+                            <a:map from="bgtOrgCodeName" to="bgtOrgName"/>
+                        </a:mapping>
+                    </a:field>
+
+                    <a:field name="entityCode"  prompt="bgt_entities.entity_code"/>
+                    <a:field name="description"  prompt="bgt_entities.description"/>
+
+                    <a:field name="sourceTypeCode" />
+                    <a:field name="sourceTypeName" defaultValue="$[l:bgt_organizations.source_type_code]"  displayField="meaning" options="BGT1090_source_type_code_ds" prompt="bgt_organizations.source_type_code" placeHolder="bgt_entities.entity_type" returnField="sourceTypeCode" valueField="value"/>
+
+                    <a:field name="sourceId"/>
+                    <a:field name="sourceName" lovCode="LOV_BGT_ORG_REF_BOOK_GLD_AE"   defaultValue="$[l:bgt_entities.source_name]" prompt="bgt_entities.source_name" >
+                        <a:mapping>
+                            <a:map from="sourceId" to="sourceId"/>
+                            <a:map from="sourceName" to="sourceName"/>
+                        </a:mapping>
+                    </a:field>
+
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1090_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_entity_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/entity" queryDataSet="BGT1090_entity_query_ds" queryUrl="$[/request/@context_path]/bgt/entity/query" selectable="true"  >
+                <a:fields>
+                    <a:field name="entityId"/>
+                    <a:field name="bgtOrgId" required="true"/>
+                    <a:field name="entityCode"   prompt="bgt_entities.entity_code"  required="true"/>
+                    <a:field name="description"  prompt="bgt_entities.description" required="true" dto="com.hand.hec.bgt.dto.BgtCenter" dtoId="centerId"/>
+                    <a:field name="entityTypeOldValue"/>
+                    <a:field name="bgtSourceTypeCode"/>
+                    <a:field name="currencyCode" />
+                    <a:field name="currencyName" displayField="currencyName" options="BGT1090_currencyList_ds" returnField="currencyCode" valueField="currencyCode" prompt="bgt_entities.currency_name"/>
+                    <a:field name="entityType"/>
+                    <a:field name="entityTypeName" displayField="meaning" options="BGT1090_bgt_entity_type_ds" prompt="bgt_entities.entity_type" required="true" returnField="entityType" valueField="value"/>
+                    <a:field name="sourceTypeCode" defaultValue="CUSTOMIZE"/>
+                    <a:field name="sourceTypeName" defaultValue="$[l:bgt_center.customize]" displayField="meaning" options="BGT1090_source_type_code_ds" prompt="bgt_organizations.source_type_code" placeHolder="bgt_entities.entity_type" returnField="sourceTypeCode" valueField="value"/>
+                    <a:field name="sourceId"/>
+                    <a:field name="sourceName" lovCode="LOV_BGT_ORG_REF_MAG_FND_COMPANY"  prompt="bgt_entities.source_name" title="bgt_entities.source_name" >
+                        <a:mapping>
+                            <a:map from="sourceId" to="sourceId"/>
+                            <a:map from="sourceName" to="sourceName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="hap_enabled_flag"/>
+                    <a:field name="existsFlag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="BGT1090_beforeEntitiesDsCreate"/>
+                    <a:event name="add" handler="BGT1090_onEntityDsAdd"/>
+                    <a:event name="submitsuccess" handler="BGT1090_onEntitisSubmitsuccess"/>
+                    <a:event name="update" handler="BGT1090_onUpdateDs"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton id="BGT1090_ADD_BTN" bind="BGT1090_entity_grid_ds" type="add" width="80"/>
+                <a:gridButton bind="BGT1090_entity_grid_ds" type="save" width="80"/>
+                <a:gridButton bind="BGT1090_entity_grid_ds" type="clear" width="80"/>
+                <a:toolbarButton id="BGT1090_sync_btn" click="BGT1090_sync_entity" text="manual_update" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="BGT1090_entity_query_ds" resultTarget="BGT1090_entity_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="110">
+                    <a:comboBox name="bgtOrgName" bindTarget="BGT1090_entity_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT1090_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="entityCode" bindTarget="BGT1090_entity_query_ds" typeCase="UPPER"/>
+                    <a:textField name="description" bindTarget="BGT1090_entity_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="sourceTypeName" bindTarget="BGT1090_entity_query_ds"/>
+                    <a:comboBox name="sourceName" bindTarget="BGT1090_entity_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT1090_SOURCE_FOCUS"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="BGT1090_entity_grid_ds" bindTarget="BGT1090_entity_ds" marginHeight="115" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="entityCode" align="center" editorFunction="BGT1090_EditorFunction" width="80"/>
+                <a:column name="description" editorFunction="BGT1090_EditorFunction" width="200"/>
+                <a:column name="currencyName" align="center" editor="BGT1090_grid_cb" width="80"/>
+                <a:column name="entityTypeName" align="center" editorFunction="BGT1090_EditorFunction" width="80"/>
+                <a:column name="sourceTypeName" align="center" width="80"/>
+                <a:column name="sourceName" width="150"/>
+                <a:column name="enabledFlag" align="center" editorFunction="BGT1090_EditorFunction" width="80"/>
+                <a:column name="entityDetail" align="center" renderer="BGT1090_ENTITY_DETAIL" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="BGT1090_grid_lov"/>
+                <a:checkBox id="BGT1090_grid_ck"/>
+                <a:textField id="BGT1090_grid_tf"/>
+                <a:comboBox id="BGT1090_grid_cb"/>
+                <a:tledit id="BGT1090_grid_tld"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="BGT1090_entityGrid"/>
+            </a:events>
+        </a:grid>
+        <script><![CDATA[
+        function BGT1090_INIT() {
+            var sourceType = '$[/model/defaultBgtOrgList/records/record/@sourceTypeCode]';
+            if (sourceType == 'ACCOUNTING' || sourceType == 'MANAGEMENT') {
+                $au('BGT1090_ADD_BTN').disable();
+            } else {
+                $au('BGT1090_ADD_BTN').enable();
+                var grid = $au('BGT1090_entity_grid_ds');
+                grid.setEditor('sourceTypeName','BGT1090_grid_cb');
+            }
+        }
+        BGT1090_INIT();
+        ]]></script>
+    </a:view>
+</a:screen>

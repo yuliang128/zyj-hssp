@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-22 16:39
+    $Revision: 1.0  
+    $Purpose: 明细条件-匹配项选择
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP1170_conditionLnsNew_link" url="$[/request/@context_path]/exp/EXP1170/exp_mo_exp_policy_cond_lns.screen"/>
+        <a:link id="EXP1170_conditionHdsSubmit_link" url="$[/request/@context_path]/exp/mo-exp-policy-condition/submitHds"/>
+        <script><![CDATA[
+            function EXP1170_conditionHdsClose() {
+                $au('EXP1170_conditionHds_window').close();
+            }
+            
+            function EXP1170_conditionHdsConfirm() {
+                var param = [];
+                var condition = $au('EXP1170_condition_ds').getAt(0).data;
+                param.push(condition);
+                var header = $au('EXP1170_conditionHds_ds').getJsonData(true);
+                if (!$au('EXP1170_condition_ds').validate()) {
+                    return;
+                }
+                if (header.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < header.length;i++) {
+                    header[i]["__status"] = 'add';
+                    header[i]["conditionCode"] = param[0]["conditionCode"];
+                    header[i]["conditionName"] = param[0]["conditionName"];
+                    header[i]["detailId"] = '$[/parameter/@detailId]';
+                    header[i]["startDateActive"] = param[0]["startDateActive"];
+                    header[i]['_token'] = null;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP1170_conditionHdsSubmit_link').getUrl(),
+                    para: header,
+                    success: function(resp) {
+                        var id = resp.rows[0]["conditionId"];
+                        if (id) {
+                            new Aurora.Window({
+                                id: 'EXP1170_conditionLns_window',
+                                url: $au('EXP1170_conditionLnsNew_link').getUrl() + '?detailId=$[/parameter/@detailId]&conditionId=' + id + '&magOrgId=$[/parameter/@magOrgId]',
+                                title: '$[l:exp_mo_exp_policy_detail.detail_condition]',
+                                fullScreen: true
+                            });
+                            $au('EXP1170_conditionHds_window').close();
+                        }
+                    },
+                    scope: this
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1170_condition_ds" autoCreate="true" >
+                <a:fields>
+                    <a:field name="detailId" defaultValue="$[/parameter/@detailId]" required="true"/>
+                    <a:field name="conditionCode" prompt="exp_mo_exp_policy_condition.condition_code" required="true"/>
+                    <a:field name="conditionName" dto="com.hand.hec.exp.dto.ExpMoExpPolicyCondition" dtoId="conditionId" prompt="exp_mo_exp_policy_condition.condition_name" required="true"/>
+                    <a:field name="startDateActive"  prompt="exp_mo_exp_policy_condition.start_date_active" datatype="dateTime" required="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1170_conditionHds_ds" autoQuery="true" queryUrl="$[/request/@context_path]/exp/mo-exp-policy-condition/queryAllMatchingCondition" autoCount="true"  loadData="true"  pageSize="50" selectable="true">
+                <a:fields>
+                    <a:field name="value" prompt="exp_mo_exp_ply_dtl_condition.match_item_code  "/>
+                    <a:field name="meaning" prompt="exp_mo_exp_ply_dtl_condition.match_item_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="3" title="exp_mo_exp_policy_detail.detail_condition">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP1170_conditionHdsConfirm" text="hap.confirm" width="80"/>
+                    <a:toolbarButton click="EXP1170_conditionHdsClose" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="conditionCode" bindTarget="EXP1170_condition_ds"/>
+                <a:tledit name="conditionName" bindTarget="EXP1170_condition_ds"/>
+                <a:dateTimePicker name="startDateActive" bindTarget="EXP1170_condition_ds" renderer="Aurora.formatDateTime"/>
+            </a:form>
+            <a:grid bindTarget="EXP1170_conditionHds_ds" marginHeight="195" navBar="false" width="1010">
+                <a:columns>
+                    <a:column name="value" align="center" width="80"/>
+                    <a:column name="meaning" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

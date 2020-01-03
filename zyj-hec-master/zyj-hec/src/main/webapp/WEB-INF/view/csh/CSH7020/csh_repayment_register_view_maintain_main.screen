@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH7020_csh_repayment_register_main_link"
+                url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_main.screen"/>
+        <a:link id="CSH7020_csh_repayment_register_deleteAll_link"
+                model="db.csh_repayment_register_pkg.delete_repayment_register" modelaction="delete"/>
+        <a:link id="CSH7020_paymentReqUploadFile_link" url="$[/request/@context_path]/app/APP2030/app_uploadFile.screen"/>
+        <a:link id="CSH7020_exp_document_history_view_link"
+                url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <style><![CDATA[
+        .reqnumberlov{
+            color: #005a78;
+            text-decoration: none;
+            cursor:pointer;
+        }
+
+        .reqnumberlov:hover{
+            color: #ff9900;
+            text-decoration: none;
+        }
+
+        .reqnumberlov input{
+            cursor:pointer;
+        }
+
+        #regview_placeholder{
+            height:45px;
+        }
+        ]]></style>
+        <script><![CDATA[
+        var submitFlag = false;
+
+        function CSH7020_submitRepaymentFunc() {
+            //存在未保存的申请单数据，先执行保存逻辑
+            if (!submitFlag) {
+                CSH7020_saveRepayment();
+                submitFlag = true;
+                return;
+            }
+            submitFlag = false;
+            //Aurora.Masker.mask($('XXX').wrap); _ban_remind= 'Y'
+            Aurora.request({
+                lockMessage: '$[l:REPAYMENT_REGISTER_SUBMITTING]',
+                url: $au('CSH7020_submit_csh_repayment_register_link').getUrl()+'?registerHdsId='+$au('CSH7020_cshRepaymentHdsDs').getAt(0).get('registerHdsId'),
+                success: function (resp) {
+                    window.location.href = $au('CSH7020_csh_repayment_register_main_link').getUrl();
+                }
+            });
+        }
+
+        function ACP3100_deleteRequisition() {
+            Aurora.showConfirm('$[l:EXIT_SYSTEM]', '$[l:REPAYMENT_REGISTER_DELETED]', function (resp) {
+                Aurora.request({
+                    url: $au('CSH7020_csh_repayment_register_deleteAll_link').getUrl(),
+                    para: {
+                        'registerHdsId': $au('CSH7020_cshRepaymentHdsDs').getAt(0).get('registerHdsId')
+                    },
+                    success: function () {
+                        $au('CSH7020_csh_repayment_maintain_main_window').close();
+                    },
+                    scope: this
+                });
+                resp.close();
+            });
+        }
+
+        function CSH7020_submitSuccessFunc() {
+            if (submitFlag) {
+                CSH7020_submitRepaymentFunc();
+                submitFlag = false;
+            }
+        }
+
+        function CSH7020_saveRepayment() {
+            var headerDs = $au('CSH7020_cshRepaymentHdsDs');
+            if (!headerDs.isModified()) {
+                headerDs.data[0].dirty = true;
+            }
+            $au('CSH7020_cshRepaymentHdsDs').submit();
+        }
+
+        function CSH7020_checkPaymentReqFile() {
+            var url = $au('CSH7020_paymentReqUploadFile_link').getUrl() + '?tableName=CSH_REPAYMENT_REGISTER_HDS&tablePkValue=' + '$[/parameter/@registerHdsId]';
+            new Aurora.Window({
+                url: url,
+                title: '$[l:ATM.UPLOAD_ATTACHMENT]',
+                id: 'check_upload_file_screen',
+                width: 600,
+                height: 400
+            });
+        }
+
+        function CSH7020_checkPaymentReqHistory() {
+            var registerHdsId = $au('CSH7020_cshRepaymentHdsDs').getAt(0).get('registerHdsId');
+            new Aurora.Window({
+                url: $au('CSH7020_exp_document_history_view_link').getUrl() + '?documentId=' + registerHdsId + '&documentType=CSH_REPAYMENT_REGISTER',
+                id: 'CSH7020_exp_document_history_view_window',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function CSH7020_closePaymentReqDetailWindow() {
+            $au('CSH7020_csh_repayment_view_main_window').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7020_payeeMethodsDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?companyId=$[/session/@companyId]&amp;magOrgId=$[/session/@magOrgId]"/>
+            <a:dataSet id="CSH7020_cshRepaymentHdsDs"
+                       submitUrl="$[/request/@context_path]/csh/repayment-register/save">
+                <a:datas dataSource="/model/headInfo/records"/>
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="registerNumber" prompt="csh_repayment_register_hd.register_number"
+                             readOnly="true"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" lovCode="GLD_ACCOUNTING_ENTITY_VL_LOV"
+                             prompt="gld_accounting_entity.acc_entity_name" readOnly="true">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="repaymentDate" datatype="date" prompt="csh_repayment_register_hd.repayment_date" readOnly="true"/>
+                    <a:field name="amount" prompt="csh_repayment_register_hd.amount" readOnly="true"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeName" prompt="csh_repayment_register_hd.employee" readOnly="true"/>
+                    <a:field name="unitName" prompt="csh_repayment_register_hd.unit" readOnly="true"/>
+                    <a:field name="unitId"/>
+                    <a:field name="createdName" prompt="csh_repayment_register_hd.created_name" readOnly="true"/>
+                    <a:field name="repaymentStatus"/>
+                    <a:field name="repaymentStatusName" prompt="csh_repayment_register_hd.repayment_status" readOnly="true"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName" displayField="description"
+                             options="CSH7020_payeeMethodsDs" prompt="csh_repayment_register_hd.repayment_method"
+                             returnField="paymentMethodId" valueField="paymentMethodId" readOnly="true"/>
+                    <a:field name="bankAccountId"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="bankAccountNum" lovCode="LOV_REPAYMENT_BANK_ACCOUNT?accEntityId=$[/model/@accEntityId]"
+                             prompt="csh_repayment_register_hd.company_account_number" readOnly="true">
+                        <a:mapping>
+                            <a:map from="bankAccountId" to="bankAccountId"/>
+                            <a:map from="bankAccountNum" to="bankAccountNum"/>
+                            <a:map from="currencyCode" to="currencyCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="repaymentBankNote" prompt="csh_repayment_register_ln.repayment_bank_note" readOnly="true"/>
+                    <a:field name="description" prompt="csh_repayment_register_hd.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH7020_cshRepaymentLnsDs" autoPageSize="true" autoQuery="true" bindName="lines"
+                       bindTarget="CSH7020_cshRepaymentHdsDs"
+                       queryUrl="$[/request/@context_path]/csh/repayment-register/line/query?registerHdsId=$[/parameter/@registerHdsId]"
+                       submitUrl="$[/request/@context_path]/autocrud/db.csh_repayment_register_pkg.delete_repayment_register_lns/batch_update">
+                <a:fields>
+                    <a:field name="registerHdsId"/>
+                    <a:field name="registerLnsId"/>
+                    <a:field name="lineNumber"/>
+                    <a:field name="paymentRequisitionLineId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accountName" lovCode="GLD_PAYEE_ACCOUNT_LOV"
+                             prompt="csh_repayment_register_ln.account_name" required="true">
+                        <a:mapping>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountNumber" to="accountNumber"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountNumber" prompt="csh_repayment_register_ln.account_number"/>
+                    <a:field name="amount" prompt="csh_repayment_register_ln.amount"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryName"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeName"/>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="cashFlowItemName" prompt="csh_repayment_register_ln.cash_flow_item"/>
+                    <a:field name="description" prompt="csh_repayment_register_ln.description"/>
+                    <a:field name="requisitionNumber" lovGridHeight="375" lovHeight="375"
+                             lovUrl="$[/request/@context_path]/csh/CSH7020/csh_payment_requisition_choose_lov.screen"
+                             lovWidth="1000" prompt="csh_repayment_register_ln.requisition_number" required="true"
+                             title="csh_repayment_register_ln.requisition_number">
+                        <a:mapping>
+                            <a:map from="paymentRequisitionLineId" to="paymentRequisitionLineId"/>
+                            <a:map from="requisitionNumber" to="requisitionNumber"/>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accountName" to="accountName"/>
+                            <a:map from="accountNumber" to="accountNumber"/>
+                            <a:map from="amount" to="amount"/>
+                            <a:map from="payeeCategory" to="payeeCategory"/>
+                            <a:map from="payeeCategoryName" to="payeeCategoryName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="cashFlowItemId" to="cashFlowItemId"/>
+                            <a:map from="cashFlowItemName" to="cashFlowItemName"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar
+                style="position:fixed;left:1px;right:1px;height:34px;z-index:100;border-bottom:1px solid #C7C7C7;background-color:#FFFFFF;padding-left: 10px;">
+            <div class="clearfix" style="width:100%;height:100%;">
+                <div id="backDiv">
+                    <a:button id="CSH7020_backBtn" click="CSH7020_closePaymentReqDetailWindow"
+                              style="margin-top:8px;margin-right:10px;float:right;" text="HAP_BACK"/>
+                </div>
+                <a:button id="CSH7020_docHistoryBtn" click="CSH7020_checkPaymentReqHistory"
+                          style="margin-top:8px;margin-right:10px;float:right;" text="PROMPT.HISTORY"/>
+                <a:button id="CSH7020_fileBtn" click="CSH7020_checkPaymentReqFile"
+                          style="margin-top:8px;margin-right:10px;float:right;" text="HAP_ATTACHMENT_DOCUMENTATION"/>
+                <span style="margin-top:15px;margin-left：5px;font-size:1.05em;display:block;font-weight: 600;">
+                    <![CDATA[$[/model/headInfo/records/record/@moRepaymentRegTypeName]]]></span>
+            </div>
+        </a:screenTopToolbar>
+        <div id="regview_placeholder"/>
+        <a:screenBody>
+            <a:form column="1" marginWidth="0" title=" ">
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="registerNumber" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:comboBox name="accEntityName" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:datePicker name="repaymentDate" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:numberField name="amount" bindTarget="CSH7020_cshRepaymentHdsDs" renderer="Aurora.formatMoney"/>
+                    <a:comboBox name="employeeName" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:comboBox name="unitName" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:textField name="createdName" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:comboBox name="repaymentStatusName" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:lov name="bankAccountNum" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                    <a:textField name="repaymentBankNote" bindTarget="CSH7020_cshRepaymentHdsDs"/>
+                </a:box>
+                <a:box style="width:100%;margin-top:-5px;">
+                    <a:textArea name="description" bindTarget="CSH7020_cshRepaymentHdsDs"
+                                calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" width="800"/>
+                </a:box>
+            </a:form>
+            <a:grid id="CSH7020_cshRepaymentLnsGrid" bindTarget="CSH7020_cshRepaymentLnsDs" marginHeight="335"
+                    marginWidth="0" minHeight="100" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="requisitionNumber" align="center" width="80"/>
+                    <a:column name="accEntityName" align="center" width="100"/>
+                    <a:column name="accountName" align="center" width="80"/>
+                    <a:column name="accountNumber" align="center" width="120"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="cashFlowItemName" align="center" width="80"/>
+                    <a:column name="description" align="left" width="180"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

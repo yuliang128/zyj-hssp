@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+
+    <a:view>
+        <a:link id="csh_pay_req_query_detail_link" url="$[/request/@context_path]/csh/public/csh_pay_req_query_detail.screen"/>
+        <a:link id="csh_payment_requisition_refuse_link" url="$[/request/@context_path]/csh/payment-requisition-hd/reject"/>
+        <a:link id="csh_payment_requisition_approve_link" url="$[/request/@context_path]/csh/payment-requisition-hd/approvePaymentRequisition"/>
+        <script><![CDATA[
+            function updateEventFunction(dataSet, record, name, value) {
+                if (name == 'payeeCategory') {
+                    $au('pay_req_approve_query_ds').getAt(0).set('payeeId', '');
+                    $au('pay_req_approve_query_ds').getAt(0).set('payeeIdDisplay', '');
+                    if (value != null && value != '') {
+                        record.getField('payeeIdDisplay').setLovPara('payeeCategory', value);
+                        record.getField('payeeIdDisplay').setLovCode('LOV_GLD_PAYEE');
+                        record.getField('payeeIdDisplay').setReadOnly(false);
+                    } else {
+                        record.getField('payeeIdDisplay').setLovService('');
+                        record.getField('payeeIdDisplay').setReadOnly(true);
+                    }
+                }
+            }
+            
+            function approveFunction() {
+                var recordsData = $au('pay_req_approve_result_ds').getJsonData(true);
+                if (recordsData.length == 0) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('csh_payment_requisition_approve_link').getUrl(),
+                    para: recordsData,
+                    success: function(args) {
+                        $au('pay_req_approve_result_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            
+            function refuseFunction() {
+                var recordsData = $au('pay_req_approve_result_ds').getJsonData(true);
+                if (recordsData.length == 0) {
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('csh_payment_requisition_refuse_link').getUrl(),//model="db.csh_payment_requisition_pkg.reject_payment_requisition"
+                    para: recordsData,
+                    success: function(args) {
+                        $au('pay_req_approve_result_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            
+            /* function resetFunction() {
+             var dataSet = $au('pay_req_approve_query_ds');
+             var record = dataSet.getCurrentRecord();
+             dataSet.reset();
+             record.getField('payee_id_display').setLovService('');
+             record.getField('payee_id_display').setReadOnly(true);
+             record.set('payee_id', '');
+             record.set('payee_id_display', '');
+             } */
+            
+            function queryFunction() {
+                $au('pay_req_approve_result_ds').query();
+            }
+            
+            function reqNumRenFunction(value, record, name) {
+                var url = '<a href = "javascript:reqNumDispatch(' + record.get('paymentRequisitionHeaderId') + ')">' + value + '</a>';
+                return url;
+            }
+            
+            function reqNumDispatch(headerId) {
+                new Aurora.Window({
+                    url: $au('csh_pay_req_query_detail_link').getUrl() + '?paymentRequisitionHeaderId=' + headerId,
+                    title: '',
+                    id: 'csh_pay_req_query_detail_window',
+                    fullScreen: true
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="pay_obj_list_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="cry_list_ds" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query"/>
+            <a:dataSet id="pay_req_approve_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="requisitionNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeIdDisplay" autoComplete="true" autoCompleteField="name_code" lovCode="LOV_EMPLOYEE_BY_COM" placeHolder="csh_bank_contact_persons.employee_id" title="exp_employee.employee_select">
+                        <a:mapping>
+                            <a:map from="nameCode" to="employeeIdDisplay"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="requisitionDateFrom" placeHolder="csh_payment_requisition_hd.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" placeHolder="csh_payment_requisition_hd.requisition_date_to"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="currencyCodeDisplay" displayField="currencyName" options="cry_list_ds" placeHolder="gld_exchange_rates.from_currency" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="amount" placeHolder="csh_payment_requisition_hd.amount"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryDisplay" displayField="meaning" options="pay_obj_list_ds" placeHolder="exp_report_lines.payee_category" returnField="payeeCategory" valueField="value">
+                        <a:mapping>
+                            <a:map from="value" to="payeeCategory"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeIdDisplay" autoComplete="true" autoCompleteField="payeeName" placeHolder="csh_cash_plan_lines.partner_id" readOnly="true" title="csh_transaction_lines.partner_select">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeIdDisplay"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="updateEventFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="pay_req_approve_result_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryPayReq?status=SUBMITTED" queryDataSet="pay_req_approve_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="requisitor" prompt="con_contract_ref_authority.employee_id"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date"/>
+                    <a:field name="currencyCode" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="currencyName" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.amount"/>
+                    <a:field name="payeeCategoryName" prompt="csh_payment_req_types.partner_category"/>
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.partner_id"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <!--<a:screenTitle/>-->
+                <!--  <a:toolbarButton click="resetFunction" text="HAP_RESET" width="80"/> -->
+                <a:toolbarButton click="approveFunction" text="prompt.approve" width="80"/>
+                <a:toolbarButton click="refuseFunction" text="prompt.reject" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="pay_req_approve_query_ds" resultTarget="pay_req_approve_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="requisitionNumber" bindTarget="pay_req_approve_query_ds"/>
+                    <a:lov name="employeeIdDisplay" bindTarget="pay_req_approve_query_ds"/>
+                    <a:datePicker name="requisitionDateFrom" bindTarget="pay_req_approve_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4" labelWidth="90">
+                    <a:datePicker name="requisitionDateTo" bindTarget="pay_req_approve_query_ds"/>
+                    <a:comboBox name="currencyCodeDisplay" bindTarget="pay_req_approve_query_ds"/>
+                    <a:textField name="amount" bindTarget="pay_req_approve_query_ds"/>
+                    <a:comboBox name="payeeCategoryDisplay" bindTarget="pay_req_approve_query_ds"/>
+                    <a:lov name="payeeIdDisplay" bindTarget="pay_req_approve_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid bindTarget="pay_req_approve_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="requisitionNumber" align="left" renderer="reqNumRenFunction" sortable="true" width="120"/>
+                <a:column name="requisitor" align="left" sortable="true" width="120"/>
+                <a:column name="requisitionDate" align="center" renderer="Aurora.formatDate" sortable="true" width="80"/>
+                <a:column name="currencyName" align="center" sortable="true" width="80"/>
+                <a:column name="amount" align="right" renderer="Aurora.formatMoney" sortable="true" width="100"/>
+                <a:column name="payeeCategoryName" align="center" sortable="true" width="80"/>
+                <a:column name="payeeName" align="left" sortable="true" width="120"/>
+                <a:column name="description" align="left" sortable="true" width="150"/>
+            </a:columns>
+            <a:editors/>
+        </a:grid>
+    </a:view>
+</a:screen>

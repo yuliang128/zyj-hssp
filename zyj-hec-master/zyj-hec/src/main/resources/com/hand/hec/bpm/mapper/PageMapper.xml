@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bpm.mapper.PageMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bpm.dto.Page">
+        <result column="page_id" property="pageId" jdbcType="BIGINT"/>
+        <result column="page_type" property="pageType" jdbcType="VARCHAR"/>
+        <result column="page_type_desc" property="pageTypeDesc" jdbcType="VARCHAR"/>
+        <result column="page_code" property="pageCode" jdbcType="VARCHAR"/>
+        <result column="page_desc" property="pageDesc" jdbcType="VARCHAR"/>
+        <result column="group_id" property="groupId" jdbcType="BIGINT"/>
+        <result column="enabled_flag" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryTemplateReference" resultType="java.util.Map" parameterType="java.lang.Long">
+        SELECT
+            (select p.description from sys_prompts p where p.prompt_code = 'bpm_pages.page_code' and p.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) pageCodeName,
+            b.page_code AS pageCode,
+            (select p.description from sys_prompts p where p.prompt_code = 'bpm_pages.page_desc' and p.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) pageDescName,
+            b.page_desc AS pageDesc,
+            (select p.description from sys_prompts p where p.prompt_code = 'bpm_pages.page_type' and p.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) pageTypeDescName,
+            ( SELECT t.meaning
+                FROM sys_code_value_b v,sys_code_value_tl t
+                WHERE v.code_value_id = t.code_value_id
+                AND v.value = b.page_type
+                and v.code_id =(select sv.code_id
+                                from sys_code_b sv
+                                where sv.code= 'BPM.PAGE_TYPE')
+                and t.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) AS pageTypeDesc,
+            (select p.description from sys_prompts p where p.prompt_code = 'bpm_page_groups.group_code' and p.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) groupCodeName,
+            ( SELECT bg.group_code FROM bpm_page_group bg WHERE bg.group_id = b.group_id ) AS groupCode,
+            (select p.description from sys_prompts p where p.prompt_code = 'bpm_page_groups.group_type' and p.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) groupTypeDescName,
+            (SELECT st.meaning
+            FROM  bpm_page_group bg,sys_code_b sc,
+                  sys_code_value_b sv,sys_code_value_tl st
+            WHERE bg.group_id = b.group_id
+            AND sv.value = bg.group_type
+            AND sc.code = 'EXP.DOCUMENT_CATEGORY'
+            AND sc.code_id = sv.code_id
+            AND sv.code_value_id = st.code_value_id
+            AND st.lang = #{request.locale,jdbcType=VARCHAR,javaType=String}) AS groupTypeDesc,
+            ( SELECT bpg.template_id
+              FROM bpm_page_group bpg
+              WHERE b.group_id = bpg.group_id) AS templateId,
+            ( SELECT bt.template_code
+              FROM bpm_template bt,bpm_page_group bpg
+              WHERE b.group_id = bpg.group_id
+              AND bt.template_id = bpg.template_id ) AS templateCode
+        FROM bpm_page b
+        WHERE b.page_id = #{pageId,jdbcType=BIGINT,javaType=Long}
+    </select>
+</mapper>

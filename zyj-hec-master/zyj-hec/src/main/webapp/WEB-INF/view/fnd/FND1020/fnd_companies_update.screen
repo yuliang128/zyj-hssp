@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/01/23 10:45 $
+    $Revision: 1 $
+    $Purpose: 公司创建
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND1020_fnd_company_ref_acc_entities" url="$[/request/@context_path]/fnd/FND1020/fnd_company_ref_acc_entities.screen"/>
+        <a:link id="FND1020_fnd_company_ref_bgt_entities" url="$[/request/@context_path]/fnd/FND1020/fnd_company_ref_bgt_entities.screen"/>
+        <div/>
+        <script><![CDATA[
+            function FND1020_createCompany() {
+                $au('FND1020_fnd_companies_update_ds').submit();
+            }
+            
+            function FND1020_closeWindow() {
+                $au('company_edit_window').close();
+                FND1020_queryCompanyLevel();
+            }
+            
+            function FND1020_onUpdate(ds, record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    record.validate((name == 'startDateActive') ? 'endDateActive' : 'startDateActive');
+                }
+            }
+            
+            function FND1020_compareDate(start, end) {
+                if (new Date(start) > new Date(end)) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function FND1020_dateValidator(record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                        if (!FND1020_compareDate(start_date, end_date)) {
+                            return '$[l:START_GREATER_THAN_END]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+
+            function FND1020_defaultAccEntity_but() {
+                var magOrgId = $au('FND1020_fnd_companies_update_ds').getAt(0).get('magOrgId');
+                new Aurora.Window({
+                    id: 'company_acc_window',
+                    url: $au('FND1020_fnd_company_ref_acc_entities').getUrl() + '?companyId=' + '$[/parameter/@companyId]' + '&magOrgId=' + magOrgId,
+                    title: '$[l:fnd_company.asgn_acc_entity]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function FND1020_defaultBgtEntity_but() {
+                var magOrgId = $au('FND1020_fnd_companies_update_ds').getAt(0).get('magOrgId');
+                new Aurora.Window({
+                    id: 'company_bgt_window',
+                    url: $au('FND1020_fnd_company_ref_bgt_entities').getUrl() + '?companyId=' + '$[/parameter/@companyId]' + '&magOrgId=' + magOrgId,
+                    title: '$[l:company.bgt_entity_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function FND1020_beforetriggerclick_update() {
+                var magOrgId = $au('FND1020_fnd_companies_update_ds').getAt(0).get('magOrgId');
+                if (magOrgId == null || magOrgId == 'undefined') {
+                    Aurora.showMessage('$[l:prompt]', '$[l:fnd_company.company_org_code]');
+                    return;
+                }
+            }
+
+        function FND1020_onParentCompanyFocusFun() {
+            $au('updateParentCompanyListDs').query();
+        }
+
+        function FND1020_onCompanyLevelFocusFun() {
+            $au('companyLevelIdListDs').query();
+        }
+
+        function FND1020_onmanagingCurrencyFocusFun() {
+            $au('currencyListDs').query();
+        }
+
+        function FND1020_onSystemTimezoneFocusFun() {
+            $au('sysStandardTimezoneListDs').query();
+        }
+
+        function FND1020_onUserLanguageFocusFun() {
+            $au('languageListDs').query();
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="updateParentCompanyListDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/fnd-company/queryFndCompanyBox?magOrgId=$[/parameter/@magOrgId]&amp;companyId=$[/parameter/@companyId]"/>
+
+            <a:dataSet id="FND1020_fnd_companies_update_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd-company/queryFndCompany?companyId=$[/parameter/@companyId]&amp;magOrgId=$[/parameter/@magOrgId]"  submitUrl="$[/request/@context_path]/fnd-company/submitFndCompany">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="magOrgCode"  lovCode="LOV_COMPANY_ORG_CODE"
+                             title="PROMPT.CHOOSE_MAG_ORG" prompt="fnd_managing_organization.mag_org_code"
+                             required="true"  readOnly="true">
+                        <a:mapping>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgName" prompt="fnd_managing_organization.description" readOnly="true"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code" readOnly="true" required="true"/>
+                    <a:field name="companyShortName" dtoId="companyId" dto="com.hand.hap.fnd.dto.FndCompany" prompt="fnd_company.company_name" required="true"/>
+                    <a:field name="companyFullName" dtoId="companyId" dto="com.hand.hap.fnd.dto.FndCompany" prompt="fnd_company.company_full_name"/>
+                    <a:field name="startDateActive" datatype="datetime" prompt="fnd_company.start_date_active" required="true" validator="FND1020_dateValidator"/>
+                    <a:field name="endDateActive" datatype="datetime" prompt="fnd_company.end_date_active" validator="FND1020_dateValidator"/>
+                    <a:field name="companyLevelIdDisplay"  displayField="description" options="companyLevelIdListDs" prompt="fnd_company_level.company_level_id_display" required="true" returnField="companyLevelId" valueField="companyLevelId"/>
+                    <a:field name="parentCompanyIdDisplay" prompt="fnd_company.parent_company_id_display" displayField="companyShortName" options="updateParentCompanyListDs" returnField="parentCompanyId" valueField="companyId"/>
+                    <a:field name="managingCurrency"/>
+                    <a:field name="managingCurrencyDisplay" displayField="currencyName" options="currencyListDs" prompt="fnd_managing_organization.managing_currency_name" required="true" returnField="managingCurrency" valueField="currencyCode"/>
+                    <a:field name="positionName" LovCode="LOV_CHOOSE_POSITION?companyId=$[/parameter/@companyId]" prompt="fnd_company.chief_position_display" title="fnd_companies.select_chief_position_id">
+                        <a:mapping>
+                            <a:map from="description" to="positionName"/>
+                            <a:map from="positionId" to="chiefPositionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="chiefPositionId"/>
+
+                    <a:field name="language"/>
+                    <a:field name="userLanguage" displayField="meaning" options="languageListDs" prompt="fnd_company.language" required="true" returnField="language" valueField="value"/>
+                    <a:field name="systemTimezoneId"/>
+                    <a:field name="systemTimezoneIdDisplay" displayField="description" options="sysStandardTimezoneListDs" prompt="fnd_company.system_timezone_id_display" required="true" returnField="systemTimezoneId" valueField="standardTimezoneId"/>
+
+                    <a:field name="defaultAccEntityName" prompt="fnd_company.default_acc_entity_name" title="gld_responsibility_centers.acc_entity_choice" lovCode="LOV_CHOOSE_ACC_ENTITY?magOrgId=$[/parameter/@magOrgId]">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="defaultAccEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="defaultBgtEntityName" prompt="fnd_company.default_bgt_entity_name" title="bgt_entity.acc_entity_choice" lovCode="LOV_CHOOSE_BGT_ENTITY?magOrgId=$[/parameter/@magOrgId]">
+                        <a:mapping>
+                            <a:map from="description" to="defaultBgtEntityName"/>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtEntityId"/>
+
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND1020_closeWindow"/>
+                    <a:event name="update" handler="FND1020_onUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND_update_fs" column="2" labelWidth="120" padding="10" showmargin="0" title="fnd_company.info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="FND1020_createCompany" text="hap_save" width="80"/>
+                    <a:button id="defaultAccEntity_but" click="FND1020_defaultAccEntity_but" text="prompt.accounting_distribution" width="80"/>
+                    <a:button id="defaultBgtEntity_but" click="FND1020_defaultBgtEntity_but" text="prompt.budget_distribution" width="80"/>
+                    <a:toolbarButton click="FND1020_closeWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:lov name="magOrgCode" bindTarget="FND1020_fnd_companies_update_ds"/>
+                <a:textField name="magOrgName" bindTarget="FND1020_fnd_companies_update_ds"/>
+                <a:textField name="companyCode" bindTarget="FND1020_fnd_companies_update_ds"/>
+                <a:tledit name="companyShortName" bindTarget="FND1020_fnd_companies_update_ds"/>
+                <a:tledit name="companyFullName" bindTarget="FND1020_fnd_companies_update_ds" />
+                <a:dateTimePicker name="startDateActive" bindTarget="FND1020_fnd_companies_update_ds" renderer="Aurora.formatDate"/>
+                <a:dateTimePicker name="endDateActive" bindTarget="FND1020_fnd_companies_update_ds" renderer="Aurora.formatDate"/>
+                <a:comboBox name="companyLevelIdDisplay" bindTarget="FND1020_fnd_companies_update_ds">
+                    <a:events>
+                        <a:event name="focus" handler="FND1020_onCompanyLevelFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="parentCompanyIdDisplay" bindTarget="FND1020_fnd_companies_update_ds" >
+                    <a:events>
+                        <a:event name="focus" handler="FND1020_onParentCompanyFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="managingCurrencyDisplay" bindTarget="FND1020_fnd_companies_update_ds" >
+                    <a:events>
+                        <a:event name="focus" handler="FND1020_onmanagingCurrencyFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:lov name="positionName" bindTarget="FND1020_fnd_companies_update_ds" />
+                <a:comboBox name="userLanguage" bindTarget="FND1020_fnd_companies_update_ds">
+                    <a:events>
+                        <a:event name="focus" handler="FND1020_onUserLanguageFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="systemTimezoneIdDisplay" bindTarget="FND1020_fnd_companies_update_ds">
+                    <a:events>
+                        <a:event name="focus" handler="FND1020_onSystemTimezoneFocusFun"/>
+                    </a:events>
+                </a:comboBox>
+                <a:lov name="defaultAccEntityName" bindTarget="FND1020_fnd_companies_update_ds">
+                    <a:events>
+                        <a:event name="beforetriggerclick" handler="FND1020_beforetriggerclick_update"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="defaultBgtEntityName" bindTarget="FND1020_fnd_companies_update_ds" >
+                    <a:events>
+                        <a:event name="beforetriggerclick" handler="FND1020_beforetriggerclick_update"/>
+                    </a:events>
+                </a:lov>
+            </a:form>
+        </a:screenBody>
+        <script><![CDATA[
+              function load() {
+                  var flag = '$[/model/asgn_flag/record/@asgn_flag]';
+                  var bgt_flag = '$[/model/asgn_bgt_flag/record/@asgn_bgt_flag]';
+                  if (flag == 'N') {
+                      $au('defaultAccEntity_but').disable();
+                  } else if (flag == 'Y') {
+                      $au('defaultAccEntity_but').enable();
+                  }
+                  if(bgt_flag=='N'){
+                      $au('defaultBgtEntity_but').disable();
+                  }else if(bgt_flag=='Y'){
+                      $au('defaultBgtEntity_but').enable();
+                  }
+              }
+              load();
+          ]]></script>
+    </a:view>
+</a:screen>

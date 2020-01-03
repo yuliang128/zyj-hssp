@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/08 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-预算表
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function BGT2200_back() {
+                $au("bgt_jour_t_ref_user_groups_window").close();
+            }
+            
+            function BGT2200_jour_t_ref_strc_ds_addEvent(ds, record, index) {
+                var bgtJournalTypeId = '$[/parameter/@bgtJournalTypeId]';
+                record.set("bgtJournalTypeId", bgtJournalTypeId);
+            }
+            
+            function BGT2200_gridEditorFunction(record, name) {
+                if (record.isNew) {
+                    return 'BGT2200_jour_t_ref_structures_combo';
+                }
+                return '';
+            }
+            
+            function BGT2200_jour_t_ref_strc_ds_updateEvent(dataset, record, name, value, oldValue) {
+                var records = dataset.getAll();
+                if (name == 'defaultFlag') {
+                    if (value == 'Y') {
+                        for (i = 0;i < records.length;i++) {
+                            if (records[i] != record) {
+                                if (records[i].get('defaultFlag') == 'Y') {
+                                    records[i].set('defaultFlag', 'N');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_strc_list_ds" autoQuery="true" baseUrl="/bgt/structure/getBgtStructureByBgtOrgId" queryUrl="$[/request/@context_path]/bgt/structure/getBgtStructureByBgtOrgId?bgtOrgId=$[/parameter/@bgtOrgId]"/>
+            <a:dataSet id="BGT2200_journal_type_structure_ds" autoQuery="true"  baseUrl="/bgt/journal-type" queryUrl="$[/request/@context_path]/bgt/journal-type/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]">
+                <a:fields>
+                    <a:field name="bgtJournalTypeCode" prompt="bgt_budget_item_type.budget_item_type_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_budget_item_type.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT2200_jour_t_ref_structures_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/journal-type-ref-strc" queryUrl="$[/request/@context_path]/bgt/journal-type-ref-strc/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="bgtJournalTypeId"/>
+                    <a:field name="structureCode" displayField="description" options="BGT2200_strc_list_ds" prompt="bgt_budget_structure.budget_strc_code" required="true" returnField="structureCode" valueField="structureCode">
+                        <a:mapping>
+                            <a:map from="description" to="structureName"/>
+                            <a:map from="structureCode" to="structureCode"/>
+                            <a:map from="structureId" to="structureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="structureName" prompt="bgt_journal_main.structure_name"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="exp_mo_rep_eles_ref_exp_tp.default_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="BGT2200_jour_t_ref_strc_ds_addEvent"/>
+                    <a:event name="update" handler="BGT2200_jour_t_ref_strc_ds_updateEvent"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" row="1" title="bgt_journal_type.budget_structure" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2200_jour_t_ref_structures_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT2200_jour_t_ref_structures_grid" type="save" width="80"/>
+                    <a:gridButton bind="BGT2200_jour_t_ref_structures_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="BGT2200_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bgtJournalTypeCode" bindTarget="BGT2200_journal_type_structure_ds"/>
+                <a:textField name="description" bindTarget="BGT2200_journal_type_structure_ds"/>
+            </a:form>
+            <a:grid id="BGT2200_jour_t_ref_structures_grid" bindTarget="BGT2200_jour_t_ref_structures_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="structureCode" align="center" editorFunction="BGT2200_gridEditorFunction" width="80"/>
+                    <a:column name="structureName" align="left" width="200"/>
+                    <a:column name="defaultFlag" editor="BGT2200_jour_types_strc_grid_cb" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="BGT2200_jour_t_ref_structures_combo"/>
+                    <a:checkBox id="BGT2200_jour_types_strc_grid_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

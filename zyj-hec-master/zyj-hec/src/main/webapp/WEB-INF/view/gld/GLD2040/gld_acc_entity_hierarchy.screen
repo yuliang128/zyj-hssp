@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019/01/22 15:41:05
+    $Revision: 1.0
+    $Purpose: 核算主体层次定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function GLD2040_accEntityHierarchyFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'accEntityCode') {
+                        return 'GLD2040_acc_entity_code_lov';
+                    }
+                }
+                return;
+            }
+            
+            function GLD2040_onAccEntityHierarchySuccessFun() {
+                $au('GLD2040_gld_acc_entity_hierarchy_result_ds').query();
+            }
+            
+            function GLD2030_backGldAccEntityHierarchyFun() {
+                $au('Gld2040_View_Child_Acc_Entity').close();
+                $au('GLD2040_acc_entities_for_hierarchy_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2040_gld_acc_entity_info_ds" autoQuery="true" queryUrl="$[/request/@context_path]/gld/account-entity/query?accEntityId=$[/parameter/@accEntityId]">
+                <a:fields>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2040_gld_acc_entity_hierarchy_result_ds" autoQuery="true" fetchAll="true" baseUrl="/gld/acc-entity-hierarchy" queryUrl="$[/request/@context_path]/gld/acc-entity-hierarchy/queryChild?parentEntityId=$[/parameter/@accEntityId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityCode" lovAutoQuery="true" lovCode="LOV_ACC_ENTITY?parentEntityId=$[/parameter/@accEntityId]" prompt="gld_accounting_entity.acc_entity_code" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="entityId"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="companyTypeDisplay" to="companyTypeDisplay"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="companyTypeDisplay" prompt="gld_accounting_entity.company_type"/>
+                    <a:field name="parentEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+                    <a:field name="hierarchyId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2040_onAccEntityHierarchySuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="GLD2040_gld_acc_entity_hierarchy" column="2" labelWidth="120" title="gld_accounting_entity.acc_entity_message" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD2040_gld_acc_entity_hierarchy_grid" type="add" width="80"/>
+                    <a:gridButton bind="GLD2040_gld_acc_entity_hierarchy_grid" type="save" width="80"/>
+                    <a:gridButton bind="GLD2040_gld_acc_entity_hierarchy_grid" type="delete" width="80"/>
+                    <a:gridButton bind="GLD2040_gld_acc_entity_hierarchy_grid" click="GLD2030_backGldAccEntityHierarchyFun" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2040_gld_acc_entity_info_ds"/>
+                <a:textField name="accEntityName" bindTarget="GLD2040_gld_acc_entity_info_ds"/>
+            </a:form>
+            <a:grid id="GLD2040_gld_acc_entity_hierarchy_grid" bindTarget="GLD2040_gld_acc_entity_hierarchy_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="GLD2040_accEntityHierarchyFun" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="companyTypeDisplay" align="center" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD2040_acc_entity_code_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

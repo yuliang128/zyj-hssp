@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-14
+    $Revision: 1.0
+    $Purpose: 客户类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2505_customerTypeAe_link" url="$[/request/@context_path]/fnd/FND2505/ord_customer_types_ae.screen"/>
+        <a:link id="FND2505_customerTypeMultiple_link" url="$[/request/@context_path]/fnd/FND2505/ord_customer_type_ae_multiple.screen"/>
+        <script><![CDATA[
+            function queryPurTypes() {
+                $au('FND2505_customerTypeResult_ds').query();
+            }
+
+            function typeCodeEditer(record, name) {
+                if (record.isNew) {
+                    return 'FND2505_customerType_uppertf';
+                } else {
+                    return '';
+                }
+            }
+
+            function FND2505_customerTypeAssignAE(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                var id = record.get('customerTypeId');
+                return '<a href="javascript:FND2505_customerTypeAssignAEWindow(\'' + id + '\');">$[l:gld_accounting_entities.acc_entity_name]</a>';
+            }
+
+            function FND2505_customerTypeAssignAEWindow(id) {
+                new Aurora.Window({
+                    id: 'FND2505_customerTypeAe_window',
+                    url: $au('FND2505_customerTypeAe_link').getUrl() + '?customerTypeId=' + id,
+                    title: '$[l:ord_customer_type.asgn_acc_entity]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('FND2505_customerTypeResult_ds').query();
+                });
+            }
+
+            function FND2505_customerTypeSubmitResponse(dataSet) {
+                dataSet.query();
+            }
+
+            function FND2505_customerTypeMultipleFunc() {
+                var records = $au('FND2505_customerTypeResult_ds').getSelected();
+                if (records.length < 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return false;
+                } else {
+                    for (var i = 0;i < records.length;i++) {
+                        if (records[i].isNew || records[i].dirty) {
+                            Aurora.showMessage('$[l:prompt_message]', '$[l:work_flow_action.exit_before_save]', null, 230, 100);
+                            return false;
+                        }
+                    }
+                    new Aurora.Window({
+                        id: 'FND2505_customerTypeMultiple_window',
+                        url: $au('FND2505_customerTypeMultiple_link').getUrl(),
+                        title: '$[l:prompt.batch_add]',
+                        side: 'right',
+                        width: 1020
+                    }).on('close', function() {
+                        $au('FND2505_customerTypeResult_ds').query();
+                    });
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2505_customerTypeQuery_ds">
+            <a:fields>
+                <a:field name="customerTypeCode" prompt="ord_customer_type.customer_type_code"/>
+                <a:field name="description" prompt="ord_customer_type.customer_type_name"/>
+            </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2505_customerTypeResult_ds" submitUrl="$[/request/@context_path]/ord/customer-type/submit" queryUrl="$[/request/@context_path]/ord/customer-type/query" autoPageSize="true" autoQuery="true"  queryDataSet="FND2505_customerTypeQuery_ds" selectable="true">
+                <a:fields>
+                    <a:field name="customerTypeCode" prompt="ord_customer_type.customer_type_code" required="true"/>
+                    <a:field name="description" dtoId="customerTypeId" dto="com.hand.hec.fnd.dto.FndCustomerType" prompt="ord_customer_type.customer_type_name" required="true"/>
+                    <a:field name="enabledFlag" prompt="ord_customer_type.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2505_customerTypeSubmitResponse"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND2505_customerType_grid" type="add" width="80"/>
+                <a:gridButton bind="FND2505_customerType_grid" type="save" width="80"/>
+                <a:gridButton bind="FND2505_customerType_grid" type="clear" width="80"/>
+                <a:toolbarButton click="FND2505_customerTypeMultipleFunc" text="HEC_BATCH_ASSIGN" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND2505_customerTypeQuery_ds" resultTarget="FND2505_customerTypeResult_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:textField name="customerTypeCode" bindTarget="FND2505_customerTypeQuery_ds" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPurTypes"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND2505_customerTypeQuery_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPurTypes"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND2505_customerType_grid" bindTarget="FND2505_customerTypeResult_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="customerTypeCode" align="center" editorFunction="typeCodeEditer" width="120"/>
+                <a:column name="description" align="left" editor="FND2505_customerType_tf" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="FND2505_customerType_cb" width="100"/>
+                <a:column name="accEntity" align="center" renderer="FND2505_customerTypeAssignAE" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="FND2505_customerType_uppertf" typeCase="upper"/>
+                <a:tledit id="FND2505_customerType_tf"/>
+                <a:checkBox id="FND2505_customerType_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

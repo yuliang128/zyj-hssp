@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentBatchTpAsgnAeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentBatchTpAsgnAe">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="queryCanAsgEntity" resultMap="BaseResultMap">
+        SELECT
+        gae.acc_entity_id,
+        gae.acc_entity_code,
+        gae.acc_entity_name
+        FROM
+        gld_accounting_entity gae
+        LEFT OUTER JOIN gld_accounting_entity_tl gt ON (gae.acc_entity_id=gt.acc_entity_id AND gt.lang = 'zh_CN')
+        WHERE
+        gae.COMPANY_TYPE != '2' AND
+        (
+        gae.end_date_active IS NULL OR
+        gae.end_date_active &gt;= CURRENT_DATE
+        )
+        AND
+        gae.start_date_active &lt;= CURRENT_DATE AND
+        NOT EXISTS
+        (SELECT
+        1
+        FROM
+        csh_payment_batch_tp_asgn_ae fcae
+        WHERE
+        fcae.acc_entity_id = gae.acc_entity_id AND
+        fcae.type_id       = #{typeId}
+        ) AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_gld_sob fmgs,
+        gld_acc_entity_ref_sob gars
+        WHERE
+        <if test="magOrgId != null">
+            fmgs.mag_org_id      = #{magOrgId}
+        </if>
+        <if test="magOrgId == null">
+            fmgs.mag_org_id = #{request.magOrgId,jdbcType=DECIMAL}
+        </if>
+        AND fmgs.set_of_books_id = gars.set_of_books_id
+        AND gars.acc_entity_id   = gae.acc_entity_id
+        AND fmgs.enabled_flag    = 'Y'
+        AND gars.enabled_flag    = 'Y'
+        )
+        ORDER BY
+        gae.acc_entity_code
+    </select>
+
+</mapper>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-02-25 下午06:32:47
+    $Revision: 1.0  
+    $Purpose: 核算主体定义-批量分配科目
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="GLD2020_entities_batch_asgn_accunt_link" url="$[/request/@context_path]/gld/acc-entity-ref-account/batchSubmit"/>
+        <script><![CDATA[
+            function GLD2020_closeAccCreateWindow() {
+                $au('GLD2020_batchAssignAccount_window').close();
+            }
+            
+            // function GLD2020_assignAccount(ds) {
+                // ds.query();
+            // }
+            
+            function GLD2020_AccAssignFun(){
+                debugger;
+                var accountRecordsData = $au('GLD2020_account_ds').getJsonData(true);
+                var entityRecordsData = $au('GLD2020_accounting_entities_result_ds').getJsonData(true);
+                if (accountRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for(var i = 0 ; i < entityRecordsData.length ; i ++){
+                    entityRecordsData[i]['accountList'] = accountRecordsData;
+                }
+                Aurora.request({lockMessage:'$[l:hap_waiting]',lockMessage:'$[l:hap_waiting]',
+                    url: $au('GLD2020_entities_batch_asgn_accunt_link').getUrl(),
+                    para: entityRecordsData,
+                    success: GLD2020_closeAccCreateWindow,
+                    scope: this
+                }); 
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="default_set_of_book_ds" autoCreate="true" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/gld-set-of-book/query?setOfBooksId=$[/parameter/@setOfBooksId]">
+                <a:fields>
+                    <a:field name="setOfBooksCode" prompt="default_sob_code" readOnly="true"/>
+                    <a:field name="setOfBooksName" prompt="default_sob_name" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_account_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" queryUrl="$[/request/@context_path]/gld/acc-entity-ref-account/queryAccountBySob?setOfBooksId=$[/parameter/@setOfBooksId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/parameter/@setOfBooksId]"/>
+                    <a:field name="accountId"/>
+                    <a:field name="accountCode" prompt="gld_account.account_code"/>
+                    <a:field name="description" prompt="gld_account.account_description"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="gld_account.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <!--   <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_assignAccount"/>
+                </a:events> -->
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="gld.assign_account">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="GLD2020_AccAssignFun" text="gld.assign_account" width="80"/>
+                    <a:toolbarButton click="GLD2020_closeAccCreateWindow" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="setOfBooksCode" bindTarget="default_set_of_book_ds" width="200"/>
+                <a:textField name="setOfBooksName" bindTarget="default_set_of_book_ds" width="300"/>
+            </a:form>
+            <a:grid id="GLD2020_gld_grid" bindTarget="GLD2020_account_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" width="120"/>
+                    <a:column name="description" align="left" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="GLD2020_checkbox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

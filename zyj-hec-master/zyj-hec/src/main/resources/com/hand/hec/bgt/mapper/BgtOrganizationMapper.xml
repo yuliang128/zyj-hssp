@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtOrganizationMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtOrganization">
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_CODE" property="bgtOrgCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="SOURCE_TYPE_CODE" property="sourceTypeCode" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE_TYPE_ID" property="exchangeRateTypeId" jdbcType="DECIMAL"/>
+        <result column="PERIOD_SET_ID" property="periodSetId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="source_type_name" property="sourceTypeName" jdbcType="VARCHAR"/>
+        <result column="PERIOD_SET_NAME" property="periodSetName" jdbcType="VARCHAR"/>
+        <result column="exchangeRateTypeName" property="exchangeRateTypeName" jdbcType="VARCHAR"/>
+        <result column="BGT_ORG_NAME" property="bgtOrgName" jdbcType="VARCHAR"/>
+        <result column="BGT_ORG_CODE_NAME" property="bgtOrgCodeName" jdbcType="VARCHAR"/>
+
+    </resultMap>
+
+    <sql id="bgtOrgSourceTypeName">
+        (SELECT
+             scv.meaning
+         FROM
+             sys_code_b sc,
+             sys_code_value_b scv
+         WHERE
+             sc.code = 'BGT_ORG_SOURCE_TYPE'
+           AND sc.code_id = scv.code_id
+           AND scv.value = bo.source_type_code
+        )  source_type_name
+    </sql>
+
+
+    <sql id="defaultBgtOrganizationSelectFields">
+        SELECT
+            bo.bgt_org_id  bgtOrgId,
+            bo.bgt_org_code bgtOrgCode,
+            botl.description,
+            botl.description bgtOrgName,
+            CONCAT(bo.bgt_org_code,'-',bo.description)  bgtOrgCodeName,
+            bo.source_type_code  sourceTypeCode,
+            (SELECT
+                 scv.meaning
+             FROM
+                 sys_code_b sc,
+                 sys_code_value_b scv
+             WHERE
+                 sc.code = 'BGT_ORG_SOURCE_TYPE'
+               AND sc.code_id = scv.code_id
+               AND scv.value = bo.source_type_code
+            )  sourceTypeName
+
+    </sql>
+
+
+    <select id="queryBgtOrganizationOptions" resultType="com.hand.hec.bgt.dto.BgtOrganization">
+
+        SELECT t1.*
+        FROM
+        (
+        <include refid="defaultBgtOrganizationSelectFields"></include>
+        FROM
+        bgt_organization bo,
+        bgt_organization_tl botl
+        WHERE
+        bo.bgt_org_id = botl.bgt_org_id
+        AND botl.lang = #{request.locale,jdbcType=VARCHAR}
+        AND bo.enabled_flag = 'Y'
+        AND #{parameterValue,javaType=java.lang.String,jdbcType=VARCHAR} = 'Y'
+        UNION ALL
+        <include refid="defaultBgtOrganizationSelectFields"></include>
+        FROM
+        bgt_organization bo,
+        bgt_organization_tl botl,
+        fnd_mag_org_ref_bgt_org fmorbo
+        WHERE
+        bo.bgt_org_id = botl.bgt_org_id
+        AND fmorbo.bgt_org_id = bo.bgt_org_id
+        AND botl.lang = #{request.locale,jdbcType=VARCHAR}
+        AND bo.enabled_flag = 'Y'
+        AND fmorbo.mag_org_id = #{magOrgId,javaType=java.lang.Long,jdbcType=DECIMAL}
+        AND fmorbo.enabled_flag = 'Y'
+        AND #{parameterValue,javaType=java.lang.String,jdbcType=VARCHAR} = 'N'
+        ) t1
+        ORDER BY t1.bgtOrgCode ASC
+
+
+    </select>
+
+
+    <select id="queryDefaultBgtOrganization" resultType="com.hand.hec.bgt.dto.BgtOrganization">
+        <include refid="defaultBgtOrganizationSelectFields"></include>
+        FROM
+        bgt_organization bo
+
+        INNER JOIN bgt_organization_tl botl ON bo.bgt_org_id = botl.bgt_org_id
+        AND botl.lang = #{request.locale,jdbcType=VARCHAR}
+        AND bo.enabled_flag = 'Y'
+
+        INNER JOIN fnd_mag_org_ref_bgt_org fmorbo ON fmorbo.bgt_org_id = bo.bgt_org_id
+        AND fmorbo.mag_org_id = #{magOrgId,javaType=java.lang.Long,jdbcType=DECIMAL}
+        AND fmorbo.enabled_flag = 'Y'
+        AND fmorbo.default_flag = 'Y'
+
+    </select>
+
+
+    <select id="queryBgtOrgAll" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT
+        bo.BGT_ORG_ID,
+        bo.BGT_ORG_CODE,
+        bot.DESCRIPTION,
+        gc.CURRENCY_NAME,
+        bo.CURRENCY_CODE,
+        bo.source_type_code,
+        <include refid="bgtOrgSourceTypeName"></include>,
+        bps.PERIOD_SET_NAME,
+        et.DESCRIPTION exchangeRateTypeName,
+        bo.EXCHANGE_RATE_TYPE_ID,
+        bo.PERIOD_SET_ID,
+        bo.ENABLED_FLAG
+        FROM
+        bgt_organization bo,
+        bgt_organization_tl bot,
+        gld_currency gc,
+        bgt_period_set bps,
+        gld_exchangerate_type et
+        WHERE
+        bo.CURRENCY_CODE = gc.CURRENCY_CODE
+        AND bo.BGT_ORG_ID = bot.BGT_ORG_ID
+        AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        AND bo.PERIOD_SET_ID = bps.PERIOD_SET_ID
+        AND bo.EXCHANGE_RATE_TYPE_ID = et.TYPE_ID
+        <if test="bgtOrgCode != null">
+            AND bo.BGT_ORG_CODE LIKE concat('%',#{bgtOrgCode},'%')
+        </if>
+        <if test="description != null">
+            AND bot.DESCRIPTION LIKE concat('%',#{description},'%')
+        </if>
+    </select>
+
+    <select id="bgtOrgOption" resultMap="BaseResultMap">
+        SELECT
+        t.bgt_org_id bgtOrgId,
+        t.bgt_org_code bgtOrgCode,
+        t.bgt_org_name bgtOrgName,
+        t.bgt_org_code_name bgtOrgCodeName,
+        t.source_type_code sourceTypeCode,
+        t.source_type_name sourceTypeName
+        FROM
+        (SELECT
+        bo.bgt_org_id,
+        bo.bgt_org_code,
+        bot.description bgt_org_name,
+        concat(bo.bgt_org_code,'-',bot.description) bgt_org_code_name,
+        bo.source_type_code,
+        <include refid="bgtOrgSourceTypeName"></include>
+        FROM
+        bgt_organization bo
+        LEFT OUTER JOIN bgt_organization_tl bot ON
+        (bo.bgt_org_id=bot.bgt_org_id AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        bo.enabled_flag = 'Y'
+        UNION
+        SELECT
+        bo.bgt_org_id,
+        bo.bgt_org_code,
+        bot.description bgt_org_name,
+        concat(bo.bgt_org_code,'-',bot.description) bgt_org_code_name,
+        bo.source_type_code,
+        <include refid="bgtOrgSourceTypeName"></include>
+        FROM
+        fnd_mag_org_ref_bgt_org fmbo,
+        bgt_organization bo
+        LEFT OUTER JOIN bgt_organization_tl bot ON
+        (bo.bgt_org_id=bot.bgt_org_id AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        fmbo.mag_org_id = #{magOrgId}
+        AND fmbo.bgt_org_id = bo.bgt_org_id
+        AND fmbo.enabled_flag = 'Y'
+        AND bo.enabled_flag = 'Y'
+        )t
+        ORDER BY
+        t.bgt_org_code
+    </select>
+
+    <select id="getBgtOrgByMagOrgId" parameterType="java.lang.Long" resultType="com.hand.hec.bgt.dto.BgtOrganization">
+        SELECT
+        bo.bgt_org_id bgtOrgId,
+        bo.bgt_org_code bgtOrgCode,
+        bot.description bgtOrgName,
+        concat(bo.bgt_org_code,'-',bot.description) bgtOrgCodeName,
+        bo.source_type_code sourceTypeCode,
+        <include refid="bgtOrgSourceTypeName"></include>
+        FROM
+        bgt_organization bo
+        LEFT OUTER JOIN bgt_organization_tl bot ON
+        (bo.bgt_org_id=bot.bgt_org_id AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        bo.enabled_flag = 'Y'
+        AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_bgt_org fmbo
+        WHERE
+        fmbo.mag_org_id = #{magOrgId}
+        AND fmbo.bgt_org_id = bo.bgt_org_id
+        AND fmbo.default_flag = 'Y'
+        )
+    </select>
+    <select id="queryBgtOrgCurrentMagOrg" resultMap="BaseResultMap">
+        SELECT
+        bo.bgt_org_id bgtOrgId,
+        bo.bgt_org_code bgtOrgCode,
+        bot.description bgtOrgName,
+        concat(bo.bgt_org_code,'-',bot.description) bgtOrgCodeName,
+        bo.source_type_code sourceTypeCode,
+        <include refid="bgtOrgSourceTypeName"></include>
+        FROM
+        bgt_organization bo
+        LEFT OUTER JOIN bgt_organization_tl bot ON
+        (bo.bgt_org_id=bot.bgt_org_id AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        bo.enabled_flag = 'Y'
+        AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_bgt_org fmbo
+        WHERE
+        fmbo.mag_org_id = #{request.magOrgId}
+        AND fmbo.bgt_org_id = bo.bgt_org_id
+        AND fmbo.enabled_flag = 'Y'
+        )
+    </select>
+
+    <select id="queryDefaultBudgetOrganizationByMagOrgId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        b.bgt_org_id,
+        b.bgt_org_code,
+        bot.description bgt_org_name,
+        concat(b.bgt_org_code , '-', bot.description) bgt_org_code_name,
+        b.SOURCE_TYPE_CODE
+        FROM
+        bgt_organization b  LEFT OUTER JOIN bgt_organization_tl bot ON
+        (b.bgt_org_id=bot.bgt_org_id AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        b.enabled_flag = 'Y' AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        fnd_mag_org_ref_bgt_org fmbo
+        WHERE
+
+        fmbo.bgt_org_id = b.bgt_org_id AND
+        fmbo.default_flag = 'Y'
+        AND fmbo.mag_org_id = #{request.magOrgId}
+        )
+    </select>
+
+    <select id="getBgtOrgOptionForBgtQuery" resultMap="BaseResultMap">
+        SELECT
+            t.*
+        FROM(
+            SELECT
+                bo.bgt_org_id bgtOrgId,
+                bo.bgt_org_code bgtOrgCode,
+                bot.description bgtOrgName
+            FROM
+                bgt_organization bo
+            LEFT OUTER JOIN bgt_organization_tl bot ON
+                (bo.bgt_org_id=bot.bgt_org_id AND bot.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+            WHERE
+                bo.enabled_flag = 'Y' AND
+                EXISTS(
+                    SELECT
+                        1
+                    FROM
+                        fnd_mag_org_ref_bgt_org fmbo
+                    WHERE
+                        fmbo.mag_org_id   = #{request.magOrgId} AND
+                        fmbo.enabled_flag = 'Y' AND
+                        fmbo.bgt_org_id   = bo.bgt_org_id
+                )
+        )t
+        ORDER BY
+            t.bgtOrgCode
+    </select>
+
+</mapper>

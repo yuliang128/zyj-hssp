@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="gld_period_create_link_1" url="$[/request/@context_path]/fnd/FND2120/gld_period_create.screen"/>
+        <script><![CDATA[
+            function monthValidator(record, name, value) {
+                if (name == 'monthFrom' || name == 'monthTo') {
+                    if (value < 1 || value > 12) {
+                        return '$[l:INCORRECT_MONTH_ENTERED]';
+                    }
+                }
+                return true;
+            }
+            
+            function dateValidator(record, name, value) {
+                var array = new Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+                if (name == 'dateFrom' || name == 'dateTo') {
+                    var month = 1;
+                    if (name == 'dateFrom') {
+                        month = record.get('monthFrom');
+                    } else {
+                        month = record.get('monthTo');
+                    }
+                    if (value < 1 || value > array[month - 1]) {
+                        return '$[l:DATE_ENTERED_INCORRECTLY]';
+                    }
+                }
+                return true;
+            }
+            
+            function addValidator(record, name, value) {
+                if (!value) {
+                    return true;
+                }
+                var addreg = /^(0?[[1-9]|1[0-2])$/;
+                if (!addreg.test(value)) {
+                    return '$[l:PERIOD_ADDITIONAL_NAME_CHECK]';
+                }
+                return true;
+            }
+            
+            function onRuleUpdate(ds, record, name, value) {
+                if (name == 'monthFrom' || name == 'monthTo') {
+                    record.validate((name == 'monthFrom') ? 'dateFrom' : 'dateTo');
+                }
+            }
+            
+            function periodSetCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'period_set_code_grid_tf';
+                } else {
+                    return '';
+                }
+            }
+            
+            function quarterNumValidator(record, name, value) {
+                if (value > 4 || value < 1) {
+                    return '$[l:QUARTERLY_INPUT_ERROR]';
+                }
+                return true;
+            }
+            
+            function validateRules() {
+                $au('gld_period_rules_ds').validate();
+            
+                var totalPeriodNum = $au('gld_period_set_result_ds').getCurrentRecord().get('totalPeriodNum');
+                var records = $au('gld_period_rules_ds').getAll();
+                console.log(totalPeriodNum);
+                console.log(records.length);
+                if (records == '' || records == null || records.length != totalPeriodNum) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:during_the_rule_definition_is_not_complete]');
+                    return false;
+                } else {
+                    for (var i = 1;i < records.length;i++) {
+                        var currentRecord = records[i];
+                        if (currentRecord.get('adjustmentFlag') == 'Y') {
+                            break;
+                        }
+                        var currentDateFrom = new Date(2000, currentRecord.get('monthFrom') - 1, currentRecord.get('dateFrom'));
+                        var currentDateTo = new Date(2000, currentRecord.get('monthTo') - 1, currentRecord.get('dateTo'));
+                        for (var j = 0;j < i;j++) {
+                            var compareRecord = records[j];
+                            if (compareRecord.get('adjustmentFlag') == 'Y') {
+                                break;
+                            }
+                            var compareDateFrom = new Date(2000, compareRecord.get('monthFrom') - 1, compareRecord.get('dateFrom'));
+                            var compareDateTo = new Date(2000, compareRecord.get('monthTo') - 1, compareRecord.get('dateTo'));
+                            if (currentDateFrom > compareDateFrom && currentDateFrom < compareDateTo || currentDateTo > compareDateFrom && currentDateTo < compareDateTo) {
+                                Aurora.showMessage('$[l:prompt]', '$[l:gld_period_rule_ro.time]' + parseInt(i + 1) + '$[l:line]' + '$[l:during_the_rule_definition_is_not_complete]');
+                                return false;
+                            }
+                        }
+                        currentRecord.set('periodNum', i + 1);
+                    }
+                    records[0].set('periodNum', 1);
+                    return true;
+                }
+            }
+            
+            function onRulesSubmit() {
+                var records = $au('gld_period_rules_ds').getAll();
+                for (var i = 0;i < records.length;i++) {
+                    records[i].set('periodNum', i + 1);
+                }
+                if ($au('gld_period_rules_ds').validate()) {
+                    if (validateRules()) {
+                        $au('gld_period_rules_ds').submit();
+                    }
+                }
+            }
+            
+            function newPeriod() {
+                var records = $au('gld_period_rules_ds').getNewRecords();
+                if ($au('gld_period_rules_ds').isModified()) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:bgt_solution.save_first]');
+                    return;
+                }
+
+                if (validateRules()) {
+                    new Aurora.Window({
+                        id: 'gld_period_create_window',
+                        url: $au('gld_period_create_link_1').getUrl() + '?periodSetId=$[/parameter/@periodSetId]',
+                        title: '$[l:definition_of_accounting_period_create_period]',
+                        height: 150,
+                        width: 725
+                    }).on('close', function() {
+                        $au('gld_period_rules_ds').query();
+                    });
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="gld_period_rules_ds" autoQuery="true" fetchAll="true" baseUrl="/fnd/gld-period-rule" queryUrl="$[/request/@context_path]/fnd/gld-period-rule/query?periodSetId=$[/parameter/@periodSetId]" selectable="true">
+                <a:fields>
+                    <a:field name="periodRuleId"/>
+                    <a:field name="periodSetId" defaultValue="$[/parameter/@periodSetId]"/>
+                    <a:field name="periodAdditionalName" prompt="gld_period_rule.period_additional_name" required="true"/>
+                    <a:field name="monthFrom" prompt="gld_period_rule.month_from" required="true" validator="monthValidator"/>
+                    <a:field name="monthTo" prompt="gld_period_rule.month_to" required="true" validator="monthValidator"/>
+                    <a:field name="dateFrom" prompt="gld_period_rule.date_from" required="true" validator="dateValidator"/>
+                    <a:field name="dateTo" prompt="gld_period_rule.date_to" required="true" validator="dateValidator"/>
+                    <a:field name="quarterNum" prompt="gld_period_rule.quarter_num" required="true" validator="quarterNumValidator"/>
+                    <a:field name="adjustmentFlag" prompt="gld_period_rule.adjustment_flag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onRuleUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+
+            <a:form column="2" marginWidth="10" title="gld_period_set.period_set_query">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="gld_period_rules_grid" type="add" width="80"/>
+                    <a:button click="onRulesSubmit" text="hap_save" width="80"/>
+                    <a:gridButton bind="gld_period_rules_grid" type="clear" width="80"/>
+                    <a:button click="newPeriod" text="gld_period_rule_create_period" width="80"/>
+                </a:formToolbar>
+                <a:textField name="periodSetCode" bindTarget="gld_period_set_result_ds" prompt="gld_period_set.period_set_code" readOnly="true"/>
+                <a:textField name="periodSetName" bindTarget="gld_period_set_result_ds" prompt="gld_period_set.period_set_name" readOnly="true"/>
+                <a:textField name="totalPeriodNum" bindTarget="gld_period_set_result_ds" prompt="gld_period_set.total_period_num" readOnly="true"/>
+                <a:textField name="periodAdditionalFlagName" bindTarget="gld_period_set_result_ds" prompt="gld_period_set.period_additional_flag" readOnly="true"/>
+            </a:form>
+            <a:grid id="gld_period_rules_grid" bindTarget="gld_period_rules_ds" marginHeight="231" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="periodAdditionalName" align="center" editor="period_additional_name_grid_tf" width="100"/>
+                    <a:column name="monthFrom" align="center" editor="number_grid_num" width="100"/>
+                    <a:column name="monthTo" align="center" editor="number_grid_num" width="100"/>
+                    <a:column name="dateFrom" align="center" editor="number_grid_num" width="100"/>
+                    <a:column name="dateTo" align="center" editor="number_grid_num" width="100"/>
+                    <a:column name="quarterNum" align="center" editor="number_grid_num" width="100"/>
+                    <a:column name="adjustmentFlag" editor="adjustment_flag_grid_cb"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="period_additional_name_grid_tf"/>
+                    <a:numberField id="number_grid_num" allowDecimals="false" allowNegative="false"/>
+                    <a:checkBox id="adjustment_flag_grid_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

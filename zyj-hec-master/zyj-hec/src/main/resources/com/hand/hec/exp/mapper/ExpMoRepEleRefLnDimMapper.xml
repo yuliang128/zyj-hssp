@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoRepEleRefLnDimMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoRepEleRefLnDim">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="REP_PAGE_ELE_REF_ID" property="repPageEleRefId" jdbcType="DECIMAL"/>
+        <result column="DIMENSION_ID" property="dimensionId" jdbcType="DECIMAL"/>
+        <result column="LAYOUT_PRIORITY" property="layoutPriority" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_DIM_VALUE_ID" property="defaultDimValueId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+
+        <result column="DIMENSION_CODE" property="dimensionCode" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_NAME" property="dimensionName" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_DIM_VALUE_CODE" property="defaultDimValueCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_DIM_VALUE_NAME" property="defaultDimValueName" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_LEVEL" property="systemLevel" jdbcType="VARCHAR"/>
+        <result column="COMPANY_LEVEL" property="companyLevel" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_SEQUENCE" property="dimensionSequence" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="queryEleRefLnDim" resultType="int" parameterType="com.hand.hec.exp.dto.ExpMoRepTypeRefHdDim">
+        select count(*)
+          from exp_mo_rep_ele_ref_ln_dim l
+         where exists (select 1
+                         from exp_mo_rep_type_ref_ele e
+                        where e.mo_exp_report_type_id = #{moExpReportTypeId}
+                          and e.rep_page_ele_ref_id = l.rep_page_ele_ref_id)
+           and l.dimension_id = #{dimensionId}
+           and l.enabled_flag = 'Y';
+    </select>
+
+    <select id="queryDftDimValue" resultType="java.util.Map">
+        SELECT v.dimension_id as dimensionId,
+        v.dimension_code as dimensionCode,
+        v.dimension_sequence as dimensionSequence,
+        v.company_level as companyLevel,
+        v.layout_priority as layoutPriority,
+        v.default_dim_value_id as defaultDimValueId,
+        fv.dimension_value_code as defaultDimValueCode,
+        fv.description as defaultDimValueName,
+        v.description as dimensionName,
+        concat('dimension' , v.dimension_sequence , 'Id') as returnField,
+        concat('dimension' , v.dimension_sequence , 'Name') as displayField,
+        concat('dimension' , v.dimension_sequence , 'Level') as levelField
+        FROM (SELECT
+        ld.dimension_id,
+        ld.default_dim_value_id,
+        ld.layout_priority,
+        fd.dimension_code,
+        fd.dimension_sequence,
+        (case when fd.company_level is null then fd.system_level else fd.company_level end) as company_level,
+        fdt.description
+        FROM
+        exp_mo_rep_ele_ref_ln_dim ld
+        LEFT JOIN fnd_dimension fd ON ld.dimension_id = fd.dimension_id and fd.ENABLED_FLAG = 'Y'
+        LEFT JOIN fnd_dimension_tl fdt ON fd.dimension_id = fdt.dimension_id AND fdt.LANG = #{request.locale}
+        WHERE
+        EXISTS (
+        SELECT
+        1
+        FROM
+        exp_mo_rep_type_ref_ele re
+        WHERE
+        re.rep_page_ele_ref_id = ld.REP_PAGE_ELE_REF_ID
+        AND re.ENABLED_FLAG = 'Y'
+        AND re.mo_exp_report_type_id = #{moReportTypeId}
+        AND EXISTS ( SELECT 1 FROM exp_report_page_element pe WHERE pe.report_page_element_id =
+        re.report_page_element_id AND pe.ENABLED_FLAG = 'Y' AND pe.report_page_element_code = #{reportPageElementCode} )
+        )
+        AND ld.ENABLED_FLAG = 'Y'
+        ORDER BY ld.layout_priority) v
+        LEFT JOIN fnd_dimension_value_v fv on v.dimension_id = fv.dimension_id and fv.dimension_value_id =
+        v.default_dim_value_id
+        WHERE
+          (v.company_level = 'MANAGEMENT' and
+          fv.company_id = #{companyId}) or (v.company_level = 'BUDGET' and
+          fv.company_id = #{bgtEntityId}) or(v.company_level = 'ACCOUNTING' and
+          fv.company_id = #{accEntityId})
+
+
+    </select>
+
+</mapper>

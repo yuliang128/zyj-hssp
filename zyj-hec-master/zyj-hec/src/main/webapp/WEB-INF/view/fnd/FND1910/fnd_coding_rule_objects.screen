@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND1910_fnd_coding_rules_link"
+                url="$[/request/@context_path]/fnd/FND1910/fnd_coding_rules.screen"/>
+        <script><![CDATA[
+        function FND1910_queryCodingRuleObject() {
+            $au('FND1910_fnd_coding_rule_objects_result_ds').query();
+        }
+
+        function FND1910_codingRulesRenderer(value, record, name) {
+            if (!record.isNew) {
+                var codingRuleObjectId = record.get('codingRuleObjectId')
+                return '<a href="javascript:FND1910_codingRulesInfo(' + codingRuleObjectId + ')">$[l:fnd_coding_rule_obj.code_rule_def]</a>';
+            }
+        }
+
+        function FND1910_codingRulesInfo(codingRuleObjectId) {
+            new Aurora.Window({
+                id: 'FND1910_fnd_coding_rules_window',
+                url: $au('FND1910_fnd_coding_rules_link').getUrl() + '?codingRuleObjectId=' + codingRuleObjectId,
+                title: '$[l:fnd_coding_rule_obj.code_rule_def]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function FND1910_gridCellClick(grid, row, name, record) {
+            var documentCategory = record.get('documentCategory');
+            var marOrgId = record.get('magOrgId');
+            if (name == 'documentTypeName') {
+                if (typeof (documentCategory) == 'undefined' || Ext.isEmpty(documentCategory) || typeof (marOrgId) == 'undefined' || Ext.isEmpty(marOrgId)) {
+                    record.getMeta().getField('documentTypeName').setReadOnly(true);
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_document_type_and_mag_org]');
+                    return;
+                } else {
+                    record.getMeta().getField('documentTypeName').setReadOnly(false);
+                    record.getMeta().getField(name).setLovPara('type', documentCategory);
+                    record.getMeta().getField(name).setLovPara('magOrgId', marOrgId);
+                }
+
+            } else if (name == 'companyCode') {
+                if (typeof (marOrgId) == 'undefined' || Ext.isEmpty(marOrgId)) {
+                    record.getMeta().getField('companyCode').setReadOnly(true);
+                    Aurora.showMessage('$[l:prompt_message]', '$[l:please_select_mag_org]');
+                    return;
+                } else {
+                    record.getMeta().getField('companyCode').setReadOnly(false);
+                    record.getMeta().getField(name).setLovPara('magOrgId', marOrgId);
+                }
+            } else if (name == 'accEntityCode') {
+                if (record.get('documentCategory') == '06') {
+                    record.getMeta().getField('accEntityCode').setReadOnly(true);
+                } else {
+                    if (typeof (marOrgId) != 'undefined' && (!Ext.isEmpty(marOrgId))) {
+                        record.getMeta().getField('companyCode').setReadOnly(false);
+                        record.getMeta().getField(name).setLovPara('magOrgId', marOrgId);
+                    }
+                }
+            }
+        }
+
+        function FND1910_docCategoryEdit(record, name) {
+            if (record.isNew) {
+                return 'FND1910_ruleObjects_cmb';
+            }
+            return '';
+        }
+
+        function FND1910_lovEdit(record, name) {
+            if (record.isNew) {
+                return 'FND1910_ruleObjects_lov';
+            }
+            return '';
+        }
+
+        function FND1910_priorityEdit(record, name) {
+            if (record.isNew) {
+                return 'FND1910_ruleObjects_nf';
+            }
+            return '';
+        }
+
+        function FND1910_ruleObjectsUpdate(ds, record, name, value) {
+            if (name == 'documentCategoryDisplay' || name == 'magOrgCode') {
+                record.set('companyId', '');
+                record.set('companyDode', '');
+                record.set('companyShortName', '');
+                record.set('documentType', '');
+                record.set('documentTypeName', '');
+                record.set('accEntityId', '');
+                record.set('accEntityName', '');
+                record.set('accEntityCode', '');
+            }
+        }
+
+        function FND1910_ruleObjectsSubmitFunc(dataSet, resp) {
+            dataSet.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1910_mange_organizationlist_ds" autoQuery="true" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/exp/employee-job/queryForManagingOrganization"/>
+            <a:dataSet id="FND1910_codingRuleRocCategory_ds" autoQuery="true" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/CODING_RULE_DOC_CATEGORY/"/>
+            <a:dataSet id="FND1910_fnd_coding_rule_objects_query_ds">
+                <a:fields>
+                    <a:field name="documentCategoryDisplay" displayField="description"
+                             options="FND1910_codingRuleRocCategory_ds" returnField="documentCategory"
+                             valueField="value"/>
+                    <a:field name="magOrgCodeName" displayField="description"
+                             options="FND1910_mange_organizationlist_ds" returnField="magOrgId" valueField="magOrgId">
+                        <a:mapping>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="description" to="magOrgCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId"/>
+                    <a:field name="companyShortName"/>
+                    <a:field name="accEntityName"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND1910_fnd_coding_rule_objects_result_ds" autoPageSize="true" autoQuery="true"
+                       fetchAll="false"
+                       baseUrl="/fnd/coding-rule-object" queryDataSet="FND1910_fnd_coding_rule_objects_query_ds"
+                       queryUrl="$[/request/@context_path]/fnd/coding-rule-object/query"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="codingRuleObjectId"/>
+                    <a:field name="documentCategoryDisplay" displayField="description"
+                             options="FND1910_codingRuleRocCategory_ds" required="true" returnField="documentCategory"
+                             valueField="value"/>
+                    <a:field name="documentCategory"/>
+                    <a:field name="magOrgCode" lovGridHeight="300" lovHeight="430"
+                             lovCode="LOV_FND_MANAGING_ORGANIZATION" lovWidth="500"
+                             title="exp_mo_employee_type.chioice_managing_organizations">
+                        <a:mapping>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="description" to="magOrgCodeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgCodeName"/>
+                    <a:field name="documentTypeName" lovGridHeight="300" lovHeight="430"
+                             lovService="fnd.FND1910.fnd_code_rule_document_types_v?type=null" lovWidth="500"
+                             title="fnd_coding_rule_objects.document_type_select">
+                        <a:mapping>
+                            <a:map from="value" to="documentType"/>
+                            <a:map from="name" to="documentTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyCode" lovGridHeight="300" lovHeight="430" lovCode="LOV_FND_COMPANY"
+                             lovWidth="500" title="fnd_company.select_company">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCode" lovGridHeight="300" lovHeight="430"
+                             lovCode="FND_CODING_RULE_OBJECTS_ACC_ENTITY_LOV" lovWidth="450">
+                        <a:mapping>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="priority" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="codeRuleName" lovCode="LOV_CODE_RULE" prompt="coderulesheader.rulename"
+                             required="true">
+                        <a:mapping>
+                            <a:map from="ruleName" to="codeRuleName"/>
+                            <a:map from="headerId" to="codeRuleHeaderId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="codeRuleHeaderId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1910_ruleObjectsUpdate"/>
+                    <a:event name="submitsuccess" handler="FND1910_ruleObjectsSubmitFunc"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND1910_fnd_coding_rule_objects_grid" type="add" width="80"/>
+                <a:gridButton bind="FND1910_fnd_coding_rule_objects_grid" type="save" width="80"/>
+                <a:gridButton bind="FND1910_fnd_coding_rule_objects_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1910_fnd_coding_rule_objects_query_ds"
+                         resultTarget="FND1910_fnd_coding_rule_objects_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgCodeName" bindTarget="FND1910_fnd_coding_rule_objects_query_ds"
+                                prompt="fnd_managing_organization.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1910_queryCodingRuleObject"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="documentCategoryDisplay" bindTarget="FND1910_fnd_coding_rule_objects_query_ds"
+                                prompt="fnd_coding_rule_object.document_category">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1910_queryCodingRuleObject"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="documentTypeName" bindTarget="FND1910_fnd_coding_rule_objects_query_ds"
+                                 prompt="fnd_coding_rule_object.document_type">
+                        <a:events>
+                            <a:event name="enterdown" handler="FND1910_queryCodingRuleObject"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+                <a:formBody column="4" labelWidth="120">
+                    <a:textField name="companyShortName" bindTarget="FND1910_fnd_coding_rule_objects_query_ds"
+                                 placeHolder="fnd_company.company_short_name"/>
+                    <a:textField name="accEntityName" bindTarget="FND1910_fnd_coding_rule_objects_query_ds"
+                                 placeHolder="gld_accounting_entity.acc_entity_name"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND1910_fnd_coding_rule_objects_grid" bindTarget="FND1910_fnd_coding_rule_objects_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true" showRowNumber="false">
+            <a:columns>
+                <a:column name="codeRuleName" prompt="fnd_coding_rule_object.code_rule_name" align="center"
+                          editor="FND1910_ruleObjects_lov" width="100"/>
+                <a:column name="documentCategoryDisplay" prompt="fnd_coding_rule_object.document_category"
+                          align="center" editorFunction="FND1910_docCategoryEdit" width="100"/>
+                <a:column name="magOrgCode" prompt="fnd_managing_organization.mag_org_code" align="center"
+                          editorFunction="FND1910_lovEdit" width="80"/>
+                <a:column name="magOrgCodeName" prompt="fnd_managing_organization.description" align="left"
+                          width="150"/>
+                <a:column name="documentTypeName" prompt="fnd_coding_rule_object.document_type" align="center"
+                          editorFunction="FND1910_lovEdit" width="100"/>
+                <a:column name="companyCode" prompt="fnd_company.company_code" align="center"
+                          editorFunction="FND1910_lovEdit" width="80"/>
+                <a:column name="companyShortName" prompt="fnd_company.company_short_name" align="left" width="150"/>
+                <a:column name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code" align="center"
+                          editorFunction="FND1910_lovEdit" width="80"/>
+                <a:column name="accEntityName" prompt="gld_accounting_entity.acc_entity_name" align="left" width="150"/>
+                <a:column name="priority" prompt="fnd_coding_rule_object.priority" align="center"
+                          editorFunction="FND1910_priorityEdit" width="50"/>
+                <a:column name="enabledFlag" prompt="fnd_coding_rule_object.enabled_flag"
+                          editor="FND1910_ruleObjects_ckb" width="80"/>
+                <!--<a:column name="codingRuleObjectId" align="center" renderer="FND1910_codingRulesRenderer" width="80"/>-->
+            </a:columns>
+            <a:editors>
+                <a:comboBox id="FND1910_ruleObjects_cmb"/>
+                <a:lov id="FND1910_ruleObjects_lov"/>
+                <a:textField id="FND1910_ruleObjects_tf"/>
+                <a:numberField id="FND1910_ruleObjects_nf" allowDecimals="false" allowNegative="false"/>
+                <a:checkBox id="FND1910_ruleObjects_ckb"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="FND1910_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

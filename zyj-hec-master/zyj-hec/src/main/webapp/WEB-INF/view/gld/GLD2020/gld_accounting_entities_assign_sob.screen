@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019/01/14 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 核算主体多账套分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:view>
+        <a:link id="GLD2020_accEntitySobAssignAccountLink" url="$[/request/@context_path]/gld/GLD2020/gld_acc_entity_account.screen"/>
+        <script><![CDATA[
+            function GLD2020_saveGldAccEntiAssignSob() {
+                var dataSet = $au('GLD2020_accEntityAssignSobResultDs');
+                var record = dataSet.getAll();
+                if (!dataSet.validate()) {
+                    return;
+                }
+                var checkNumber = 0;
+                if (record.length > 0) {
+                    for (var i = 0;i < record.length;i++) {
+                        if ((record[i].get('enabledFlag') == 'Y' && record[i].get('defaultFlag') == 'Y')) {
+                            checkNumber += 1;
+                        }
+                    }
+                    if (checkNumber == 0) {
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld2020_enabled_flag_one]');
+                        return;
+                    }
+                    if (checkNumber > 1) {
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld2020_enabled_flag_more]');
+                        return;
+                    }
+                }
+                var param = {
+                    'accEntityId': '$[/parameter/@accEntityId]'
+                };
+                param['sob'] = dataSet.getJsonData();
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('GLD2020_assEntitySobSubmitLink').getUrl(),
+                    para: param,
+                    success: function() {
+                        dataSet.query();
+                    },
+                    scope: this
+                });
+            }
+
+            function GLD2020_accEntiAssignEditorFun(record, name) {
+                if (record.isNew) {
+                    if (name == 'setOfBooksCode') {
+                        return 'GLD2020_acc_assgin_sob_lov';
+                    }
+                }
+                return '';
+
+            }
+            
+            function GLD2020_updateAccEntitySobFun(dataSet, record, name, value, oldvalue) { /*  只有启用的账套才能设为默认账套 */
+                if (name == 'defaultFlag') {
+                    if (value == 'Y' && record.get('enabledFlag') == 'N') {
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld2020_default_flag_required]', null, 300, 150);
+                        record.set('defaultFlag','N');
+                        return;
+                    }
+                    var records = dataSet.getAll();
+                    var countNum = 0;
+                    for(var i = 0;i<records.length;i++){
+                        if('Y' == records[i].get('defaultFlag')){
+                            countNum = countNum+1;
+                        }
+                    }
+                    if(countNum == 0 && value == 'N'){
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:gld_acc_entity_ref_sob.atleast_one_default]', null, 300, 150);
+                        record.set('enabledFlag','Y');
+                        record.set('defaultFlag','Y');
+                        return;
+                    }
+                    if(countNum > 1 && value == 'Y'){
+                        var records = dataSet.getAll();
+                        for(var i = 0;i<records.length;i++){
+                            if(records[i].get('setOfBooksId')!=record.get('setOfBooksId')){
+                                records[i].set('defaultFlag','N');
+                            }
+                        }
+                        return;
+                    }
+
+                }
+                if (name == 'enabledFlag') {
+                    if (value == 'N') {
+                        record.set('defaultFlag', 'N');
+                    }
+                }
+            }
+
+            function GLD2020_submit() {
+                var ds = $au('GLD2020_accEntityAssignSobResultDs');
+                var records = ds.getAll();
+                var flag = 0;
+                for(var i = 0;i<records.length;i++){
+                    if('Y' == records[i].get('defaultFlag')){
+                        //如果保存时存在默认标志，则flag置为1
+                        flag = 1;
+                    }
+                }
+                if(0 == flag){
+                    Aurora.showErrorMessage('$[l:prompt]', '$[l:atleast_one_default_org]', null, 250, 100);
+                    return;
+                }
+                ds.submit();
+            }
+
+            function GLD2020_submitSuccessFun() {
+                $au('GLD2020_accEntityAssignSobResultDs').query();
+            }
+            
+            function GLD2020_closeGldAccEntiAssignSob() {
+                $au('Gld2020_View_Assign_Sob').close();
+            }
+            
+            function GLD2020_assign_account(value, record, name) {
+                if (!record.isNew) {
+                    enabledFlag = record.get('enabledFlag');
+                    if (enabledFlag == 'Y') {
+                        var url = $au('GLD2020_accEntitySobAssignAccountLink').getUrl() + '?accEntityId=' + record.get('accEntityId') + '&setOfBooksId=' + record.get('setOfBooksId');
+                        return '<a href="javascript:GLD2020_assign_account_detail(\'' + url + '\')">' + '$[l:gld.assign_account]' + '</a>';
+                    } else {
+                        return '';
+                    }
+                }
+            }
+            
+            function GLD2020_assign_account_detail(url) {
+                new Aurora.Window({
+                    id: 'GLD2020_gld_acc_entity_account_win',
+                    url: url,
+                    title: '$[l:gld.assign_account]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_accEntityAssignSobResultDs" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/gld/acc-entity-ref-sob" queryUrl="$[/request/@context_path]/gld/acc-entity-ref-sob/queryMoreSob?accEntityId=$[/parameter/@accEntityId]" selectable="true"
+                       submitUrl="$[/request/@context_path]/gld/acc-entity-ref-sob/submit">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+
+                    <a:field name="setOfBooksCode" lovAutoQuery="true" lovCode="LOV_GLD_SET_OF_BOOK" title="gld_accounting_entity.default_set_of_books_id" prompt="gld_set_of_book.set_of_books_code">
+                        <a:mapping>
+                            <a:map from="setOfBooksCode" to="setOfBooksCode"/>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                            <a:map from="setOfBooksName" to="setOfBooksName"/>
+                            <a:map from="accountSetName" to="accountSetName"/>
+                            <a:map from="accountSetId" to="accountSetId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="accountSetId"/>
+                    <a:field name="setOfBooksName" prompt="gld_set_of_book.set_of_books_name"/>
+                    <a:field name="accountSetName" prompt="gld_account_set.account_set_name"/>
+
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="gld_set_of_book.enabled_flag"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="gld_set_of_book.default_flag"/>
+                </a:fields>
+                <a:fields/>
+                <a:events>
+                    <a:event name="update" handler="GLD2020_updateAccEntitySobFun" />
+                    <a:event name="submitsuccess" handler="GLD2020_submitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="gld_accounting_entity.assignsob">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="GLD2020_accEntityAssignSobGrid" type="add" width="80"/>
+                    <a:gridButton click="GLD2020_submit" text="hap.save" width="80"/>
+                    <a:gridButton click="GLD2020_closeGldAccEntiAssignSob" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_code" readOnly="true" width="160"/>
+                <a:textField name="accEntityName" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_name" readOnly="true" width="160"/>
+            </a:form>
+            <a:grid id="GLD2020_accEntityAssignSobGrid" bindTarget="GLD2020_accEntityAssignSobResultDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="setOfBooksCode" align="center" editor="GLD2020_acc_assgin_sob_lov" editorFunction="GLD2020_accEntiAssignEditorFun" sortable="true" width="80"/>
+                    <a:column name="setOfBooksName" align="left" width="150"/>
+                    <a:column name="accountSetName" align="left" width="150"/>
+                    <a:column name="enabledFlag" align="center" editor="GLD2020_acc_assgin_sob_ck" width="80"/>
+                    <a:column name="defaultFlag" align="center" editor="GLD2020_acc_assgin_sob_ck" width="80"/>
+                    <a:column name="gldAccount" align="center" renderer="GLD2020_assign_account" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD2020_acc_assgin_sob_lov"/>
+                    <a:checkBox id="GLD2020_acc_assgin_sob_ck"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

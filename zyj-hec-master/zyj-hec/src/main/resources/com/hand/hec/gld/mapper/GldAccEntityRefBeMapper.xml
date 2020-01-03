@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldAccEntityRefBeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldAccEntityRefBe">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="BGT_ENTITY_ID" property="bgtEntityId" jdbcType="DECIMAL" />
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="BGT_ENTITY_NAME" property="bgtEntityName" jdbcType="VARCHAR" />
+        <result column="BGT_ENTITY_CODE" property="bgtEntityCode" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <!--by luhui-->
+    <select id="batchSelect" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            be.ENTITY_ID bgtEntityId,
+            be.ENTITY_CODE bgtEntityCode,
+            bet.DESCRIPTION bgtEntityName
+        FROM
+            bgt_entity be,
+            bgt_entity_tl bet
+        WHERE
+            be.ENTITY_ID = bet.ENTITY_ID
+            AND bet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+            AND NOT EXISTS (
+        SELECT
+            be.ENTITY_ID
+        FROM
+            gld_acc_entity_ref_be accbe
+        WHERE
+            accbe.BGT_ENTITY_ID = be.ENTITY_ID
+            AND accbe.ACC_ENTITY_ID = #{accEntityId})
+            AND EXISTS (
+                SELECT
+                    1
+                FROM
+                    gld_acc_entity_ref_sob gars,
+                    fnd_mag_org_ref_gld_sob fmrs,
+                    fnd_mag_org_ref_bgt_org fmro
+                WHERE
+                    gars.acc_entity_id = #{accEntityId} AND
+                    gars.set_of_books_id = fmrs.set_of_books_id
+                    AND fmrs.mag_org_id = fmro.mag_org_id
+                    AND be.bgt_org_id = fmro.bgt_org_id
+                    AND gars.enabled_flag = 'Y'
+                    AND fmrs.enabled_flag = 'Y'
+                    AND fmro.enabled_flag = 'Y'
+                    )
+    </select>
+
+    <select id="getDeftBgtEntity" resultType="com.hand.hec.gld.dto.GldAccEntityRefBe">
+        select d.bgt_entity_id
+               (select bet.DESCRIPTION from bgt_entity be left join bgt_entity_tl bet on be.ENTITY_ID = bet.ENTITY_ID and bet.LANG = #{request.locale} where be.ENTITY_ID = d.BGT_ENTITY_ID) bgt_entity_name
+            from gld_acc_entity_ref_be d
+           where d.acc_entity_id = #{accEntityId}
+                 and d.default_flag = 'Y'
+                 and d.enabled_flag = 'Y'
+    </select>
+</mapper>

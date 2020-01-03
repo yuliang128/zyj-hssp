@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtCheckMapper">
+    <resultMap id="BgtCheckBalanceResultMap" type="com.hand.hec.bgt.dto.BgtCheckBalanceResult">
+        <result column="total_period_amount" property="totalPeriodAmount" jdbcType="DECIMAL"/>
+        <result column="total_period_functional_amount" property="totalPeriodFunctionalAmount" jdbcType="DECIMAL"/>
+        <result column="total_period_quantity" property="totalPeriodQuantity" jdbcType="DECIMAL"/>
+        <result column="total_quarter_amount" property="totalQuarterAmount" jdbcType="DECIMAL"/>
+        <result column="total_quarter_functional_amount" property="totalQuarterFunctionalAmount" jdbcType="DECIMAL"/>
+        <result column="total_quarter_quantity" property="totalQuarterQuantity" jdbcType="DECIMAL"/>
+        <result column="total_year_amount" property="totalYearAmount" jdbcType="DECIMAL"/>
+        <result column="total_year_functional_amount" property="totalYearFunctionalAmount" jdbcType="DECIMAL"/>
+        <result column="total_year_quantity" property="totalYearQuantity" jdbcType="DECIMAL"/>
+    </resultMap>
+    <resultMap id="BgtCheckReserveResultMap" type="com.hand.hec.bgt.dto.BgtCheckReserveResult">
+        <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
+        <result column="total_functional_amount" property="totalFunctionalAmount" jdbcType="DECIMAL"/>
+        <result column="total_quantity" property="totalQuantity" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="getBalanceAmount" resultMap="BgtCheckBalanceResultMap">
+        select sum(case
+        when e.period_amount is not null then
+        e.period_amount
+        else
+        b.period_amount
+        end) total_period_amount,
+        sum(b.period_functional_amount) total_period_functional_amount,
+        sum(b.period_quantity) total_period_quantity,
+        sum(case
+        when e.quarter_amount is not null then
+        e.quarter_amount
+        else
+        b.quarter_amount
+        end) total_quarter_amount,
+        sum(b.quarter_functional_amount) total_quarter_functional_amount,
+        sum(b.quarter_quantity) total_quarter_quantity,
+        sum(case
+        when e.year_amount is not null then
+        e.year_amount
+        else
+        b.year_amount
+        end) total_year_amount,
+        sum(b.year_functional_amount) total_year_functional_amount,
+        sum(b.year_quantity) total_year_quantity
+        from bgt_journal_balance b
+        left join bgt_journal_balance_extend e
+        on b.balance_id = e.balance_id
+        and e.currency_code = #{checkParamValueMap.BUDGET_CURRENCY.paramValueCode}
+        WHERE 1 = 1
+        <!--预算版本-->
+        <if test="checkParamValueMap.BUDGET_VERSION != null">
+            and b.version_id = #{checkParamValueMap.BUDGET_VERSION.paramValueId}
+        </if>
+        <!--预算场景-->
+        <if test="checkParamValueMap.BUDGET_VERSION != null">
+            and b.scenario_id = #{checkParamValueMap.BUDGET_SCENARIO.paramValueId}
+        </if>
+        <!--预算表-->
+        <if test="checkParamValueMap.BUDGET_STRUCTURE != null">
+            and b.structure_id = #{checkParamValueMap.BUDGET_STRUCTURE.paramValueId}
+        </if>
+        <!--预算实体-->
+        <if test="checkParamValueMap.BUDGET_ENTITY != null">
+            <choose>
+                <when test="checkParamValueMap.BUDGET_ENTITY.paramValueType == 'DETAIL'">
+                    and b.bgt_entity_id = #{checkParamValueMap.BUDGET_ENTITY.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.bgt_entity_id = #{checkParamValueMap.BUDGET_ENTITY.paramValueId} or exists (select 1 from
+                    bgt_entity_hierarchy beh where beh.parent_entity_id =
+                    #{checkParamValueMap.BUDGET_ENTITY.paramValueId} and beh.entity_id = b.bgt_entity_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--预算中心-->
+        <if test="checkParamValueMap.BUDGET_CENTER != null">
+            <choose>
+                <when test="checkParamValueMap.BUDGET_CENTER.paramValueType == 'DETAIL'">
+                    and b.bgt_center_id = #{checkParamValueMap.BUDGET_CENTER.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.bgt_center_id = #{checkParamValueMap.BUDGET_CENTER.paramValueId} or exists (select 1 from
+                    bgt_center_hierarchy bch where bch.parent_center_id =
+                    #{checkParamValueMap.BUDGET_CENTER.paramValueId} and bch.center_id = b.bgt_center_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--预算项目-->
+        <if test="checkParamValueMap.BUDGET_ITEM != null">
+            <choose>
+                <when test="checkParamValueMap.BUDGET_ITEM.paramValueType == 'DETAIL'">
+                    and b.budget_item_id = #{checkParamValueMap.BUDGET_ITEM.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.budget_item_id = #{checkParamValueMap.BUDGET_ITEM.paramValueId} or exists (select 1 from
+                    bgt_budget_item_hierarchy bbih where bbih.parent_budget_item_id =
+                    #{checkParamValueMap.BUDGET_ITEM.paramValueId} and bbih.budget_item_id = b.budget_item_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--预算项目类型-->
+        <if test="checkParamValueMap.BUDGET_ITEM_TYPE != null">
+            and exists (select 1 from bgt_budget_item bbi where bbi.budget_item_type_id =
+            #{checkParamValueMap.BUDGET_ITEM_TYPE.paramValueId} and bbi.budget_item_id = b.budget_item_id)
+        </if>
+        <!--公司-->
+        <if test="checkParamValueMap.COMPANY != null">
+            <choose>
+                <when test="checkParamValueMap.COMPANY.paramValueType == 'DETAIL'">
+                    and b.company_id = #{checkParamValueMap.COMPANY.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.company_id = #{checkParamValueMap.COMPANY.paramValueId} or exists (select 1 from
+                    fnd_company_hierarchy_detail fchd where fchd.parent_company_id =
+                    #{checkParamValueMap.COMPANY.paramValueId} and fchd.company_id = b.company_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--员工-->
+        <if test="checkParamValueMap.EMPLOYEE != null">
+            and b.employee_id = #{checkParamValueMap.EMPLOYEE.paramValueId}
+        </if>
+        <!--员工组-->
+        <if test="checkParamValueMap.EMPLOYEE_GROUP != null">
+            and exists (select 1 from exp_com_emp_group_ref_emp ecre where ecre.employee_id = b.employee_id and
+            ecre.ref_id = #{checkParamValueMap.EMPLOYEE_GROUP.paramValueId})
+        </if>
+        <!--员工职务-->
+        <if test="checkParamValueMap.EMPLOYEE_JOB != null">
+            and exists (select 1 from exp_employee_assign eea where eea.employee_id = b.employee_id and
+            eea.employee_job_id = #{checkParamValueMap.EMPLOYEE_JOB.paramValueId})
+        </if>
+        <!--员工级别-->
+        <if test="checkParamValueMap.EMPLOYEE_LEVEL != null">
+            and exists (select 1 from exp_employee_assign eea where eea.employee_id = b.employee_id and
+            eea.employee_levels_id = #{checkParamValueMap.EMPLOYEE_LEVEL.paramValueId})
+        </if>
+        <!--岗位-->
+        <if test="checkParamValueMap.ORG_POSITION != null">
+            and b.position_id = #{checkParamValueMap.ORG_POSITION.paramValueId}
+        </if>
+        <!--岗位组-->
+        <if test="checkParamValueMap.ORG_POSITION_GROUP != null">
+            and exists (select 1 from exp_position_group_relation epgr where epgr.position_id = b.position_id and
+            epgr.position_group_id = #{checkParamValueMap.ORG_POSITION_GROUP.paramValueId})
+        </if>
+        <!--部门-->
+        <if test="checkParamValueMap.ORG_UNIT != null">
+            and b.unit_id = #{checkParamValueMap.ORG_UNIT.paramValueId}
+        </if>
+        <!--部门组-->
+        <if test="checkParamValueMap.ORG_UNIT_GROUP != null">
+            and exists
+            (select 1
+            from exp_mo_unit_group emug,
+            exp_mo_unit_group_asgn_com emac,
+            exp_com_unit_gp_ref_unit ecru
+            where emug.mo_unit_group_id = #{checkParamValueMap.ORG_UNIT_GROUP.paramValueId}
+            and emug.mo_unit_group_id = emac.mo_unit_group_id
+            and emac.assign_id = ecru.unit_group_com_assign_id
+            and ecru.unit_id = b.unit_id)
+        </if>
+        <!--部门级别-->
+        <if test="checkParamValueMap.ORG_UNIT_LEVEL != null">
+
+        </if>
+        <foreach collection="dimensionNameList" item="dimName" index="dimIndex">
+            <!--维度-->
+            <if test="checkParamValueMap[dimName] != null">
+                <choose>
+                    <when test="checkParamValueMap[dimName].paramValueType == 'DETAIL'">
+                        and b.dimension1_id = #{checkParamValueMap[${dimName}].paramValueId}
+                    </when>
+                    <otherwise>
+                        and
+                        (
+                        b.dimension${dimIndex + 1}_id = #{checkParamValueMap[${dimName}].paramValueId}
+                        or exists
+                        (
+                        select 1
+                        from fnd_dim_value_hierarchy fdvh
+                        where fdvh.parent_dim_value_id = #{checkParamValueMap[${dimName}].paramValueId}
+                        and fdvh.dimension_value_id = b.dimension${dimIndex + 1}_id
+                        )
+                        )
+                    </otherwise>
+                </choose>
+            </if>
+        </foreach>
+        <!--预算控制期段-->
+        <if test="checkParamValueMap.CONTROL_PERIOD_STRATEGY != null">
+            <choose>
+                <!--控制期段为：月度控制-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'MONTH'">
+                    <choose>
+                        <when test="checkParamValueMap.BUDGET_STRUCTURE.str1 == 'MONTH'">
+                            and b.internal_period_num = #{checkParamValueMap.BUDGET_PERIOD.long1}
+                        </when>
+                        <otherwise>
+                            and 1 = 2
+                        </otherwise>
+                    </choose>
+                </when>
+                <!--控制期段为：季度控制-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'QUARTER'">
+                    <choose>
+                        <when test="checkParamValueMap.BUDGET_STRUCTURE.str1 == 'MONTH' or checkParamValueMap.BUDGET_STRUCTURE.str1 == 'QUARTER'">
+                            and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                            and b.period_quarter = #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                        </when>
+                        <otherwise>
+                            and 1 = 2
+                        </otherwise>
+                    </choose>
+                </when>
+                <!--控制期段为：年度控制-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'YEAR'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                </when>
+                <!--控制期段为：无固定期-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'NO_FIXED'">
+
+                </when>
+                <!--季度至今-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'QTD'">
+                    <choose>
+                        <!--如果当前预算表的编制期段为期间，则可以进行季度至今控制，否则无法进行季度至今控制-->
+                        <when test="checkParamValueMap.BUDGET_STRUCTURE.str1 == 'MONTH'">
+                            and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                            and b.period_quarter = #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                            and b.internal_period_num &lt;= #{checkParamValueMap.BUDGET_PERIOD.long1}
+                        </when>
+                        <otherwise>
+                            and 1 = 2
+                        </otherwise>
+                    </choose>
+                </when>
+                <!--季度滚动-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'RQB'">
+                    <choose>
+                        <!--如果当前预算表的编制期段为期间，则可以进行季度滚动-->
+                        <!--季度滚动逻辑：当前期间 -> 当前期间 + 2 算作一个滚动季度-->
+                        <when test="checkParamValueMap.BUDGET_STRUCTURE.str1 == 'MONTH'">
+                            and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                            and b.period_quarter = #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                            and b.internal_period_num &gt;= #{checkParamValueMap.BUDGET_PERIOD.long1}
+                            and b.internal_period_num &lt;= (#{checkParamValueMap.BUDGET_PERIOD.long1} + 2)
+                        </when>
+                        <otherwise>
+                            and 1 = 2
+                        </otherwise>
+                    </choose>
+                </when>
+                <!--年度至今-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'YTD'">
+                    <choose>
+                        <!--如果当前预算表的编制期段为期间，则可以进行年度至今控制，否则无法进行年度至今控制-->
+                        <when test="checkParamValueMap.BUDGET_STRUCTURE.str1 == 'MONTH'">
+                            and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                            and b.internal_period_num &lt;= #{checkParamValueMap.BUDGET_PERIOD.long1}
+                        </when>
+                        <otherwise>
+                            and 1 = 2
+                        </otherwise>
+                    </choose>
+                </when>
+                <!--累计季度-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'YTQ'">
+                    <choose>
+                        <!--如果当前预算表的编制期段为期间或者季度，则可以进行累计季度控制-->
+                        <when test="checkParamValueMap.BUDGET_STRUCTURE.str1 == 'MONTH' or checkParamValueMap.BUDGET_STRUCTURE.str1 == 'QUARTER'">
+                            and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                            and b.period_quarter &lt;= #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                        </when>
+                        <otherwise>
+                            and 1 = 2
+                        </otherwise>
+                    </choose>
+                </when>
+                <otherwise>
+                    and 1 = 2
+                </otherwise>
+            </choose>
+        </if>
+    </select>
+    <select id="getReserveAmount" resultMap="BgtCheckReserveResultMap">
+        select sum(case
+        when e.amount is not null then
+        e.AMOUNT
+        else
+        b.amount
+        end) total_amount,
+        sum(b.functional_amount) total_functional_amount,
+        sum(b.quantity) total_quantity
+        from bgt_budget_reserve b
+        left join bgt_budget_reserve_extend e
+        on b.BUDGET_RESERVE_LINE_ID = e.BUDGET_RESERVE_LINE_ID
+        and e.currency_code = #{checkParamValueMap.BUDGET_CURRENCY.paramValueCode}
+        WHERE 1 = 1
+        <!--预算实体-->
+        <if test="checkParamValueMap.BUDGET_ENTITY != null">
+            <choose>
+                <when test="checkParamValueMap.BUDGET_ENTITY.paramValueType == 'DETAIL'">
+                    and b.bgt_entity_id = #{checkParamValueMap.BUDGET_ENTITY.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.bgt_entity_id = #{checkParamValueMap.BUDGET_ENTITY.paramValueId} or exists (select 1 from
+                    bgt_entity_hierarchy beh where beh.parent_entity_id =
+                    #{checkParamValueMap.BUDGET_ENTITY.paramValueId} and beh.entity_id = b.bgt_entity_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--预算中心-->
+        <if test="checkParamValueMap.BUDGET_CENTER != null">
+            <choose>
+                <when test="checkParamValueMap.BUDGET_CENTER.paramValueType == 'DETAIL'">
+                    and b.bgt_center_id = #{checkParamValueMap.BUDGET_CENTER.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.bgt_center_id = #{checkParamValueMap.BUDGET_CENTER.paramValueId} or exists (select 1 from
+                    bgt_center_hierarchy bch where bch.parent_center_id =
+                    #{checkParamValueMap.BUDGET_CENTER.paramValueId} and bch.center_id = b.bgt_center_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--预算项目-->
+        <if test="checkParamValueMap.BUDGET_ITEM != null">
+            <choose>
+                <when test="checkParamValueMap.BUDGET_ITEM.paramValueType == 'DETAIL'">
+                    and b.budget_item_id = #{checkParamValueMap.BUDGET_ITEM.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.budget_item_id = #{checkParamValueMap.BUDGET_ITEM.paramValueId} or exists (select 1 from
+                    bgt_budget_item_hierarchy bbih where bbih.parent_budget_item_id =
+                    #{checkParamValueMap.BUDGET_ITEM.paramValueId} and bbih.budget_item_id = b.budget_item_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--预算项目类型-->
+        <if test="checkParamValueMap.BUDGET_ITEM_TYPE != null">
+            and exists (select 1 from bgt_budget_item bbi where bbi.budget_item_type_id =
+            #{checkParamValueMap.BUDGET_ITEM_TYPE.paramValueId} and bbi.budget_item_id = b.budget_item_id)
+        </if>
+        <!--公司-->
+        <if test="checkParamValueMap.COMPANY != null">
+            <choose>
+                <when test="checkParamValueMap.COMPANY.paramValueType == 'DETAIL'">
+                    and b.company_id = #{checkParamValueMap.COMPANY.paramValueId}
+                </when>
+                <otherwise>
+                    and (b.company_id = #{checkParamValueMap.COMPANY.paramValueId} or exists (select 1 from
+                    fnd_company_hierarchy_detail fchd where fchd.parent_company_id =
+                    #{checkParamValueMap.COMPANY.paramValueId} and fchd.company_id = b.company_id))
+                </otherwise>
+            </choose>
+        </if>
+        <!--员工-->
+        <if test="checkParamValueMap.EMPLOYEE != null">
+            and b.employee_id = #{checkParamValueMap.EMPLOYEE.paramValueId}
+        </if>
+        <!--员工组-->
+        <if test="checkParamValueMap.EMPLOYEE_GROUP != null">
+            and exists (select 1 from exp_com_emp_group_ref_emp ecre where ecre.employee_id = b.employee_id and
+            ecre.ref_id = #{checkParamValueMap.EMPLOYEE_GROUP.paramValueId})
+        </if>
+        <!--员工职务-->
+        <if test="checkParamValueMap.EMPLOYEE_JOB != null">
+            and exists (select 1 from exp_employee_assign eea where eea.employee_id = b.employee_id and
+            eea.employee_job_id = #{checkParamValueMap.EMPLOYEE_JOB.paramValueId})
+        </if>
+        <!--员工级别-->
+        <if test="checkParamValueMap.EMPLOYEE_LEVEL != null">
+            and exists (select 1 from exp_employee_assign eea where eea.employee_id = b.employee_id and
+            eea.employee_levels_id = #{checkParamValueMap.EMPLOYEE_LEVEL.paramValueId})
+        </if>
+        <!--岗位-->
+        <if test="checkParamValueMap.ORG_POSITION != null">
+            and b.position_id = #{checkParamValueMap.ORG_POSITION.paramValueId}
+        </if>
+        <!--岗位组-->
+        <if test="checkParamValueMap.ORG_POSITION_GROUP != null">
+            and exists (select 1 from exp_position_group_relation epgr where epgr.position_id = b.position_id and
+            epgr.position_group_id = #{checkParamValueMap.ORG_POSITION_GROUP.paramValueId})
+        </if>
+        <!--部门-->
+        <if test="checkParamValueMap.ORG_UNIT != null">
+            and b.unit_id = #{checkParamValueMap.ORG_UNIT.paramValueId}
+        </if>
+        <!--部门组-->
+        <if test="checkParamValueMap.ORG_UNIT_GROUP != null">
+            and exists
+            (select 1
+            from exp_mo_unit_group emug,
+            exp_mo_unit_group_asgn_com emac,
+            exp_com_unit_gp_ref_unit ecru
+            where emug.mo_unit_group_id = #{checkParamValueMap.ORG_UNIT_GROUP.paramValueId}
+            and emug.mo_unit_group_id = emac.mo_unit_group_id
+            and emac.assign_id = ecru.unit_group_com_assign_id
+            and ecru.unit_id = b.unit_id)
+        </if>
+        <!--部门级别-->
+        <if test="checkParamValueMap.ORG_UNIT_LEVEL != null">
+
+        </if>
+        <foreach collection="dimensionNameList" item="dimName" index="dimIndex">
+            <!--维度-->
+            <if test="checkParamValueMap[dimName] != null">
+                <choose>
+                    <when test="checkParamValueMap[dimName].paramValueType == 'DETAIL'">
+                        and b.dimension1_id = #{checkParamValueMap[${dimName}].paramValueId}
+                    </when>
+                    <otherwise>
+                        and
+                        (
+                        b.dimension${dimIndex + 1}_id = #{checkParamValueMap[${dimName}].paramValueId}
+                        or exists
+                        (
+                        select 1
+                        from fnd_dim_value_hierarchy fdvh
+                        where fdvh.parent_dim_value_id = #{checkParamValueMap[${dimName}].paramValueId}
+                        and fdvh.dimension_value_id = b.dimension${dimIndex + 1}_id
+                        )
+                        )
+                    </otherwise>
+                </choose>
+            </if>
+        </foreach>
+
+        <!--预算控制期段-->
+        <if test="checkParamValueMap.CONTROL_PERIOD_STRATEGY != null">
+            <choose>
+                <!--控制期段为：月度控制-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'MONTH'">
+                    and b.internal_period_num = #{checkParamValueMap.BUDGET_PERIOD.long1}
+                </when>
+                <!--控制期段为：季度控制-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'QUARTER'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                    and b.period_quarter = #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                </when>
+                <!--控制期段为：年度控制-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'YEAR'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                </when>
+                <!--控制期段为：无固定期-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'NO_FIXED'">
+
+                </when>
+                <!--季度至今-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'QTD'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                    and b.period_quarter = #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                    and b.internal_period_num &lt;= #{checkParamValueMap.BUDGET_PERIOD.long1}
+                </when>
+                <!--季度滚动-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'RQB'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                    and b.period_quarter = #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                    and b.internal_period_num &gt;= #{checkParamValueMap.BUDGET_PERIOD.long1}
+                    and b.internal_period_num &lt;= (#{checkParamValueMap.BUDGET_PERIOD.long1} + 2)
+                </when>
+                <!--年度至今-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'YTD'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                    and b.internal_period_num &lt;= #{checkParamValueMap.BUDGET_PERIOD.long1}
+                </when>
+                <!--累计季度-->
+                <when test="checkParamValueMap.CONTROL_PERIOD_STRATEGY.paramValueCode == 'YTQ'">
+                    and b.period_year = #{checkParamValueMap.BUDGET_YEAR.paramValueId}
+                    and b.period_quarter &lt;= #{checkParamValueMap.BUDGET_QUARTER.paramValueId}
+                </when>
+                <otherwise>
+                    and 1 = 2
+                </otherwise>
+            </choose>
+        </if>
+    </select>
+</mapper>

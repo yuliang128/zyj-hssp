@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH7020_csh_repayment_maintain_main_link" url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_maintain_main.screen"/>
+        <a:link id="CSH7020_csh_repayment_view_main_link" url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_view_maintain_main.screen"/>
+        <a:link id="CSH7020_csh_repayment_maintain_type_choice_link" url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_maintain_type_choice.screen"/>
+        <a:link id="CSH7020_csh_repayment_history_link" url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <a:link id="CSH7020_csh_repayment_deleteHeader_link" url="$[/request/@context_path]/csh/repayment-register/remove"/>
+        <a:link id="CSH7020_csh_repayment_ref_csh_payment_req_link" url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_query_csh_payment_req_readonly.screen"/>
+        <style><![CDATA[
+        	.item-float-list-row>table{
+        	    width:100%;
+        	    border:1px solid #f1f1f1;
+        	}
+
+        	.info-block{
+        	    height:75px!important;
+        	    border-right:1px solid #f1f1f1;
+        	    border-spacing: 0px;
+        	    padding-left:10px;
+        	}
+
+    		.info-title{
+    		    height:35px;
+    		    line-height:35px;
+    		    color:#005a78;
+    		    font-weight:bold;
+    		}
+
+    		.info-detail{
+    		    height:30px;
+    		    line-height:20px;
+    		    vertical-align:top;
+    		    color:#999;
+    		    font-size:12px;
+    		}
+
+    		.progress-color-bar{
+    		    width:5px;
+    		    height:77px;
+    		    border:none;
+    		}
+    		/*
+    		GENERATE            新建 绿色 #3c763d
+		    SUBMITTED           提交 绿色 #3c763d
+		    TAKEN_BACK          收回 黄色 #d6ad65
+		    CASHIER_REJECTED    出纳拒绝 红色 #a94442
+		    CASHIER_CONFIRM     出纳确认 绿色 #3c763d
+		    ACCOUNTING_REJECTED 会计拒绝 红色 #a94442
+		    ACCOUNTING_CONFIRM  会计确认 绿色 #3c763d
+    		*/
+    		.progress-color-GENERATE{
+    		    background-color:#3c763d;
+    		}
+
+    		.progress-color-TAKEN_BACK{
+    		    background-color:#d6ad65;
+    		}
+
+    		.progress-color-CASHIER_REJECTED{
+    		    background-color:#a94442;
+    		}
+
+    		.progress-color-ACCOUNTING_REJECTED{
+    		    background-color:#a94442;
+    		}
+
+    		.progress-color-SUBMITTED{
+    		    background-color:#3c763d;
+    		}
+
+    		.progress-color-CASHIER_CONFIRM{
+    		    background-color:#3c763d;
+    		}
+
+    		.progress-color-ACCOUNTING_CONFIRM{
+    		    background-color:#3c763d;
+    		}
+
+    		.history-block{
+    		    z-index:2;
+    		    position:fixed;
+    		    width:100%;
+    		}
+
+    		.history-hidden{
+    		    visibility: hidden;
+    		}
+
+    		.history-show{
+    		    visibility: visible;
+    		}
+    	]]></style>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/chart/echarts.min.js"/>
+        <script><![CDATA[
+        function CSH7020_query() {
+            $au('CSH7020_queryResultDs').query();
+        }
+
+        function CSH7020_onQueryConditionDsUpdateFun(ds, record, name, value, oldValue) {
+            if (name === 'cshRepaymentStatusAll') {
+                if (value === 'Y') {
+                    record.set('cshRepaymentStatusCanModify', 'Y');
+                    record.set('cshRepaymentStatusCashier', 'Y');
+                    record.set('cshRepaymentStatusAccounting', 'Y');
+                    record.set('cshRepaymentStatusConfirm', 'Y');
+                } else if (value === 'N') {
+                    record.set('cshRepaymentStatusCanModify', 'N');
+                    record.set('cshRepaymentStatusCashier', 'N');
+                    record.set('cshRepaymentStatusAccounting', 'N');
+                    record.set('cshRepaymentStatusConfirm', 'N');
+                }
+            } else if ((name === 'cshRepaymentStatusCanModify' || name === 'cshRepaymentStatusCashier' || name === 'cshRepaymentStatusAccounting' || name === 'cshRepaymentStatusConfirm') && value === 'N') {
+                record.data['cshRepaymentStatusAll'] = 'N';
+                $au('CSH7020_repaymentStatusAllCb').render(record);
+            } else if (name === 'cshRepaymentDateScope') {
+                CSH7020_query();
+            }
+        }
+
+        function CSH7020_onQueryConditionDsAddFun(ds, record, index) {
+            record.set('cshRepaymentDateScopeName', (new HecUtil()).getNameByValue($au('CSH7020_dateScopeDs'), 'codeValue', 'codeValueName', '000-007'));
+            record.set('cshRepaymentDateScope', '000-007');
+        }
+
+        function CSH7020_onRepaymentClickFun(id, status) {
+            var CSH7020_detailUrl = '';
+            if (status === 'GENERATE' || status === 'TAKEN_BACK' || status === 'CASHIER_REJECTED') {
+                CSH7020_detailUrl = $au('CSH7020_csh_repayment_maintain_main_link').getUrl();
+                win_id = 'CSH7020_csh_repayment_type_win';
+            } else {
+                CSH7020_detailUrl = $au('CSH7020_csh_repayment_view_main_link').getUrl();
+                win_id = 'CSH7020_csh_repayment_view_main_window';
+            }
+            if (CSH7020_detailUrl) {
+                new Aurora.Window({
+                    url: CSH7020_detailUrl + '?registerHdsId=' + id,
+                    id: win_id,
+                    fullScreen: true
+                }).on('close', function () {
+                    CSH7020_query();
+                });
+            }
+        }
+
+        function CSH7020_init() {
+            $au('CSH7020_queryConditionDs').create();
+        }
+
+        function CSH7020_openPayTypeChoice() {
+            new Aurora.Window({
+                url: $au('CSH7020_csh_repayment_maintain_type_choice_link').getUrl(),
+                id: 'CSH7020_csh_repayment_maintain_type_choice_window',
+                fullScreen: true
+            });
+        }
+
+        Aurora.onReady(CSH7020_init);
+        ]]></script>
+        <span><![CDATA[
+            <script>
+            function CSH7020_progressColorRenderer(value, record, name) {
+                var tplt = new Ext.Template([
+                    '<div class="progress-color-bar progress-color-{progressStatus}"></div>'
+                ]);
+
+                return tplt.applyTemplate({
+                    progressStatus: record.get('progressStatus')
+                });
+            }
+
+            function CSH7020_docNumberAndTypeRenderer(value, record, name) {
+                let tplt = new Ext.Template([
+                    '<table class="info-block">',
+                    '	<tr>',
+                    '		<td class="info-title">',
+                    '			{docTypeName}',
+                    '		</td>',
+                    '	</tr>',
+                    '	<tr>',
+                    '		<td class="info-detail">',
+                    '			{docNumber}',
+                    '		</td>',
+                    '	</tr>',
+                    '</table>'
+                ]);
+                let numberHtml = '<a href="javascript:CSH7020_onRepaymentClickFun(' + record.get('registerHdsId') + ',\'' + record.get('repaymentStatus') + '\')" >' + record.get('registerNumber') + '</a>'
+                let flowinfoa_width = parseInt(document.body.clientWidth / 9.5);
+                if (flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width === undefined) {
+                    flowinfoa_width = 142.5;
+                }
+                let docTypeName = record.get('moRepaymentRegTypeName') === undefined ? '' : record.get('moRepaymentRegTypeName');
+                let docHtml = '<div id="flowInfoAId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docTypeName + '\')">' + docTypeName + '</div>';
+                return tplt.applyTemplate({
+                    docTypeName: docHtml,
+                    docNumber: numberHtml
+                });
+            }
+
+            function CSH7020_requisitionDateAndDescRendnerer(value, record, name) {
+                let tplt = new Ext.Template([
+                    '<table border="0" class="info-block">',
+                    '	<tr>',
+                    '		<td width="20%" class="info-title">',
+                    '			{docDate}',
+                    '		</td>',
+                    '		<td width="30%" align="center" class="info-title">',
+                    '			{employeeName}',
+                    '		</td>',
+                    '		<td width="50%" class="info-title">',
+                    '			{unitInfo}',
+                    '		</td>',
+                    '	</tr>',
+                    '	<tr>',
+                    '		<td colspan="3" class="info-detail">',
+                    '			{docDesc}',
+                    '		</td>',
+                    '	</tr>',
+                    '</table>'
+                ]);
+                let docDesc = record.get('description');
+                if(docDesc === undefined || docDesc == null){
+                    docDesc = '';
+                }else {
+                    docDesc = record.get('description');
+                }
+                let flowinfoa_width = parseInt(document.body.clientWidth * 3 / 9.5);
+                if (flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width === undefined) {
+                    flowinfoa_width = 427.5;
+                }
+                let docHtml = '<div id="flowInfoBId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docDesc + '\')">' + docDesc + '</div>';
+
+                //update by penglei 20180503 长度自适应调整 begin
+                let unitName = record.get('unitName');
+                let accEntityName = record.get('accEntityName');
+                if (unitName === undefined && accEntityName === undefined) {
+                    unitDesc = '';
+                } else {
+                    var unitDesc = unitName + ' / ' + accEntityName;
+                }
+                let unitHtml_width = parseInt(document.body.clientWidth * 3 / 19);
+                if (unitHtml_width < 100 || unitHtml_width == null || unitHtml_width === undefined) {
+                    unitHtml_width = 213.5;
+                }
+                let unitHtml = '<div id="flowInfoCId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + unitHtml_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + unitDesc + '\')">' + unitDesc + '</div>';
+                //by pl end
+
+                return tplt.applyTemplate({
+                    docDate: record.get('repaymentDate'),
+                    employeeName: record.get('employeeName'),
+                    unitInfo: unitHtml,
+                    docDesc: docHtml
+                });
+            }
+
+            function CSH7020_requisitionAmountRenderer(value, record, name) {
+                let tplt = new Ext.Template([
+                    '<table class="info-block">',
+                    '	<tr>',
+                    '		<td  class="info-title" style="text-align:right;padding-right:10px;font-size:15px;">',
+                    '			<span onmouseover="$A.ToolTip.show(this,\'$[l:ACP_REQUISITION.AMOUNT]\')" >{currencySymbol}&nbsp;{docAmount}</span>',
+                    '		</td>',
+                    '	</tr>',
+                    '	<tr>',
+                    '		<td class="info-amount" style="text-align:right;padding-right:10px;font-size:13px;">',
+                    '			<span onmouseover="$A.ToolTip.show(this,\'$[l:ACP_REQUISITION.ALREADY_PAYING]\')">{currencySymbol1}&nbsp;&nbsp;</span>',
+                    '		</td>',
+                    '	</tr>',
+                    '</table>'
+                ]);
+
+                return tplt.applyTemplate({
+                    docAmount: Aurora.formatMoney(record.get('amount')),
+                    currencySymbol: record.get('currencySymbol')
+                });
+            }
+
+            function CSH7020_progressRenderer(value,record,name,floatList) {
+            	function onProgressLoad(){
+            	    var progressDom = document.getElementById('progress-' + record.id);
+            	    if(!progressDom){
+            	        return ;
+            	    }
+            	    var progressChart = echarts.init(progressDom);
+            	    if (record.get('repaymentStatus') == 'GENERATE' || record.get('repaymentStatus') == 'SUBMITTED' || record.get('repaymentStatus') == 'CASHIER_CONFIRM' || record.get('repaymentStatus') == 'ACCOUNTING_CONFIRM') {
+            	        var progressColor = '#3c763d';
+            	    }else if (record.get('repaymentStatus') == 'CASHIER_REJECTED' || record.get('repaymentStatus') == 'ACCOUNTING_REJECTED'){
+            	        var progressColor = '#a94442';
+            	    }else if (record.get('repaymentStatus') == 'TAKEN_BACK'){
+            	        var progressColor = '#d6ad65';
+            	    }
+					option = {
+					    series: [
+					        {
+					            name:' 执行进度',
+					            type:'pie',
+					            radius: ['70%', '80%'],
+					            avoidLabelOverlap: false,
+					            hoverAnimation:false,
+					            animation:false,
+					            label: {
+					                normal: {
+					                    show: true,
+					                    position: 'center',
+					                    textStyle: {
+					                        fontSize: '11',
+					                        fontWeight: 'bold',
+					                        color:'#000'
+					                    }
+					                }
+					            },
+					            labelLine: {
+					                normal: {
+					                    show: false
+					                }
+					            },
+					            color:[progressColor,'#f1f1f1'],
+					            data:[
+					                {value:record.get('progressCount'),name:record.get('progressStatusName')},
+					                {value:100 - record.get('progressCount'),name:''}
+					            ]
+					        }
+					    ]
+					};
+					progressChart.setOption(option);
+            	}
+
+
+                var tplt = new Ext.Template([
+                '<div class="info-block" onmouseleave="CSH7020_onProgressMouseLeave(' + record.id + ',event);">',
+                '<div id="progress-{recordId}" onClick="CSH7020_showHistory(' + record.get('registerHdsId') + ',' + record.id + ',event);" style="width:80px;height:80px;margin:auto;"></div>',
+                '<div class="history-block history-hidden" id="history-{recordId}">'
+                ]);
+                floatList['on']('load',onProgressLoad,this);
+                return tplt.applyTemplate({
+                    recordId:record.id
+                });
+            }
+
+            function CSH7020_operationRenderer(value, record, name) {
+                var tplt = new Ext.Template([
+                    '<table class="info-block" style="border-right:none;">',
+                    '	<tr>',
+                    '		<td width="50%" align="center">',
+                    '			{deleteLink}',
+                    '		</td>',
+                    '		<td width="50%" align="center">',
+                    '			{printLink}',
+                    '		</td>',
+                    '	</tr>',
+                    '</table>'
+                ]);
+                if (record.get('repaymentStatus') === 'GENERATE' || record.get('repaymentStatus') === 'TAKEN_BACK' || record.get('repaymentStatus') === 'CASHIER_REJECTED') {
+                    dLink = ' <img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_DELETE]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete.png" alt="$[l:HAP_DELETE]" onclick="CSH7020_deleteHeader(' + record.get('registerHdsId') + ',event);"/> ';
+                } else {
+                    dLink = ' <img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_DELETE]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete-1.png" alt="$[l:HAP_DELETE]"/> ';
+                }
+                hLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_HISTORY]\')" src="$[/request/@context_path]/resources/images/aurora/hap/history.png" alt="$[l:HAP_HISTORY]" onClick="CSH7020_showHistory(' + record.get('registerHdsId') + ',event);"/>';
+                pLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:HAP_PRINT]\')" src="$[/request/@context_path]/resources/images/aurora/hap/print.png" alt="$[l:HAP_PRINT]" onClick="CSH7020_print(' + record.get('registerHdsId') + ', event);"/>';
+
+                //modified by liliang 2018/6/1 
+                //添加预览子页面
+                //提交状态的单据可以预览 显示预览图标
+                if (record.get('repaymentStatus') === 'SUBMITTED') {
+                    preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:WFL.PREVIEW]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:WFL.PREVIEW]" onClick="CSH7020_PreviewWinFunc(' + record.get('instanceId') + ', event);"/>';
+                } else {
+                    //其他状态的单据用灰色图标
+                    preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:WFL.PREVIEW]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview-1.png"  alt="$[l:WFL.PREVIEW]""/>';
+                }
+
+                return tplt.applyTemplate({
+                    deleteLink: dLink,
+                    printLink: pLink
+                });
+            }
+
+
+            function CSH7020_print() {
+                event.stopPropagation();
+                alert('确定打印当前还款申请单？');
+            }
+
+            function CSH7020_deleteHeader(id, event) {
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                Aurora.showConfirm('$[l:EXIT_SYSTEM]', '$[l:REPAYMENT_REGISTER_DELETED]', function (resp) {
+                    Aurora.request({
+                        url: $au('CSH7020_csh_repayment_deleteHeader_link').getUrl()+'?registerHdsId='+id,
+                        success: function () {
+                            CSH7020_query();
+                        },
+                        scope: this
+                    });
+                    resp.close();
+                });
+            }
+
+            function CSH7020_onProgressMouseLeave(recordId, event) {
+                event.stopPropagation();
+                historyDiv = $('#history-' + recordId);
+                if (historyDiv.hasClass('history-show')) {
+                    historyDiv.removeClass('history-show');
+                    historyDiv.addClass('history-hidden');
+                }
+            }
+
+            function CSH7020_showHistory(docId, recordId, event) {
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                historyDiv = $('#history-' + recordId);
+                if (historyDiv.hasClass('history-hidden')) {
+                    //异步加载单据历史页面
+                    historyDiv.load($au('CSH7020_csh_repayment_history_link').getUrl() + '?documentId=' + docId + '&documentType=CSH_REPAYMENT_REGISTER', function (url, status, c) {
+                        if (status === 'success') {
+                            //计算气泡的正确弹出位置
+                            CSH7020_correctPosition(recordId);
+                            historyDiv.removeClass('history-hidden');
+                            historyDiv.addClass('history-show');
+                        }
+                    });
+                } else if (historyDiv.hasClass('history-show')) {
+                    historyDiv.removeClass('history-show');
+                    historyDiv.addClass('history-hidden');
+                }
+            }
+
+            function CSH7020_correctPosition(id) {
+                var flowBox = historyDiv.children('div.flowBox'),
+                    rowDiv = historyDiv.parents('div[_row=' + id + ']'),
+                    infoBlockDiv = $('#progress-' + id).parents('div.info-block'),
+                    triangleDiv = historyDiv.children('div.triangle'),
+                    width = flowBox.outerWidth(true),
+                    height = flowBox.outerHeight(true),
+                    vh = Aurora.getViewportHeight(),
+                    x = infoBlockDiv.position().left - width + infoBlockDiv.outerWidth(true) / 2,
+                    y = rowDiv.position().top;
+                historyDiv.css({
+                    "top": (y + height) > vh ? (vh - height) : y,
+                    "left": x
+                });
+                triangleDiv.css({
+                    "left": width,
+                    "top": (y + height) > vh ? (height - (vh - rowDiv.position().top - infoBlockDiv.outerHeight(true) / 2)) : infoBlockDiv.outerHeight(true) / 2
+                });
+            }
+
+            //关联借款单
+            function CSH7020_openCshPaymentReq() {
+                var records = $au('CSH7020_queryResultDs').getSelected();
+                if (records.length !== 1) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT_ONE]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    url: /*exp_requisition_query_csh_payment_req_readonly.screen*/
+                        $au('CSH7020_csh_repayment_ref_csh_payment_req_link').getUrl() + '?registerHdsId=' + records[0].get('registerHdsId'),
+                    title: '$[l:acp_sys_acp_req_type.relate_payment_req]',
+                    id: 'exp_repayment_register_query_csh_payment_req_readonly_screen',
+                    fullScreen: true
+                });
+            }
+            </script>
+        ]]></span>
+        <a:dataSets>
+            <a:dataSet id="CSH7020_employeeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/employee/queryEmployeeByAuth?docCategory=REPAYMENT_REGISTER"/>
+            <a:dataSet id="CSH7020_dateScopeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/DATE_SCOPE/"/>
+            <a:dataSet id="CSH7020_repaymentTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/mo-repayment-reg-type/queryByCompanyId"/>
+            <a:dataSet id="CSH7020_statusDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/CSH_REPAY_REGISTER_STATUS/"/>
+            <a:dataSet id="CSH7020_queryConditionDs">
+                <a:fields>
+                    <a:field name="cshRepaymentStatus" displayField="meaning" options="CSH7020_statusDs"
+                             prompt="acp_acp_requisition_hd.status" returnField="repaymentStatus" valueField="value"/>
+                    <a:field name="registerNumber" placeHolder="exp_requisition_header.exp_requisition_number"/>
+                    <a:field name="cshRepaymentDateScopeName" displayField="meaning" options="CSH7020_dateScopeDs"
+                             placeHolder="hap_date_range" returnField="cshRepaymentDateScope" valueField="value"/>
+                    <a:field name="repaymentDateFrom" placeHolder="exp_requisition_header.requisition_date_from"/>
+                    <a:field name="repaymentDateTo" placeHolder="exp_requisition_header.requisition_date_to"/>
+                    <a:field name="moRepaymentRegTypeName" displayField="description" options="CSH7020_repaymentTypeDs"
+                             placeHolder="hap.doc_type" returnField="moRepaymentRegTypeId"
+                             valueField="moRepaymentRegTypeId"/>
+                    <a:field name="employeeName" displayField="codeName" options="CSH7020_employeeDs"
+                             placeHolder="exp_requisition_header.employee_id" returnField="employeeId"
+                             valueField="employeeId"/>
+                    <a:field name="amountFrom" placeHolder="exp_requisition_header.amount_from"/>
+                    <a:field name="amountTo" placeHolder="exp_requisition_header.amount_to"/>
+                    <a:field name="description" placeHolder="exp_requisition_header.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH7020_onQueryConditionDsAddFun"/>
+                    <a:event name="update" handler="CSH7020_onQueryConditionDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH7020_queryResultDs" autoPageSize="true" autoQuery="true"
+                       baseUrl="/csh/repayment-register" pageSize="20" queryDataSet="CSH7020_queryConditionDs"
+                       selectable="true"/>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:button click="CSH7020_openPayTypeChoice" text="hap_create_document" width="80"/>
+            <a:buttonGroup text="hap_operation" width="80">
+                <a:groupButtons>
+                    <a:button click="CSH7020_openCshPaymentReq" text="exp_req.csh_payment_req"/>
+                </a:groupButtons>
+            </a:buttonGroup>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="CSH7020_queryConditionDs" resultTarget="CSH7020_queryResultDs"
+                     style="width:100%;border:none;">
+            <a:formToolBar>
+                <a:multiComboBox name="cshRepaymentStatus" bindTarget="CSH7020_queryConditionDs"/>
+                <a:comboBox name="cshRepaymentDateScopeName" bindTarget="CSH7020_queryConditionDs"/>
+                <a:textField name="registerNumber" bindTarget="CSH7020_queryConditionDs">
+                    <a:events>
+                        <a:event name="enterdown" handler="CSH7020_query"/>
+                    </a:events>
+                </a:textField>
+            </a:formToolBar>
+            <a:formBody column="4">
+                <a:datePicker name="repaymentDateFrom" bindTarget="CSH7020_queryConditionDs"/>
+                <a:datePicker name="repaymentDateTo" bindTarget="CSH7020_queryConditionDs"/>
+                <a:comboBox name="moRepaymentRegTypeName" bindTarget="CSH7020_queryConditionDs"/>
+                <a:comboBox name="employeeName" bindTarget="CSH7020_queryConditionDs"/>
+                <a:numberField name="amountFrom" bindTarget="CSH7020_queryConditionDs"/>
+                <a:numberField name="amountTo" bindTarget="CSH7020_queryConditionDs"/>
+                <a:textField name="description" bindtarget="CSH7020_queryConditionDs"/>
+            </a:formBody>
+        </a:queryForm>
+        <a:form marginWidth="0" shrinkable="false" title="repayment_register_maintain">
+            <a:floatList bindTarget="CSH7020_queryResultDs" clickable="true" closeable="true" loadMore="false" marginHeight="185" navbar="true" rowStyle="width:99%;height:80px;margin-left:10px;margin-top:2px;margin-bottom:5px;margin-right:10px;" style="box-shadow:none;width:100%">
+                <a:columns>
+                    <a:column name="progressColor" renderer="CSH7020_progressColorRenderer" width="1"/>
+                    <a:column name="docNumberAndType" renderer="CSH7020_docNumberAndTypeRenderer" width="15"/>
+                    <a:column name="requisitionDateAndDesc" renderer="CSH7020_requisitionDateAndDescRendnerer" width="46"/>
+                    <a:column name="requisitionAmount" renderer="CSH7020_requisitionAmountRenderer" width="16"/>
+                    <a:column name="progress" renderer="CSH7020_progressRenderer" width="13"/>
+                    <a:column name="operation" renderer="CSH7020_operationRenderer" width="9"/>
+                </a:columns>
+                <!--
+                <a:events>
+                     <a:event name="rowclick" handler="CSH7020_onRepaymentClickFun"/>
+                </a:events> 
+                -->
+            </a:floatList>
+        </a:form>
+    </a:view>
+</a:screen>

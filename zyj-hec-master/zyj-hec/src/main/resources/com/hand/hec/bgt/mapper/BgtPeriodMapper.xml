@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtPeriodMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtPeriod">
+        <result column="PERIOD_ID" property="periodId" jdbcType="DECIMAL"/>
+        <result column="PERIOD_SET_ID" property="periodSetId" jdbcType="DECIMAL"/>
+        <result column="PERIOD_YEAR" property="periodYear" jdbcType="DECIMAL"/>
+        <result column="PERIOD_NUM" property="periodNum" jdbcType="DECIMAL"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="INTERNAL_PERIOD_NUM" property="internalPeriodNum" jdbcType="DECIMAL"/>
+        <result column="START_DATE" property="startDate" jdbcType="DATE"/>
+        <result column="END_DATE" property="endDate" jdbcType="DATE"/>
+        <result column="QUARTER_NUM" property="quarterNum" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkBgtPeriod" resultMap="BaseResultMap">
+        select t.* from bgt_period t,bgt_organization o
+        where
+        o.bgt_org_id = #{bgtOrgId}
+        and t.period_set_id = o.period_set_id
+        and
+        (
+          (
+            #{filtrateMethod} = 'INCLUDE'
+            and (#{controlPeriodFrom} is null or t.period_name &gt;= #{controlPeriodFrom})
+            and (#{controlPeriodTo} is null or t.period_name &lt;= #{controlPeriodTo})
+          )
+          or
+          (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (#{controlPeriodFrom} is null or t.period_name &lt; #{controlPeriodFrom})
+                or (#{controlPeriodTo} is null or t.period_name &gt; #{controlPeriodTo})
+            )
+          )
+        )
+        and o.enabled_flag = 'Y'
+    </select>
+
+    <select id="checkPeriodExist" resultType="int">
+        SELECT
+              count( * )
+        FROM  bgt_period p
+        WHERE
+            p.period_set_id = #{periodSetId}
+            AND p.period_year &gt;=#{yearFrom}
+            AND p.period_year &lt;=#{yearTo}
+    </select>
+
+    <select id="checkOrgPeriodUsed" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            bgt_period a,
+            bgt_org_period_status b
+        WHERE
+            a.period_set_id = #{periodSetId}
+            AND a.period_year &gt;=#{yearFrom}
+            AND a.period_year &lt;=#{yearTo}
+            AND a.period_name = b.period_name
+    </select>
+
+    <select id="checkEntityPeriodUsed" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            bgt_period a,
+            bgt_entity_period_status b
+        WHERE
+            a.period_set_id = #{periodSetId}
+            AND a.period_year &gt;=#{yearFrom}
+            AND a.period_year &lt;=#{yearTo}
+            AND a.period_name = b.period_name
+    </select>
+
+    <update id="updateByPeriodSetId" parameterType="com.hand.hec.bgt.dto.BgtPeriod">
+        update bgt_period t
+        set t.period_name      = #{periodName},
+                   t.start_date       = #{startDate},
+                   t.end_date         = #{endDate},
+                   t.quarter_num      = #{quarterNum}
+        where t.period_set_id = #{periodSetId}
+            and t.period_year = #{periodYear}
+            and t.period_num = #{periodNum}
+    </update>
+
+    <select id="getBgtPeriodYear" resultMap="BaseResultMap">
+    select bp.period_year,
+           bp.internal_period_num,
+           bp.quarter_num,
+		   bp.period_num
+      from bgt_organization bo,
+           bgt_period       bp
+     where bo.bgt_org_id = #{bgtOrgId}
+           and bo.period_set_id = bp.period_set_id
+           and bp.period_name = #{periodName}
+    </select>
+
+    <select id="getBgtPeriodOption" resultMap="BaseResultMap">
+        SELECT DISTINCT
+            gp.period_name,
+            gp.period_year,
+            gp.quarter_num,
+            gp.period_num,
+            gp.internal_period_num
+        FROM
+            bgt_period gp,
+            bgt_organization bo
+        WHERE
+            bo.bgt_org_Id    = #{bgtOrgId} AND
+            bo.period_set_id = gp.period_set_id AND
+            gp.period_year BETWEEN (extract(YEAR FROM CURRENT_TIMESTAMP) - 1) AND
+            (
+                extract(YEAR FROM CURRENT_TIMESTAMP) + 1
+            )
+        ORDER BY
+            gp.period_name
+    </select>
+
+    <select id="getQuarterOption" resultMap="BaseResultMap">
+        SELECT
+            t.*
+        FROM
+            (SELECT 1 quarter_num
+            UNION
+            SELECT 2
+            UNION
+            SELECT 3
+            UNION
+            SELECT 4
+            )t
+    </select>
+
+    <select id="getPeriodYearOption" resultMap="BaseResultMap">
+        SELECT DISTINCT
+            gp.period_year
+        FROM
+            bgt_period gp,
+            bgt_organization bo
+        WHERE
+            bo.period_set_id = gp.period_set_id AND
+            bo.bgt_org_id = #{bgtOrgId}
+        ORDER BY
+            gp.period_year
+    </select>
+    
+    <select id="getPeriodByPeriodName" resultMap="BaseResultMap">
+        SELECT
+            p.*
+        FROM
+            bgt_period p
+            LEFT JOIN bgt_organization o ON o.period_set_id = p.period_set_id
+        WHERE
+            p.period_name = #{periodName}
+            AND o.bgt_org_id = #{bgtOrgId}
+            AND o.enabled_flag = 'Y'
+    </select>
+
+    <!--hec_util_pkg.get_bgt_period_name-->
+    <select id="getBgtPeriodName" resultType="string">
+        select bp.period_name
+          from bgt_period bp
+         where DATE_FORMAT(bp.start_date,'%Y-%m-%d') &lt;= #{date}
+           and DATE_FORMAT(bp.end_date,'%Y-%m-%d') &gt;= #{date}
+           and exists (select 1
+                         from fnd_company              fc,
+                              fnd_mag_org_ref_bgt_org  fmo,
+                              bgt_organization          bo
+                        where fc.company_id = #{companyId}
+                          and fc.mag_org_id = fmo.mag_org_id
+                          and fmo.bgt_org_id = bo.bgt_org_id
+                          and bo.period_set_id = bp.period_set_id
+                          and fmo.enabled_flag = 'Y'
+                          and fmo.default_flag = 'Y')
+           and (#{status} is null or(not exists(select 1
+                                                  from bgt_entity_period_status bpsx,
+                                                       bgt_period_set   bps
+                                                 where bps.period_set_id = bp.period_set_id
+                                                   and bpsx.bgt_entity_id = #{bgtEntityId}
+                                                   and bpsx.bgt_period_set_code = bps.period_set_code
+                                                   and bpsx.period_name = bp.period_name))
+                                  or(exists(select 1
+                                              from bgt_entity_period_status bpsx,
+                                                   bgt_period_set   bps
+                                            where bps.period_set_id = bp.period_set_id
+                                              and bpsx.bgt_entity_id = #{bgtEntityId}
+                                              and bpsx.bgt_period_set_code = bps.period_set_code
+                                              and bpsx.period_name = bp.period_name
+                                              and bpsx.bgt_period_status_code = #{status})))
+    </select>
+    
+    <select id="queryQuarterPeriodName" parameterType="com.hand.hec.bgt.dto.BgtPeriod" resultType="java.lang.String" >
+        select bp.period_name
+        from bgt_period       bp,
+             bgt_organization bo
+       where bo.bgt_org_id = #{bgtOrgId}
+             and bo.period_set_id = bp.period_set_id
+             and bp.period_year = #{periodYear}
+             and bp.quarter_num = #{quarterNum}
+        limit 1
+    </select>
+
+    <select id="queryYearPeriodName" parameterType="com.hand.hec.bgt.dto.BgtPeriod" resultType="java.lang.String" >
+        select bp.period_name
+        from bgt_period       bp,
+             bgt_organization bo
+       where bo.bgt_org_id = #{bgtOrgId}
+             and bo.period_set_id = bp.period_set_id
+             and bp.period_year = #{periodYear}
+            and bp.start_date &lt;= CURRENT_TIMESTAMP
+            and bp.end_date &gt;= CURRENT_TIMESTAMP
+        limit 1
+    </select>
+
+    <select id="getPeriodNamesForSummary" resultType="java.lang.String" parameterType="com.hand.hec.bgt.dto.BgtPeriod">
+        SELECT
+            bp.period_name
+        FROM
+            bgt_period bp
+        <trim prefixOverrides="and" prefix="where">
+            <if test="periodNameFrom!=null and periodNameTo!=null" >
+                AND bp.period_name BETWEEN #{periodNameFrom} and #{periodNameTo}
+            </if>
+            <if test="periodYear!=null" >
+                and bp.period_year = #{periodYear}
+            </if>
+            <if test="quarterNum!=null" >
+                and bp.quarter_num = #{quarterNum}
+            </if>
+        </trim>
+        GROUP BY
+            bp.period_name
+    </select>
+</mapper>

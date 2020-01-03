@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei  
+    $Date: 2018-05-08 下午05:24:32  
+    $Revision: 1.0  
+    $Purpose: 计量单位分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND1040_fnd_uom_add_com_link" url="$[/request/@context_path]/fnd/FND1040/fnd_uoms_add_company.screen"/>
+        <script><![CDATA[
+            function FND1040_addComAssignFun() {
+                new Aurora.Window({
+                    url: $au('FND1040_fnd_uom_add_com_link').getUrl() + '?assignMoId=' + '$[/parameter/@assignMoId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    id: 'FND1040_fnd_uom_add_com_window',
+                    title: '$[l:prompt.batch_disp_company]',
+                    side: 'right',
+                    width: 1020,
+                    fullScreen: false
+                }).on('close', function() {
+                    FND1040_comBatchAssignQuery();
+                });
+            }
+            
+            function FND1040_exp_company_code(record, name) {
+                if (record.isNew) {
+                    return "FND1040_asgn_com_lov";
+                } else {
+                    return "";
+                }
+            }
+            
+            function FND1040_comBatchReturnFun() {
+                $au('FND1040_fnd_uom_assgin_com_window').close();
+            }
+            
+            function FND1040_comBatchAssignQuery() {
+                $au('FND1040_fnd_uom_asgn_com_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1040_fnd_uom_asgn_com_result_ds" autoQuery="true" baseUrl="/fnd/uom-asgn-com" pageSize="20" queryUrl="$[/request/@context_path]/fnd/uom-asgn-com/queryByMagOrgId?assignMoId=$[/parameter/@assignMoId]&amp;magOrgId=$[/parameter/@magOrgId]" selectable="true">
+                <a:fields>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="assignComId"/>
+                    <a:field name="companyCode" autoComplete="true"  lovCode="LOV_FND_UOM_ASSIGN_COMPANY?magOrgId=$[/parameter/@magOrgId]&amp;assignMoId=$[/parameter/@assignMoId]" lovWidth="500" required="true" title="exp_employee_assign.choose_company">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="fnd_company.company_short_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="prompt.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND1040_fnd_uom_asgn_com_form" column="2" labelWidth="120" title="fnd_company.assign_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1040_fnd_uom_asgn_com_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND1040_fnd_uom_asgn_com_grid" type="save" width="80"/>
+                    <a:gridButton bind="FND1040_fnd_uom_asgn_com_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="FND1040_addComAssignFun" text="HEC_ASSIGN" width="80"/>
+                    <a:toolbarButton click="FND1040_comBatchReturnFun" text="PROMPT.RETURN" width="80"/>
+                </a:formToolbar>
+                <a:textField name="uomCode" bindTarget="FND1040_fnd_uom_assign_mo_query_ds" prompt="fnd_uom.uom_code" readOnly="true"/>
+                <a:textField name="uomName" bindTarget="FND1040_fnd_uom_assign_mo_query_ds" prompt="fnd_uom.uom_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1040_fnd_uom_asgn_com_grid" width="1010" bindTarget="FND1040_fnd_uom_asgn_com_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="FND1040_exp_company_code" prompt="fnd_company.company_code" width="80"/>
+                    <a:column name="companyName" prompt="fnd_company.company_short_name" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND1040_asgn_com_checkBox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND1040_asgn_com_lov"/>
+                    <a:checkBox id="FND1040_asgn_com_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

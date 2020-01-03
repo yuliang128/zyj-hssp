@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui $
+    $Date: 2019/01/25 09:50:39 $
+    $Revision: 1.3 $
+    $Purpose: 员工类型分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function EXP1210_expMoEmpTypeAsgnFun(record, name) {
+                if (record.isNew) {
+                    return 'EXP1210_exp_mo_emp_type_asgn_lov';
+                } else {
+                    return '';
+                }
+            }
+            
+            function EXP1210_onExpMoEmpTypesUpdateFun(dataSet, record, name, value, oldvalue) {
+                if (name == 'magOrgName') {
+                    record.set('companyCode', '');
+                    record.set('companyShortName', '');
+                    record.set('companyId', '');
+                }
+            }
+            
+            function EXP1210_expMoEmpTypesBackFun() {
+                $au('EXP1210_exp_mo_emp_type_asgn_com_link_window').close();
+                EXP1210_queryEmployeeType();
+            }
+            
+            function EXP1210_onExpMoEmpTypeGridCellClickFun(grid, row, name, record) {
+                var magOrgId = record.get('magOrgId');
+                if (name == 'companyCode') {
+                    if (!magOrgId) {
+                        Aurora.showInfoMessage('$[l:prompt]', '$[l:fnd_company.company_org_code]', null, 250, 100);
+                        return;
+                    } else {
+                        record.getMeta().getField('companyCode').setLovPara('magOrgId', magOrgId);
+                        record.getMeta().getField('companyCode').setLovPara('employeeTypeId', '$[/parameter/@employeeTypeId]');
+                    }
+                }
+            }
+            
+            function EXP1210_onExpMoEmpTypeAsgnSubmitSuccesFun() {
+                $au('EXP1210_exp_employee_types_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1210_exp_mo_emp_type_asgn_com_ds" autoPageSize="true" autoQuery="true" baseUrl="/exp/mo-emp-type-asgn-com" queryUrl="$[/request/@context_path]/exp/mo-emp-type-asgn-com/queryCompanyByEmpType?employeeTypeId=$[/parameter/@employeeTypeId]" selectable="false">
+                <a:fields>
+                    <a:field name="empMoAsgnId"/>
+                    <a:field name="employeeTypeId" defaultValue="$[/parameter/@employeeTypeId]"/>
+
+                    <a:field name="magOrgName" lovCode="LOV_COMPANY_ORG_CODE" required="true" prompt="fnd_managing_organization.mag_org_name">
+                        <a:mapping>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId"/>
+
+                    <a:field name="companyCode" lovCode="LOV_COMPANY_BY_MAG" prompt="fnd_company.company_code" required="true">
+                        <a:mapping>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+
+                    <a:field name="companyShortName" required="true" prompt="fnd_company.company_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="exp_mo_employee_type.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1210_onExpMoEmpTypesUpdateFun"/>
+                    <a:event name="submitsuccess" handler="EXP1210_onExpMoEmpTypeAsgnSubmitSuccesFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1210_exp_mo_emp_assign_form" column="2" labelWidth="120" title="exp_mo_employee_type.type" width="1000">
+                <a:formToolbar>
+                    <a:label name="sepatator"/>
+                    <a:gridButton bind="EXP1210_exp_mo_emp_type_assign_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1210_exp_mo_emp_type_assign_grid" type="save" width="80"/>
+                    <a:toolbarButton click="EXP1210_expMoEmpTypesBackFun" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="employeeTypeCode" bindTarget="EXP1210_exp_employee_types_result_ds" prompt="exp_mo_employee_type.employee_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP1210_exp_employee_types_result_ds" prompt="exp_mo_employee_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP1210_exp_mo_emp_type_assign_grid" bindTarget="EXP1210_exp_mo_emp_type_asgn_com_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="magOrgName" editorFunction="EXP1210_expMoEmpTypeAsgnFun" width="200"/>
+                    <a:column name="companyCode" align="center" editorFunction="EXP1210_expMoEmpTypeAsgnFun" width="80"/>
+                    <a:column name="companyShortName" align="left" width="200"/>
+                    <a:column name="enabledFlag" editor="EXP1210_enabled_flag_check_box" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1210_exp_mo_emp_type_asgn_lov"/>
+                    <a:checkBox id="EXP1210_enabled_flag_check_box"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP1210_onExpMoEmpTypeGridCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

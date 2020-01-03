@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: gyt $
+    $Date: 2019/01/03 07:47:59 $
+    $Revision: 1.2 $
+    $Purpose: 科目定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND2140_accountSetLink" url="$[/request/@context_path]/gld/account-set/accountDetail"/>
+        <script><![CDATA[
+            function FND2140_queryAccountSet() {
+                $au('FND2140_gldAccountSetResultDs').query();
+            }
+            
+            function FND2140_accountSetCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'FND2140_accountSetCodeTf';
+                } else {
+                    return '';
+                }
+            }
+            
+            function FND2140_coaStructureCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'FND2140_coaStructureCodeCb';
+                } else {
+                    return '';
+                }
+            }
+            
+            function FND2140_showDetail(value, record, name) {
+                var accountSetId = record.get('accountSetId');
+                if (accountSetId) {
+                    return '<a href="javascript:FND2140_showDetailInfo(' + accountSetId + ')">$[l:gld_account_set.show_detail]</a>';
+                }
+            }
+            
+            /*Modified by Arthur.Chen Date:2017-09-19 15:07:21
+             1.修改为侧面弹窗
+             */
+            
+            function FND2140_showDetailInfo(accountSetId) {
+                new Aurora.Window({
+                    id: 'FND2140_accountSetWindow',
+                    url: $au('FND2140_accountSetLink').getUrl() + '?accountSetId=' + accountSetId,
+                    title: '$[l:gld_account_detail]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function FND2140_onGridCellClick(grid, idx, name, record) {
+                if (name == 'coaStructureCode') {
+                    $au('FND2140_gldCoaStructureDs').query();
+                }
+            }
+
+            function FND2140_onGldAccountSetSubmitSuccess(){
+                $au('FND2140_gldAccountSetResultDs').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2140_gldCoaStructureDs" autoQuery="true" fetchAll="true" baseUrl="/gld/coa-structure" queryUrl="$[/request/@context_path]/gld/coa-structure/query">
+                <a:fields>
+                    <a:field name="coaStructureCode"/>
+                    <a:field name="coaStructureId"/>
+                    <a:field name="structureFormat"/>
+                    <a:field name="description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2140_gldAccountSetQueryDs" model="gld.gld_account_sets">
+                <a:fields>
+                    <a:field name="accountSetCode" prompt="gld_account_set.account_set_code"/>
+                    <a:field name="accountSetName" prompt="gld_account_set.account_description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2140_gldAccountSetResultDs" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/gld/account-set" queryDataSet="FND2140_gldAccountSetQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="accountSetCode" required="true" prompt="gld_account_set.account_set_code"/>
+                    <a:field name="accountSetName" required="true" prompt="gld_account_set.account_description" dto="com.hand.hec.fnd.dto.GldAccountSet" dtoId="accountSetId"/>
+                    <a:field name="coaStructureCode" displayField="coaStructureCode" options="FND2140_gldCoaStructureDs" required="true"   valueField="coaStructureId" returnField="coaStructureId" prompt="gld_coa_structure.coa_structure_code">
+                        <a:mapping>
+                            <a:map from="coaStructureId" to="coaStructureId"/>
+                            <a:map from="coaStructureCode" to="coaStructureCode"/>
+                            <a:map from="description" to="coaDescription"/>
+                            <a:map from="structureFormat" to="coaStructureFormat"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="coaStructureId"/>
+                    <a:field name="coaDescription" prompt="gld_coa_structure.description"/>
+                    <a:field name="coaStructureFormat" prompt="gld_coa_structure.structure_format"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2140_onGldAccountSetSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND2140_gldAccountSetResultGrid" type="add" width="80"/>
+                <a:gridButton bind="FND2140_gldAccountSetResultGrid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND2140_gldAccountSetQueryDs" resultTarget="FND2140_gldAccountSetResultDs" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="accountSetCode" bindTarget="FND2140_gldAccountSetQueryDs" typeCase="upper"/>
+                    <a:textField name="accountSetName" bindTarget="FND2140_gldAccountSetQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND2140_gldAccountSetResultGrid" bindTarget="FND2140_gldAccountSetResultDs" marginHeight="115" marginWidth="5" navBar="true">
+            <a:columns>
+                <a:column name="accountSetCode" align="center" editorFunction="FND2140_accountSetCodeEdit" sortable="true" width="120"/>
+                <a:column name="accountSetName" align="left" editor="FND2140_accountSetNameTld" width="200"/>
+                <a:column name="coaStructureCode" align="center" editorFunction="FND2140_coaStructureCodeEdit" width="120"/>
+                <a:column name="coaDescription" align="left" width="200"/>
+                <a:column name="coaStructureFormat" align="center" sortable="true" width="120"/>
+                <a:column name="accountSetId" align="center" renderer="FND2140_showDetail" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="FND2140_accountSetCodeTf" typeCase="upper"/>
+                <a:comboBox id="FND2140_coaStructureCodeCb"/>
+                <a:tledit id="FND2140_accountSetNameTld"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="FND2140_onGridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

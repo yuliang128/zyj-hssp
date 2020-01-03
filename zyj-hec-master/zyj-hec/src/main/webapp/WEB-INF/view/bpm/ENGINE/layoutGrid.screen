@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '$[/parameter/@componentId]';
+            var cmp = $AE.get(cmpId);
+            
+            Aurora.onReady(function() {
+                var record = $au('layoutGridDs').getAt(0);
+                cmp.initRecord(record);
+                 if(bpm_type=='page'){
+                     $au('gridButtonDs').setQueryUrl('$[/request/@context_path]/bpm/pageLayoutButton/queryByLayout');
+                    record.getField('layoutCode').setReadOnly(true);
+                    record.getField('layoutDesc').setReadOnly(true);
+                    record.getField('dataset').setReadOnly(true);
+                 }
+				if(record.get('layoutId')){
+		           $au('gridButtonDs').setQueryParameter('layoutId',record.get('layoutId'));
+		           $au('gridButtonDs').query();
+				}
+				else{
+	                var buttonRecords=cmp.getButtons();
+	                $au('gridButtonDs').removeAll();
+	                for(var i=0;i<buttonRecords.length;i++){
+	                    $au('gridButtonDs').add(buttonRecords[i],i);
+	                    if(buttonRecords[i].get('layoutId')){ buttonRecords[i].isNew=false;}
+	                }
+	                $au('gridButtonDs').totalCount=buttonRecords.length;
+				    
+				}
+                
+            });
+            
+            function saveGrid() {
+                var record = $au('layoutGridDs').getAt(0);
+                var buttonRecords=$au('gridButtonDs').getAll();
+                //cmp.setAttr(record);   保存grid，保存按钮 按钮对应的layout_id怎么获取？
+                var url='';
+                if(bpm_type == 'page'){
+                    url=$au('engineLayoutPageUpdatelink').getUrl();
+                }
+                if($au('layoutGridDs').validate()){
+	                Aurora.request({
+	                    url: url,
+	                    para: record.data,
+	                    success: function(result) {
+                            var btnSaveFlag=true;
+                            for(var i=0;i<buttonRecords.length;i++){
+                                if(buttonRecords[i].isNew){
+                                    btnSaveFlag=false;
+                                }
+                            }
+                            if(!btnSaveFlag){
+                                Aurora.showWarningMessage('', '请先保存按钮数据！', function () {
+                                    return;
+                                });
+                            }else{
+                                cmp.setAttr(record);
+                                cmp.setButtons(buttonRecords);
+                                cancelGrid();
+                            }
+	                    },
+	                    scope: this
+	                });
+                }
+            }
+            
+            function cancelGrid() {
+                $au('Grid_window').close();
+            }
+            
+             function onUpdateFunction(ds,record,name,newValue,oldValue){
+                if(name=='selectable'){
+                    if(newValue=='true'){
+                        record.getField('selectionModelDesc').setReadOnly(false);
+                    }
+                    else if(newValue=='false'){
+                        record.getField('selectionModelDesc').setReadOnly(true);
+                    }
+                }
+                
+            }
+            
+            function onTpltLayoutBtnUpdate(ds,record,name,newValue,oldValue){
+                if(name=='buttonType'){
+                    var fr=ds.find('buttonType',newValue,null,true);
+                   if(fr && fr.length &&fr.length>1){
+                       Aurora.showWarningMessage('','同类型的按钮只能添加一个！',function(){
+                           record.set('buttonType','');
+                           record.set('buttonTypeDesc','');
+						});
+                   }else{
+                       if(newValue){
+		                    record.set('id',cmpId+'_'+newValue.toLowerCase()+'_btn_id');
+                       }
+                   }
+                }
+               else if(name=="buttonTypeDesc"){
+                   record.set('text',newValue);
+               }
+            }
+            function editor_tfFun(record, name) {
+                if (name == 'buttonCode') {
+                    if (record.get('buttonId')) {
+                        return '';
+                    } else {
+                        return 'editor_tf';
+                    }
+                }
+                else if(name=='id'){
+                    if (record.get('buttonId') && bpm_type=='page') {
+                        return '';
+                    } else {
+                        return 'editor_tf';
+                    }
+                }
+                else if(name=='buttonTypeDesc'){
+                    if (record.get('buttonId') && bpm_type=='page') {
+                        return '';
+                    } else {
+                        return 'editor_cb';
+                    }
+                }
+                else if(name=='buttonDesc'){
+                    if (record.get('buttonId') && bpm_type=='page') {
+                        return '';
+                    } else {
+                        return 'editor_tf';
+                    }
+                }
+                else if(name=='operationTypeDesc'){
+                    if (record.get('buttonId') && bpm_type=='page') {
+                        return '';
+                    } else {
+                        return 'editor_cb';
+                    }
+                }
+            }
+            
+            function onTpltLayoutBtnAdd(ds, record, index) {
+                var lineNum = 0;
+                var records = ds.getAll();
+                for (var i = 0;i < ds.getAll().length - 1;i++) {
+                    if (records[i].get('buttonSequence') > lineNum) {
+                        lineNum = records[i].get('buttonSequence');
+                    }
+                }
+                record.set('buttonSequence', (Math.floor(lineNum / 10) + 1) * 10);
+                if(bpm_type=='tplt' || bpm_type=='page'){
+                    record.getField('buttonCode').setRequired(true);
+                    record.getField('id').setRequired(true);
+                    record.getField('operationTypeDesc').setRequired(true);
+                }
+                record.set('layoutId',$au('layoutGridDs').getAt(0).get("layoutId") );
+            }
+            
+            function changeDsIndexFun(grid, row, name, record){
+                record.ds.locate(row+1,true);
+            }
+            
+            function onTpltLayoutBtnSubmit(ds){
+                ds.query();
+            }
+            ]]></script>
+        <style><![CDATA[
+        	.item-grid{
+     			-webkit-box-sizing: unset; 
+    			-moz-box-sizing: unset;
+    		 	box-sizing: unset; 
+			}
+			
+			.item-grid-wrap table{
+			    border-collapse:separate;
+			}
+        ]]></style>
+        <a:dataSets>
+            <a:dataSet id="SELECT_MODEL">
+                <a:datas>
+                    <a:record name="单选" value="single"/>
+                    <a:record name="多选" value="multiple"/>
+                </a:datas>
+            </a:dataSet>
+            <a:dataSet id="layoutGridDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="layoutCode" prompt="bpm_tplt_layout_basic.layout_code"/>
+                    <a:field name="layoutDesc" prompt="bpm_tplt_layout_basic.layout_desc"/>
+                    <a:field name="prompt" prompt="bpm_tplt_tag_basic.prompt"/>
+                    <a:field name="id" prompt="prompt.layout_id" readOnly="true"/>
+                    <a:field name="labelwidth" prompt="bpm_tplt_layout_basic.labelwidth"/>
+                    <a:field name="row" defaultValue="1" prompt="bpm_tplt_layout_basic.row"/>
+                    <a:field name="navbar" checkedValue="true" defaultValue="false" prompt="bpm_tplt_layout_basic.navbar" uncheckedValue="false"/>
+                    <a:field name="selectable" checkedValue="true" defaultValue="false" prompt="bpm_tplt_layout_basic.selectable" uncheckedValue="false"/>
+                    <a:field name="selectionModelDesc" displayField="name" options="SELECT_MODEL" prompt="bpm_tplt_layout_basic.select_model" readOnly="true" returnField="selectionModel" valueField="value"/>
+                    <a:field name="selectionModel"/>
+                    <a:field name="layoutSequence" prompt="bpm_tplt_layout_basic.layout_sequence" readOnly="true"/>
+                    <a:field name="layoutTypeDesc" displayfield="meaning" options="engineLayoutTypeDs" prompt="bpm_tplt_layout_basic.layout_type" readOnly="true" returnField="layoutType" valueField="value"/>
+                    <a:field name="layoutType" readOnly="true"/>
+                    <a:field name="layoutId"/>
+                    <a:field name="viewParentLayoutId" prompt="bpm_tplt_layout_basic.parent_layout_id" readOnly="true"/>
+                    <a:field name="dataset" displayField="datasetId" options="engineBpmBindtargetDs" prompt="bpm_tplt_layout_basic.dataset" returnField="dataset" valueField="datasetId"/>
+                    <a:field name="style" prompt="bpm_page_layout_basic.style"/>
+                    <a:field name="width" prompt="bpm_page_layout_basic.height"/>
+                    <a:field name="height" prompt="bpm_page_layout_basic.width"/>
+                    <a:field name="marginwidth" prompt="marginwidth"/>
+                    <a:field name="marginheight" prompt="marginheight"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="bpm_page_layout_basic.hidden" uncheckedValue="false"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" prompt="bpm_page_layout_basic.template_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="templateId"/>
+                    <a:field name="pageId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdateFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="gridButtonDs" autoQuery="false" selectable="true" baseUrl="/bpm/pageLayoutButton">
+                <a:fields>
+                    <a:field name="buttonId"/>
+                    <a:field name="layoutId" defaultValue="$[../../@layoutId]"/>
+                    <a:field name="buttonSequence" prompt="bpm_tplt_button.button_sequence" readOnly="true"/>
+                    <a:field name="buttonCode" prompt="bpm_tplt_button.button_code" typeCase="upper"/>
+                    <a:field name="buttonDesc" prompt="bpm_tplt_button.button_desc"/>
+                    <a:field name="operationTypeDesc" displayfield="meaning" options="engineOperationTypeDs" prompt="bpm_page_layout_button.operation_type" returnField="operationType" valueField="value"/>
+                    <a:field name="operationType"/>
+                    <a:field name="id" prompt="prmopt.button_id"/>
+                    <a:field name="text" prompt="bpm_tplt_button.text"/>
+                    <a:field name="click"/>
+                    <a:field name="buttonTypeDesc" displayfield="meaning" options="engineButtonTypeDs" prompt="bpm_page_layout_button.type" returnField="buttonType" valueField="value"/>
+                    <a:field name="buttonType"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" prompt="bpm_page_layout_basic.hidden" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="bpm_page_layout_basic.disabled" uncheckedValue="false"/>
+                    <a:field name="style"/>
+                    <a:field name="btnstyle"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" prompt="bpm_page_layout_basic.template_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="layoutId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="onTpltLayoutBtnAdd"/>
+                    <a:event name="update" handler="onTpltLayoutBtnUpdate"/>
+                    <a:event name="submitsucess" handler="onTpltLayoutBtnSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="Grid">
+                <a:textField name="layoutSequence" bindTarget="layoutGridDs"/>
+                <a:textField name="layoutCode" bindTarget="layoutGridDs"/>
+                <a:textField name="layoutDesc" bindTarget="layoutGridDs"/>
+                <a:comboBox name="layoutTypeDesc" bindTarget="layoutGridDs"/>
+                <a:placeHolder id="datasetConfig"/>
+                <a:textField name="id" bindTarget="layoutGridDs"/>
+                <a:checkBox name="navbar" bindTarget="layoutGridDs"/>
+                <a:textField name="viewParentLayoutId" bindTarget="layoutGridDs"/>
+                <a:checkBox name="hidden" bindTarget="layoutGridDs"/>
+                <a:numberField name="width" allowDecimals="false" bindTarget="layoutGridDs"/>
+                <a:numberField name="height" allowDecimals="false" bindTarget="layoutGridDs"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="saveGrid" skin="green" text="hap_confirm"/>
+                <a:button click="cancelGrid" skin="red" text="hap_cancel"/>
+            </a:hBox>
+            <a:grid autoadjustheight="true" bindTarget="gridButtonDs" navBar="true" width="780">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                    <a:button type="save"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="buttonSequence" align="center" width="40"/>
+                    <a:column name="buttonCode" align="center" editorFunction="editor_tfFun" width="80"/>
+                    <!-- <a:column name="id" align="center" width="80"/> -->
+                    <a:column name="buttonTypeDesc" align="center" editorFunction="editor_tfFun" width="80"/>
+                    <a:column name="text" align="center" editor="editor_tf_normal" width="80"/>
+                    <a:column name="buttonDesc" align="left" editorFunction="editor_tfFun" width="80"/>
+                    <a:column name="operationTypeDesc" align="center" editorFunction="editor_tfFun" width="80"/>
+                    <a:column name="hidden" align="center" editor="editor_ck" width="80"/>
+                    <a:column name="disabled" align="center" editor="editor_ck" width="80"/>
+                    <a:column name="templateFlag" align="center" editor="editor_ck" width="60"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="editor_tf"/>
+                    <a:textField id="editor_tf_normal"/>
+                    <a:numberField id="editor_nm" allowDecimals="false"/>
+                    <a:checkBox id="editor_ck"/>
+                    <a:comboBox id="editor_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="changeDsIndexFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="datasetConfig">
+            <p:switch test="/parameter/@bpm_type">
+                <p:case value="tplt">
+                    <c:process-config>
+                        <a:comboBox name="dataset" bindTarget="layoutGridDs"/>
+                    </c:process-config>
+                </p:case>
+                <p:case value="page">
+                    <c:process-config>
+                        <a:checkBox name="templateFlag" bindTarget="layoutGridDs"/>
+                    </c:process-config>
+                </p:case>
+            </p:switch>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshCashFlowItemMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshCashFlowItem">
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="CASH_FLOW_LINE_NUMBER" property="cashFlowLineNumber" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CASH_FLOW_ITEM_TYPE" property="cashFlowItemType" jdbcType="VARCHAR"/>
+        <result column="INDENT" property="indent" jdbcType="DECIMAL"/>
+        <result column="ORIENTATION" property="orientation" jdbcType="VARCHAR"/>
+        <result column="VISIBLE_FLAG" property="visibleFlag" jdbcType="VARCHAR"/>
+        <result column="CASH_FLOW_ITEM_TYPE_DESC" property="cashFlowItemTypeDesc" jdbcType="VARCHAR"/>
+        <result column="ORIENTATION_DESC" property="orientationDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="defaultSetOfBook" resultMap="com.hand.hec.gld.mapper.GldSetOfBookMapper.BaseResultMap">
+      SELECT
+            sob.set_of_books_id,
+            sob.set_of_books_code,
+            sob.set_of_books_name,
+            concat( sob.SET_OF_BOOKS_CODE, '-', sobt.SET_OF_BOOKS_NAME ) set_of_books_code_name
+        FROM
+            gld_set_of_book sob
+            LEFT JOIN gld_set_of_book_tl sobt ON sob.SET_OF_BOOKS_ID = sobt.SET_OF_BOOKS_ID
+            AND sobt.LANG = #{request.locale}
+            LEFT JOIN fnd_mag_org_ref_gld_sob morgs ON sob.SET_OF_BOOKS_ID = morgs.SET_OF_BOOKS_ID
+        WHERE
+            morgs.mag_org_id = #{request.magOrgId}
+            AND sob.enabled_flag = 'Y'
+            AND morgs.enabled_flag = 'Y'
+            AND morgs.default_flag = 'Y'
+    </select>
+
+    <select id="queryForSob" resultMap="com.hand.hec.gld.mapper.GldSetOfBookMapper.BaseResultMap">
+      SELECT
+            *
+        FROM
+            (
+        SELECT
+            sob.set_of_books_id,
+            sob.set_of_books_code,
+            sobt.set_of_books_name,
+            concat( sob.SET_OF_BOOKS_CODE, '-', sobt.SET_OF_BOOKS_NAME ) set_of_books_code_name
+        FROM
+            gld_set_of_book sob
+            LEFT JOIN gld_set_of_book_tl sobt ON sob.SET_OF_BOOKS_ID = sobt.SET_OF_BOOKS_ID
+            AND sobt.LANG = #{request.locale}
+            LEFT JOIN fnd_mag_org_ref_gld_sob morgs ON sob.SET_OF_BOOKS_ID = morgs.SET_OF_BOOKS_ID
+        WHERE
+            morgs.mag_org_id = #{request.magOrgId}
+            AND ifnull (#{allOrganizationalFlag}, 'N' ) = 'N'
+            AND sob.enabled_flag = 'Y'
+            AND morgs.enabled_flag = 'Y' UNION ALL
+        SELECT
+            sob.set_of_books_id,
+            sob.set_of_books_code,
+            sobt.set_of_books_name,
+            concat( sob.SET_OF_BOOKS_CODE, '-', sobt.SET_OF_BOOKS_NAME ) set_of_books_code_name
+        FROM
+            gld_set_of_book sob
+            LEFT JOIN gld_set_of_book_tl sobt ON sob.SET_OF_BOOKS_ID = sobt.SET_OF_BOOKS_ID
+            AND sobt.LANG = #{request.locale}
+        WHERE
+            sob.ENABLED_FLAG = 'Y'
+            AND #{allOrganizationalFlag} = 'Y'
+            ) v
+        ORDER BY
+            v.set_of_books_code
+    </select>
+
+    <select id="queryCashItem" resultMap="BaseResultMap">
+        select ccfi.cash_flow_item_id,
+        ccfi.set_of_books_id,
+        ccfi.cash_flow_line_number,
+        ccfi.cash_flow_item_type,
+        ccfi.indent,
+        ccfi.orientation,
+        ccfi.visible_flag,
+        ccfit.DESCRIPTION,
+        ccfit.DESCRIPTION cash_flow_item_name,
+        (select scvt.meaning
+        from sys_code_value_b scvb
+        inner join sys_code_b scb
+        on scb.CODE_ID = scvb.CODE_ID
+        and scb.code = 'CSH_CASH_FLOW_ITEM_TYPE'
+        left join sys_code_value_tl scvt
+        on scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+        and scvt.lang = #{request.locale}
+        where scvb.value = ccfi.cash_flow_item_type) cash_flow_item_type_desc,
+        (select scvt.meaning
+        from sys_code_value_b scvb
+        inner join sys_code_b scb
+        on scb.CODE_ID = scvb.CODE_ID
+        and scb.code = 'CSH_CASH_FLOW_ORIENTATION'
+        left join sys_code_value_tl scvt
+        on scvb.CODE_VALUE_ID = scvt.CODE_VALUE_ID
+        and scvt.lang = #{request.locale}
+        where scvb.value = ccfi.orientation) orientation_desc
+        from csh_cash_flow_item ccfi
+        left join csh_cash_flow_item_tl ccfit
+        on ccfi.CASH_FLOW_ITEM_ID = ccfit.CASH_FLOW_ITEM_ID
+        and ccfit.lang = #{request.locale}
+        where 1=1
+        <if test="setOfBooksId!=null">
+            and ccfi.set_of_books_id = #{setOfBooksId}
+        </if>
+        <if test="cashFlowItemId!=null">
+            and ccfi.cash_flow_item_id = #{cashFlowItemId}
+        </if>
+    </select>
+
+    <!-- Modify Tagin/2019.03.07 增加根据核算主体（账套）获取现金流量项 -->
+    <select id="getCashFlowItem" resultMap="BaseResultMap">
+        SELECT
+        ccfi.cash_flow_item_id,
+        ccfi.cash_flow_line_number,
+        ccit.description
+        FROM
+        csh_cash_flow_item ccfi
+        LEFT OUTER JOIN csh_cash_flow_item_tl ccit ON ccfi.cash_flow_item_id = ccit.cash_flow_item_id
+        AND ccit.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="setOfBooksId != null">
+                AND ccfi.set_of_books_id = #{setOfBooksId, jdbcType=DECIMAL, javaType=java.lang.Long"}
+            </if>
+            <if test="accEntityId != null">
+                AND EXISTS ( SELECT 'x' FROM gld_acc_entity_ref_sob gars WHERE gars.acc_entity_id =
+                #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long} AND
+                gars.set_of_books_id = ccfi.set_of_books_id AND gars.default_flag = 'Y')
+            </if>
+        </trim>
+    </select>
+</mapper>

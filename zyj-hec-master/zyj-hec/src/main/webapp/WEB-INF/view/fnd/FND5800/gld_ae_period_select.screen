@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin  
+    $Date: 2017-08-17
+    $Revision: 1.0  
+    $Purpose: 核算主体级会计期间控制
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND5800_aePeriodControl_link" url="$[/request/@context_path]/fnd/FND5800/gld_period_status.screen"/>
+        <script><![CDATA[
+            function FND5800_accEntityConfirm() {
+                if(!$au('FND5800_selectAccEntity_ds').validate()){
+                    return;
+                }
+                var record = $au('FND5800_selectAccEntity_ds').getAt(0);
+                var accEntityId = record.get('accEntityId');
+                var periodSetId = record.get('periodSetId');
+                new Aurora.Window({
+                    id: 'FND5800_aePeriodControl_window',
+                    url: $au('FND5800_aePeriodControl_link').getUrl() + '?periodSetId=' + periodSetId + '&accEntityId=' + accEntityId,
+                    title: '$[l:gld_ae_period_status.ae_period]',
+                    fullScreen: true
+                });
+            }
+            
+            function FND5800_selectAccEntityUpdate(dataset, record, name, value, oldValue) {
+                var accEntityId = record.get('accEntityId');
+                var periodSetName = record.getMeta().getField('periodSetName');
+                if (accEntityId != null || accEntityId != 'undefined') {
+                    periodSetName.setReadOnly(false);
+                }
+                if (name == 'accEntityName') {
+                    record.set('periodSetId', '');
+                    record.set('periodSetCode', '');
+                    record.set('periodSetName', '');
+                    record.set('totalPeriodNum', '');
+                }
+            }
+            
+            function FND5800_periodSetNameClickFunc() {
+                var record = $au('FND5800_selectAccEntity_ds').getAt(0);
+                var accEntityId = record.get('accEntityId');
+                record.getField('periodSetName').setLovPara('accEntityId', accEntityId);
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND5800_accEntity_ds">
+                <a:datas dataSource="accEntityList/records"/>
+            </a:dataSet>
+            <a:dataSet id="FND5800_selectAccEntity_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" displayField="valueName" options="FND5800_accEntity_ds" prompt="gld_accounting_entities.acc_entity_name" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="periodSetId"/>
+                    <a:field name="periodSetCode"/>
+                    <a:field name="totalPeriodNum"/>
+                    <a:field name="setOfBooksName"/>
+                    <a:field name="periodSetName" lovAutoQuery="true" lovCode="LOV_PERIOD_BOOK_NAME" prompt="gld_accounting_entities.set_period_book_name" readOnly="true" required="true">
+                        <a:mapping>
+                            <a:map from="periodSetId" to="periodSetId"/>
+                            <a:map from="periodSetCode" to="periodSetCode"/>
+                            <a:map from="periodSetName" to="periodSetName"/>
+                            <a:map from="totalPeriodNum" to="totalPeriodNum"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND5800_selectAccEntityUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="120" marginWidth="10" title="gld_responsibility_centers.acc_entitychoice">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="FND5800_accEntityConfirm" text="hap_confirm" width="80"/>
+                </a:formToolbar>
+                <a:comboBox name="accEntityName" bindTarget="FND5800_selectAccEntity_ds" prompt="gld_accounting_entities.acc_entity_name" width="200"/>
+                <a:lov name="periodSetName" bindTarget="FND5800_selectAccEntity_ds" prompt="gld_accounting_entities.set_period_book_name" width="200">
+                    <a:events>
+                        <a:event name="beforetriggerclick" handler="FND5800_periodSetNameClickFunc"/>
+                    </a:events>
+                </a:lov>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

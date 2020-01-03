@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpDocumentHistoryMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpDocumentHistory">
+        <result column="HISTORY_ID" property="historyId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_TYPE" property="documentType" jdbcType="VARCHAR" />
+        <result column="DOCUMENT_ID" property="documentId" jdbcType="DECIMAL" />
+        <result column="OPERATION_CODE" property="operationCode" jdbcType="VARCHAR" />
+        <result column="USER_ID" property="userId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+        <result column="OPERATION_TIME" property="operationTime" jdbcType="DATE" />
+        <result column="OPERATION_TIME_TZ" property="operationTimeTz" jdbcType="DATE" />
+        <result column="OPERATION_TIME_LTZ" property="operationTimeLtz" jdbcType="DATE" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryPayReqHistory" resultMap="BaseResultMap">
+        SELECT
+            edh.description,
+            edh.operation_code,
+            date_format(edh.operation_time,'%Y-%m-%d') operation_time,
+            edh.user_id,
+            scvt.meaning operation,
+            edh.document_id,
+            emp.employee_id,
+            concat(emp.name, '-',emp.employee_code) operater
+        FROM
+            exp_document_history edh
+            left join sys_user su on edh.created_by = su.user_id
+            left join exp_employee emp on su.employee_id = emp.employee_id,
+            sys_code_b scb,
+            sys_code_value_b scvb
+            LEFT JOIN sys_code_value_tl scvt ON ( scvb.code_value_id = scvt.code_value_id AND scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+
+        WHERE
+            scb.code_id = scvb.code_id AND
+                                scb.CODE = 'EXP_DOCUMENT_OPERATION_CODE' AND
+                                scvb.VALUE = edh.operation_code	AND
+            edh.document_type = 'PAYMENT_REQUISITION' AND
+            edh.document_id   = #{cshPayHeaderId}
+        ORDER BY
+            operation_time
+    </select>
+
+</mapper>

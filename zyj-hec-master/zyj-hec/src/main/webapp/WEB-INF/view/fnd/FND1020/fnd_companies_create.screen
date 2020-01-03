@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/01/22 10:45 $
+    $Revision: 1 $
+    $Purpose: 公司创建
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:view>
+        <script><![CDATA[
+        function FND1020_createCompany() {
+            $au('FND1020_fnd_companies_create_ds').submit();
+        }
+
+        function FND1020_closeCompanyCreateWindow() {
+            $au('FND1020_company_create_window').close();
+            FND1020_queryCompanyLevel();
+
+        }
+
+        function FND1020_onCompanyCreateSuccess() {
+            FND1020_closeCompanyCreateWindow();
+        }
+
+        function FND1020_onUpdate(ds, record, name, value) {
+            if (name == 'startDateActive' || name == 'endDateActive') {
+                record.validate((name == 'startDateActive') ? 'endDateActive' : 'startDateActive');
+            }
+            else if (name == 'magOrgId') {
+                record.set('parentCompanyIdDisplay', '');
+                record.set('company_id', '');
+            }
+        }
+
+        function FND1020_compareDate(start, end) {
+            if (new Date(start) > new Date(end)) {
+                return false;
+            }
+            return true;
+        }
+
+        function FND1020_dateValidator(record, name, value) {
+            if (name == 'startDateActive' || name == 'endDateActive') {
+                var start_date = record.get('startDateActive');
+                var end_date = record.get('endDateActive');
+                if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                    if (!FND1020_compareDate(start_date, end_date)) {
+                        return '$[l:start_greater_than_end]';
+                    }
+                }
+                return true;
+            }
+        }
+
+
+        function FND1020_beforetriggerclick() {
+            var magOrgId = "$[/model/@magOrgId]";
+            if (magOrgId == '' || magOrgId == undefined) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd_company.company_org_code]');
+                return;
+            }
+
+
+        }
+
+        function FND1020_onParentCompanyFocusFun() {
+            var magOrgId = $au('createParentCompanyListDs').getAt(0).get('magOrgId');
+            if (magOrgId == '' || magOrgId == undefined) {
+                $au('createParentCompanyListDs').setQueryParameter('magOrgId', '');
+            } else {
+                $au('createParentCompanyListDs').setQueryParameter('magOrgId', magOrgId);
+            }
+            $au('createParentCompanyListDs').query();
+        }
+
+        function FND1020_onCompanyLevelFocusFun() {
+            $au('companyLevelIdListDs').query();
+        }
+
+        function FND1020_onmanagingCurrencyFocusFun() {
+            $au('currencyListDs').query();
+        }
+
+        function FND1020_onSystemTimezoneFocusFun() {
+            $au('sysStandardTimezoneListDs').query();
+        }
+
+        function FND1020_onUserLanguageFocusFun() {
+            $au('languageListDs').query();
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="createParentCompanyListDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/fnd-company/queryFndCompany?magOrgId=$[/parameter/@magOrgId]"/>
+            <a:dataSet autoCreate="true"  loadData="true" id="FND1020_fnd_companies_create_ds"
+                       submitUrl="$[/request/@context_path]/fnd-company/submitFndCompany">
+                <a:fields>
+                    <a:field name="companyCode" required="true" prompt="fnd_company.company_code"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId2]"/>
+                    <a:field name="magOrgCode" defaultValue="$[/model/@magOrgCode]" lovCode="LOV_COMPANY_ORG_CODE"
+                             title="prompt.choose_mag_org" prompt="fnd_managing_organization.mag_org_code"
+                             required="true" readOnly="true">
+                        <a:mapping>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgId" to="magOrgId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgName" defaultValue="$[/model/@description]"
+                             prompt="fnd_managing_organization.description" readOnly="true"/>
+                    <a:field name="companyShortName" dtoId="companyId" dto="com.hand.hap.fnd.dto.FndCompany" prompt="fnd_company.company_name" required="true"/>
+                    <a:field name="companyFullName" dtoId="companyId" dto="com.hand.hap.fnd.dto.FndCompany" prompt="fnd_company.company_full_name"/>
+                    <a:field name="startDateActive" datatype="datetime" prompt="fnd_company.start_date_active"
+                             required="true" validator="FND1020_dateValidator"/>
+                    <a:field name="endDateActive" datatype="datetime" prompt="fnd_company.end_date_active"
+                             validator="FND1020_dateValidator"/>
+                    <a:field name="companyLevelId"/>
+                    <a:field name="companyLevelIdDisplay" displayField="description" options="companyLevelIdListDs"
+                             prompt="fnd_company_level.company_level_id_display" required="true"
+                             returnField="companyLevelId" valueField="companyLevelId"/>
+                    <a:field name="parentCompanyId"/>
+                    <a:field name="parentCompanyIdDisplay" prompt="fnd_company.parent_company_id_display"
+                             displayField="companyShortName" options="createParentCompanyListDs"
+                             returnField="parentCompanyId" valueField="companyId"/>
+                    <a:field name="managingCurrency"/>
+                    <a:field name="managingCurrencyDisplay" prompt="fnd_managing_organization.managing_currency_name"
+                             displayField="currencyName" options="currencyListDs" required="true"
+                             returnField="managingCurrency" valueField="currencyCode"/>
+                    <a:field name="chiefPositionDisplay" prompt="fnd_company.chief_position_display" readOnly="true"/>
+
+                    <a:field name="userLanguage" displayField="meaning" options="languageListDs"
+                             prompt="fnd_company.language" required="true" returnField="language" valueField="value"/>
+
+                    <a:field name="systemTimezoneIdDisplay"
+                             displayField="description" defaultValue="$[/model/@systemTimezoneIdDisplay]"
+                             options="sysStandardTimezoneListDs"
+                             prompt="fnd_company.system_timezone_id_display" required="true"
+                             returnField="systemTimezoneId" valueField="standardTimezoneId"/>
+                    <a:field name="systemTimezoneId" defaultValue="$[/model/@systemTimezoneId]"/>
+
+                    <a:field name="defaultAccEntity" prompt="fnd_company.default_acc_entity_name"
+                             title="gld_responsibility_centers.acc_entity_choice"
+                             lovCode="LOV_CHOOSE_ACC_ENTITY?magOrgId=$[/model/@magOrgId]">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="defaultAccEntity"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+
+                    <a:field name="defaultBgtEntity"
+                             title="bgt_entity.acc_entity_choice" prompt="fnd_company.default_bgt_entity_name"
+                             lovCode="LOV_CHOOSE_BGT_ENTITY?magOrgId=$[/model/@magOrgId]">
+                        <a:mapping>
+                            <a:map from="description" to="defaultBgtEntity"/>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND1020_onCompanyCreateSuccess"/>
+                    <a:event name="update" handler="FND1020_onUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND1020_create_fs" column="1" padding="5" title="fnd_company.info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="FND1020_createCompany" text="hap_save" width="80"/>
+                    <a:toolbarButton click="FND1020_closeCompanyCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:hBox labelWidth="120">
+                    <a:lov name="magOrgCode" bindTarget="FND1020_fnd_companies_create_ds"/>
+                    <a:textField name="magOrgName" bindTarget="FND1020_fnd_companies_create_ds"
+                                 prompt="fnd_managing_organization.description"/>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:textField name="companyCode" bindTarget="FND1020_fnd_companies_create_ds"/>
+                    <a:tledit name="companyShortName" bindTarget="FND1020_fnd_companies_create_ds"/>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:tledit name="companyFullName" bindTarget="FND1020_fnd_companies_create_ds" width="428"/>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:dateTimePicker name="startDateActive" bindTarget="FND1020_fnd_companies_create_ds"/>
+                    <a:dateTimePicker name="endDateActive" bindTarget="FND1020_fnd_companies_create_ds"/>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:comboBox name="companyLevelIdDisplay" bindTarget="FND1020_fnd_companies_create_ds">
+                        <a:events>
+                            <a:event name="focus" handler="FND1020_onCompanyLevelFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="parentCompanyIdDisplay" bindTarget="FND1020_fnd_companies_create_ds">
+                        <a:events>
+                            <a:event name="focus" handler="FND1020_onParentCompanyFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:comboBox name="managingCurrencyDisplay" bindTarget="FND1020_fnd_companies_create_ds">
+                        <a:events>
+                            <a:event name="focus" handler="FND1020_onmanagingCurrencyFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:lov name="chiefPositionDisplay" bindTarget="FND1020_fnd_companies_create_ds"/>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:comboBox name="userLanguage" bindTarget="FND1020_fnd_companies_create_ds">
+                        <a:events>
+                            <a:event name="focus" handler="FND1020_onUserLanguageFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="systemTimezoneIdDisplay" bindTarget="FND1020_fnd_companies_create_ds">
+                        <a:events>
+                            <a:event name="focus" handler="FND1020_onSystemTimezoneFocusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:lov name="defaultAccEntity" bindTarget="FND1020_fnd_companies_create_ds" width="200">
+                        <a:events>
+                            <a:event name="beforetriggerclick" handler="FND1020_beforetriggerclick"/>
+                        </a:events>
+                    </a:lov>
+                </a:hBox>
+                <a:hBox labelWidth="120">
+                    <a:lov name="defaultBgtEntity" bindTarget="FND1020_fnd_companies_create_ds" width="200">
+                        <a:events>
+                            <a:event name="beforetriggerclick" handler="FND1020_beforetriggerclick"/>
+                        </a:events>
+                    </a:lov>
+                </a:hBox>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

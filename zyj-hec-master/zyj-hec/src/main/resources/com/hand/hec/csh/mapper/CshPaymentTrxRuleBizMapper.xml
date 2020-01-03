@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentTrxRuleBizMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentTrxRuleBiz">
+        <result column="RULE_BIZ_ID" property="ruleBizId" jdbcType="DECIMAL"/>
+        <result column="RULE_ID" property="ruleId" jdbcType="DECIMAL"/>
+        <result column="RULE_BIZ_CODE" property="ruleBizCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="TYPE_CODE" property="typeCode" jdbcType="VARCHAR"/>
+        <result column="CUSTOM_FUNCTION" property="customFunction" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+    </resultMap>
+
+    <!-- Modify Tagin/2019.03.13 获取付款事务生成规则的业务范围 -->
+    <select id="getTrxRuleBiz" resultMap="BaseResultMap">
+        SELECT
+        cptr.rule_id,
+        cprb.rule_biz_id,
+        cprb.type_code,
+        cprb.custom_function
+        FROM
+        csh_payment_trx_rule cptr,
+        csh_payment_trx_rule_biz cprb
+        WHERE
+        cptr.mag_org_id = #{magOrgId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        AND cptr.business_type_code = #{documentCategory, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND cptr.start_date_active <![CDATA[<=]]> CURRENT_DATE ( ) AND ( cptr.end_date_active >= CURRENT_DATE ( )
+        OR cptr.end_date_active IS NULL
+        )
+        AND cptr.rule_id = cprb.rule_id
+        AND cprb.start_date_active <![CDATA[<=]]> CURRENT_DATE ( ) AND ( cprb.end_date_active >= CURRENT_DATE ( )
+        OR cprb.end_date_active IS NULL
+        )
+        AND EXISTS ( SELECT 1 FROM csh_payment_trx_rule_asgn_ae cpae WHERE cpae.rule_id = cptr.rule_id AND
+        cpae.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long} AND cpae.enabled_flag = 'Y' )
+        ORDER BY
+        cptr.priority
+    </select>
+</mapper>

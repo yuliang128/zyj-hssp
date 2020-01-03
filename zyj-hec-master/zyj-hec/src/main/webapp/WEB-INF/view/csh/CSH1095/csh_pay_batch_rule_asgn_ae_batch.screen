@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-02-28 10:16:39
+    $Revision: 1.0
+    $Purpose: 付款批规则定义-分配核算主体-批量分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1095_paymentRuleAeBatchSave_link" url="$[/request/@context_path]/csh/payment-bat-rule-asgn-ae/submit"/>
+        <script><![CDATA[
+            function CSH1095_paymentRuleAeBatchSave() {
+                var records = $au('CSH1095_paymentRuleAeBatchResult_ds').getSelected();         
+                if (records.length < 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return false;
+                }
+                var param = [];
+                for (var i = 0;i < records.length;i++) {
+                    records[i].set('ruleId', '$[/parameter/@ruleId]');
+                    records[i].set('enabledFlag', 'Y');
+                    records[i].set('__status', 'add');
+                    param.push(records[i].data);
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('CSH1095_paymentRuleAeBatchSave_link').getUrl(),
+                    para: param,
+                    success: function() {
+                        $au('CSH1095_paymentRuleAeBatch_window').close();
+                    },
+                    scope: this
+                });
+            }
+            
+            function CSH1095_paymentRuleAeBatchBack() {
+                $au('CSH1095_paymentRuleAeBatch_window').close();
+            }
+            
+            function CSH1095_paymentRuleAeQuery() {
+                $au('CSH1095_paymentRuleAeBatchResult_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1095_paymentRuleAeBatchResult_ds" autoPageSize="true" autoQuery="true" fetchAll="false" pageSize="10" queryUrl="$[/request/@context_path]/csh/payment-bat-rule-asgn-ae/quertAccCanAsgn?magOrgId=$[/parameter/@magOrgId]&amp;ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="csh_pay_batch_rule_asgn.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="csh_pay_batch_rule_asgn.acc_entity_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1095_paymentRuleAeBatchResult_form" column="2" labelWidth="100" title="csh_payment_batch_rule.distribution" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH1095_paymentRuleAeBatchSave" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="CSH1095_paymentRuleAeBatchBack" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="ruleCode" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" prompt="csh_payment_batch_rule.rule_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="CSH1095_csh_payment_batch_rules_result_ds" prompt="csh_payment_batch_rule.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1095_paymentRuleAeBatch_grid" bindTarget="CSH1095_paymentRuleAeBatchResult_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="120"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

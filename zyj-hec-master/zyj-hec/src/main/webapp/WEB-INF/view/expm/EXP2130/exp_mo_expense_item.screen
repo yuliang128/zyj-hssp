@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-18 下午9:15:19  
+    $Revision: 1.0  
+    $Purpose: 管理组织级-费用项目定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP2130_exp_mo_expense_items_asgn_com_link" url="$[/request/@context_path]/expm/EXP2130/exp_mo_expense_items_company.screen"/>
+        <a:link id="EXP2130_exp_mo_exp_items_batch_companies_link" url="$[/request/@context_path]/expm/EXP2130/exp_mo_exp_items_batch_assign_companies.screen"/>
+        <script><![CDATA[
+            function EXP2130_queryExpenseItems() {
+                $au('EXP2130_exp_mo_expense_items_result_ds').query();
+            }
+            
+            function EXP2130_expenseItemsEdit(record, name) {
+                if (record.isNew) {
+                    return 'EXP2130_upper_textField';
+                }
+                return '';
+            }
+            //分配公司-跳转
+            
+            function EXP2130_assignCompany(value, record, name) {
+                if (!record.isNew) {
+                    var expenseItemId = record.get('moExpenseItemId');
+                    return '<a href="javascript:EXP2130_expenseItems_asgn_company(' + expenseItemId + ')">$[l:exp_mo_expense_item.assign_company]</a>';
+                }
+            }
+            
+            function EXP2130_expenseItems_asgn_company(expenseItemId) {
+                var magOrgId = $au('EXP2130_exp_mo_expense_items_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP2130_exp_mo_expense_items_asgn_com',
+                    url: /*exp_req_items_company.screen*/
+                    $au('EXP2130_exp_mo_expense_items_asgn_com_link').getUrl() + '?moExpenseItemId=' + expenseItemId + '&magOrgId=' + magOrgId,
+                    title: '$[l:exp_mo_expense_item.assign_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //批量分配公司-跳转
+            
+            function EXP2130_batchAsgnCompany() {
+                //add lcy 2017/12/21 20:36:20 批量分配前校验管理组织是否为空
+                if (Ext.isEmpty($au('EXP2130_exp_mo_expense_items_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:hap.prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                var typeDs = $au('EXP2130_exp_mo_expense_items_result_ds');
+                var typeRecordsData = typeDs.getJsonData(true);
+                if (typeRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                var record = typeDs.getAll();
+                var currentRecord = typeDs.getAt(record.length - 1);
+                if (currentRecord.isNew) {
+                    Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:prompt.data_check_failure]', null, 250, 100);
+                    return;
+                }
+                var magOrgId = $au('EXP2130_exp_mo_expense_items_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP2130_exp_mo_exp_items_com_assign_batch',
+                    url: $au('EXP2130_exp_mo_exp_items_batch_companies_link').getUrl() + '?magOrgId=' + magOrgId,
+                    title: '$[l:fnd_sys_venders.batch_disp_company]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            function EXP2130_closeReqItemsCreateWindow() {
+                history.go(-1);
+            }
+            
+            function EXP2130_reloadFunction() {
+                $au('EXP2130_exp_mo_expense_items_result_ds').query();
+            }
+            
+            function EXP2130_focus() {
+                $au('EXP2130_mange_organizationlist_ds').query();
+            }
+            
+            function EXP2130_onAdd(ds) {
+                var magOrgId = $au('EXP2130_exp_mo_expense_items_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function EXP2130_OnCellClick(grid, row, name, record) {
+                var metadata = record.getMeta();
+                var magOrgId = $au('EXP2130_exp_mo_expense_items_query_ds').getCurrentRecord().get('magOrgId');
+                if (name == 'moReqItemCode') {
+                    metadata.getField('moReqItemCode').setLovPara('magOrgId', magOrgId);
+                } else if (name == 'budgetItemCode') {
+                    metadata.getField('budgetItemCode').setLovPara('magOrgId', magOrgId);
+                }
+            }
+            
+            function EXP2130_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('EXP2130_exp_mo_expense_items_result_ds').query();
+                }
+            }
+            //add lcy 2017/12/21 20:36:20 保存前校验管理组织是否为空
+            
+            function EXP2130_beforeSubmit() {
+                if (Ext.isEmpty($au('EXP2130_exp_mo_expense_items_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:hap.prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP2130_BeforeCreate() {
+                if (Ext.isEmpty($au('EXP2130_exp_mo_expense_items_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:hap.prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2130_mange_organizationlist_ds" autoQuery="true" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/exp/employee-job/queryForManagingOrganization"/>
+            <a:dataSet id="EXP2130_exp_mo_expense_items_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="moExpenseItemCode" />
+                    <a:field name="description" />
+                    <a:field name="budgetItemCode" />
+                    <a:field name="budgetItemDesc" />
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/@description]" displayField="magOrgCodeName" options="EXP2130_mange_organizationlist_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId">
+                        <!--  modify lcy 2017/12/19 新增mapping值，用于批量分配时form上显示  -->
+                        <a:mapping>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                            <a:map from="magOrgName" to="magOrgName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="magOrgCode" defaultValue="$[/model/@magOrgCode]"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/@magOrgName]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP2130_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP2130_exp_mo_expense_items_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/exp/mo-expense-item" queryUrl="$[/request/@context_path]/exp/mo-expense-item/query" queryDataSet="EXP2130_exp_mo_expense_items_query_ds" selectable="true" >
+                <a:fields>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="moExpenseItemCode"  required="true"/>
+                    <a:field name="description"  required="true"/>
+                    <a:field name="moReqItemCode" autoComplete="true" autoCompleteField="moReqItemCode" lovGridHeight="320" lovHeight="440" lovCode="LOV_EXP_MO_REQ_ITEM" lovWidth="500" title="exp_mo_req_item.mo_req_item_code">
+                        <a:mapping>
+                            <a:map from="moReqItemId" to="moReqItemId"/>
+                            <a:map from="moReqItemCode" to="moReqItemCode"/>
+                            <a:map from="description" to="moReqItemDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="moReqItemDesc"/>
+                    <a:field name="budgetItemCode" autoComplete="true" autoCompleteField="budget_item_code" lovGridHeight="320" lovHeight="440" lovCode="LOV_BGT_BUDGET_ITEM" lovWidth="500" title="exp_req_item.budget_item">
+                        <a:mapping>
+                            <a:map from="budgetItemId" to="budgetItemId"/>
+                            <a:map from="budgetItemCode" to="budgetItemCode"/>
+                            <a:map from="description" to="budgetItemDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="budgetItemDesc"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="magOrgId" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP2130_reloadFunction"/>
+                    <a:event name="add" handler="EXP2130_onAdd"/>
+                    <a:event name="beforecreate" handler="EXP2130_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP2130_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP2130_exp_mo_expense_items_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP2130_exp_mo_expense_items_grid" type="save" width="80"/>
+                <a:toolbarButton click="EXP2130_batchAsgnCompany" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP2130_exp_mo_expense_items_query_ds" resultTarget="EXP2130_exp_mo_expense_items_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="80">
+                    <a:comboBox name="magOrgDisplay" bindTarget="EXP2130_exp_mo_expense_items_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2130_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moExpenseItemCode" bindTarget="EXP2130_exp_mo_expense_items_query_ds"  prompt="exp_mo_expense_item.mo_expense_item_code" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="EXP2130_queryExpenseItems"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="EXP2130_exp_mo_expense_items_query_ds" prompt="exp_mo_expense_item.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="EXP2130_queryExpenseItems"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+                <a:formBody>
+                    <a:textField name="budgetItemCode" bindTarget="EXP2130_exp_mo_expense_items_query_ds" placeholder="exp_mo_req_item.budget_item_code" >
+                        <a:events>
+                            <a:event name="enterdown" handler="EXP2130_queryExpenseItems"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="budgetItemDesc" bindTarget="EXP2130_exp_mo_expense_items_query_ds"  placeholder="bgt_budget_item.description">
+                        <a:events>
+                            <a:event name="enterdown" handler="EXP2130_queryExpenseItems"/>
+                        </a:events>
+                    </a:textField>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP2130_exp_mo_expense_items_grid" bindTarget="EXP2130_exp_mo_expense_items_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moExpenseItemCode" prompt="exp_mo_expense_item.mo_expense_item_code" align="center"  editorFunction="EXP2130_expenseItemsEdit" width="80"/>
+                <a:column name="description" prompt="exp_mo_expense_item.description" align="left" editor="EXP2130_textField" width="200"/>
+                <a:column name="moReqItemCode" align="center" editor="EXP2130_lov" prompt="exp_req_item.req_item_code" width="80"/>
+                <a:column name="moReqItemDesc" align="left" prompt="exp_mo_req_item.description" width="200"/>
+                <a:column name="budgetItemCode" align="center" editor="EXP2130_lov" prompt="exp_mo_req_item.budget_item_code" width="80"/>
+                <a:column name="budgetItemDesc" align="left" prompt="bgt_budget_item.description" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP2130_checkBox" prompt="exp_mo_expense_item.enabled_flag" width="80"/>
+                <a:column name="detailsRenderer" align="center" renderer="EXP2130_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP2130_upper_textField" typeCase="upper"/>
+                <a:tledit id="EXP2130_textField"/>
+                <a:checkBox id="EXP2130_checkBox"/>
+                <a:lov id="EXP2130_lov"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="EXP2130_OnCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

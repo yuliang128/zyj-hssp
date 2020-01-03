@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:service xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" checkSessionLock="true" lockKey="${/session/@session_id}" trace="true">
+    <a:init-procedure>
+        <s:server-script><![CDATA[
+            importPackage(Packages.aurora.plugin.weixin.qiye.service);
+            
+            function getTempMaterial() {
+                println($ctx.toXML());
+                var docId = $ctx.parameter['doc_id'];
+            
+                //执行通用单据保存
+                $bm('db.fnd_document_pkg.save_document').execute();
+            
+                var mediaIds = $ctx.parameter['media_ids'].replace(/wxLocalResource:\/\//g, '').split(',');
+                println(mediaIds);
+                for (var i = 0;i < mediaIds.length;i++) {
+                    var mediaId = mediaIds[i];
+                    var baseSavePath = 'F:/img/';
+                    var savePath = baseSavePath + mediaId;
+            
+                    //执行素材文件保存至本地附件
+                    var materialFile = TempMaterialService.getTempMaterial('hecGroup', savePath, $instance('uncertain.ocm.IObjectRegistry'), mediaId);
+            
+                    var fileName = materialFile.getName();
+                    var fileType = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+                    var fileSize = materialFile.length();
+                    var mimeType = '';
+                    if (fileType == 'jpg' || fileType == 'jpeg') {
+                        mimeType = 'image/jpeg';
+                    } else if (fileType == 'gif') {
+                        mimeType = 'image/gif';
+                    } else if (fileType == 'png') {
+                        mimeType = 'image/png';
+                    }
+            
+                    //执行附件保存
+                    $ctx.parameter['file_name'] = fileName;
+                    $ctx.parameter['file_size'] = fileSize;
+                    $ctx.parameter['file_path'] = baseSavePath + '/' + fileName;
+                    $ctx.parameter['mime_type'] = mimeType;
+                    $ctx.parameter['file_type_code'] = fileType;
+                    $ctx.parameter['doc_id'] = docId;
+                    $ctx.parameter.source_type_code = '';
+                    $ctx.parameter.source_pk_value = '';
+            
+                    $bm('fnd.fnd_atm_attachment').insert();
+            
+                    //执行fnd_document_images保存
+                    //$ctx.parameter.doc_id
+                    //$ctx.parameter.attachment_id
+                    //返回$ctx.parameter.image_id
+                    $bm('db.fnd_document_pkg.insert_document_image').execute();
+            
+                    //执行fnd_atm_attachment_multi保存
+                    //$ctx.parameter.table_name
+                    //$ctx.parameter.table_pk_value
+                    //$ctx.parameter.attachment_id
+                    $ctx.parameter.table_name = 'FND_DOCUMENT_IMAGES';
+                    $ctx.parameter.table_pk_value = $ctx.parameter.image_id;
+                    $bm('fnd.fnd_atm_attachment_multi').insert();
+            
+                    //执行fnd_atm_attachment更新操作
+                    $ctx.parameter.source_type_code = 'fnd_atm_attachment_multi';
+                    $ctx.parameter.source_pk_value = $ctx.parameter.record_id;
+                    $bm('fnd.fnd_atm_attachment').update();
+                }
+            }
+            
+            getTempMaterial();
+        ]]></s:server-script>
+    </a:init-procedure>
+    <a:service-output output="/parameter"/>
+</a:service>

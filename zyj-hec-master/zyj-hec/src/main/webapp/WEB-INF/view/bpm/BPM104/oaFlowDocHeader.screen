@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-6-16 上午10:02:07  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="oa_flow_doc_set_abandon_link" model="oaf.OAF2020.oa_flow_doc_set_abandon"
+                modelaction="batch_update"/>
+        <script><![CDATA[
+
+        function doQuery() {
+            $au('BPM104_oaFlowDocHeaderResultDs').query();
+        }
+
+        function doReset() {
+            $au('BPM104_oaFlowDocHeaderQueryDs').reset();
+        }
+
+        function BPM104_onDocHeaderQueryDsUpdateFun(ds, record, name, value, old_value) {
+            if (name == 'oaFlowCategoryId') {
+                if (value != null && value != '') {
+                    $au('BPM104_oaFlowSubCategoryDs').setQueryParameter('oaFlowCategoryId', record.get('oaFlowCategoryId'));
+                    $au('BPM104_oaFlowSubCategoryDs').query();
+                    record.getField('oaFlowSubCategoryDesc').setReadOnly(false);
+                } else {
+                    record.getField('oaFlowSubCategoryDesc').setReadOnly(true);
+                }
+                record.set('oaFlowSubCategoryDesc', '');
+            } else if (name == 'groupId') {
+                //groupId变更，先清理掉当前的查询条件设置
+                var tagType = ['tf', 'nf', 'dp'];
+                var maxCondNum = 5;
+                for (var i = 1; i <= maxCondNum; i++) {
+                    for (var j = 0; j < tagType.length; j++) {
+                        var tagId = 'BPM104_' + tagType[j] + '0' + i;
+                        Ext.fly(tagId).setStyle({display: 'none'});
+                        Ext.fly(tagId).child('input').set({placeholder: ''});
+                        var fieldName = $au(tagId).getBindName();
+                        record.set(fieldName, '');
+                    }
+                }
+                $au('BPM104_extendQueryForm').onShrinkToggle(true);
+                Aurora.request({
+                    url: '$[/request/@context_path]/bpm/pageGroupField/query?page=0&pageSize=0&groupId=' + value + '&queryFlag=Y',
+                    success: function (resp) {
+                        var tfCount = 0;
+                        var nfCount = 0;
+                        var dpCount = 0;
+                        if (resp.rows && resp.rows.length && resp.rows.length != 0) {
+                            for (var k = 0; k < resp.rows.length; k++) {
+                                var field = resp.rows[k];
+                                if (/^c/.test(field.fieldName) && tfCount < 5) {
+                                    tfCount++;
+                                    var tagId = 'BPM104_tf0' + tfCount;
+                                    $au(tagId).bind(ds, field.fieldName);
+                                } else if (/^n/.test(field.fieldName) && nfCount < 5) {
+                                    tfCount++;
+                                    var tagId = 'BPM104_nf0' + tfCount;
+                                    $au(tagId).bind(ds, field.fieldName);
+                                } else if (/^d/.test(field.fieldName) && dpCount < 5) {
+                                    tfCount++;
+                                    var tagId = 'BPM104_dp0' + tfCount;
+                                    $au(tagId).bind(ds, field.fieldName);
+                                }
+
+                                Ext.fly(tagId).setStyle({display: 'block'});
+                                Ext.fly(tagId).child('input').set({placeholder: field.fieldDesc});
+                                $au('BPM104_extendQueryForm').onShrinkToggle(false);
+                            }
+                        }
+                    }
+                })
+            }
+        }
+
+        function BPM104_documentNumberRender(value, record, name) {
+            var page_id = record.get('pageId');
+            var document_number = record.get('documentNumber');
+            var screen = record.get('screen');
+            var oa_flow_doc_header_id = record.get('docHeaderId');
+            if (page_id && document_number) {
+                return '<a href="javascript:DocumentNumberView(' + page_id + ',\'' + screen + '\',\'' + oa_flow_doc_header_id + '\')">' + document_number + '</a>';
+            } else {
+                return document_number;
+            }
+        }
+
+        function DocumentNumberView(page_id, screen, oa_flow_doc_header_id) {
+            var url = '$[/request/@context_path]/' + screen;
+            window.open(url + '?pageId=' + page_id + '&docHeaderId=' + oa_flow_doc_header_id);
+        }
+
+        function doAbandon() {
+            var records = $au('BPM104_oaFlowDocHeaderResultDs').getJsonData(true);
+            if (records.length < 1) {
+                Aurora.showMessage('$[l:PROMPT]', '$[l:prompt.please_select]');
+                return false;
+            }
+            Aurora.showConfirm('$[l:PROMPT]', '$[l:oa_flow_doc_header.abandon_prompt]', function () {
+                Aurora.request({
+                    url: $au('oa_flow_doc_set_abandon_link').getUrl(),
+                    para: records,
+                    success: Aurora.showMessage('$[l:PROMPT]', '$[l:successful_operation]', doQuery),
+                    scope: this
+                });
+            });
+
+        }
+
+        Aurora.onReady(function () {
+            $au('BPM104_extendQueryForm').onShrinkToggle(true);
+        })
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM104_oaFlowCategoryDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.OA_FLOW_CATEGORY/"/>
+            <a:dataSet id="BPM104_oaFlowSubCategoryDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.OA_FLOW_SUB_CATEGORY/"/>
+            <a:dataSet id="document_status_ds"/>
+            <a:dataSet id="BPM104_oaFlowDocHeaderQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="documentNumber" prompt="oa_flow_doc_header.document_number"/>
+                    <a:field name="templateDesc" autoComplete="true" autoCompleteField="groupDesc"
+                             lovCode="LOV_BPM_TEMPLATE" prompt="oa_flow_doc_header.template_desc"
+                             title="bpm_page_group.template_choose">
+                        <a:mapping>
+                            <a:map from="templateId" to="templateId"/>
+                            <a:map from="templateDesc" to="templateDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="oaFlowTypeId"/>
+                    <a:field name="oaFlowCategoryDesc" displayField="meaning" options="BPM104_oaFlowCategoryDs"
+                             prompt="bpm_page_group.oa_flow_category" returnField="oaFlowCategoryId"
+                             valueField="value"/>
+                    <a:field name="oaFlowSubCategoryDesc" displayField="meaning" options="BPM104_oaFlowSubCategoryDs"
+                             prompt="bpm_page_group.oa_flow_sub_category" readOnly="true"
+                             returnField="oaFlowSubCategoryId" valueField="value"/>
+                    <a:field name="oaFlowCategoryId"/>
+                    <a:field name="oaFlowSubCategoryId"/>
+                    <a:field name="documentDateFrom" prompt="oa_flow_doc_header.document_date_from"/>
+                    <a:field name="documentDateTo" prompt="oa_flow_doc_header.document_date_to"/>
+                    <a:field name="documentStatusName" displayField="description" options="document_status_ds"
+                             prompt="oa_flow_doc_header.document_status" returnField="documentStatus"
+                             valueField="value"/>
+                    <a:field name="documentStatus"/>
+                    <a:field name="note" prompt="oa_flow_doc_header.note"/>
+                    <a:field name="groupDesc" lovCode="LOV_BPM_PAGE_GROUP" prompt="页面分组">
+                        <a:mapping>
+                            <a:map from="groupDesc" to="groupDesc"/>
+                            <a:map from="groupId" to="groupId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="groupId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BPM104_onDocHeaderQueryDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BPM104_oaFlowDocHeaderResultDs" pageSize="10" autoCount="true" autoQuery="true"
+                       baseUrl="/bpm/docHeader" queryDataSet="BPM104_oaFlowDocHeaderQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="documentNumber" prompt="oa_flow_doc_header.document_number"/>
+                    <a:field name="templateDesc" prompt="oa_flow_doc_header.template_desc"/>
+                    <a:field name="employeeName" prompt="oa_flow_doc_header.employee_id"/>
+                    <a:field name="positionName" prompt="oa_flow_doc_header.position_id"/>
+                    <a:field name="unitName" prompt="oa_flow_doc_header.unit_id"/>
+                    <a:field name="documentDate" prompt="oa_flow_doc_header.document_date"/>
+                    <a:field name="documentStatusName" prompt="oa_flow_doc_header.document_status"/>
+                    <a:field name="documentStatus"/>
+                    <a:field name="note" prompt="oa_flow_doc_header.note"/>
+                    <a:field name="updatePageId"/>
+                    <a:field name="screen"/>
+                    <a:field name="templateId"/>
+                    <a:field name="pageGroupId"/>
+                    <a:field name="pageId"/>
+                    <a:field name="docHeaderId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form marginWidth="35" title="oa_flow_doc_header.maintain" style="width:100%" column="4">
+                <a:textField name="documentNumber" bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                <a:lov name="templateDesc" bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                <a:comboBox name="oaFlowCategoryDesc" bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                <a:comboBox name="oaFlowSubCategoryDesc" bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                <a:lov name="groupDesc" bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+            </a:form>
+            <a:form id="BPM104_extendQueryForm" marginWidth="35" style="width:100%;" title="扩展查询条件">
+                <div>
+                    <a:textField id="BPM104_tf01" style="margin:10px;float:left;display:none;" placeholder="文本01"
+                                 bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:textField id="BPM104_tf02" style="margin:10px;float:left;display:none;" placeholder="文本02"
+                                 bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:textField id="BPM104_tf03" style="margin:10px;float:left;display:none;" placeholder="文本03"
+                                 bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:textField id="BPM104_tf04" style="margin:10px;float:left;display:none;" placeholder="文本04"
+                                 bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:textField id="BPM104_tf05" style="margin:10px;float:left;display:none;" placeholder="文本05"
+                                 bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:numberField id="BPM104_nf01" style="margin:10px;float:left;display:none;" placeholder="数字01"
+                                   bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:numberField id="BPM104_nf02" style="margin:10px;float:left;display:none;" placeholder="数字02"
+                                   bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:numberField id="BPM104_nf03" style="margin:10px;float:left;display:none;" placeholder="数字03"
+                                   bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:numberField id="BPM104_nf04" style="margin:10px;float:left;display:none;" placeholder="数字04"
+                                   bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:numberField id="BPM104_nf05" style="margin:10px;float:left;display:none;" placeholder="数字05"
+                                   bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:datePicker id="BPM104_dp01" style="margin:10px;float:left;display:none;" placeholder="日期01"
+                                  bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:datePicker id="BPM104_dp02" style="margin:10px;float:left;display:none;" placeholder="日期02"
+                                  bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:datePicker id="BPM104_dp03" style="margin:10px;float:left;display:none;" placeholder="日期03"
+                                  bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:datePicker id="BPM104_dp04" style="margin:10px;float:left;display:none;" placeholder="日期04"
+                                  bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <a:datePicker id="BPM104_dp05" style="margin:10px;float:left;display:none;" placeholder="日期05"
+                                  bindTarget="BPM104_oaFlowDocHeaderQueryDs"/>
+                    <div style="clear:both;"/>
+                </div>
+            </a:form>
+            <a:hBox>
+                <a:button click="doQuery" text="hap_query"/>
+                <a:button click="doReset" text="hap.reset"/>
+                <a:button click="doAbandon" text="oa_flow_doc_header.abandon"/>
+            </a:hBox>
+            <a:grid bindTarget="BPM104_oaFlowDocHeaderResultDs" height="330" marginHeight="280" marginWidth="40"
+                    navBar="true" width="805">
+                <a:columns>
+                    <a:column name="documentNumber" renderer="BPM104_documentNumberRender" width="120"/>
+                    <a:column name="templateDesc" width="150"/>
+                    <a:column name="employeeName" width="80"/>
+                    <a:column name="positionName" width="120"/>
+                    <a:column name="unitName" width="120"/>
+                    <a:column name="documentDate" width="120"/>
+                    <a:column name="documentStatusName" width="80"/>
+                    <a:column name="note" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

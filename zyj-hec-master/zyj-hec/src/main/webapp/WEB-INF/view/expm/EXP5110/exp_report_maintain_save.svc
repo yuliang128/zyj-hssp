@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:service xmlns:a="http://www.aurora-framework.org/application" xmlns:p="uncertain.proc" checkSessionLock="true" lockKey="${/session/@session_id}" trace="true">
+    <a:init-procedure>
+        <a:batch-apply sourcepath="/parameter">
+            <!--=========================================================================================-->
+            <!-- 头保存 开始 -->
+            <a:model-execute model="db.exp_report_pkg.save_exp_report_headers"/>
+            <!-- 报销单头上的费用对象保存 -->
+            <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                <a:model-execute model="db.exp_report_pkg.save_header_objects"/>
+            </a:batch-apply>
+            <!-- 保存报销单与通用单据头的关系 -->
+            <a:model-execute model="db.fnd_document_pkg.save_document"/>
+            <!-- 头保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 标准费用行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/standard_lines">
+                <!-- 标准费用信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】 -->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】 -->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 标准费用行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 精简费用行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/streamlined_lines">
+                <!-- 标准费用信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】 -->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 精简费用行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 差旅报销行程行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/travel_lines">
+                <!-- 差旅行程行信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 差旅报销行程行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 差旅报销住宿行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/travel_stay_lines">
+                <!-- 差旅费用行信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 差旅报销住宿行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 差旅报销补贴行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/travel_subsidy_lines">
+                <!-- 差旅费用行信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 差旅报销补贴行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 机票统报行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/ticket_unified_lines">
+                <!-- 机票统报行信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 机票统报行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--=========================================================================================-->
+            <!-- 住宿统报行保存 开始 -->
+            <a:batch-apply sourcepath="@current_parameter/travel_stay_unified">
+                <!-- 住宿统报行信息保存 -->
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_report_lines"/>
+                        <!-- 报销单行与申请单行关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_manual_exp_req_relation"/>
+                        <!-- 报销单行与费用池关联创建  -->
+                        <a:model-execute model="db.exp_report_pkg.create_exp_expense_pool_ref_rpt"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_report_lines"/>
+                        <!-- 报销单行和增值税发票行关联 【单行】-->
+                        <a:model-execute model="db.vat_invoice_relation_pkg.save_report_realation"/>
+                        <!-- 报销单行和增值税发票行关联 【多行】 -->
+                        <a:batch-apply sourcepath="@current_parameter/invoiceLines">
+                            <p:switch test="@current_parameter/@_status">
+                                <p:case value="insert">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                                <p:case value="update">
+                                    <a:model-execute model="db.vat_invoice_relation_pkg.save_invoice_relation"/>
+                                </p:case>
+                            </p:switch>
+                        </a:batch-apply>
+                    </p:case>
+                </p:switch>
+                <!-- 行上的费用对象信息保存 -->
+                <a:batch-apply sourcepath="@current_parameter/expense_object_lines">
+                    <a:model-execute model="db.exp_report_pkg.save_line_objects"/>
+                </a:batch-apply>
+                <!-- 保存单据行和通用单据图片间的关系 -->
+                <a:model-execute model="db.fnd_document_pkg.update_document_image_ref"/>
+            </a:batch-apply>
+            <!-- 住宿统报行保存 结束 -->
+            <!--=========================================================================================-->
+            <!--行保存结束后根据头维度更新对应行维度-->
+            <a:model-execute model="db.exp_report_pkg.update_exp_report_line_dim"/>
+            <!--=========================================================================================-->
+            <!-- 计划付款行保存  -->
+            <a:batch-apply sourcepath="@current_parameter/pmt_schedules">
+                <p:switch test="@current_parameter/@_status">
+                    <p:case value="insert">
+                        <a:model-execute model="db.exp_report_pkg.insert_exp_rep_pmt_schedules"/>
+                    </p:case>
+                    <p:case value="update">
+                        <a:model-execute model="db.exp_report_pkg.update_exp_rep_pmt_schedules"/>
+                    </p:case>
+                </p:switch>
+            </a:batch-apply>
+            <!--=========================================================================================-->
+            <!-- 自动生成计划付款行  -->
+            <a:model-execute model="db.exp_report_pkg.create_exp_rep_pmt_schedule"/>
+            <!-- 自动调整增值税拆分税额 -->
+            <a:model-execute model="db.vat_invoice_relation_pkg.auto_compute_splitted_amount"/>
+            <!-- 自动调整增值税发票预算 Tips：发票生成预算占用已在程序包中添加
+            <a:model-execute model="db.vat_invoice_relation_pkg.auto_adjust_bgt_reserves"/>
+            -->
+        </a:batch-apply>
+        <p:echo/>
+    </a:init-procedure>
+    <a:service-output output="/parameter"/>
+</a:service>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoReportTypeAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoReportTypeAsgnCom">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_REPORT_TYPE_ID" property="moExpReportTypeId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryCompanyInfo" resultMap="com.hand.hap.fnd.mapper.FndCompanyMapper.BaseResultMap"
+            parameterType="com.hand.hec.exp.dto.ExpMoReportType">
+        SELECT
+	      fc.COMPANY_ID,
+	      fc.COMPANY_CODE,
+	      fct.COMPANY_SHORT_NAME
+        FROM
+	      fnd_company fc
+	      left join fnd_company_tl fct on fc.COMPANY_ID=fct.company_id
+        WHERE
+	      fct.LANG = #{request.locale}
+	      and fc.MAG_ORG_ID = #{magOrgId}
+	      and (fc.end_date_active IS NULL OR sysdate() BETWEEN fc.start_date_active AND fc.end_date_active)
+	      <if test="moExpReportTypeId!=null">
+              and not exists
+              (select 1 from exp_mo_report_type_asgn_com ec where ec.company_id = fc.company_id and ec.MO_EXP_REPORT_TYPE_ID=#{moExpReportTypeId})
+          </if>
+    </select>
+
+
+</mapper>

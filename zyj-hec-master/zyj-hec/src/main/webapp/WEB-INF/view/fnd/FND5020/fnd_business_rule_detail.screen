@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw
+    $Date: 2018
+    $Revision: 权限规则明细
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <!--<a:model-query fetchAll="true" baseUrl="/fnd/businessRule" rootPath="business_rule_info"/>-->
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+
+        //检查是否有语法错误  现在只校验括号
+        function FND5020_validate() {
+            if ($au('FND5020_businessRuleDetailResultDs').isModified()) {
+                Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:fnd_business_rule_detail.save_first]', null, 250, 100);
+                return;
+            }
+
+            var records = $au('FND5020_businessRuleDetailResultDs').getAll();
+            var leftParenthesis_num = 0;
+            var right_parenthesis_num = 0;
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('leftParenthesis') == "(") {
+                    leftParenthesis_num++;
+                }
+
+                if (records[i].get('rightParenthesis') == ")") {
+                    right_parenthesis_num++;
+                }
+            }
+
+            if (leftParenthesis_num != right_parenthesis_num) {
+                Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:fnd_business_rule_detail.parenthesis_not_suit]', null, 250, 100);
+                return;
+            }
+
+            Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:fnd_business_rule_detail.validate_success]', null, 250, 100);
+        }
+
+        function FND5020_back() {
+            $au('FND5020_businessRuleDetailWindow').close();
+        }
+
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND5020_filtrateMethodDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_FILTRATE_METHOD/"/>
+            <a:dataSet id="FND5020_andOrDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_FILTER_LOGIC/"/>
+            <a:dataSet id="FND5020_parenthesisCodeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_PARENTHESIS_CODE/"/>
+            <a:dataSet id="FND5020_conditionTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_RULE_CONDITION/"/>
+            <a:dataSet id="FND5020_businessRuleDetailQueryDs">
+                <a:datas dataSource="businessInfo/records">
+                </a:datas>
+                <a:fields>
+                    <a:field name="businessRuleCode" prompt="fnd_business_rule.business_rule_code" readOnly="true"/>
+                    <a:field name="businessRuleName" prompt="fnd_business_rule.business_rule_name" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND5020_businessRuleDetailResultDs" autoQuery="true"
+                       baseUrl="/fnd/business-rule-detail"
+                       queryUrl="$[/request/@context_path]/fnd/business-rule-detail/query?businessRuleId=$[/parameter/@businessRuleId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="businessRuleId"
+                             defaultValue="$[/model/businessInfo/records/record/@businessRuleId]"/>
+                    <a:field name="sequence" required="true" prompt="fnd_business_rule_detail.sequence"/>
+                    <a:field name="andOr" displayField="meaning" options="FND5020_andOrDs" returnField="andOr"
+                             valueField="value" required="true" prompt="fnd_business_rule_detail.and_or"/>
+                    <a:field name="leftParenthesis" displayField="meaning" options="FND5020_parenthesisCodeDs"
+                             returnField="codeValueName" valueField="value"
+                             prompt="fnd_business_rule_detail.left_parenthesis"/>
+                    <a:field name="rightParenthesis" displayField="meaning" options="FND5020_parenthesisCodeDs"
+                             returnField="codeValueName" valueField="value"
+                             prompt="fnd_business_rule_detail.right_parenthesis"/>
+                    <a:field name="parameterName" lovCode="LOV_BIZ_RULE_PARAMETER" required="true"
+                             title="fnd_business_rule_parameter.parameter_name"
+                             prompt="fnd_business_rule_parameter.parameter_name">
+                        <a:mapping>
+                            <a:map from="parameterId" to="parameterId"/>
+                            <a:map from="parameterCode" to="parameterCode"/>
+                            <a:map from="parameterName" to="parameterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="conditionTypeName" displayField="meaning" options="FND5020_conditionTypeDs"
+                             returnField="conditionType" valueField="value" required="true"
+                             prompt="fnd_business_rule_detail.condition_type_name"/>
+                    <a:field name="conditionType"/>
+                    <a:field name="conditionValue" required="true" prompt="fnd_business_rule_detail.condition_value"/>
+                    <a:field name="enabledFlag" checkedValue="Y" uncheckedValue="N" defaultValue="Y" required="true"
+                             prompt="fnd_business_rule_detail.enabled_flag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND5020_businessRuleDetailQueryForm" column="2" title="fnd_business_rule.business_rule_info">
+                <a:textField name="businessRuleCode" bindTarget="FND5020_businessRuleDetailQueryDs"/>
+                <a:textField name="businessRuleName" bindTarget="FND5020_businessRuleDetailQueryDs"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="FND5020_back" text="hap.back" width="80"/>
+                <a:button click="FND5020_validate" text="hap.validate" width="80"/>
+            </a:hBox>
+            <a:grid id="FND5020_businessRuleDetailResultGrid" bindTarget="FND5020_businessRuleDetailResultDs"
+                    marginHeight="200" marginWidth="35" navBar="true">
+                <a:toolBar>
+                    <a:button type="add" width="80"/>
+                    <a:button type="delete" width="80"/>
+                    <a:button type="save" width="80"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="sequence" align="center" editor="FND5020_nf_02" width="80"/>
+                    <a:column name="andOr" align="left" editor="FND5020_cb" width="120"/>
+                    <a:column name="leftParenthesis" align="left" editor="FND5020_cb_02" width="120"/>
+                    <a:column name="parameterName" align="center" editor="FND5020_lov_02" width="100"/>
+                    <a:column name="conditionTypeName" align="center" editor="FND5020_cb_02" width="80"/>
+                    <a:column name="conditionValue" align="center" editor="FND5020_tf_03" width="80"/>
+                    <a:column name="rightParenthesis" align="center" editor="FND5020_cb_02" width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="FND5020_chk_02" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="FND5020_nf_02" allowDecimals="false" allowNegative="false"/>
+                    <a:textField id="FND5020_tf_03"/>
+                    <a:comboBox id="FND5020_cb_02"/>
+                    <a:checkBox id="FND5020_chk_02"/>
+                    <a:lov id="FND5020_lov_02"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

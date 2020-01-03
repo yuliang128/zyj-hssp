@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.vat.mapper.VatInvoiceRelationMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.vat.dto.VatInvoiceRelation">
+        <result column="RELATION_ID" property="relationId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_CATEGORY" property="documentCategory" jdbcType="VARCHAR" />
+        <result column="DOCUMENT_ID" property="documentId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_LINE_ID" property="documentLineId" jdbcType="DECIMAL" />
+        <result column="DOCUMENT_DIST_ID" property="documentDistId" jdbcType="DECIMAL" />
+        <result column="INVOICE_ID" property="invoiceId" jdbcType="DECIMAL" />
+        <result column="INVOICE_LINE_ID" property="invoiceLineId" jdbcType="DECIMAL" />
+        <result column="BUSINESS_AMOUNT" property="businessAmount" jdbcType="DECIMAL" />
+        <result column="BIZ2PAY_EXCHANGE_RATE" property="biz2payExchangeRate" jdbcType="DECIMAL" />
+        <result column="PAYMENT_AMOUNT" property="paymentAmount" jdbcType="DECIMAL" />
+        <result column="PAY2FUN_EXCHANGE_RATE" property="pay2funExchangeRate" jdbcType="DECIMAL" />
+        <result column="FUNCTIONAL_AMOUNT" property="functionalAmount" jdbcType="DECIMAL" />
+    </resultMap>
+    <select id="getVatInvoice" resultMap="BaseResultMap">
+       select distinct vir.invoice_id
+         from vat_invoice_relation vir
+        where vir.document_category = 'EXP_REPORT'
+          and vir.document_id = #{expRepHeaderId}
+          and vir.invoice_id is not null
+          and vir.invoice_line_id is not null
+    </select>
+    <select id="getVatCount" resultType="long">
+        select count(1)
+        from vat_invoice_relation vir
+       where vir.document_category = 'EXP_REPORT'
+             and vir.document_id = #{expReportHeaderId}
+             and vir.document_line_id = #{expReportLineId}
+    </select>
+    <select id="getVatRelationCount" resultType="com.hand.hec.vat.dto.VatInvoiceRelation">
+        select count(1) as vatGCount,
+               max(v.relation_id) as relationId
+        from (select vir.invoice_id,
+                     max(vir.relation_id) relation_id
+                from vat_invoice_relation vir
+               where vir.document_category = 'EXP_REPORT'
+                     and vir.document_id = #{expReportHeaderId}
+                     and vir.document_line_id = #{expReportLineId}
+               group by vir.invoice_id) v
+    </select>
+    <select id="getVatLineCount" resultType="long">
+        select count(1)
+          from vat_invoice_relation vir,
+               vat_invoice_line    vil
+         where vir.document_category = 'EXP_REPORT'
+               and vir.document_id = #{expReportHeaderId}
+               and vir.document_line_id = #{expReportLineId}
+               and vir.invoice_line_id = vil.invoice_line_id
+    </select>
+    <select id="getTaxCount" resultType="long">
+        select count(1)
+          from vat_invoice_relation    vir,
+               vat_invoice_rel_tax_ln vitl
+         where vir.document_category = 'EXP_REPORT'
+               and vir.document_line_id = #{expReportLineId}
+               and vir.relation_id = vitl.relation_id
+    </select>
+
+    <select id="getRelationCountByInvoiceId" resultType="long">
+        select count(1)
+          from vat_invoice_relation r,
+               exp_report_header   h
+         where r.invoice_id = #{invoiceId}
+           and r.document_category = 'EXP_REPORT'
+           and r.document_id = h.exp_report_header_id
+           and h.report_status in
+           ('SUBMITTED','COMPLETELY_APPROVED')
+    </select>
+
+</mapper>

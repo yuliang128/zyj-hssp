@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpPolicyAssignMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpPolicyAssign">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL" />
+        <result column="EXPENSE_TYPE_ID" property="expenseTypeId" jdbcType="DECIMAL" />
+        <result column="EXP_ITEM_ID" property="expItemId" jdbcType="DECIMAL" />
+        <result column="EXPENSE_TYPE_CODE" property="expenseTypeCode" jdbcType="VARCHAR" />
+        <result column="EXPENSE_TYPE_NAME" property="expenseTypeName" jdbcType="VARCHAR" />
+        <result column="EXP_ITEM_CODE" property="expItemCode" jdbcType="VARCHAR" />
+        <result column="EXP_ITEM_NAME" property="expItemName" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_CODE" property="docTypeCode" jdbcType="VARCHAR" />
+        <result column="DOC_TYPE_NAME" property="docTypeName" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="select" resultMap="BaseResultMap">
+        SELECT
+	*
+FROM
+	(
+	SELECT
+		tmp2.*,
+		item.mo_exp_item_code exp_item_code,
+		item.mo_exp_item_name exp_item_name
+	FROM
+		(
+		SELECT
+			tmp1.*,
+			exp.mo_expense_type_code expense_type_code,
+			exp.description expense_type_name
+		FROM
+			(
+			SELECT
+				asgn.assign_id,
+				asgn.mag_org_id,
+				asgn.doc_category,
+				asgn.doc_type_id,
+				asgn.expense_type_id,
+				asgn.exp_item_id,
+				doc.document_type_code doc_type_code,
+				doc.document_type_name doc_type_name
+			FROM
+				exp_mo_exp_policy_assign asgn
+				LEFT JOIN (
+				SELECT
+					'EXP_REQ' doc_category,
+					emtv.mo_exp_req_type_id document_type_id,
+					emtv.mag_org_id,
+					emtv.mo_exp_req_type_code document_type_code,
+					emtv.description document_type_name
+				FROM
+					exp_mo_req_type emtv
+				WHERE
+					emtv.enabled_flag = 'Y' UNION ALL
+				SELECT
+					'EXP_REP' doc_category,
+					emtv.mo_exp_report_type_id document_type_id,
+					emtv.mag_org_id,
+					emtv.mo_exp_report_type_code document_type_code,
+					emtv.description document_type_name
+				FROM
+					exp_mo_report_type emtv
+				WHERE
+					emtv.enabled_flag = 'Y'
+				) doc ON asgn.doc_type_id = doc.document_type_id
+			WHERE
+				( asgn.doc_category = doc.doc_category OR doc.doc_category IS NULL )
+			) tmp1
+			LEFT JOIN exp_mo_expense_type exp ON tmp1.expense_type_id = exp.mo_expense_type_id
+		) tmp2,
+		(
+		SELECT
+			'EXP_REP' doc_category,
+			ei.mag_org_id,
+			ei.mo_expense_item_id mo_exp_item_id,
+			ei.mo_expense_item_code mo_exp_item_code,
+			ei.description mo_exp_item_name
+		FROM
+			exp_mo_expense_item ei UNION ALL
+		SELECT
+			'EXP_REQ' doc_category,
+			ri.mag_org_id,
+			ri.mo_req_item_id mo_exp_item_id,
+			ri.mo_req_item_code mo_exp_item_code,
+			ri.description mo_exp_item_name
+		FROM
+			exp_mo_req_item ri
+		) item
+	WHERE
+		tmp2.exp_item_id = item.mo_exp_item_id
+		AND ( item.doc_category IS NULL OR tmp2.doc_category = item.doc_category )
+		AND tmp2.mag_org_id = #{magOrgId}
+	) v
+	<where>
+	    <if test="docCategory!=null and docCategory!=''">
+	    and v.DOC_CATEGORY = #{docCategory}
+        </if>
+        <if test="docTypeCode!=null and docTypeCode!=''">
+        and v.doc_type_code like concat('%',#{docTypeCode},'%')
+        </if>
+		<if test="expItemCode!=null and expItemCode!=''">
+			and v.exp_item_code like concat('%',#{expItemCode},'%')
+		</if>
+    </where>
+ORDER BY
+	assign_id
+    </select>
+</mapper>

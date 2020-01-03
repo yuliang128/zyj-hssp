@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '${/parameter/@component_id}';
+            var bpm_type = '${/parameter/@bpm_type}';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('input_textarea_ds').getAt(0);
+                cmp.initRecord(record);
+                var template_flag=record.get('template_flag');
+                if(bpm_type=='page' && record.get('tag_id')){
+                    $au('datarelationbtn').enable();
+                }
+                if(bpm_type=='page' && template_flag=='Y'){
+                    record.getField('field_name').setReadOnly(true);
+            	    record.getField('tag_sequence').setReadOnly(true);
+            	    record.getField('tag_code').setReadOnly(true);
+            	    record.getField('tag_type_desc').setReadOnly(true);
+	            	record.getField('colspan').setReadOnly(true);
+	                record.getField('rowspan').setReadOnly(true);
+	                record.getField('align_desc').setReadOnly(true);
+	                record.getField('footerrenderer').setReadOnly(true);
+	                record.getField('lock').setReadOnly(true);
+	                record.getField('sortable').setReadOnly(true);
+	                record.getField('parent_tag_desc').setReadOnly(true);
+            	}
+            	else{
+                	record.getField('field_name').setReadOnly(false);
+                	record.getField('field_name').setLovPara('layout_id',record.get('layout_id'));
+                	record.getField('parent_tag_desc').setLovPara('layout_id', record.get('layout_id'));
+	                var layout_view_id=record.get('layout_view_id');
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        // $au('colspanfield').show();
+	                        // $au('rowspanfield').show();
+	                        record.getField('align_desc').setReadOnly(true);
+			                record.getField('footerrenderer').setReadOnly(true);
+			                record.getField('lock').setReadOnly(true);
+			                record.getField('sortable').setReadOnly(true);
+			                record.getField('parent_tag_desc').setReadOnly(true);
+	                        record.getField('colspan').setReadOnly(false);
+	                        record.getField('rowspan').setReadOnly(false);
+	                    }
+	                    else if(layoutCmp && layoutCmp.getCmpType()=='grid'){
+	                        //$au('alignfield').show();
+	                        record.getField('colspan').setReadOnly(true);
+	                        record.getField('rowspan').setReadOnly(true);
+	                        record.getField('align_desc').setReadOnly(false);
+	                        record.getField('footerrenderer').setReadOnly(false);
+	                        record.getField('lock').setReadOnly(false);
+	                        record.getField('sortable').setReadOnly(false);
+	                        record.getField('parent_tag_desc').setReadOnly(false);
+	                    }
+	                }
+            	}
+            	if(bpm_type=='tplt'){
+            	      record.getField('field_name').setReadOnly(true);
+            	      record.getField('tag_code').setRequired(true);
+            	}else if(bpm_type=='page'){
+            	      record.getField('field_name').setRequired(true);
+            	}
+            });
+            
+            function saveHidden() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('hidden_ds').getAt(0);
+                cmp.setAttr(record);
+            
+                cancelHidden();
+            }
+            
+            function cancelHidden() {
+                $au('Hidden_window').close();
+            }
+             function onUpdateHandler(ds,record,name,newValue,oldValue){
+                var layout_view_id=record.get('layout_view_id');
+                if(name=='colspan'){
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        var column=layoutCmp.getColumn();
+	                        if(column){
+	                            if(newValue>column){
+	                                Aurora.showWarningMessage('', '最大值为：'+column, function(){
+	                                    newValue=column;
+	                                });
+	                            }
+	                        }
+	                    }
+	                }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="tag_type_list" lookupCode="BPM_TAG_TYPE"/>
+            <a:dataSet id="hidden_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="bindtarget" prompt="BPM_PAGE_TAGS_BASIC.BINDTARGET"/>
+                    <a:field name="name" prompt="BPM_PAGE_TAGS_BASIC.NAME"/>
+                    <a:field name="prompt" prompt="BPM_PAGE_GROUP_FIELDS.DESC"/>
+                    <a:field name="placeholder" prompt="PROMPT"/>
+                    <a:field name="defaultvalue" prompt="GL.DEFAULT_VALUE"/>
+                    <a:field name="required" checkedValue="true" defaultValue="false" prompt="BPM_TPLT_TAGS_BASIC.REQUIRED" uncheckedValue="false"/>
+                    <a:field name="readonly" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_TAGS_BASIC.READONLY" uncheckedValue="false"/>
+                    <a:field name="layout_view_id" prompt="所属布局ID"/>
+                    <a:field name="tag_sequence" prompt="BPM_PAGE_TAGS_BASIC.TAG_SEQUENCE" readOnly="true"/>
+                    <a:field name="tag_code" prompt="BPM_TPLT_TAGS_BASIC.TAG_CODE"/>
+                    <a:field name="tag_desc" prompt="BPM_PAGE_TAGS_BASIC.TAG_DESC"/>
+                    <a:field name="tag_type_desc" displayfield="code_value_name" options="tag_type_list" prompt="BPM_TPLT_TAGS_BASIC.TAG_TYPE" readOnly="true" returnField="tag_type" valueField="code_value"/>
+                    <a:field name="tag_type" readOnly="true"/>
+                    <a:field name="field_name" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_ref_field" lovWidth="500" prompt="BPM_PAGE_TAGS_BASIC.FIELD_ID" title="BPM_PAGE_TAGS_BASIC.FIELD_ID">
+                        <a:mapping>
+                            <a:map from="field_id" to="field_id"/>
+                            <a:map from="name" to="field_name"/>
+                            <a:map from="desc" to="tag_desc"/>
+                            <a:map from="returnfield_desc" to="cb_returnfield_desc"/>
+                            <a:map from="returnfield_name" to="cb_returnfield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="field_id"/>
+                    <a:field name="layout_id"/>
+                    <a:field name="id" prompt="BPM_PAGE_TAGS_BASIC.ID" readOnly="true"/>
+                    <a:field name="colspan" prompt="BPM_PAGE_TAGS_BASIC.COLSPAN"/>
+                    <a:field name="rowspan" prompt="BPM_PAGE_TAGS_BASIC.ROWSPAN"/>
+                    <a:field name="align_desc" displayfield="code_value_name" options="tag_alignment_list" prompt="BPM_PAGE_TAGS_BASIC.ALIGN" returnField="align" valueField="code_value"/>
+                    <a:field name="align"/>
+                    <a:field name="footerrenderer" checkedValue="Y" defaultValue="N" prompt="BPM_PAGE_TAGS_BASIC.FOOTERRENDERER" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="lock" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_TAGS_BASIC.LOCK" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="sortable" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_TAGS_BASIC.SORTABLE" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="parent_tag_desc" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_basic_parent_lov" lovWidth="500" prompt="BPM_PAGE_TAGS_BASIC.PARENT_TAG_ID" title="BPM_PAGE_TAGS_BASIC.PARENT_TAG_ID">
+                        <a:mapping>
+                            <a:map from="tag_desc" to="parent_tag_desc"/>
+                            <a:map from="tag_id" to="parent_tag_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parent_tag_id"/>
+                    <a:field name="template_flag"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" prompt="BPM_PAGE_LAYOUT_BASIC.HIDDEN" uncheckedValue="false"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdateHandler"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="Hidden">
+                <a:textField name="tag_sequence" bindTarget="hidden_ds"/>
+                <a:lov name="field_name" bindTarget="hidden_ds"/>
+                <a:textField name="tag_desc" bindTarget="hidden_ds"/>
+                <a:comboBox name="tag_type_desc" bindTarget="hidden_ds"/>
+                <a:textField name="id" bindTarget="hidden_ds"/>
+                <a:textField name="tag_code" bindTarget="hidden_ds"/>
+                <a:textField name="name" bindTarget="hidden_ds"/>
+                <a:textField name="field_source" bindTarget="hidden_ds"/>
+                <a:textField name="field_from_type" bindTarget="hidden_ds"/>
+                <a:textField name="defaultvalue" bindTarget="hidden_ds"/>
+                <a:checkBox name="required" bindTarget="hidden_ds"/>
+                <a:checkBox name="readonly" bindTarget="hidden_ds"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="saveHidden" skin="green" text="HAP_CONFIRM"/>
+                <a:button click="cancelHidden" skin="red" text="HAP_CANCEL"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+</a:screen>

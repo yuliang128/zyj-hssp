@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.gld.mapper.GldCurrencyMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.gld.dto.GldCurrency">
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="COUNTRY_CODE" property="countryCode" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_PRECISION" property="transactionPrecision" jdbcType="BIGINT"/>
+        <result column="CURRENCY_SYMBOL" property="currencySymbol" jdbcType="VARCHAR"/>
+        <result column="FINANCE_PRECISION" property="financePrecision" jdbcType="BIGINT"/>
+        <result column="CURRENCY_ID" property="currencyId" jdbcType="BIGINT"/>
+    </resultMap>
+    <select id="getPrecision" resultType="int">
+        select
+        gc.FINANCE_PRECISION
+        from gld_currency gc
+        where gc.CURRENCY_CODE = #{currencyCode}
+    </select>
+    <select id="getTransactionPrecision" resultType="int">
+        select
+        gc.transaction_precision
+        from gld_currency gc
+        where gc.CURRENCY_CODE = #{currencyCode}
+    </select>
+
+    <select id="checkBgtCurrency" resultMap="BaseResultMap">
+        select t.* from gld_currency t
+        where
+        (
+        #{filtrateMethod} = 'INCLUDE'
+        and (#{currencyCodeFrom} is null or t.currency_code &gt;= #{currencyCodeFrom})
+        and (#{currencyCodeTo} is null or t.currency_code &lt;= #{currencyCodeTo})
+        )
+        or
+        (
+        #{filtrateMethod} = 'EXCLUDE'
+        and
+        (
+        (#{currencyCodeFrom} is null or t.currency_code &lt; #{currencyCodeFrom})
+        or (#{currencyCodeTo} is null or t.currency_code &gt; #{currencyCodeTo})
+        )
+        )
+        and t.enabled_flag = 'Y'
+    </select>
+    <select id="getAccEntityFunCurrCode" parameterType="long" resultType="string">
+        SELECT
+        ( CASE WHEN ( ae.functional_currency_code IS NULL OR ae.functional_currency_code = '' ) THEN sob.functional_currency_code ELSE ae.functional_currency_code END ) currencyCode
+        FROM
+        gld_accounting_entity ae,
+        gld_acc_entity_ref_sob acrs,
+        gld_set_of_book sob
+        WHERE
+        ae.acc_entity_id = acrs.acc_entity_id
+        AND acrs.set_of_books_id = sob.set_of_books_id
+        AND acrs.default_flag = 'Y'
+        AND ae.acc_entity_id = #{accEntityId, jdbcType = DECIMAL, javaType = java.lang.Long}
+    </select>
+</mapper>

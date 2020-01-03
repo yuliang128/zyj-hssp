@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: YHL $
+    $Date: 2019/01/28 21:57 $
+    $Revision: 1.0 $
+    $Purpose: 供应商类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2400_venderTypeAe_link"
+                url="$[/request/@context_path]/pur/vender-type/fndVenderTypeAeView"/>
+        <a:link id="FND2400_venderTypeMultiple_link"
+                url="$[/request/@context_path]/fnd/FND2400/pur_vender_type_ae_multiple.screen"/>
+        <script><![CDATA[
+        function queryPurTypes() {
+            $au('FND2400_venderTypeResult_ds').query();
+        }
+
+        function typeCodeEditer(record, name) {
+            if (record.isNew) {
+                return 'FND2400_venderType_uppertf';
+            } else {
+                return '';
+            }
+        }
+
+        function FND2400_venderTypeAssignAE(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var id = record.get('venderTypeId');
+            return '<a href="javascript:FND2400_venderTypeAssignAEWindow(\'' + id + '\');">$[l:csh_offer_format.acc_entity]</a>';
+        }
+
+        function FND2400_venderTypeAssignAEWindow(id) {
+            new Aurora.Window({
+                id: 'FND2400_venderTypeAe_window',
+                url: $au('FND2400_venderTypeAe_link').getUrl() + '?venderTypeId=' + id,
+                title: '$[l:pur_system_vender.asgn_acc_entity]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('FND2400_venderTypeResult_ds').query();
+            });
+        }
+
+        function FND2400_venderTypeSubmitResponse(dataSet) {
+            dataSet.query();
+        }
+
+        function FND2400_venderTypeMultipleFunc() {
+            var venderTypeDs = $au('FND2400_venderTypeResult_ds');
+            var venderTypeRecordData = venderTypeDs.getJsonData(true);
+            if (venderTypeRecordData.length < 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                return false;
+            } else {
+                for (var i = 0; i < venderTypeRecordData.length; i++) {
+                    if (venderTypeRecordData[i].isNew || venderTypeRecordData[i].dirty) {
+                        Aurora.showMessage('$[l:prompt_message]', '$[l:work_flow_action.exit_before_save]', null, 230, 100);
+                        return false;
+                    }
+                }
+                new Aurora.Window({
+                    id: 'FND2400_venderTypeMultiple_window',
+                    url: $au('FND2400_venderTypeMultiple_link').getUrl(),
+                    title: '$[l:prompt.batch_add]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function () {
+                    $au('FND2400_venderTypeResult_ds').query();
+                });
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2400_venderTypeQuery_ds">
+                <a:fields>
+                    <a:field name="venderTypeCode" prompt="pur_vender_type.vender_type_code"/>
+                    <a:field name="description" prompt="pur_vender_type.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="queryPurTypes"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="FND2400_venderTypeResult_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       baseUrl="/pur/vender-type" queryDataSet="FND2400_venderTypeQuery_ds" selectable="true"
+                       queryUrl="$[/request/@context_path]/pur/vender-type/query">
+                <a:fields>
+                    <a:field name="venderTypeCode" required="true" prompt="pur_vender_type.vender_type_code"/>
+                    <a:field name="description" required="true" prompt="pur_vender_type.description"
+                             dto="com.hand.hec.fnd.dto.PurVenderType" dtoId="venderTypeId"/>
+                    <a:field name="oneOffFlag" prompt="pur_vender_type.one_off_flag" checkedValue="Y" defaultValue="Y"
+                             uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="pur_vender_type.enabled_flag" checkedValue="Y" defaultValue="Y"
+                             uncheckedValue="N"/>
+                    <a:field name="accEntity" prompt=""/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2400_venderTypeSubmitResponse"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="FND2400_venderType_grid" type="add" width="80"/>
+                <a:gridButton bind="FND2400_venderType_grid" type="save" width="80"/>
+                <a:gridButton bind="FND2400_venderType_grid" type="clear" width="80"/>
+                <a:toolbarButton click="FND2400_venderTypeMultipleFunc" text="hec_batch_assign" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND2400_venderTypeQuery_ds" resultTarget="FND2400_venderTypeResult_ds"
+                         style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:textField name="venderTypeCode" bindTarget="FND2400_venderTypeQuery_ds" typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPurTypes"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="FND2400_venderTypeQuery_ds">
+                        <a:events>
+                            <a:event name="enterdown" handler="queryPurTypes"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="FND2400_venderType_grid" bindTarget="FND2400_venderTypeResult_ds" marginHeight="115" marginWidth="3"
+                navBar="true">
+            <a:columns>
+                <a:column name="venderTypeCode" align="center" editorFunction="typeCodeEditer" width="120"/>
+                <a:column name="description" align="left" editor="FND2400_venderType_tld" width="200"/>
+                <a:column name="oneOffFlag" align="center" editor="FND2400_venderType_cb" width="100"/>
+                <a:column name="enabledFlag" align="center" editor="FND2400_venderType_cb" width="100"/>
+                <a:column name="accEntity" align="center" renderer="FND2400_venderTypeAssignAE" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="FND2400_venderType_uppertf" typeCase="upper"/>
+                <a:tledit id="FND2400_venderType_tld"/>
+                <a:checkBox id="FND2400_venderType_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

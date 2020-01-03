@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+
+        function BPM101_saveLayoutBtnFunction() {
+            $au('BPM101_bpmTpltLayoutButtonResultDs').submit();
+        }
+
+        function BPM101_layoutBtnBackFunction() {
+            $au('BPM101_bpmTpltLayoutButtonScreen').close();
+        }
+
+        function BPM101_onBtnTypeUpdate(dataSet, record, name, value, oldValue) {
+            if (name == 'buttonType') {
+                record.set('text', record.get('buttonTypeDesc'));
+            }
+        }
+
+        function BPM101_doLayoutBtnQuery() {
+            $au('BPM101_bpmTpltLayoutButtonResultDs').query();
+        }
+
+        function BPM101_onTpltLayoutBtnAdd(ds, record, index) {
+            var lineNum = 0;
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('buttonSequence') > lineNum) {
+                    lineNum = records[i].get('buttonSequence');
+                }
+            }
+            record.set('buttonSequence', (Math.floor(lineNum / 10) + 1) * 10);
+        }
+
+        function BPM101_layoutBtnEditorFun(record, name) {
+            if (name == 'buttonCode') {
+                if (record.get('buttonId')) {
+                    return '';
+                } else {
+                    return 'BPM101_layoutBtnTfUpper';
+                }
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM101_btnOperationTypeListDs">
+                <a:datas dataSource="operatorType/records"></a:datas>
+            </a:dataSet>
+            <a:dataSet id="BPM101_buttonTypeListDs">
+                <a:datas dataSource="buttonType/records"></a:datas>
+            </a:dataSet>
+            <a:dataSet id="BPM101_bpmTpltLayoutButtonResultDs" autoQuery="true"
+                       baseUrl="/bpm/tpltLayoutButton" pageSize="20"
+                       queryUrl="$[/request/@context_path]/bpm/tpltLayoutButton/query?layoutId=$[/parameter/@layoutId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="buttonId"/>
+                    <a:field name="layoutId" defaultValue="$[/parameter/@layoutId]"/>
+                    <a:field name="buttonSequence" prompt="bpm_page_layout_button.button_sequence" required="true"/>
+                    <a:field name="buttonCode" prompt="bpm_page_layout_button.button_code" required="true"
+                             typeCase="upper"/>
+                    <a:field name="buttonDesc" prompt="bpm_page_layout_button.button_desc"/>
+                    <a:field name="operationTypeDesc" displayfield="description"
+                             options="BPM101_btnOperationTypeListDs" prompt="bpm_page_layout_button.operation_type"
+                             required="true" returnField="operationType" valueField="value"/>
+                    <a:field name="operationType"/>
+                    <a:field name="id" prompt="bpm_page_layout_button.button_id" required="true"/>
+                    <a:field name="text" prompt="bpm_page_layout_button.text"/>
+                    <a:field name="click"/>
+                    <a:field name="buttonTypeDesc" displayfield="description" options="BPM101_buttonTypeListDs"
+                             prompt="bpm_page_layout_button.type" returnField="buttonType" valueField="value"/>
+                    <a:field name="buttonType"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_page_layout_button.disabled"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_page_layout_button.hidden"/>
+                    <a:field name="style" prompt="bpm_page_layout_button.style"/>
+                    <a:field name="btnstyle"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BPM101_onBtnTypeUpdate"/>
+                    <a:event name="add" handler="BPM101_onTpltLayoutBtnAdd"/>
+                    <a:event name="submitsuccess" handler="BPM101_doLayoutBtnQuery"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" row="2" title="bpm_tplt_layout_button" style="width:100%">
+                <a:hBox>
+                    <a:label name="templateCode" bindTarget="BPM101_bpmTemplateResultDs"
+                             prompt="bpm_template.template_code"/>
+                    <a:label name="templateDesc" bindTarget="BPM101_bpmTemplateResultDs"
+                             prompt="bpm_template.template_desc"/>
+                </a:hBox>
+                <a:hBox>
+                    <a:label name="layoutTypeDesc" bindTarget="BPM101_bpmTpltLayoutBasicDs"
+                             prompt="bpm_tplt_layout_basic.layout_type"/>
+                    <a:label name="layoutCode" bindTarget="BPM101_bpmTpltLayoutBasicDs"
+                             prompt="bpm_tplt_layout_basic.layout_code"/>
+                    <a:label name="layoutDesc" bindTarget="BPM101_bpmTpltLayoutBasicDs"
+                             prompt="bpm_tplt_layout_basic.layout_desc"/>
+                </a:hBox>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM101_saveLayoutBtnFunction" text="hap.save"/>
+                <a:button click="BPM101_layoutBtnBackFunction" text="hap.back"/>
+            </a:hBox>
+            <a:grid bindTarget="BPM101_bpmTpltLayoutButtonResultDs" height="350" marginHeight="230" marginWidth="40"
+                    navBar="true" width="1000">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="buttonSequence" align="center" editor="BPM101_layoutBtnNf" width="60"/>
+                    <a:column name="buttonCode" align="center" editorFunction="BPM101_layoutBtnEditorFun" width="120"/>
+                    <a:column name="id" align="center" editor="BPM101_layoutBtnTf" width="120"/>
+                    <a:column name="buttonTypeDesc" align="center" editor="BPM101_layoutBtnCb" width="80"/>
+                    <a:column name="text" align="center" editor="BPM101_layoutBtnTf" width="120"/>
+                    <a:column name="buttonDesc" align="left" editor="BPM101_layoutBtnTf" width="200"/>
+                    <a:column name="operationTypeDesc" align="center" editor="BPM101_layoutBtnCb" width="80"/>
+                    <a:column name="hidden" align="center" editor="BPM101_layoutBtnCk" width="80"/>
+                    <a:column name="disabled" align="center" editor="BPM101_layoutBtnCk" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BPM101_layoutBtnTfUpper"/>
+                    <a:textField id="BPM101_layoutBtnTf"/>
+                    <a:numberField id="BPM101_layoutBtnNf" allowDecimals="false"/>
+                    <a:checkBox id="BPM101_layoutBtnCk"/>
+                    <a:comboBox id="BPM101_layoutBtnCb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

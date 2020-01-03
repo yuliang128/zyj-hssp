@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshCashAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshCashAccount">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="ACCOUNT_CODE" property="accountCode" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR" />
+        <result column="SET_OF_BOOKS_CODE" property="setOfBooksCode" jdbcType="VARCHAR" />
+        <result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryByBooksId" resultType="java.util.Map">
+        SELECT
+            gsob.set_of_books_id,
+            gsob.set_of_books_code,
+            gsobt.set_of_books_name,
+            cdcfi.account_id
+        FROM
+            gld_set_of_book gsob
+            LEFT JOIN gld_set_of_book_tl gsobt ON gsob.SET_OF_BOOKS_ID = gsobt.SET_OF_BOOKS_ID
+            INNER JOIN csh_default_cash_flow_item cdcfi ON gsob.SET_OF_BOOKS_ID = cdcfi.SET_OF_BOOKS_ID
+        WHERE
+            gsobt.LANG = #{request.locale}
+            AND gsob.set_of_books_id = #{setOfBooksId} UNION
+        SELECT
+            gsob.set_of_books_id,
+            gsob.set_of_books_code,
+            gsobt.set_of_books_name,
+            -1 account_id
+        FROM
+            gld_set_of_book gsob
+            LEFT JOIN gld_set_of_book_tl gsobt ON gsob.SET_OF_BOOKS_ID = gsobt.SET_OF_BOOKS_ID
+        WHERE
+            gsobt.LANG = #{request.locale}
+            and gsob.set_of_books_id = #{setOfBooksId}
+            AND NOT EXISTS ( SELECT 1 FROM csh_default_cash_flow_item ci WHERE ci.set_of_books_id = gsob.set_of_books_id AND ci.set_of_books_id = #{setOfBooksId} )
+    </select>
+
+    <select id="queryCashAccount" resultMap="BaseResultMap">
+      SELECT
+            cca.assign_id,
+            cca.account_id,
+            ( SELECT ga.ACCOUNT_CODE FROM gld_account ga WHERE ga.account_id = cca.account_id ) account_code,
+            ( SELECT gat.description FROM gld_account_tl gat WHERE gat.account_id = cca.account_id AND gat.lang = #{request.locale} ) account_name,
+            cca.SET_OF_BOOKS_ID,
+            ( SELECT gsob.SET_OF_BOOKS_CODE FROM gld_set_of_book gsob WHERE gsob.SET_OF_BOOKS_ID = cca.SET_OF_BOOKS_ID ) SET_OF_BOOKS_CODE,
+            ( SELECT gsobt.SET_OF_BOOKS_NAME FROM gld_set_of_book_tl gsobt WHERE gsobt.SET_OF_BOOKS_ID = cca.SET_OF_BOOKS_ID AND gsobt.LANG = #{request.locale} ) SET_OF_BOOKS_NAME
+        FROM
+            csh_cash_account cca
+        WHERE
+            cca.SET_OF_BOOKS_ID = #{setOfBooksId}
+    </select>
+
+
+</mapper>

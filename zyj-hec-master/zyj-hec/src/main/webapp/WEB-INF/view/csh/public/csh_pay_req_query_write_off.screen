@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: caoke $
+    $Date: 2018/01/29 16:05:39 $
+    $Revision: 1.1 $
+    $Purpose:借款单核销查询
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH3110_write_off_exp_report_view_main_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="CSH3110_repayment_register_readonly_link" url="$[/request/@context_path]/csh/CSH7020/csh_repayment_register_view_maintain_main.screen"/>
+        <a:link id="CSH3110_report_write_off_prepayment_finance_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_write_off_prepayment_finance.screen"/>
+        <a:link id="CSH3110_csh_payment_transaction_detail_link_01" url="$[/request/@context_path]/csh/public/csh_payment_transaction_detail.screen"/>
+        <script><![CDATA[
+            //报销单
+            
+            function CSH3110_writeOffReportNumberRenderer(value, record, name) {
+                if (value) {
+                    return '<a href="javascript:CSH3110_openExpReport(\'' + record.get('docHeaderId') + '\')">' + value + '</a>';
+                }
+            }
+            
+            function CSH3110_openExpReport(expReportHeaderId) {
+                new Aurora.Window({
+                    url: $au('CSH3110_write_off_exp_report_view_main_link').getUrl() + '?expReportHeaderId=' + expReportHeaderId,
+                    id: 'exp_report_view_main_screen',
+                    fullScreen: true
+                });
+            }
+            
+            function backFunction() {
+                $au('CSH3110_csh_pay_req_query_write_off_screen').close();
+            }
+            //还款单
+            
+            function CSH3110_registeroNumberRenderer(value, record, name) {
+                return '<a href="javascript:CSH3110_openRegisterReadOnlyWindow(' + record.get('docHeaderId') + ')">' + value + '</a>';
+            }
+            
+            function CSH3110_openRegisterReadOnlyWindow(register_hds_id) {
+                new Aurora.Window({
+                    id: 'CSH3110_repayment_register_readonly_window',
+                    url: $au('CSH3110_repayment_register_readonly_link').getUrl() + '?registerHdsId=' + registerHdsId,
+                    title: '$[l:csh_repayment_register_view]',
+                    fullScreen: true
+                });
+            }
+            //单据
+            function CSH3110_doc_numberRenderer(value, record, name) {
+                var docType = record.get('docType');
+                if (docType == 'EXP_REPORT') {
+                    return '<a href="javascript:CSH3110_openExpReport(\'' + record.get('docHeaderId') + '\')">' + value + '</a>';
+                } else if (docType == 'CSH_REPAYMENT') {
+                    return '<a href="javascript:CSH3110_openRegisterReadOnlyWindow(' + record.get('docHeaderId') + ')">' + value + '</a>';
+                }
+            }
+            //核销信息
+            
+            function CSH3110_accountRenderer(value, record, name) {
+                var id = record.get('writeOffId');
+                var docType = record.get('docType');
+                if (docType == 'EXP_REPORT') {
+                    if (id) {
+                        return '<a href = "javascript:CSH3110_accountWindow(' + id + ')">$[l:exp_prepayment_post.financeinformationtab]</a>';
+                    }
+                 } else if (docType == 'CSH_REPAYMENT') {
+                    return '<a href = "javascript:CSH3110_mainOpenCshTransaction(' + record.get('transactionHeaderId')  + ')">$[l:exp_prepayment_post.financeinformationtab]</a>';
+                }
+                return '';
+            }
+
+            //核销凭证
+            function CSH3110_accountWindow(id) {
+                new Aurora.Window({
+                    url: $au('CSH3110_report_write_off_prepayment_finance_link').getUrl() + '?writeOffId=' + id,
+                    id: 'CSH3110_report_write_off_prepayment_finance_window',
+                    fullScreen: true
+                }).on('close', function() {
+            
+                   });
+            }
+           //付款明细
+            function CSH3110_mainOpenCshTransaction(transactionHeaderId) {
+                new Aurora.Window({
+                    url: $au('CSH3110_csh_payment_transaction_detail_link_01').getUrl() + '?transactionHeaderId=' + transactionHeaderId,
+                    id: 'CSH3110_csh_payment_transaction_detail_window',
+                    title: '$[l:csh_mo_transaction_detail]',
+                    fullScreen: true
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH3110_csh_write_off_init_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/query?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]">
+                <a:fields>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number" readOnly="true"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date" readOnly="true"/>
+                    <a:field name="employeeName" prompt="csh_payment_requisition_hd.employee_name" readOnly="true"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.AMOUNT" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH3110_csh_write_off_result_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/transaction-header/queryWriteOffByPaYReqHeaderId?headerId=$[/parameter/@paymentRequisitionHeaderId]" selectable="false">
+                <a:fields>
+                    <a:field name="docNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="docLineId"/>
+                    <a:field name="docHeaderId"/>
+                    <a:field name="docTypeName" prompt="csh_payment_requisition_hd.payment_req_type_name"/>
+                    <a:field name="writeOffId"/>
+                    <a:field name="writeOffDate" prompt="csh_write_off.write_off_date"/>
+                    <a:field name="periodName" prompt="csh_transaction_header.period_name"/>
+                    <a:field name="writeOffTypeName" prompt="csh_write_off.write_off_type_name"/>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="requisitionNumber" />
+                    <a:field name="moPaymentReqTypeName" />
+                    <a:field name="cshWriteOffAmount" prompt="csh_write_off.write_off_amount"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="trans_form" column="4" title="csh_payment_requisition_hd.write_off_history">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="backFunction" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="requisitionNumber" bindTarget="CSH3110_csh_write_off_init_ds"/>
+                <a:textField name="requisitionDate" bindTarget="CSH3110_csh_write_off_init_ds" renderer="Aurora.formatDate"/>
+                <a:textField name="employeeName" bindTarget="CSH3110_csh_write_off_init_ds"/>
+                <a:textField name="amount" bindTarget="CSH3110_csh_write_off_init_ds" renderer="Aurora.formatMoney"/>
+            </a:form>
+            <a:grid id="CSH3110_csh_write_off_result_grid" bindTarget="CSH3110_csh_write_off_result_ds" marginHeight="205" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="docNumber" align="center" renderer="CSH3110_doc_numberRenderer" width="150"/>
+                    <a:column name="docTypeName" align="center" width="220"/>
+                    <a:field name="transactionNum" width="150"/>
+                    <a:column name="writeOffTypeName" align="center" width="220"/>
+                    <a:column name="writeOffDate" align="center" width="130"/>
+                    <!--将借款金额改为核销金额   Y.duan 2017-8-28 13:55:56-->
+                    <a:column name="cshWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="account" align="center" renderer="CSH3110_accountRenderer" width="130"/>
+                </a:columns>
+                <a:editors>
+                    <a:textArea id="CSH3110_cshReqTa"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

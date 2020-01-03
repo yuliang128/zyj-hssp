@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-14
+    $Revision: 1.0
+    $Purpose: 客户类型批量分配核算主体（单）
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2505_customerTypeAeBatchSave_link"
+                url="$[/request/@context_path]/ord/customer-type-ref-ae/submit"/>
+        <script><![CDATA[
+        function FND2505_customerTypeAeBatchSave() {
+            var records = $au('FND2505_customerTypeAeBatchResult_ds').getJsonData(true);
+            if (records.length < 1) {
+                Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                return false;
+            }
+            var param = [];
+            for (var i = 0; i < records.length; i++) {
+                records[i]['customerTypeId'] = '$[/parameter/@customerTypeId]';
+                records[i]['enabledFlag'] = 'Y';
+                records[i]['__status'] = 'add';
+                records[i]['_token'] = null;
+            }
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('FND2505_customerTypeAeBatchSave_link').getUrl(),
+                para: records,
+                success: function () {
+                    $au('FND2505_customerTypeAeBatch_window').close();
+                },
+                scope: this
+            });
+        }
+
+        function FND2505_customerTypeAeBatchBack() {
+            $au('FND2505_customerTypeAeBatch_window').close();
+        }
+
+        function FND2505_customerTypeAeQuery() {
+            $au('FND2505_customerTypeAeBatchResult_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2505_customerTypeAeBatchQuery_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityCodeFrom"/>
+                    <a:field name="accEntityNameFrom"
+                             LovCode="CUSTOMER_TYPE_ASGN_ACC_ENTTITY?customerTypeId=$[/parameter/@customerTypeId]"
+                             prompt="gld_accounting_entity.acc_entity_from"
+                             title="gld_accounting_entities.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeFrom"/>
+                            <a:map from="accEntityName" to="accEntityNameFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCodeTo"/>
+                    <a:field name="accEntityNameTo"
+                             LovCode="CUSTOMER_TYPE_ASGN_ACC_ENTTITY?customerTypeId=$[/parameter/@customerTypeId]"
+                             prompt="gld_accounting_entity.acc_entity_to"
+                             title="gld_accounting_entities.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeTo"/>
+                            <a:map from="accEntityName" to="accEntityNameTo"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2505_customerTypeAeBatchResult_ds" autoPageSize="true" pageSize="10"
+                       queryDataSet="FND2505_customerTypeAeBatchQuery_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/ord/customer-type-ref-ae/queryAllAccountingEntity?customerTypeId=$[/parameter/@customerTypeId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:toolbarButton click="FND2505_customerTypeAeBatchSave" text="hap_save" width="80"/>
+                    <a:toolbarButton click="FND2505_customerTypeAeBatchBack" text="hap_back" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="FND2505_customerTypeAeBatchQuery_ds"
+                             resultTarget="FND2505_customerTypeAeBatchResult_ds" style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:lov name="accEntityNameFrom" bindTarget="FND2505_customerTypeAeBatchQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2505_customerTypeAeQuery"/>
+                            </a:events>
+                        </a:lov>
+                        <a:lov name="accEntityNameTo" bindTarget="FND2505_customerTypeAeBatchQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2505_customerTypeAeQuery"/>
+                            </a:events>
+                        </a:lov>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid id="FND2505_customerTypeAeBatch_grid" bindTarget="FND2505_customerTypeAeBatchResult_ds"
+                    marginHeight="150" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

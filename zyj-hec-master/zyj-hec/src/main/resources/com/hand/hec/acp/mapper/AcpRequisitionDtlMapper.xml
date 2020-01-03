@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.acp.mapper.AcpRequisitionDtlMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.acp.dto.AcpRequisitionDtl">
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_DTL_ID" property="requisitionDtlId" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_LNS_ID" property="requisitionLnsId" jdbcType="DECIMAL"/>
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="REF_DOCUMENT_TYPE" property="refDocumentType" jdbcType="VARCHAR"/>
+        <result column="REF_DOCUMENT_ID" property="refDocumentId" jdbcType="DECIMAL"/>
+        <result column="REF_DOCUMENT_LINE_ID" property="refDocumentLineId" jdbcType="DECIMAL"/>
+        <result column="REQUISITION_HDS_ID" property="requisitionHdsId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="MO_PAY_REQ_TYPE_ID" property="moPayReqTypeId" jdbcType="DECIMAL"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_NUMBER" property="documentNumber" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY_NAME" property="payeeCategoryName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_LINE_NUMBER" property="documentLineNumber" jdbcType="DECIMAL"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="TOTAL_AMOUNT" property="totalAmount" jdbcType="DECIMAL"/>
+        <result column="PAYED_AMOUNT" property="payedAmount" jdbcType="DECIMAL"/>
+        <result column="APPLIED_AMOUNT" property="appliedAmount" jdbcType="DECIMAL"/>
+        <result column="SCHEDULE_DUE_DATE" property="scheduleDueDate" jdbcType="DATE"/>
+        <result column="PAYMENT_CURRENCY_CODE" property="paymentCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="EXP_REPORT_HEADER_ID" property="expReportHeaderId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="queryByLineId" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (
+        SELECT
+        ard.requisition_dtl_id,
+        ard.requisition_lns_id,
+        ard.line_number,
+        ard.company_id,
+        ard.acc_entity_id,
+        ard.ref_document_type,
+        ard.ref_document_id,
+        ard.ref_document_line_id,
+        erh.exp_report_number document_number,
+        NULL landmark_phase,
+        erps.schedule_line_number document_line_number,
+        erps.due_amount total_amount,
+        erps.schedule_due_date schedule_due_date,
+        (
+        SELECT
+        (case when SUM(cwo.csh_write_off_amount) is null then 0 else SUM(cwo.csh_write_off_amount) end)
+        FROM
+        csh_write_off cwo
+        WHERE
+        cwo.document_source = 'EXPENSE_REPORT'
+        AND cwo.document_header_id = erps.exp_report_header_id
+        AND cwo.document_line_id = erps.payment_schedule_line_id
+        ) payed_amount,
+        erps.exp_report_header_id,
+        NULL used_amount,
+        ard.amount
+        FROM
+        acp_requisition_dtl ard,
+        exp_report_header erh,
+        acp_requisition_ln al,
+        exp_report_pmt_schedule erps
+        WHERE
+        ard.requisition_lns_id = al.requisition_lns_id
+        AND ard.ref_document_type = 'REPORT'
+        AND ard.ref_document_id = erh.exp_report_header_id
+        AND ard.ref_document_line_id = erps.payment_schedule_line_id
+        AND erh.exp_report_header_id = erps.exp_report_header_id
+        <if test="requisitionLnsId!=null">
+            and ard.requisition_lns_id = #{requisitionLnsId}
+        </if>
+        <if test="requisitionHdsId!=null">
+            and al.requisition_hds_id = #{requisitionHdsId}
+        </if>
+        ) v
+        ORDER BY
+        v.line_number
+    </select>
+
+    <select id="getTotalAmount" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+        SELECT
+            (
+        CASE
+
+            WHEN ( SELECT sum( ard.AMOUNT ) ) IS NULL THEN
+            0 ELSE ( SELECT sum( ard.amount ) )
+        END
+            ) total_amount
+        FROM
+            acp_requisition_dtl ard
+        WHERE
+        ard.requisition_lns_id = #{requisitionLnsId}
+    </select>
+
+    <select id="queryByHeaderId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            ard.requisition_dtl_id,
+            ard.line_number,
+            ard.ref_document_type,
+            ard.ref_document_line_id,
+            ard.amount
+        FROM
+            acp_requisition_dtl ard
+        WHERE
+            EXISTS ( SELECT 1 FROM acp_requisition_ln arl WHERE arl.requisition_hds_id = #{requisitionHdsId} AND arl.requisition_lns_id = ard.requisition_lns_id )
+    </select>
+
+    <select id="getOtherAmount" parameterType="com.hand.hec.acp.dto.AcpRequisitionDtl" resultType="java.math.BigDecimal">
+        SELECT
+        ( CASE WHEN sum( ard.amount ) IS NULL THEN 0 ELSE sum( ard.amount ) END ) applyed_amount
+        FROM
+        acp_requisition_dtl ard,
+        acp_requisition_ln arl,
+        acp_requisition_hd arh
+        WHERE
+        ard.ref_document_type = #{refDocumentType}
+        AND ard.ref_document_line_id = #{refDocumentLineId}
+        AND ( #{requisitionDtlId} IS NULL OR ard.requisition_dtl_id &lt;&gt; #{requisitionDtlId} )
+        AND ard.requisition_lns_id = arl.requisition_lns_id
+        AND arl.requisition_hds_id = arh.requisition_hds_id
+        AND arl.payment_status = 'NEVER'
+        AND arh.STATUS IN ( 'SUBMITTED', 'COMPLETELY_APPROVED' )
+    </select>
+
+    <select id="queryFromReport" resultMap="BaseResultMap">
+        SELECT
+        v.*,
+        v.appliedamount + v.payed_amount - v.requisition_payed_amount applied_amount,
+        v.total_amount - ( v.appliedamount + v.payed_amount - v.requisition_payed_amount) amount
+        FROM
+        (
+        SELECT
+        'REPORT' ref_document_type,
+        erps.exp_report_header_id ref_document_id,
+        erps.payment_schedule_line_id ref_document_line_id,
+        erps.company_id,
+        erps.acc_entity_id,
+        erh.exp_report_number document_number,
+        erps.schedule_line_number document_line_number,
+        erps.payee_category,
+        ( SELECT cv.meaning FROM sys_code_v cv WHERE cv.CODE = 'PAYMENT_OBJECT' AND cv.VALUE = erps.payee_category ) AS payee_category_name,
+        erps.payee_id,
+        (
+        CASE
+
+        WHEN erps.payee_category = 'EMPLOYEE' THEN
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = erps.payee_id )
+        WHEN erps.payee_category = 'VENDER' THEN
+        (
+        SELECT
+        psvt.description
+        FROM
+        pur_system_vender psv
+        LEFT JOIN pur_system_vender_tl psvt ON ( psv.vender_id = psvt.vender_id AND psvt.lang = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+        psv.vender_id = erps.payee_id
+        )
+        WHEN erps.payee_category = 'CUSTOMER' THEN
+        (
+        SELECT
+        osct.description
+        FROM
+        ord_system_customer osc
+        LEFT JOIN ord_system_customer_tl osct ON ( osc.customer_id = osct.customer_id AND osct.lang = #{request.locale,jdbcType=VARCHAR} )
+        WHERE
+        osc.customer_id = erps.payee_id
+        )
+        END
+        ) AS payee_name,
+        erps.due_amount total_amount,
+        erps.schedule_due_date schedule_due_date,
+        erps.payment_currency_code,
+        (
+        SELECT
+        gct.currency_name
+        FROM
+        gld_currency gc
+        LEFT JOIN gld_currency_tl gct ON gc.currency_id = gct.currency_id
+        AND gct.lang = #{request.locale,jdbcType=VARCHAR}
+        WHERE
+        gc.currency_code = erps.payment_currency_code
+        ) payment_currency_name,
+        (
+        SELECT
+        ( CASE WHEN SUM( cwo.csh_write_off_amount ) IS NULL THEN 0 ELSE SUM( cwo.csh_write_off_amount ) END )
+        FROM
+        csh_write_off cwo
+        WHERE
+        cwo.document_source = 'EXPENSE_REPORT'
+        AND cwo.document_header_id = erps.exp_report_header_id
+        AND cwo.document_line_id = erps.payment_schedule_line_id
+        ) payed_amount,
+        (
+        SELECT
+        (
+        CASE
+        WHEN SUM(r.AMOUNT) IS NULL THEN
+        0
+        ELSE
+        SUM(r.amount)
+        END
+        )
+        FROM
+        acp_requisition_ref r
+        INNER JOIN acp_requisition_dtl d ON r.REQUISITION_LNS_ID = d.REQUISITION_LNS_ID
+        WHERE
+        d.REF_DOCUMENT_LINE_ID = erps.payment_schedule_line_id
+        ) requisition_payed_amount,
+        erps.description,
+        (
+        SELECT
+        ( CASE WHEN SUM( ard.amount ) IS NULL THEN 0 ELSE SUM( ard.amount ) END )
+        FROM
+        acp_requisition_dtl ard
+        WHERE
+        ard.ref_document_line_id = erps.payment_schedule_line_id
+        AND EXISTS (
+        SELECT
+        1
+        FROM
+        acp_requisition_hd h,
+        acp_requisition_ln l
+        WHERE
+        h.requisition_hds_id = l.requisition_hds_id
+        AND l.requisition_lns_id = ard.requisition_lns_id
+        AND h.STATUS IN ( 'COMPLETELY_APPROVED', 'SUBMITTED' )
+        )
+        ) appliedamount
+        FROM
+        acp_mo_pay_req_tp_ref_doc amrd,
+        exp_report_header erh,
+        exp_report_pmt_schedule erps
+        WHERE
+        amrd.mo_pay_req_type_id = #{moPayReqTypeId}
+        AND erps.payment_currency_code = 'CNY'
+        AND amrd.document_type = 'REPORT'
+        AND amrd.document_type_id = erh.mo_exp_report_type_id
+        AND amrd.enabled_flag = 'Y'
+        AND erh.report_status = 'COMPLETELY_APPROVED'
+        AND erh.audit_flag = 'Y'
+        AND erh.employee_id = #{employeeId}
+        AND erh.reversed_flag = 'N'
+        AND erh.exp_report_header_id = erps.exp_report_header_id
+        AND erps.frozen_flag = 'Y'
+        ) v
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="documentNumber!=null">
+                and v.document_number like concat('%',#{documentNumber},'%')
+            </if>
+            <if test="payeeCategory!=null">
+                and v.payee_category = #{payeeCategory}
+            </if>
+            <if test="payeeId!=null">
+                and v.payee_id = #{payeeId}
+            </if>
+        </trim>
+        ORDER BY
+        v.document_number,
+        v.document_line_number
+    </select>
+
+    <!-- Modify Tagin/2019.05.06 根据付款申请单行获取付款申请单分配行数据 -->
+    <select id="queryAllByLnsId" resultMap="BaseResultMap">
+        select
+            ard.requisition_dtl_id,
+            ard.requisition_lns_id,
+            ard.line_number,
+            ard.company_id,
+            ard.acc_entity_id,
+            ard.ref_document_type,
+            ard.ref_document_id,
+            ard.ref_document_line_id,
+            ard.amount,
+            (
+            select
+                case
+                    when sum(cwo.csh_write_off_amount) is null then 0
+                    else sum(cwo.csh_write_off_amount)
+                end
+            from
+                csh_write_off cwo
+            where
+                exists (
+                select
+                    1
+                from
+                    acp_requisition_dtl ardx,
+                    acp_requisition_ref arr
+                where
+                    ardx.requisition_dtl_id = ard.requisition_dtl_id
+                    and ardx.requisition_lns_id = arr.requisition_lns_id
+                    and arr.csh_transaction_line_id = cwo.csh_transaction_line_id
+                    and arr.write_off_id = cwo.write_off_id
+                    and ardx.ref_document_id = cwo.document_header_id
+                    and ardx.ref_document_line_id = cwo.document_line_id)) payed_amount
+        from
+            acp_requisition_dtl ard
+        where
+            ard.requisition_lns_id = #{requisitionLnsId, javaType=java.lang.Long, jdbcType=DECIMAL}
+    </select>
+</mapper>

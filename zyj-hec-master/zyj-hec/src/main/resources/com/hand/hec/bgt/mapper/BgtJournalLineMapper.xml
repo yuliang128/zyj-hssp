@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtJournalLineMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtJournalLine">
+        <result column="JOURNAL_LINE_ID" property="journalLineId" jdbcType="DECIMAL"/>
+        <result column="JOURNAL_HEADER_ID" property="journalHeaderId" jdbcType="DECIMAL"/>
+        <result column="BGT_ENTITY_ID" property="bgtEntityId" jdbcType="DECIMAL"/>
+        <result column="BGT_CENTER_ID" property="bgtCenterId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_ITEM_ID" property="budgetItemId" jdbcType="DECIMAL"/>
+        <result column="LINE_PERIOD_NAME" property="linePeriodName" jdbcType="VARCHAR"/>
+        <result column="LINE_PERIOD_QUARTER" property="linePeriodQuarter" jdbcType="DECIMAL"/>
+        <result column="LINE_PERIOD_YEAR" property="linePeriodYear" jdbcType="DECIMAL"/>
+        <result column="LINE_BGT_PERIOD_NUM" property="lineBgtPeriodNum" jdbcType="DECIMAL"/>
+        <result column="CURRENCY" property="currency" jdbcType="VARCHAR"/>
+        <result column="EXCHANGE_RATE" property="exchangeRate" jdbcType="DECIMAL"/>
+        <result column="EXCHANGE_RATE_TYPE" property="exchangeRateType" jdbcType="VARCHAR"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="FUNCTIONAL_AMOUNT" property="functionalAmount" jdbcType="DECIMAL"/>
+        <result column="QUANTITY" property="quantity" jdbcType="DECIMAL"/>
+        <result column="UOM" property="uom" jdbcType="VARCHAR"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="UNIT_GROUP_ID" property="unitGroupId" jdbcType="DECIMAL"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="POSITION_GROUP_ID" property="positionGroupId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_GROUP_ID" property="employeeGroupId" jdbcType="DECIMAL"/>
+        <result column="JOURNAL_LINES_NOTES" property="journalLinesNotes" jdbcType="VARCHAR"/>
+        <result column="OPERATION_UNIT_ID" property="operationUnitId" jdbcType="DECIMAL"/>
+        <result column="DIMENSION1_ID" property="dimension1Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION2_ID" property="dimension2Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION3_ID" property="dimension3Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION4_ID" property="dimension4Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION5_ID" property="dimension5Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION6_ID" property="dimension6Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION7_ID" property="dimension7Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION8_ID" property="dimension8Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION9_ID" property="dimension9Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION10_ID" property="dimension10Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION11_ID" property="dimension11Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION12_ID" property="dimension12Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION13_ID" property="dimension13Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION14_ID" property="dimension14Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION15_ID" property="dimension15Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION16_ID" property="dimension16Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION17_ID" property="dimension17Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION18_ID" property="dimension18Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION19_ID" property="dimension19Id" jdbcType="DECIMAL"/>
+        <result column="DIMENSION20_ID" property="dimension20Id" jdbcType="DECIMAL"/>
+        <result column="BALANCE_COMPANY_ID" property="balanceCompanyId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="STRUCTURE_ID" property="structureId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_JOURNAL_NUMBER" property="budgetJournalNumber" jdbcType="VARCHAR"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="PERIOD_QUARTER" property="periodQuarter" jdbcType="DECIMAL"/>
+        <result column="PERIOD_YEAR" property="periodYear" jdbcType="DECIMAL"/>
+        <result column="BGT_PERIOD_NUM" property="bgtPeriodNum" jdbcType="DECIMAL"/>
+        <result column="JOURNAL_HEADER_NOTES" property="journalHeaderNotes" jdbcType="VARCHAR"/>
+        <result column="SCENARIO_ID" property="scenarioId" jdbcType="DECIMAL"/>
+        <result column="VERSION_ID" property="versionId" jdbcType="DECIMAL"/>
+        <result column="INTERNAL_PERIOD_NUM" property="internalPeriodNum" jdbcType="DECIMAL" />
+    </resultMap>
+
+    <select id="queryInfoByHeaderId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            h.company_id balance_company_id,
+            h.bgt_org_id,
+            h.structure_id,
+            h.budget_journal_number,
+            l.line_period_year AS period_year,
+            l.line_period_quarter AS period_quarter,
+            l.line_period_name AS period_name,
+            l.line_bgt_period_num AS bgt_period_num,
+            h.journal_header_notes,
+            h.scenario_id,
+            h.version_id,
+            h.unit_id,
+            (
+            SELECT
+                emu.MO_UNIT_GROUP_ID
+            FROM
+                exp_com_unit_gp_ref_unit ecu,
+                exp_mo_unit_group_asgn_com emu
+            WHERE
+                ecu.UNIT_GROUP_COM_ASSIGN_ID = emu.ASSIGN_ID
+                AND ecu.UNIT_ID = h.UNIT_ID
+                ) UNIT_GROUP_ID,
+                h.position_id,
+                ( SELECT epg.POSITION_GROUP_ID FROM exp_position_group_relation epg WHERE epg.POSITION_ID = h.POSITION_ID ) POSITION_GROUP_ID,
+                (
+            SELECT
+                ec.MO_EMP_GROUP_ID
+            FROM
+                exp_com_emp_group_ref_emp ee,
+                exp_mo_emp_group_asgn_com ec
+            WHERE
+                ee.emp_group_com_assign_id = ec.assign_id
+                AND ee.EMPLOYEE_ID = h.EMPLOYEE_ID
+                AND ec.COMPANY_ID = h.COMPANY_ID
+                ) employee_group_id,
+            h.employee_id,
+            l.*,
+            bp.INTERNAL_PERIOD_NUM
+        FROM
+            bgt_journal_header h,
+            bgt_journal_line l,
+            bgt_period bp,
+	        bgt_period_set bps
+        WHERE
+            h.journal_header_id = l.journal_header_id
+            AND h.journal_header_id = #{journalHeaderId}
+            AND bp.PERIOD_SET_ID = bps.PERIOD_SET_ID
+            AND bps.PERIOD_SET_CODE = (
+                        SELECT
+                        bpsv.period_set_code
+                        FROM
+                        bgt_structure t,
+                        bgt_organization bo,
+                        bgt_period_set bpsv
+                        WHERE
+                        t.period_set_id = bpsv.period_set_id
+                        AND t.bgt_org_id = bo.bgt_org_id
+                        AND bo.bgt_org_id = h.BGT_ORG_ID AND
+                        t.structure_id = h.STRUCTURE_ID
+                        AND t.enabled_flag = 'Y'
+                        )
+                        and bp.PERIOD_NAME = l.LINE_PERIOD_NAME
+    </select>
+
+    <select id="queryNeedCheckCount" parameterType="java.lang.Long" resultType="int">
+        SELECT  count( 1 )
+        FROM bgt_journal_line l
+        WHERE
+        l.journal_header_id = #{journalHeaderId}
+        AND ( l.amount &lt; 0 OR l.quantity &lt; 0 )
+    </select>
+
+    <select id="queryDimByHeaderId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        bgt_entity_id,
+        bgt_center_id,
+        company_id,
+        budget_item_id,
+        line_period_year,
+        line_period_quarter,
+        line_period_name,
+        line_bgt_period_num,
+        operation_unit_id,
+        unit_id,
+        position_id,
+        employee_id,
+        dimension1_id,
+        dimension2_id,
+        dimension3_id,
+        dimension4_id,
+        dimension5_id,
+        dimension6_id,
+        dimension7_id,
+        dimension8_id,
+        dimension9_id,
+        dimension10_id,
+        dimension11_id,
+        dimension12_id,
+        dimension13_id,
+        dimension14_id,
+        dimension15_id,
+        dimension16_id,
+        dimension17_id,
+        dimension18_id,
+        dimension19_id,
+        dimension20_id
+        FROM
+        bgt_journal_lines l
+        WHERE
+        l.journal_header_id = #{journalHeaderId}
+        AND ( l.amount &lt; 0 OR l.quantity &lt; 0 )
+        GROUP BY
+        bgt_entity_id,
+        bgt_center_id,
+        company_id,
+        budget_item_id,
+        line_period_year,
+        line_period_quarter,
+        line_period_name,
+        line_bgt_period_num,
+        operation_unit_id,
+        unit_id,
+        position_id,
+        employee_id,
+        dimension1_id,
+        dimension2_id,
+        dimension3_id,
+        dimension4_id,
+        dimension5_id,
+        dimension6_id,
+        dimension7_id,
+        dimension8_id,
+        dimension9_id,
+        dimension10_id,
+        dimension11_id,
+        dimension12_id,
+        dimension13_id,
+        dimension14_id,
+        dimension15_id,
+        dimension16_id,
+        dimension17_id,
+        dimension18_id,
+        dimension19_id,
+        dimension20_id
+    </select>
+
+    <sql id="common_where_if">
+        <if test="operationUnitId!=null">
+            and l.operation_unit_id, = #{operationUnitId}
+        </if>
+        <if test="unitId!=null">
+            and l.unit_id = #{unitId}
+        </if>
+        <if test="positionId!=null">
+            and l.position_id = #{positionId}
+        </if>
+        <if test="employeeId!=null">
+            and l.employee_id = #{employeeId}
+        </if>
+        <if test="dimension1Id!=null">
+            and l.dimension1_id = #{dimension1Id}
+        </if>
+        <if test="dimension2Id!=null">
+            and l.dimension2_id = #{dimension2Id}
+        </if>
+        <if test="dimension3Id!=null">
+            and l.dimension3_id = #{dimension3Id}
+        </if>
+        <if test="dimension4Id!=null">
+            and l.dimension4_id = #{dimension4Id}
+        </if>
+        <if test="dimension5Id!=null">
+            and l.dimension5_id = #{dimension5Id}
+        </if>
+        <if test="dimension6Id!=null">
+            and l.dimension6_id = #{dimension6Id}
+        </if>
+        <if test="dimension7Id!=null">
+            and l.dimension7_id = #{dimension7Id}
+        </if>
+        <if test="dimension8Id!=null">
+            and l.dimension8_id = #{dimension8Id}
+        </if>
+        <if test="dimension9Id!=null">
+            and l.dimension9_id = #{dimension9Id}
+        </if>
+        <if test="dimension10Id!=null">
+            and l.dimension10_id = #{dimension10Id}
+        </if>
+        <if test="dimension11Id!=null">
+            and l.dimension11_id = #{dimension11Id}
+        </if>
+        <if test="dimension12Id!=null">
+            and l.dimension12_id = #{dimension12Id}
+        </if>
+        <if test="dimension13Id!=null">
+            and l.dimension13_id = #{dimension13Id}
+        </if>
+        <if test="dimension14Id!=null">
+            and l.dimension14_id = #{dimension14Id}
+        </if>
+        <if test="dimension15Id!=null">
+            and l.dimension15_id = #{dimension15Id}
+        </if>
+        <if test="dimension16Id!=null">
+            and l.dimension16_id = #{dimension16Id}
+        </if>
+        <if test="dimension17Id!=null">
+            and l.dimension17_id = #{dimension17Id}
+        </if>
+        <if test="dimension18Id!=null">
+            and l.dimension18_id = #{dimension18Id}
+        </if>
+        <if test="dimension19Id!=null">
+            and l.dimension19_id = #{dimension19Id}
+        </if>
+        <if test="dimension20Id!=null">
+            and l.dimension20_id = #{dimension20Id}
+        </if>
+    </sql>
+
+    <select id="querySumAmount" resultType="java.util.Map" parameterType="com.hand.hec.bgt.dto.BgtJournalLine">
+        SELECT
+        sum( CASE WHEN l.AMOUNT IS NULL THEN 0 ELSE l.AMOUNT END )
+        ) amountSum,
+        sum( CASE WHEN l.QUANTITY IS NULL THEN 0 ELSE l.QUANTITY END )
+        ) quantitySum
+        FROM
+        bgt_journal_line l
+        WHERE
+        l.journal_header_id = #{journalHeaderId}
+        AND l.bgt_entity_id = #{bgtEntityId}
+        AND l.bgt_center_id = #{bgtCenterId}
+        AND l.company_id = #{companyId}
+        AND l.budget_item_id = #{budgetItemId}
+        <if test="linePeriodYear!=null">
+            and l.line_period_year = #{linePeriodYear}
+        </if>
+        <if test="linePeriodQuarter!=null">
+            and l.line_period_quarter = #{linePeriodQuarter}
+        </if>
+        <if test="linePeriodName!=null">
+            and l.line_period_name = #{linePeriodName}
+        </if>
+        <if test="lineBgtPeriodNum!=null">
+            and l.line_bgt_period_num = #{lineBgtPeriodNum}
+        </if>
+        <include refid="common_where_if"/>
+    </select>
+
+    <select id="queryBalanceSumAmount" resultType="java.util.Map" parameterType="com.hand.hec.bgt.dto.BgtJournalLine">
+        SELECT
+            sum(
+              CASE
+                  WHEN ( CASE v_period_strategy WHEN 'MONTH' THEN l.period_amount WHEN 'QUARTER' THEN l.quarter_amount WHEN 'YEAR' THEN l.year_amount END ) IS NULL THEN
+                  0 ELSE ( CASE v_period_strategy WHEN 'MONTH' THEN l.period_amount WHEN 'QUARTER' THEN l.quarter_amount WHEN 'YEAR' THEN l.year_amount END )
+              END) balanceAmountSum,
+            sum(CASE
+                    WHEN ( CASE v_period_strategy WHEN 'MONTH' THEN l.period_quantity WHEN 'QUARTER' THEN l.quarter_quantity WHEN 'YEAR' THEN l.year_quantity END ) IS NULL THEN
+                        0 ELSE ( CASE v_period_strategy WHEN 'MONTH' THEN l.period_quantity WHEN 'QUARTER' THEN l.quarter_quantity WHEN 'YEAR' THEN l.year_quantity END )
+                    END) balanceQuantitySum
+        FROM bgt_journal_balance l
+        WHERE l.bgt_entity_id = #{bgtEntityId}
+        AND l.bgt_center_id = #{bgtCenterId}
+        AND l.company_id = #{companyId}
+        AND l.budget_item_id = #{budgetItemId}
+        <if test="linePeriodYear!=null">
+            and l.period_year = #{linePeriodYear}
+        </if>
+        <if test="linePeriodQuarter!=null">
+            and l.period_quarter = #{linePeriodQuarter}
+        </if>
+        <if test="linePeriodName!=null">
+            and l.period_name = #{linePeriodName}
+        </if>
+        <if test="lineBgtPeriodNum!=null">
+            and l.bgt_period_num = #{lineBgtPeriodNum}
+        </if>
+        <include refid="common_where_if"/>
+    </select>
+    
+    <select id="queryTotalFunctionAmount" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+        SELECT
+            sum( bjl.functional_amount )
+        FROM
+            bgt_journal_line bjl
+        WHERE
+            bjl.journal_header_id = #{journalHeaderId}
+    </select>
+
+
+
+
+</mapper>

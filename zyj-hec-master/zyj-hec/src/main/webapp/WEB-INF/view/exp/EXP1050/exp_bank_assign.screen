@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-22 16:40
+    $Revision: 1.0
+    $Purpose: 员工分配银行账户
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            var index = 1;
+            var initLineIndex = 0;
+            
+            function EXP1050_closeBankAsgnCreateWindow() {
+                $au('EXP1050_exp_bank_assign_window').close();
+            }
+            
+            function EXP1050_onBankAssignUpdate(ds, record, name, value) {
+                //modify lcy 2018/3/15  16:20:33  银行改变清空分行，省名，市名
+                if (name == 'bankId') {
+                    record.set('bankLocationCode', '');
+                    record.set('bankLocation', '');
+                    record.set('provinceCode', '');
+                    record.set('provinceName', '');
+                    record.set('cityCode', '');
+                    record.set('cityName', '');
+                }
+            
+            }
+            
+            function EXP1050_onCellClick(grid, row, name, record) {
+                if (name == 'cityName') {
+                    var field = record.getMeta().getField('cityName');
+                    field.setLovPara('region_code', record.get('provinceCode'));
+            
+                }
+                //modify lcy 2018/3/15  16:20:33  把bankId传给分行
+                if (name == 'bankLocationCode') {
+                    var field = record.getMeta().getField('bankLocationCode');
+                    field.setLovPara('bankId', record.get('bankId'));
+                }
+            
+            }
+            
+            function EXP1050_beforesubmitForDs(ds) {
+                var length = ds.getAll().length;
+                var j = 0;
+                for (var i = 0;i < length;i++) {
+                    if (ds.getAt(i).get("primaryFlag") == "Y") {
+                        j++;
+                    }
+                }
+                if (j == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:exp_employee_account.change_main_account]', null, 250, 100);
+                    return false;
+                } else if (j > 1) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:exp_employee_accounts.change_one]', null, 250, 100);
+                    return false;
+                }
+            
+                for (var n = 0;n < length;n++) {
+                    for (var k = n + 1;k < length;k++) {
+                        var num_pre = ds.getAt(n).get("lineNumber");
+                        var num_next = ds.getAt(k).get("lineNumber");
+                        if (num_pre == num_next) {
+                            Aurora.showInfoMessage('$[l:prompt]', '$[l:exp_employee_accounts.lineNumber_repeat]', null, 250, 100);
+                            return false;
+                        }
+                    }
+                }
+            }
+            
+            function EXP1050_addForDs(ds, record) {
+                var lineNum = 0;
+                var oldrecord = ds.getAll()[(ds.getAll().length - 2)];
+                var name = "$[/parameter/@name]";
+                if (oldrecord != null && oldrecord != undefined) {
+                    var oldlineNum = oldrecord.get('lineNumber');
+                    var oldIndex = oldrecord.get('lineNumber') / 10;
+                    lineNum = (1 + oldIndex) * 10;
+                } else {
+                    lineNum = 1 * 10;
+                }
+                record.set("lineNumber", lineNum);
+                record.set("accountName", name);
+            }
+            //行删除时触发事件
+            
+            function EXP1050_removeForDs() {
+                index = index - 1; //删除行时，注意行号必须相应也减少
+            }
+            
+            function contextMenuListener(evt, obj) {
+                evt.stopEvent();
+            }
+            
+            function keypressListener(evt, obj) {
+                if (evt.ctrlKey) {
+                    evt.stopEvent();
+                }
+            }
+            //增加主账户校验(只能有一个主账户)   Y.duan 2017-9-19 11:16:04
+            
+            function PrimaryAccountValidata(checkBox, checked) {
+                if (checked) {
+                    var CheckedCount = 0;
+                    var records = $au('EXP1050_exp_bank_assigns_ds').getAll();
+                    if (records != null && records.length > 1) {
+                        for (var i = 0;i < records.length;i++) {
+                            if (records[i].get('primaryFlag') == 'Y') {
+                                CheckedCount++;
+                            }
+                        }
+                    }
+                    if (CheckedCount > 1) {
+                        Aurora.showErrorMessage('$[l:prompt.error]', '主账号只能选择一个!');
+                        checkBox.setValue('N', 'true');
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1050_exp_bank_assigns_ds" autoCount="true" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/exp/employee-account/query?employeeId=$[/parameter/@employeeId]" selectable="true" submitUrl="$[/request/@context_path]/exp/employee-account/submit">
+                <a:fields>
+                    <a:field name="employeeId" defaultValue="$[/parameter/@employeeId]"/>
+                    <a:field name="lineNumber" prompt="exp_report_line.line_number"/>
+                    <a:field name="bankCode" prompt="csh_bank.bank_code"  lovCode="LOV_BANK" required="true" title="csh_bank.bank_code">
+                        <a:mapping>
+                            <a:map from="bankId" to="bankId"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankId"/>
+                    <a:field name="bankName" prompt="csh_bank.bank_alt_name"/>
+                    <!--  modify lcy 2018/3/15  16:20:33  分行带出 省名，市名 -->
+                    <a:field name="bankLocationCode" prompt="csh_bank_branch.bank_branch_code" lovCode="LOV_BANK_CNAP"  required="true" title="csh_bank_branch.bank_branch_code">
+                        <a:mapping>
+                            <a:map from="bankLocationCode" to="bankLocationCode"/>
+                            <a:map from="bankLocationName" to="bankLocation"/>
+                            <a:map from="provinceCode" to="provinceCode"/>
+                            <a:map from="provinceName" to="provinceName"/>
+                            <a:map from="cityCode" to="cityCode"/>
+                            <a:map from="cityName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bankLocation" prompt="csh_bank_branch.branch_name"/>
+                    <a:field name="provinceCode"/>
+                    <a:field name="provinceName" prompt="fnd_region_province.prov_name" />
+                    <a:field name="cityCode"/>
+                    <a:field name="cityName" prompt="fnd_region_province.city_name"/>
+                    <a:field name="accountName" prompt="exp_employee_account.bank_account_name"  required="true"/>
+                    <a:field name="accountNumber" prompt="csh_payment.bank_account_code"  required="true"/>
+                    <a:field name="notes" prompt="csh_cash_plan_header.notes"/>
+                    <a:field name="primaryFlag" prompt="exp_employee_account.bank_account_main" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="exp_employee_assign.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1050_onBankAssignUpdate"/>
+                    <a:event name="beforesubmit" handler="EXP1050_beforesubmitForDs"/>
+                    <a:event name="add" handler="EXP1050_addForDs"/>
+                    <a:event name="remove" handler="EXP1050_removeForDs"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="exp_bank_assigns_fs" column="2" title="exp_employee_assign.employee_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1050_exp_bank_assigns_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1050_exp_bank_assigns_grid" type="save" width="80"/>
+                    <a:gridButton bind="EXP1050_exp_bank_assigns_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP1050_closeBankAsgnCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="employeeCode" bindTarget="EXP1050_exp_employees_result_ds" prompt="exp_employee.employee_code" readOnly="true"/>
+                <a:textField name="name" bindTarget="EXP1050_exp_employees_result_ds" prompt="exp_employee.name" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP1050_exp_bank_assigns_grid" bindTarget="EXP1050_exp_bank_assigns_ds" marginHeight="195" marginWidth="0" navBar="true">
+                <a:columns>
+                    <a:column name="lineNumber" align="center"  width="50"/>
+                    <a:column name="bankCode"  align="center" editor="EXP1050_asgnBank_lov"  width="80"/>
+                    <a:column name="bankName"  width="200"/>
+                    <a:column name="bankLocationCode" editor="EXP1050_asgnBank_lov"  width="80"/>
+                    <a:column name="bankLocation"  width="200"/>
+                    <a:column name="provinceName" align="center"  width="80"/>
+                    <a:column name="cityName" align="center"  width="80"/>
+                    <a:column name="accountName" align="center" editor="EXP1050_asgnBank_textField" width="80"/>
+                    <a:column name="accountNumber" editor="EXP1050_asgnBank_textField"  width="120"/>
+                    <a:column name="notes" editor="EXP1050_asgnBank_textField"  width="120"/>
+                    <a:column name="primaryFlag" editor="EXP1050_asgnBank_checkBox"  width="80"/>
+                    <a:column name="enabledFlag" editor="EXP1050_asgnBank_checkBox"  width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1050_asgnBank_lov"/>
+                    <a:textField id="EXP1050_asgnBank_textField"/>
+                    <a:checkBox id="EXP1050_asgnBank_checkBox">
+                        <a:events>
+                            <a:event name="click" handler="PrimaryAccountValidata"/>
+                        </a:events>
+                    </a:checkBox>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP1050_onCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

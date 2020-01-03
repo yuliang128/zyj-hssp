@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldAccGenSysGeneralMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldAccGenSysGeneral">
+        <result column="GENERAL_ID" property="generalId" jdbcType="DECIMAL"/>
+        <result column="USAGE_CODE" property="usageCode" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+		<result column="MAG_ORG_NAME" property="magOrgName" jdbcType="VARCHAR"/>
+		<result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR"/>
+		<result column="ACCOUNT_SET_ID" property="accountSetId" jdbcType="DECIMAL"/>
+		<result column="ACCOUNT_CODE" property="accountCode" jdbcType="VARCHAR"/>
+		<result column="ACCOUNT_DESCRIPTION" property="accountDescription" jdbcType="VARCHAR"/>
+		<result column="USAGE_CODE_DESC" property="usageCodeDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="query" resultMap="BaseResultMap">
+        SELECT
+			  g.*, mv.DESCRIPTION mag_org_name,
+			  sv.SET_OF_BOOKS_NAME,
+			  sv.ACCOUNT_SET_ID,
+			  av.ACCOUNT_CODE,
+			  av.DESCRIPTION account_description,
+			  uv.DESCRIPTION usage_code_desc
+		FROM
+			  gld_acc_gen_sys_general g
+		LEFT JOIN (
+			  SELECT
+					fmo.MAG_ORG_ID,
+					fmot.DESCRIPTION
+			  FROM
+					fnd_managing_organization fmo
+			  LEFT JOIN fnd_managing_organization_tl fmot ON fmo.MAG_ORG_ID = fmot.MAG_ORG_ID
+			  AND fmot.LANG = #{request.locale,jdbcType=VARCHAR}
+		) mv ON g.MAG_ORG_ID = mv.MAG_ORG_ID
+		LEFT JOIN (
+			  SELECT
+					gsob.SET_OF_BOOKS_ID,
+					gsobt.SET_OF_BOOKS_NAME,
+					gsob.ACCOUNT_SET_ID
+			  FROM
+					gld_set_of_book gsob
+			  LEFT JOIN gld_set_of_book_tl gsobt ON gsob.SET_OF_BOOKS_ID = gsobt.SET_OF_BOOKS_ID
+			  AND gsobt.LANG = #{request.locale,jdbcType=VARCHAR}
+		) sv ON sv.SET_OF_BOOKS_ID = g.SET_OF_BOOKS_ID
+		LEFT JOIN (
+			  SELECT
+					ga.ACCOUNT_ID,
+					ga.ACCOUNT_CODE,
+					gat.DESCRIPTION
+			  FROM
+					gld_account ga
+			  LEFT JOIN gld_account_tl gat ON ga.ACCOUNT_ID = gat.ACCOUNT_ID
+			  AND gat.LANG = #{request.locale,jdbcType=VARCHAR}
+		) av ON av.ACCOUNT_ID = g.ACCOUNT_ID
+		LEFT JOIN (
+			  SELECT
+					guc.USAGE_CODE,
+					guct.DESCRIPTION
+			  FROM
+					gld_usage_code guc
+			  LEFT JOIN gld_usage_code_tl guct ON guc.USAGE_CODE_ID = guct.USAGE_CODE_ID
+			  AND guct.LANG = #{request.locale,jdbcType=VARCHAR}
+		) uv ON uv.USAGE_CODE = g.USAGE_CODE
+		WHERE
+			g.USAGE_CODE = #{usageCode}
+    </select>
+
+</mapper>

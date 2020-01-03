@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-18 下午4:15:19  
+    $Revision: 1.0  
+    $Purpose: 管理组织级-报销类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP4030_exp_mo_exp_type_asgn_companies_batch_link" url="$[/request/@context_path]/exp/EXP4030/exp_mo_exp_type_batch_assign_companies.screen"/>
+        <a:link id="EXP4030_exp_mo_exp_type_asgn_com_link" url="$[/request/@context_path]/exp/EXP4030/exp_mo_exp_type_asgn_com.screen"/>
+        <a:link id="EXP4030_exp_mo_exp_type_ref_exp_its_link" url="$[/request/@context_path]/exp/EXP4030/exp_mo_exp_type_ref_exp_its.screen"/>
+        <a:link id="EXP4030_exp_mo_exp_type_ref_req_its_link" url="$[/request/@context_path]/exp/EXP4030/exp_mo_exp_type_ref_req_its.screen"/>
+        <script><![CDATA[
+            function EXP4030_expenseTypesQuery() {
+                $au("EXP4030_exp_mo_expense_types_result_ds").query();
+            }
+            
+            
+
+            
+            //批量分配公司-跳转
+            
+            function EXP4030_batchAsgnCompany() {
+                 //add lcy 2017/12/22 14:12:30 批量分配前校验管理组织是否有值
+                if (Ext.isEmpty($au('EXP4030_exp_mo_expense_types_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                var typeDs = $au('EXP4030_exp_mo_expense_types_result_ds');
+                var typeRecordsData = typeDs.getJsonData(true);
+                if (typeRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                var record = typeDs.getAll();
+                var currentRecord = typeDs.getAt(record.length - 1);
+                if (currentRecord.isNew) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.data_check_failure]', null, 250, 100);
+                    return;
+                }
+                var magOrgId = $au('EXP4030_exp_mo_expense_types_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP4030_exp_mo_exp_type_asgn_companies_batch',
+                    url: $au('EXP4030_exp_mo_exp_type_asgn_companies_batch_link').getUrl() + '?magOrgId=' + magOrgId,
+                    title: '$[l:fnd_sys_venders.batch_disp_company]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            //分配公司-跳转
+            
+            function EXP4030_assignCompany(value, record, name) {
+            
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:EXP4030_openAssignCom(\'' + record.get('moExpenseTypeId') + '\')">$[l:fnd_system_venders.company_assign]</>';
+            }
+            
+            function EXP4030_openAssignCom(moExpenseTypeId) {
+                var magOrgId = $au('EXP4030_exp_mo_expense_types_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP4030_exp_mo_exp_type_asgn_com',
+                    url: $au('EXP4030_exp_mo_exp_type_asgn_com_link').getUrl() + '?moExpenseTypeId=' + moExpenseTypeId + '&magOrgId=' + magOrgId,
+                    title: '$[l:fnd_system_vender.company_assign]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function EXP4030_submit(ds) {
+                ds.query();
+            }
+            
+            function EXP4030_expenseTypesCodeEdit(record, name) {
+                var moExpenseTypeCode = record.get("moExpenseTypeCode");
+                if (record.isNew) {
+                    return "EXP4030_textField_upper";
+                } else {
+                    return "";
+                }
+            }
+            //费用项目-跳转
+            
+            function EXP4030_assignExpenseItem(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:EXP4030_expenseItem(\'' + record.get('moExpenseTypeId') + '\')">$[l:exp_expense_item.expense_item_id]</>';
+            }
+            
+            function EXP4030_expenseItem(moExpenseTypeId) {
+                var magOrgId = $au('EXP4030_exp_mo_expense_types_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP4030_exp_mo_exp_type_ref_exp_its',
+                    url: $au('EXP4030_exp_mo_exp_type_ref_exp_its_link').getUrl() + '?moExpenseTypeId=' + moExpenseTypeId + '&magOrgId=' + magOrgId,
+                    title: '$[l:exp_mo_expense_type_detail.assign_expense_item]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            //申请项目-跳转
+            
+            function EXP4030_assignExpenseReqItem(value, record, name) {
+                if (record.isNew) {
+                    return '';
+                }
+                return '<a href="javascript:EXP4030_AssignReqItem(\'' + record.get('moExpenseTypeId') + '\')">$[l:exp_company_req_item.req_item_id]</>';
+            }
+            
+            function EXP4030_AssignReqItem(moExpenseTypeId) {
+                var magOrgId = $au('EXP4030_exp_mo_expense_types_query_ds').getCurrentRecord().get('magOrgId');
+                new Aurora.Window({
+                    id: 'EXP4030_exp_mo_exp_type_ref_req_its',
+                    url: $au('EXP4030_exp_mo_exp_type_ref_req_its_link').getUrl() + '?moExpenseTypeId=' + moExpenseTypeId + '&magOrgId=' + magOrgId,
+                    title: '$[l:exp_mo_expense_type_detail.assign_req_item]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function EXP4030_add(ds) {
+                var magOrgId = $au('EXP4030_exp_mo_expense_types_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function EXP4030_focus() {
+                $au('EXP4030_expense_types_magOrgList_ds').query();
+            }
+            
+            function EXP4030_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('EXP4030_exp_mo_expense_types_result_ds').query();
+                }
+            }
+            //add lcy 2017/12/22 14:12:30 删除前校验管理组织是否有值
+            
+            function EXP2160_beforeRemove() {
+                if (Ext.isEmpty($au('EXP4030_exp_mo_expense_types_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            //add lcy 2017/12/22 14:12:30 保存前校验管理组织是否有值
+            
+            function EXP2160_beforeSubmit() {
+                if (Ext.isEmpty($au('EXP4030_exp_mo_expense_types_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP4030_BeforeCreate() {
+                if (Ext.isEmpty($au('EXP4030_exp_mo_expense_types_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4030_expense_types_magOrgList_ds" autoQuery="true"  loadData="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP4030_exp_mo_expense_types_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgCodeName" prompt="exp_mo_req_types.mag_org_id" defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP4030_expense_types_magOrgList_ds"  required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="moExpenseTypeCode"  prompt="exp_mo_expense_type.mo_expense_type_code"/>
+                    <a:field name="description" prompt="exp_mo_expense_type.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP4030_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP4030_exp_mo_expense_types_result_ds" autoPageSize="true" autoQuery="true"  queryDataSet="EXP4030_exp_mo_expense_types_query_ds" queryUrl="$[/request/@context_path]/exp/mo-expense-type/query" submitUrl="$[/request/@context_path]/exp/mo-expense-type/submit" selectable="true">
+                <a:fields>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="moExpenseTypeCode" prompt="exp_mo_expense_type.mo_expense_type_code" required="true" />
+                    <a:field name="description" dto="com.hand.hec.exp.dto.ExpMoExpenseType" dtoId="moExpenseTypeId" prompt="exp_mo_expense_type.description" required="true"/>
+                    <a:field name="enabledFlag" prompt="exp_mo_expense_type.enabled_flag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="moExpenseTypeId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4030_submit"/>
+                    <a:event name="add" handler="EXP4030_add"/>
+                    <a:event name="beforecreate" handler="EXP4030_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP2160_beforeSubmit"/>
+                    <a:event name="beforeremove" handler="EXP2160_beforeRemove"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP4030_exp_mo_expense_types_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP4030_exp_mo_expense_types_grid" type="save" width="80"/>
+                <a:toolbarButton click="EXP4030_batchAsgnCompany" text="HEC_BATCH_ASSIGN" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP4030_exp_mo_expense_types_query_ds" resultTarget="EXP4030_exp_mo_expense_types_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgCodeName" bindTarget="EXP4030_exp_mo_expense_types_query_ds"  width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP4030_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="moExpenseTypeCode" bindTarget="EXP4030_exp_mo_expense_types_query_ds"  typeCase="upper">
+                        <a:events>
+                            <a:event name="enterdown" handler="EXP4030_expenseTypesQuery"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="EXP4030_exp_mo_expense_types_query_ds" >
+                        <a:events>
+                            <a:event name="enterdown" handler="EXP4030_expenseTypesQuery"/>
+                        </a:events>
+                    </a:textField>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP4030_exp_mo_expense_types_grid" bindTarget="EXP4030_exp_mo_expense_types_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moExpenseTypeCode" align="center" editorFunction="EXP4030_expenseTypesCodeEdit"  width="120"/>
+                <a:column name="description" editor="EXP4030_tledit"  width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP4030_checkBox"  width="80"/>
+                <a:column name="assignItem" align="center" renderer="EXP4030_assignExpenseItem" width="80"/>
+                <a:column name="assignReqItem" align="center" renderer="EXP4030_assignExpenseReqItem" width="80"/>
+                <a:column name="asignCm" align="center" renderer="EXP4030_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP4030_textField_upper" typeCase="upper"/>
+                <a:tledit id="EXP4030_tledit"/>
+                <a:checkBox id="EXP4030_checkBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

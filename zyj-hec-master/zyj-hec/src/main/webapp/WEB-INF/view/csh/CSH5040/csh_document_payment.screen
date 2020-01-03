@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-29 上午10:11:45  
+    $Revision: 1.0  
+    $Purpose: 单据支付
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH5040_csh_document_payment_acc_entity_select_link"
+                url="$[/request/@context_path]/csh/CSH5040/csh_document_payment_acc_entity_select.screen"/>
+        <a:link id="CSH5040_exp_report_view_main_link"
+                url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="CSH5040_payment_requisition_view_main_link"
+                url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="CSH5040_pay_requisition_view_main_link"
+                url="$[/request/@context_path]/acp/ACP3100/acp_requisition_view_maintain_main.screen"/>
+        <a:link id="CSH5040_documentPayLink"
+                url="$[/request/@context_path]/csh/CSH5040/csh_document_payment_pay.screen"/>
+        <a:link id="CSH5040_csh_document_payment_return_link"
+                url="$[/request/@context_path]/csh/doc-pay-acc-entity/payBack"/>
+        <script><![CDATA[
+        function CSH5040_openPaymentWindow() {
+            var selectedRecords = $au('CSH5040_docPaymentResultDs').getJsonData(true);
+            if (selectedRecords.length == 0) {
+                Aurora.showErrorMessage('$[l:hap.error]', '$[l:csh_document_payment.select_record]');
+                return;
+            }
+            new Aurora.Window({
+                url: $au('CSH5040_documentPayLink').getUrl() + '?accEntityId=' + $au('CSH5040_docPaymentQueryDs').getAt(0).get('accEntityId') + '&currencyCode=' + selectedRecords[0].currencyCode,
+                id: 'CSH5040_csh_document_payment_pay_window',
+                title: '$[l:hap.doc_payment]',
+                width: 600,
+                height: 305
+            }).on('close', function () {
+                // Modify Tagin/2017.12.12 增加关闭页面后自动查询支付结果
+                $au('CSH5040_docPaymentResultDs').query();
+            });
+        }
+
+        function CSH5040_returnPaymentWindow() {
+            var selectedRecords = $au('CSH5040_docPaymentResultDs').getJsonData(true);
+            if (selectedRecords.length == 0) {
+                Aurora.showErrorMessage('$[l:hap.error]', '$[l:csh_document_payment.select_return_record]');
+                return;
+            }
+            var currencyCode = '';
+            var para = [];
+            for (var i = 0; i < selectedRecords.length; i++) {
+                para.push({
+                    docCategory: selectedRecords[i]['docCategory'],
+                    docId: selectedRecords[i]['docId'],
+                    docLineId: selectedRecords[i]['docLineId'],
+                    paymentAmount: selectedRecords[i]['paymentAmount'],
+                });
+            }
+            Aurora.showConfirm('$[l:hap.confirm]', '$[l:whether_to_confirm_return]', function (resp) {
+                Aurora.request({
+                    lockMessage: '$[l:hap.handle_waiting]',
+                    url: $au('CSH5040_csh_document_payment_return_link').getUrl(),
+                    para: para,
+                    success: function (resp) {
+                        $au('CSH5040_docPaymentResultDs').query();
+                    }
+                });
+                resp.close();
+            });
+        }
+
+        function CSH5040_onPayeeNameFocusFun() {
+            var record = $au('CSH5040_docPaymentQueryDs').getAt(0);
+            //modify  lcy 2018/1/19  0:50:12  新加校验
+            var payee_category = record.get('payeeCategory');
+            if (Ext.isEmpty(payee_category)) {
+                new Aurora.showErrorMessage('$[l:hap.error]', '$[l:exp_report_main.payee_category_is_null]', null, 300, 400);
+                return;
+            }
+            record.getField('payee_name').setLovPara('payeeCategory', record.get('payeeCategory'));
+            record.getField('payee_name').setLovPara('accEntityId', record.get('accEntityId'));
+        }
+
+        //申请日期校验
+
+        function CSH5040_requisitionDateValidator(record, name, value) {
+            if (record.get('requisitionDateFrom') && record.get('requisitionDateTo')) {
+                if (record.get('requisitionDateFrom') > record.get('requisitionDateTo')) {
+                    return '$[l:start_date_not_later_ending_date]';
+                }
+            }
+            return true;
+        }
+
+        //计划付款日期校验
+
+        function CSH5040_paymentDateValidator(record, name, value) {
+            if (record.get('schedulePaymentDateFrom') && record.get('schedulePaymentDateTo')) {
+                if (record.get('schedulePaymentDateFrom') > record.get('schedulePaymentDateTo')) {
+                    return '$[l:start_date_not_later_ending_date]';
+                }
+            }
+            return true;
+        }
+
+        function CSH5040_detailDocument(value, record, name) {
+            var docCategoryCode = record.get('docCategory');
+            var docHeaderId = record.get('docId');
+            return '<a href="javascript:CSH5040_openDocumentDetil(' + docHeaderId + ',\'' + docCategoryCode + '\');">' + value + '</a>';
+        }
+
+        function CSH5040_openDocumentDetil(docHeaderId, docCategoryCode) {
+            if (docCategoryCode == 'EXP_REPORT') {
+                new Aurora.Window({
+                    url: $au('CSH5040_exp_report_view_main_link').getUrl() + '?expReportHeaderId=' + docHeaderId,
+                    id: 'EXP5110_exp_report_view_main_window',
+                    title: '$[l:bgt_period_sets.detail]',
+                    fullScreen: true
+                });
+            } else if (docCategoryCode == 'PAYMENT_REQUISITION') {
+                new Aurora.Window({
+                    url: $au('CSH5040_payment_requisition_view_main_link').getUrl() + '?paymentRequisitionHeaderId=' + docHeaderId,
+                    id: 'CSH5010_pay_requisition_view_main_window',
+                    title: '$[l:bgt_period_sets.detail]',
+                    fullScreen: true
+                });
+            } else if (docCategoryCode == 'ACP_REQUISITION') {
+                new Aurora.Window({
+                    url: $au('CSH5040_pay_requisition_view_main_link').getUrl() + '?requisitionHdsId=' + docHeaderId,
+                    id: 'ACP3100_acp_requisition_view_main_window',
+                    title: '$[l:bgt_period_sets.detail]',
+                    fullScreen: true
+                });
+            }
+        }
+
+        //Modified by Arthur.Chen 2017-12-22 11:01:01 去除修改值后，result自动查询。
+
+        function CSH5040_updateFunciton(dataSet, record, name, value, oldValue) {
+            if (name == 'accEntityName' && value) {
+                $au('CSH5040_docPaymentResultDs').query();
+            }
+        }
+
+        function CSH5040_paymentAmountEditorFun(record, name) {
+            if (name == 'paymentAmount') {
+                var precision = record.get('paymentCurrencyPrecision');
+                if (!precision) {
+                    return 'CSH5040_nf_0';
+                } else {
+                    return 'CSH5040_nf_' + precision;
+                }
+            }
+        }
+
+        function CSH5040_formatMoney(value, record, name) {
+            return '<div style="font-weight:bold;font-size:14px;color:#3887a8;">' + Aurora.formatMoney(value) + '</div>';
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5040_documentCategoryDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY/"/>
+            <a:dataSet id="CSH5040_paymentObjectDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT/"/>
+            <a:dataSet id="CSH5040_accEntityNameDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/gld/account-entity/queryByCompany?companyId=$[/session/@companyId]"/>
+            <a:dataSet id="CSH5040_paymentMethodDs" fetchAll="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?magOrgId=$[/session/@magOrgId]&amp;companyId=$[/session/@companyId]"/>
+            <a:dataSet id="CSH5040_paymentUsedesDs" fetchAll="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/mo-payment-used/queryPaymentUsed"/>
+            <a:dataSet id="CSH5040_currencyListDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="CSH5040_docPaymentQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="docCategoryName" displayField="meaning" options="CSH5040_documentCategoryDs" prompt="ssc_workflow.doc_category" returnField="docCategory"
+                             valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="accEntityId" defaultValue="$[/model/defaultAccEntity/records/record/@accEntityId]"/>
+                    <a:field name="accEntityName" defaultValue="$[/model/defaultAccEntity/records/record/@accEntityName]" displayField="accEntityName"
+                             options="CSH5040_accEntityNameDs" prompt="csh_payment_requisition_hd.acc_entity_name" required="true" returnField="accEntityId"
+                             valueField="accEntityId"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="CSH5040_paymentObjectDs" placeHolder="csh_payment_requisition_hd.payee_category"
+                             returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeName" autoComplete="true" LovCode="LOV_GLD_PAYEE" placeHolder="csh_payment_requisition_hd.partner_id"
+                             title="csh_payment_requisition_hd.partner_id">
+                        <a:mapping>
+                            <a:map from="payeeId" to="payeeId"/>
+                            <a:map from="payeeName" to="payeeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="requisitionDateFrom" placeHolder="exp_report_header.report_date_from" validator="CSH5040_requisitionDateValidator"/>
+                    <a:field name="requisitionDateTo" placeHolder="exp_report_header.report_date_to" validator="CSH5040_requisitionDateValidator"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName" displayField="description" options="CSH5040_paymentMethodDs" placeHolder="csh_payment_method.payment_method_id"
+                             returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="paymentUsedeId"/>
+                    <a:field name="paymentUsedeName" displayField="description" options="CSH5040_paymentUsedesDs" placeHolder="csh_payment_useds.useds_code"
+                             returnField="paymentUsedeId" valueField="paymentUsedeId"/>
+                    <a:field name="schedulePaymentDateFrom" placeHolder="exp_report_payment_query.schedule_due_date_from" validator="CSH5040_paymentDateValidator"/>
+                    <a:field name="schedulePaymentDateTo" placeHolder="exp_report_payment_query.schedule_due_date_to" validator="CSH5040_paymentDateValidator"/>
+                    <a:field name="currencyName" displayField="currencyName" options="CSH5040_currencyListDs" placeHolder="csh_payment_requisition_hd.currency_code"
+                             returnField="currencyCode" valueField="currencyCode"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5040_updateFunciton"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5040_docPaymentResultDs" autoPageSize="true" autoQuery="true" baseUrl="/csh/doc-pay-acc-entity"
+                       queryUrl="$[/request/@context_path]/csh/doc-pay-acc-entity/queryPayment" queryDataSet="CSH5040_docPaymentQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="docNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="docTypeName" prompt="exp_report_header.exp_report_type_id"/>
+                    <a:field name="accEntityName" prompt="csh_payment_requisition_hd.acc_entity_name"/>
+                    <a:field name="payeeCategoryName" prompt="csh_payment_requisition_hd.payee_category"/>
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.partner_id"/>
+                    <a:field name="accountName" prompt="exp_employee_account.bank_account_name"/>
+                    <a:field name="accountNumber" prompt="csh_bank_branche.bank_account"/>
+                    <a:field name="bankName" prompt="csh_document_payment.bank_name"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName" prompt="csh_payment_method.payment_method_id"/>
+                    <a:field name="schedulePaymentDate" prompt="exp_report_pmt_schedule.schedule_due_date"/>
+                    <a:field name="currencyName" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="paymentUsedeId"/>
+                    <a:field name="paymentUsedeName" prompt="csh_payment_useds.useds_code"/>
+                    <a:field name="needPaymentAmount" prompt="exp_report_payment_query.need_payment_amount"/>
+                    <a:field name="payedAmount" prompt="exp_report_payment_query.payed_amount"/>
+                    <a:field name="unPaymentAmount" prompt="exp_report_payment_query.unpayment_amount"/>
+                    <a:field name="paymentAmount" prompt="exp_report_payment_query.payment_amount"/>
+                    <a:field name="requisitionDate" prompt="exp_report_header.report_date"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="CSH5040_openPaymentWindow" text="hap.pay" width="80"/>
+                <a:toolbarButton click="CSH5040_returnPaymentWindow" text="wfl_workflow.taken_back" width="80"/>
+                <a:gridButton bind="CSH5040_docPaymentGrid" type="excel" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH5040_docPaymentQueryDs" resultTarget="CSH5040_docPaymentResultDs" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="accEntityName" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:comboBox name="docCategoryName" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:textField name="docNumber" bindTarget="CSH5040_docPaymentQueryDs"/>
+                </a:formToolBar>
+                <a:formBody column="4" labelWidth="120">
+                    <a:comboBox name="payeeCategoryName" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:lov name="payeeName" bindTarget="CSH5040_docPaymentQueryDs">
+                        <a:events>
+                            <a:event name="focus" handler="CSH5040_onPayeeNameFocusFun"/>
+                        </a:events>
+                    </a:lov>
+                    <a:datePicker name="requisitionDateFrom" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:datePicker name="requisitionDateTo" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:comboBox name="paymentUsedeName" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:datePicker name="schedulePaymentDateFrom" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:datePicker name="schedulePaymentDateTo" bindTarget="CSH5040_docPaymentQueryDs"/>
+                    <a:comboBox name="currencyName" bindTarget="CSH5040_docPaymentQueryDs"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH5040_docPaymentGrid" bindTarget="CSH5040_docPaymentResultDs" marginHeight="115" marginWidth="25" navBar="true">
+            <a:columns>
+                <a:column name="docNumber" align="center" renderer="CSH5040_detailDocument" width="120"/>
+                <a:column name="docTypeName" align="center" width="100"/>
+                <a:column name="accEntityName" align="center" width="120"/>
+                <a:column name="payeeCategoryName" align="center" width="80"/>
+                <a:column name="payeeName" align="center" width="120"/>
+                <a:column name="accountName" align="center" width="120"/>
+                <a:column name="accountNumber" align="center" width="120"/>
+                <a:column name="bankName" align="center" width="120"/>
+                <a:column name="paymentMethodName" align="center" width="80"/>
+                <a:column name="paymentUsedeName" align="center" width="80"/>
+                <a:column name="schedulePaymentDate" align="center" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="requisitionDate" align="center" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="currencyName" align="center" width="80"/>
+                <a:column name="needPaymentAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                <a:column name="payedAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                <a:column name="unPaymentAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                <a:column name="paymentAmount" align="right" renderer="CSH5040_formatMoney" editorFunction="CSH5040_paymentAmountEditorFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="CSH5040_nf_0" allowDecimals="false" allowNegative="false"/>
+                <a:numberField id="CSH5040_nf_1" allowDecimals="true" decimalPrecision="1"/>
+                <a:numberField id="CSH5040_nf_2" allowDecimals="true" decimalPrecision="2"/>
+                <a:numberField id="CSH5040_nf_3" allowDecimals="true" decimalPrecision="3"/>
+                <a:numberField id="CSH5040_nf_4" allowDecimals="true" decimalPrecision="4"/>
+                <a:numberField id="CSH5040_nf_5" allowDecimals="true" decimalPrecision="5"/>
+                <a:numberField id="CSH5040_nf_6" allowDecimals="true" decimalPrecision="6"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentRequisitionRefMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentRequisitionRef">
+        <result column="PAYMENT_REQUISITION_REF_ID" property="paymentRequisitionRefId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_REQUISITION_LINE_ID" property="paymentRequisitionLineId" jdbcType="DECIMAL"/>
+        <result column="CSH_TRANSACTION_LINE_ID" property="cshTransactionLineId" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_FLAG" property="writeOffFlag" jdbcType="VARCHAR"/>
+        <result column="WRITE_OFF_ID" property="writeOffId" jdbcType="DECIMAL"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="checkTranAndPayObj" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT
+            count( r.payment_requisition_ref_id )
+        FROM
+            csh_payment_requisition_hd h,
+            csh_payment_requisition_ln l,
+            csh_payment_requisition_ref r
+        WHERE
+            h.payment_requisition_header_id = l.payment_requisition_header_id
+            AND l.payment_requisition_line_id = r.payment_requisition_line_id
+            AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            csh_transaction_line tl
+        WHERE
+            tl.payee_category = l.payee_category
+            AND tl.payee_id = l.payee_id
+            AND tl.transaction_line_id = #{transactionLineId}
+            )
+        AND r.csh_transaction_line_id = #{transactionLineId}
+    </select>
+
+    <select id="checkTranAndPayCurrency" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT
+            count( r.payment_requisition_ref_id )
+        FROM
+            csh_payment_requisition_hd h,
+            csh_payment_requisition_ln l,
+            csh_payment_requisition_ref r
+        WHERE
+            h.payment_requisition_header_id = l.payment_requisition_header_id
+            AND l.payment_requisition_line_id = r.payment_requisition_line_id
+            AND NOT EXISTS ( SELECT 1 FROM csh_transaction_line tl WHERE tl.currency_code = h.currency_code AND tl.transaction_line_id = #{transactionLineId} )
+            AND r.csh_transaction_line_id = #{transactionLineId}
+    </select>
+
+    <select id="querySumAmount" parameterType="java.lang.Long" resultType="java.math.BigDecimal">
+        SELECT
+        case when sum(cprr.amount) is null then 0 else sum( cprr.amount ) end sumAmount
+        FROM
+        csh_payment_requisition_ref cprr
+        WHERE cprr.payment_requisition_line_id = #{paymentReqLineId, jdbcType=DECIMAL, javaType=java.lang.Long}
+    </select>
+
+    <select id="getPaidAmount" resultType="java.math.BigDecimal">
+        select
+            ifnull(sum(r.amount),
+            0)
+            from
+                csh_payment_requisition_ref r
+            where
+                exists (
+                    select 1
+                from
+                    csh_transaction_line l,
+                    csh_transaction_header h
+                where
+                    l.transaction_header_id = h.transaction_header_id
+                    and l.transaction_line_id = r.csh_transaction_line_id
+                    and h.posted_flag = 'Y')
+                and r.payment_requisition_line_id = #{paymentReqLineId}
+    </select>
+</mapper>

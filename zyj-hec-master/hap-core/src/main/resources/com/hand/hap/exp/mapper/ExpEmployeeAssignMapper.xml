@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.exp.mapper.ExpEmployeeAssignMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.exp.dto.ExpEmployeeAssign">
+        <result column="EMPLOYEES_ASSIGN_ID" property="employeesAssignId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="company_code" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="company_short_name" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="company_org_describe" property="companyOrgDescribe" jdbcType="VARCHAR"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL" />
+        <result column="position_code" property="positionCode" jdbcType="VARCHAR"/>
+        <result column="position_name" property="positionName" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_JOB_ID" property="employeeJobId" jdbcType="DECIMAL" />
+        <result column="employee_job_code" property="employeeJobCode" jdbcType="VARCHAR"/>
+        <result column="employee_job_name" property="employeeJobName" jdbcType="VARCHAR"/>
+		<result column="level_series_id" property="levelSeriesId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_LEVELS_ID" property="employeeLevelsId" jdbcType="DECIMAL" />
+        <result column="employee_levels_code" property="employeeLevelsCode" jdbcType="VARCHAR"/>
+        <result column="employee_levels_description" property="employeeLevelsDescription" jdbcType="VARCHAR"/>
+        <result column="DATE_FROM" property="dateFrom" jdbcType="DATE" />
+        <result column="DATE_TO" property="dateTo" jdbcType="DATE" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="acc_entity_name" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="RESPONSIBILITY_CENTER_ID" property="responsibilityCenterId" jdbcType="DECIMAL" />
+        <result column="responsibility_center_name" property="responsibilityCenterName" jdbcType="VARCHAR"/>
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL" />
+        <result column="entity_name" property="entityName" jdbcType="VARCHAR"/>
+        <result column="CENTER_ID" property="centerId" jdbcType="DECIMAL" />
+        <result column="center_name" property="centerName" jdbcType="VARCHAR"/>
+        <result column="PRIMARY_POSITION_FLAG" property="primaryPositionFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+		<result column="EMPLOYEE_CODE" property="employeeCode" jdbcType="VARCHAR"/>
+		<result column="EMPLOYEE_NAME" property="employeeName" jdbcType="VARCHAR"/>
+		<result column="UNIT_ID" property="unitId" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryExpEmployeeAssign" parameterType="com.hand.hap.exp.dto.ExpEmployeeAssign" resultMap="BaseResultMap">
+		SELECT
+			ea.employees_assign_id,
+			ea.employee_id,
+			ea.primary_position_flag,
+			ea.enabled_flag,
+			ea.company_id,
+			fc.company_code,
+			fc.company_short_name,
+			fc.DESCRIPTION company_org_describe,
+			ea.POSITION_ID,
+			el.position_code,
+			et.DESCRIPTION position_name,
+			ea.employee_job_id,
+			ej.employee_job_code,
+			eet.DESCRIPTION employee_job_name,
+			ej.level_series_id,
+			ea.employee_levels_id,
+			eel.employee_levels_code,
+			eelt.description employee_levels_description,
+			ea.acc_entity_id,
+			gaet.acc_entity_name,
+			ea.responsibility_center_id,
+			grt.responsibility_center_name,
+			ea.entity_id,
+			bet.description entity_name,
+			ea.center_id,
+			bct.DESCRIPTION center_name
+		FROM
+			exp_employee_assign ea
+			LEFT JOIN (
+		SELECT
+			fv.company_id,
+			fmt.DESCRIPTION,
+			ft.COMPANY_SHORT_NAME,
+			fv.company_code
+		FROM
+			fnd_company fv
+			LEFT JOIN fnd_company_tl ft ON ( ft.company_id = fv.company_id AND ft.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ),
+			fnd_managing_organization fm
+			LEFT JOIN fnd_managing_organization_tl fmt ON ( fmt.MAG_ORG_ID = fm.MAG_ORG_ID AND fmt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+		WHERE
+			fv.mag_org_id = fm.mag_org_id
+			) fc ON fc.company_id = ea.company_id
+			LEFT JOIN exp_org_position el
+			LEFT JOIN exp_org_position_tl et ON ( et.position_id = el.position_id AND et.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON el.position_id = ea.position_id
+			LEFT JOIN exp_employee_job ej
+			LEFT JOIN exp_employee_job_tl eet ON ( eet.employee_job_id = ej.employee_job_id AND eet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ej.employee_job_id = ea.employee_job_id
+			LEFT JOIN exp_employee_level eel
+			LEFT JOIN exp_employee_level_tl eelt ON ( eelt.employee_levels_id = eel.employee_levels_id AND eelt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON eel.employee_levels_id = ea.employee_levels_id
+			LEFT JOIN gld_accounting_entity ge
+			LEFT JOIN gld_accounting_entity_tl gaet ON ( gaet.acc_entity_id = ge.acc_entity_id AND gaet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ge.acc_entity_id = ea.acc_entity_id
+			LEFT JOIN gld_responsibility_center gc
+			LEFT JOIN gld_responsibility_center_tl grt ON ( grt.responsibility_center_id = gc.responsibility_center_id AND grt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON gc.responsibility_center_id = ea.responsibility_center_id
+			LEFT JOIN bgt_entity be
+			LEFT JOIN bgt_entity_tl bet ON ( bet.entity_id = be.entity_id AND bet.lang = 'zh_cn' ) ON be.entity_id = ea.entity_id
+			LEFT JOIN bgt_center bc
+			LEFT JOIN bgt_center_tl bct ON ( bct.center_id = bc.center_id AND bct.lang = 'zh_cn' ) ON bc.center_id = ea.center_id
+		WHERE
+			ea.employee_id = #{employeeId}
+		ORDER BY
+			fc.company_code
+    </select>
+
+    <select id="getCompanyByEmployeeId" resultType="com.hand.hap.fnd.dto.FndCompany" parameterType="java.lang.Long">
+        SELECT
+            epa.COMPANY_ID,
+            fc.COMPANY_SHORT_NAME
+        FROM
+            exp_employee ep
+            INNER JOIN exp_employee_assign epa ON ( ep.EMPLOYEE_ID = epa.EMPLOYEE_ID AND ep.EMPLOYEE_ID = #{0} )
+            LEFT JOIN fnd_company fc ON epa.COMPANY_ID = fc.COMPANY_ID
+    </select>
+
+	<select id="getEmployeeAssignInfo" resultMap="BaseResultMap">
+	SELECT
+			eea.employee_job_id,
+			eea.employee_levels_id,
+			eea.acc_entity_id,
+			(
+		SELECT
+			gaet.ACC_ENTITY_NAME
+		FROM
+			gld_accounting_entity gae
+			LEFT JOIN gld_accounting_entity_tl gaet ON gae.ACC_ENTITY_ID = gaet.ACC_ENTITY_ID
+			AND gaet.LANG = #{request.locale}
+		WHERE
+			gae.ACC_ENTITY_ID = eea.ACC_ENTITY_ID
+			) acc_entity_name,
+			eea.position_id,
+			(
+		SELECT
+			eopt.DESCRIPTION
+		FROM
+			exp_org_position eop
+			LEFT JOIN exp_org_position_tl eopt ON eop.POSITION_ID = eopt.POSITION_ID
+			AND eopt.LANG = #{request.locale}
+		WHERE
+			eop.POSITION_ID = eea.POSITION_ID
+			) position_name
+	FROM
+		exp_employee_assign eea
+	WHERE
+		eea.company_id = #{companyId}
+		AND eea.employee_id = #{employeeId}
+		AND eea.primary_position_flag = 'Y'
+		AND eea.enabled_flag = 'Y'
+	</select>
+
+</mapper>

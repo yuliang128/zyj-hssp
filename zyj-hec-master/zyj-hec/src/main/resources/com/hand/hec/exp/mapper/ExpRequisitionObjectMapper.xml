@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpRequisitionObjectMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpRequisitionObject">
+        <result column="EXP_REQUISITION_HEADER_ID" property="expRequisitionHeaderId" jdbcType="DECIMAL"/>
+        <result column="EXP_REQUISITION_LINE_ID" property="expRequisitionLineId" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_OBJ_TYPE_ID" property="moExpObjTypeId" jdbcType="DECIMAL"/>
+        <result column="MO_EXPENSE_OBJECT_ID" property="moExpenseObjectId" jdbcType="DECIMAL"/>
+        <result column="MO_EXPENSE_OBJECT_NAME" property="moExpenseObjectName" jdbcType="VARCHAR"/>
+
+        <result column="RETURN_FIELD" property="returnField" jdbcType="DECIMAL"/>
+        <result column="DISPLAY_FIELD" property="displayField" jdbcType="DECIMAL"/>
+        <result column="MO_EXP_OBJ_TYPE_NAME" property="moExpObjTypeName" jdbcType="VARCHAR"/>
+        <result column="REQUIRED_FLAG" property="requiredFlag" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_OBJECT_METHOD" property="expenseObjectMethod" jdbcType="VARCHAR"/>
+        <result column="SQL_QUERY" property="sqlQuery" jdbcType="VARCHAR"/>
+    </resultMap>
+    <update id="updateExpReqObject" parameterType="com.hand.hec.exp.dto.ExpRequisitionObject">
+      update exp_requisition_objects ero
+         set ero.mo_expense_object_id   = #{moExpenseObjectId},
+             ero.mo_expense_object_name = #{moExpenseObjectName},
+             ero.last_updated_by        = #{request.userID},
+             ero.last_update_date       = CURRENT_TIMESTAMP
+       where ero.exp_requisition_header_id = #{expRequisitionHeaderId}
+             and (case when ero.exp_requisition_line_id is null then -1 else ero.exp_requisition_line_id end) = (case when #{expRequisitionLineId} is null then -1 else #{expRequisitionLineId} end)
+             and ero.mo_exp_obj_type_id = #{moExpObjTypeId};
+    </update>
+	<select id="queryObjectByReqHd" resultMap="BaseResultMap">
+        SELECT
+	emtv.mo_exp_obj_type_id,
+	emtv.mo_exp_obj_type_code,
+	emtvt.DESCRIPTION mo_exp_obj_type_name,
+	emtv.expense_object_method,
+	emho.default_mo_object_id AS dft_mo_expense_object_id,
+	emvv.mo_expense_object_code AS dft_mo_expense_object_code,
+	emvvt.DESCRIPTION AS dft_mo_expense_object_name,
+	concat( '#', emtv.mo_exp_obj_type_id ) AS return_field,
+	concat( '^#', emtv.mo_exp_obj_type_id ) AS display_field,
+	( CASE emho.REQUIRED_FLAG WHEN 'Y' THEN 'true' ELSE 'false' END ) AS required_flag,
+	emho.layout_priority
+FROM
+	exp_mo_req_type emrt,
+	exp_mo_req_type_ref_hd_obj emho
+	LEFT JOIN exp_mo_expense_object_type emtv
+	LEFT JOIN exp_mo_expense_object_type_tl emtvt ON emtv.MO_EXP_OBJ_TYPE_ID = emtvt.MO_EXP_OBJ_TYPE_ID
+	AND emtvt.LANG = #{request.locale} ON emho.mo_exp_obj_type_id = emtv.mo_exp_obj_type_id
+	LEFT JOIN exp_mo_expense_object_value emvv
+	LEFT JOIN exp_mo_expense_object_value_tl emvvt ON emvvt.mo_expense_object_id = emvv.mo_expense_object_id
+	AND emvvt.lang = #{request.locale} ON emho.default_mo_object_id = emvv.mo_expense_object_id
+WHERE
+	emrt.mo_exp_req_type_id = emho.mo_exp_req_type_id
+	AND emrt.enabled_flag = 'Y'
+	AND emho.enabled_flag = 'Y'
+	and emrt.mo_exp_req_type_id=#{moExpReqTypeId}
+    </select>
+    <select id="queryObjectByReqLn" resultMap="BaseResultMap">
+        SELECT
+	emtv.mo_exp_obj_type_id,
+	emtv.mo_exp_obj_type_code,
+	emtt.DESCRIPTION mo_exp_obj_type_name,
+	emtv.expense_object_method,
+	emlo.default_mo_object_id AS dft_mo_expense_object_id,
+	emvv.mo_expense_object_code AS dft_mo_expense_object_code,
+	emvvt.DESCRIPTION AS dft_mo_expense_object_name,
+	concat( '#', emtv.mo_exp_obj_type_id ) AS return_field,
+	concat( '^#', emtv.mo_exp_obj_type_id ) AS display_field,
+   (CASE emlo.REQUIRED_FLAG WHEN 'Y' THEN 'true' ELSE 'false' END ) AS required_flag,
+	emlo.layout_priority
+FROM
+	exp_mo_req_type_ref_ele emre,
+	exp_req_page_element erpe,
+	exp_mo_req_ele_ref_ln_obj emlo
+	LEFT JOIN exp_mo_expense_object_type emtv
+	LEFT JOIN exp_mo_expense_object_type_tl emtt ON emtv.MO_EXP_OBJ_TYPE_ID = emtt.MO_EXP_OBJ_TYPE_ID
+	AND emtt.LANG = #{request.locale} ON emlo.MO_EXP_OBJ_TYPE_ID = emtv.MO_EXP_OBJ_TYPE_ID
+	AND emlo.ENABLED_FLAG = 'Y'
+	LEFT JOIN exp_mo_expense_object_value emvv
+	LEFT JOIN exp_mo_expense_object_value_tl emvvt ON emvv.MO_EXPENSE_OBJECT_ID = emvvt.mo_expense_object_id
+	AND emvvt.LANG = #{request.locale} ON emlo.DEFAULT_MO_OBJECT_ID = emvv.MO_EXPENSE_OBJECT_ID
+	AND emvv.ENABLED_FLAG = 'Y'
+WHERE
+	emre.req_page_element_id = erpe.req_page_element_id
+	AND emre.req_page_ele_ref_id = emlo.req_page_ele_ref_id
+	AND emlo.mo_exp_obj_type_id = emtv.mo_exp_obj_type_id
+	AND emre.enabled_flag = 'Y'
+	AND erpe.enabled_flag = 'Y'
+	AND emlo.enabled_flag = 'Y'
+    AND emre.mo_exp_req_type_id = #{moExpReqTypeId}
+    AND erpe.req_page_element_code=#{reqPageElementCode}
+    </select>
+</mapper>

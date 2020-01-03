@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.exp.mapper.ExpEmployeeLevelMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.exp.dto.ExpEmployeeLevel">
+        <result column="EMPLOYEE_LEVELS_ID" property="employeeLevelsId" jdbcType="DECIMAL"/>
+        <result column="LEVEL_SERIES_ID" property="levelSeriesId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_LEVELS_CODE" property="employeeLevelsCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="level_series_code_display" property="levelSeriesCodeDisplay" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_JOB_ID" property="employeeJobId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkExpEmpLevel" resultMap="BaseResultMap">
+        select el.* from exp_employee_assign ea ,exp_employee_level el
+            where ea.employee_id = #{employeeId}
+            and ea.employee_levels_id = el.employee_levels_id
+            and
+            (
+              (
+                #{filtrateMethod} = 'INCLUDE'
+                and (#{controlEmpLevelCodeFrom} is null or el.employee_levels_code &gt;= #{controlEmpLevelCodeFrom})
+                and (#{controlEmpLevelCodeTo} is null or el.employee_levels_code &lt;= #{controlEmpLevelCodeTo})
+              )
+              or
+              (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (#{controlEmpLevelCodeFrom} is null or el.employee_levels_code &lt; #{controlEmpLevelCodeFrom})
+                    or (#{controlEmpLevelCodeTo} is null or el.employee_levels_code &gt; #{controlEmpLevelCodeTo})
+                )
+              )
+            )
+            and ea.enabled_flag = 'Y'
+            and el.enabled_flag = 'Y'
+    </select>
+    <select id="queryExpEmpLevel" resultMap="BaseResultMap">
+    select
+        el.EMPLOYEE_LEVELS_ID,
+        el.LEVEL_SERIES_ID,
+        el.EMPLOYEE_LEVELS_CODE,
+        el.DESCRIPTION,
+        el.ENABLED_FLAG,
+        concat( els.level_series_code, '-', els.description ) level_series_code_display
+    from
+        exp_employee_level el, exp_level_series els
+    where el.level_series_id = els.level_series_id
+    <if test="description!=null and description!=''">
+         AND concat( els.level_series_code, '-', els.description ) like  concat('%',#{description},'%')
+    </if>
+    <if test="employeeLevelsCode!=null and employeeLevelsCode!=''">
+         AND el.EMPLOYEE_LEVELS_CODE like concat('%', #{employeeLevelsCode},'%')
+    </if>
+         order by EMPLOYEE_LEVELS_CODE
+    </select>
+
+    <select id="getEmployeeLevelListForQuery" resultMap="BaseResultMap">
+        SELECT
+            el.*,
+            ea.employee_job_id
+        FROM
+            exp_employee_level el
+            LEFT JOIN exp_employee_assign ea ON el.employee_levels_id = ea.employee_levels_id
+        WHERE
+            ea.company_id = #{request.companyId}
+            AND ea.enabled_flag = 'Y'
+            AND el.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR el.employee_levels_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR el.employee_levels_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR el.employee_levels_code &lt;= #{parameterUpperLimit})
+    </select>
+
+
+</mapper>

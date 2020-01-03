@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-27 下午3:21:40  
+    $Revision: 1.0  
+    $Purpose: 借款申请单只读界面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH5010_exp_document_history_view_link" url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <a:link id="CSH5010_paymentReqUploadFile_link" url="$[/request/@context_path]/check_uploadFile.screen"/>
+        <style>
+        	#pay_req_placeholder{
+			    height:45px;
+			}
+        </style>
+        <script><![CDATA[
+            var submitFlag = false;
+            
+            function init() {
+                var ds = $au('CSH5010_pay_req_detail_header_ds').getAt(0);
+                var doc_status = ds.get('doc_status');
+            
+                if (doc_status == 'RETURN_BACK') {
+                    ds.getField('description').setReadOnly(false);
+                }
+                // add lcy 2018/8/24 15:29:12 增加按钮隐藏逻辑
+                //var saveDiv = Ext.get('saveExpDiv');
+                if (doc_status == 'RETURN_BACK' || doc_status == 'PAY_BACK') {
+                    //saveDiv.parent().setStyle('display', 'table-cell');
+                    document.getElementById("saveExpDiv").style.display = "block";
+                } else {
+                    //saveDiv.parent().setStyle('display', 'none');
+                    document.getElementById("saveExpDiv").style.display = "none";
+                }
+            
+                // 【单据审批】增加保存按钮隐藏逻辑  LiLiang 2018-10-8
+                // 在审批时加载单据头的时候隐藏返回按钮
+                //var CSH5010_backBtn = Ext.get('CSH5010_backBtn');
+                if (this.__host.id != 'to_do_list_window') {
+                    //CSH5010_backBtn.parent().setStyle('display', 'table-cell');
+                    document.getElementById("backDiv").style.display = "block";
+                } else {
+                    //CSH5010_backBtn.parent().setStyle('display', 'none');
+                    document.getElementById("backDiv").style.display = "none";
+                }
+            }
+            
+            function CSH5010_closePaymentReqDetailWindow() {
+                $au(this.__host.id).close();
+            }
+            
+            //点击跟踪单据按钮所发生的操作
+            
+            function CSH5010_checkPaymentReqHistory() {
+                var payReqHeaderId = $au('CSH5010_pay_req_detail_header_ds').getAt(0).get('paymentRequisitionHeaderId');
+                new Aurora.Window({
+                    url: $au('CSH5010_exp_document_history_view_link').getUrl() + '?documentId=' + payReqHeaderId + '&documentType=PAYMENT_REQUISITION',
+                    id: 'CSH5010_exp_document_history_view_window',
+                    fullScreen: false,
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            //点击上传附件按钮所发生的操作
+            
+            function CSH5010_checkPaymentReqFile() {
+                var url = $au('CSH5010_paymentReqUploadFile_link').getUrl() + '?table_name=CSH_PAYMENT_REQUISITION_HDS&headerId=' + '$[/parameter/@paymentRequisitionHeaderId]';
+                new Aurora.Window({
+                    url: url,
+                    title: '$[l:ATM.UPLOAD_ATTACHMENT]',
+                    id: 'check_upload_file_screen',
+                    width: 600,
+                    height: 400
+                });
+            }
+            
+            function CSH5010_closePaymentReqUpdateWindow() {
+                $au(this.__host.id).close();
+            }
+            
+            //add lcy 2018/08/24  16:17:23 财务退回则可以修改描述
+            
+            
+            function description_editorFunction(record, name) {
+                var doc_status = $au('CSH5010_pay_req_detail_header_ds').getAt(0).get('docStatus');
+                if (doc_status == 'RETURN_BACK') {
+                    return 'description_tf_pay_back';
+                }
+                return '';
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5010_pay_req_detail_header_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryPayReqHd?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]">
+                <a:fields>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number" readOnly="true"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name" readOnly="true"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date" readOnly="true"/>
+                    <a:field name="amount" prompt="exp_report_header.sum_amount" readOnly="true"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeName" prompt="csh_payment_requisition_hd.requisitor" readOnly="true"/>
+                    <a:field name="unitId"/>
+                    <a:field name="unitName" prompt="csh_payment_requisition_hd.unit_id" readOnly="true"/>
+                    <a:field name="createdByName" prompt="exp_report_header.create_by" readOnly="true"/>
+                    <a:field name="currencyName"  prompt="csh_payment_requisition_hd.payment_currency_name"  readOnly="true" />
+                    <a:field name="currencyCode"/>
+                    <a:field name="status"/>
+                    <a:field name="statusName" prompt="pur_purchase_order.document_status" readOnly="true"/>
+                    <a:field name="paymentMethodName"  readOnly="true" />
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryName"  readOnly="true" />
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.partner_id" readOnly="true"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH5010_pay_req_detail_line_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-ln/queryByHeaderId?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]" selectable="true">
+                <a:fields>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="paymentRequisitionLineId"/>
+                    <a:field name="lineNumber" readOnly="true"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description"/>
+                    <a:field name="companyName" prompt="csh_payment_requisition_ln.company_id" readOnly="true"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name" readOnly="true"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="moCshTrxClassId"/>
+                    <a:field name="cshTransactionClassName" prompt="csh_payment_requisition_ln.cls_des"  readOnly="true" />
+                    <a:field name="paymentRequisitionLineType"/>
+                    <a:field name="payRequisitionLineTypeDesc" prompt="csh_payment_requisition_ln.payment_requisition_line_type" readOnly="true" />
+                    <a:field name="refDocumentIdDisplay" prompt="csh_payment_requisition_ln.ref_document_id" readOnly="true"/>
+                    <a:field name="payeeCategory" readOnly="true"/>
+                    <a:field name="payeeCategoryName" prompt="csh_payment_requisition_hd.payee_category"  readOnly="true" />
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.partner_id" readOnly="true"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="paymentMethodName"  prompt="csh_transaction_header.payment_method_id" readOnly="true" />
+                    <a:field name="contractNumber" prompt="con_contract_header.cont_document_number" readOnly="true"/>
+                    <a:field name="accountNumber"  prompt="csh_bank_account.bank_account_num" />
+                    <a:field name="paymentScheduleLineNumber" prompt="con_payment_schedules.payment_schedule_line_number" readOnly="true"/>
+                    <a:field name="needPaymentAmount" prompt="csh_payment_requisition_ln.need_payment_amount"/>
+                    <a:field name="requisitedAmount" prompt="csh_payment_requisition_ln.requisited_amount"/>
+                    <a:field name="requisitedUnpaymentAmount" prompt="csh_payment_requisition_ln.requisited_unpayment_amount"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_ln.current_amount" readOnly="true"/>
+                    <a:field name="paymentScheduleLineId"/>
+                    <a:field name="contractHeaderId"/>
+                    <a:field name="refDocumentId"/>
+                    <a:field name="contFlag"/>
+                    <a:field name="accountName" prompt="exp_employee_account.bank_account_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <!--add by chao.dai 2019-01-24 将借款申请单的按钮上移，防止滑动滚动条时按钮跟随滑动-->
+        <a:screenTopToolbar style="position:fixed;left:1px;right:1px;height:34px;z-index:100;border-bottom:1px solid #C7C7C7;background-color:#FFFFFF;padding-left: 10px;">
+            <div class="clearfix" style="width:100%;height:100%;">
+                <div id="backDiv">
+                    <a:button id="CSH5010_backBtn" click="CSH5010_closePaymentReqDetailWindow" style="margin-top:8px;margin-right:10px;float:right;" text="HAP_BACK"/>
+                </div>
+                <a:button id="CSH5010_docHistoryBtn" click="CSH5010_checkPaymentReqHistory" style="margin-top:8px;margin-right:10px;float:right;" text="PROMPT.HISTORY"/>
+                <a:button id="CSH5010_fileBtn" click="CSH5010_checkPaymentReqFile" style="margin-top:8px;margin-right:10px;float:right;" text="HAP_ATTACHMENT_DOCUMENTATION"/>
+                <span style="margin-top:15px;margin-left：5px;font-size:1.05em;display:block;font-weight: 600;"><![CDATA[ ]]></span>
+            </div>
+        </a:screenTopToolbar>
+        <div id="pay_req_placeholder"/>
+        <a:screenBody>
+            <a:form id="CSH5010_csh_payment_requisition_form" column="1" marginWidth="0" title=" ">
+                <a:box column="4" style="width:100%">
+                    <a:textField name="requisitionNumber" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:comboBox name="accEntityName" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:datePicker name="requisitionDate" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:textField name="amount" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:comboBox name="employeeName" id="employee_id_cmp" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:comboBox name="unitName" bindtarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:textField name="createdByName" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:comboBox name="currencyName" id="currency_code_cmp" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:textField name="statusName" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:comboBox name="payeeCategoryName" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                    <a:lov name="payeeName" bindTarget="CSH5010_pay_req_detail_header_ds"/>
+                </a:box>
+                <a:box style="width:100%">
+                    <a:textArea name="description" id="pay_req_create_ta" bindtarget="CSH5010_pay_req_detail_header_ds" calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" colspan="4" width="800"/>
+                </a:box>
+            </a:form>
+            <a:grid id="CSH5010_csh_payment_requisition_grid" autoAdjustHeight="true" bindTarget="CSH5010_pay_req_detail_line_ds" marginHeight="335" marginWidth="0" minHeight="100" navBar="true">
+                <a:columns>
+                    <a:column name="lineNumber" align="center" prompt="EXP_REPORT_LINES.LINE_NUMBER" width="50"/>
+                    <a:column name="description" align="left" editorFunction="description_editorFunction" width="200"/>
+                    <a:column name="cshTransactionClassName" align="center" width="120"/>
+                    <a:column name="payRequisitionLineTypeDesc" align="center" width="120"/>
+                    <a:column name="refDocumentIdDisplay" align="center" width="120"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="companyName" align="center" width="200"/>
+                    <a:column name="accEntityName" align="center" width="200"/>
+                    <a:column name="payeeCategoryName" align="center" width="120"/>
+                    <a:column name="payeeName" align="center" width="120"/>
+                    <a:column name="accountNumber" align="center" prompt="CSH_BANK_ACCOUNTS.BANK_ACCOUNT_NUM" width="200"/>
+                    <a:column name="accountName" align="center" prompt="EXP_EMPLOYEE_ACCOUNTS.BANK_ACCOUNT_NAME" width="120"/>
+                    <a:column name="paymentMethodName" align="center" prompt="ACP.DESCRIPTION_METHOD" width="120"/>
+                    <a:column name="needPaymentAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="requisitedAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="requisitedUnpaymentAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="contractNumber" align="center" width="200"/>
+                    <a:column name="paymentScheduleLineNumber" align="center" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="description_tf_pay_back"/>
+                    <a:lov id="account_number_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+           // loadComplete();
+            init();
+        ]]></script>
+    </a:view>
+</a:screen>

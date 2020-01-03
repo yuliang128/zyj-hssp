@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="exp_rep_readonly_wfl_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <script><![CDATA[
+            function reportNumRenderer(value, record, name) {
+                return '<a href="javascript:reqNumNewWindow_1(' + record.get('expReportHeaderId') + ');">' + value + '</a>';
+            }
+            
+            function reqNumNewWindow_1(expReportHeaderId) {
+                var url = $au('exp_rep_readonly_wfl_link').getUrl() + '?expReportHeaderId=' + expReportHeaderId + '&canUploadFlag=false';
+                new Aurora.Window({
+                    id: 'exp_rep_readonly_win',
+                    url: url,
+                    fullScreen: true
+                });
+            }
+            
+            function CSH5010_csh_payment_req_ref_report_back() {
+                $au(this.__host.id).close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5010_csh_payment_req_view_header_ds" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryPayReqHd?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]">
+                <a:fields>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number" readOnly="true"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH5010_csh_payment_req_ref_report_ds" autoQuery="true" pageSize="15" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/selectPayReqRefReport?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]">
+                <a:fields>
+                    <a:field name="expRequisitionNumber" prompt="exp_requisition_header.exp_requisition_number"/>
+                    <a:field name="typeDescription" prompt="exp_report_header.exp_report_type_id"/>
+                    <a:field name="requisitionDate" prompt="exp_report_header.report_date"/>
+                    <a:field name="currencyName" prompt="exp_report_query.moneytype"/>
+                    <a:field name="quarterNum" prompt="exp_report_lines.report_amount"/>
+                    <a:field name="quarterNumFun" prompt="exp_report_line.report_functional_amount"/>
+                    <a:field name="employeeName" prompt="exp_report_header.employee_id"/>
+                    <a:field name="payeeCategoryName" prompt="exp_report_header.payee_category"/>
+                    <a:field name="payeeName" prompt="exp_report_header.payee_id"/>
+                    <a:field name="requisitionStatus" prompt="exp_report_header.report_status"/>
+                    <a:field name="auditFlag" prompt="exp_report_header.audit_flag"/>
+                    <a:field name="auditDate" prompt="exp_report_header.audit_date"/>
+                    <a:field name="description" prompt="exp_report_header.description"/>
+                    <a:field name="expReportHeaderId"/>
+                    <a:field name="requisitionStatusValue"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <!--  <a:screenTopToolbar id="exp_report_query_req_top_bar">
+                <a:screenTitle/> <![CDATA[
+                
+            ]]></a:screenTopToolbar> -->
+            <a:form id="CSH5010_csh_payment_req_form" column="2" title="exp_req.csh_payment_req">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="CSH5010_csh_payment_req_ref_report_back" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="requisitionNumber" bindTarget="CSH5010_csh_payment_req_view_header_ds"/>
+                <a:textField name="requisitionDate" bindTarget="CSH5010_csh_payment_req_view_header_ds"/>
+            </a:form>
+            <a:form marginWidth="0" title="acp_sys_acp_req_types.relate_report">
+                <a:grid id="CSH5010_csh_payment_req_ref_report_grid" bindTarget="CSH5010_csh_payment_req_ref_report_ds" marginHeight="280" marginWidth="35" navBar="true" showRowNumber="false">
+                    <a:columns>
+                        <a:column name="expRequisitionNumber" align="left" renderer="reportNumRenderer" width="120"/>
+                        <!-- <a:column name="exp_requisition_number"/> -->
+                        <a:column name="typeDescription" align="left" width="120"/>
+                        <a:column name="requisitionDate" align="center" width="80"/>
+                        <a:column name="currencyName" align="left" width="120"/>
+                        <a:column name="quarterNum" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        <a:column name="quarterNumFun" align="right" renderer="Aurora.formatMoney" width="100"/>
+                        <a:column name="employeeName" align="left" width="120"/>
+                        <a:column name="payeeCategoryName" align="left" width="120"/>
+                        <a:column name="payeeName" align="left" width="120"/>
+                        <a:column name="requisitionStatus" align="left" width="120"/>
+                        <a:column name="auditFlag" align="center" width="50"/>
+                        <a:column name="auditDate" align="center" width="80"/>
+                        <a:column name="description" align="left" width="150"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+        <!--  <script><![CDATA[
+
+                function expReqReadonlyStInitSize() {
+                    //描述宽度
+            　　     var labelWidth = 75;
+            　　     //标签宽度,5 = 3padding + 2border-spacing
+            　　     var tagWidth = 150 + 5;
+            　　     //页面宽度、高度
+            　　     var vw = $A.getViewportWidth();
+            　　     var vh = $A.getViewportHeight();
+            　　     //留白宽度
+            　　     var marginWidth = 35;
+            　　     //自适应宽度
+            　　     var autoWidth = vw - marginWidth;
+            　　     //Form内部宽度，-2border
+            　　     var formInnerWidth = autoWidth - 2;
+            　　     //所占列数
+            　　     var colSpan = 4;
+            　　     //设置组件的自适应宽度
+            　　     Ext.get('CSH5010_csh_payment_req_form').setWidth(autoWidth + 4);
+            　　     $au('CSH5010_csh_payment_req_ref_report_grid').setWidth(autoWidth);                                         
+                }
+                //Ext.fly(window).on('resize', expReqReadonlyStInitSize);
+                expReqReadonlyStInitSize();
+            ]]></script> -->
+    </a:view>
+</a:screen>

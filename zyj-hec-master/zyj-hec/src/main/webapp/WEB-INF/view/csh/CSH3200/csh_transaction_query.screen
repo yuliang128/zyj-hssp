@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH3200_csh_payment_transaction_detail_link_01" url="$[/request/@context_path]/csh/public/csh_payment_transaction_detail.screen"/>
+        <a:link id="CSH3200_exp_report_view_main_link_01" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="CSH3200_csh_payment_requisition_view_main_link_01" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="CSH3200_acp_requisition_view_main_link_01" url="$[/request/@context_path]/acp/ACP3100/acp_requisition_view_maintain_main.screen"/>
+        <script><![CDATA[
+            function CSH3200_mainCshTransactionRenderer(value, record, name) {
+                if (value) {
+                    return '<a href="javascript:CSH3200_mainOpenCshTransaction(\'' + record.get('transactionHeaderId') + '\')">' + value + '</a>';
+                }
+            }
+            
+            
+            function CSH3200_mainSourceCshTransactionRenderer(value, record, name) {
+                if (value) {
+                    return '<a href="javascript:CSH3200_mainOpenCshTransaction(\'' + record.get('sourceHeaderId') + '\')">' + value + '</a>';
+                }
+            }
+            
+            function CSH3200_mainOpenCshTransaction(transactionHeaderId) {
+                new Aurora.Window({
+                    url: $au('CSH3200_csh_payment_transaction_detail_link_01').getUrl() + '?transactionHeaderId=' + transactionHeaderId,
+                    id: 'CSH3200_csh_payment_transaction_detail_window',
+                    title: '$[l:csh_mo_transaction_detail]',
+                    fullScreen: true
+                });
+            }
+            
+            function CSH3200_mainDocNumberRenderer(value, record, name) {
+                if (value) {
+                    return '<a href="javascript:CSH3200_mainOpenDoc(\'' + record.get('docCategory') + '\',\'' + record.get('docId') + '\')">' + value + '</a>';
+                }
+            }
+            
+            function CSH3200_mainOpenDoc(docCategory, docId) {
+                if (docCategory == 'EXP_REPORT') {
+                    new Aurora.Window({
+                        url: $au('CSH3200_exp_report_view_main_link_01').getUrl() + '?expReportHeaderId=' + docId,
+                        id: 'exp_report_view_main_screen',
+                        title: '$[l:exp_report_pay]',
+                        fullScreen: true
+                    });
+                } else if (docCategory == 'PAYMENT_REQUISITION') {
+                    new Aurora.Window({
+                        url: $au('CSH3200_csh_payment_requisition_view_main_link_01').getUrl() + '?paymentRequisitionHeaderId=' + docId,
+                        id: 'CSH5010_pay_requisition_view_main_window',
+                        title: '$[l:exp_payment_requisition_line]',
+                        fullScreen: true
+                    });
+                } else if (docCategory == 'ACP_REQUISITION') {
+                    new Aurora.Window({
+                        url: $au('CSH3200_acp_requisition_view_main_link_01').getUrl() + '?requisitionHdsId=' + docId,
+                        id: 'ACP3100_acp_requisition_view_main_window',
+                        title: '$[l:acp_requisition_hds.payment_requisition]',
+                        fullScreen: true
+                    });
+                }
+            }
+            
+            function EXP3200_payee_nameFocusFun() {
+                var record = $au('CSH3200_queryDs').getAt(0);
+                var payee_category = record.get('payeeCategory');
+                if (Ext.isEmpty(payee_category)) {
+                    new Aurora.showErrorMessage('$[l:prompt.error]', '$[l:exp_report_main.payee_category_is_null]', null, 300, 400);
+                    return;
+                }
+                record.getField('payeeName').setLovPara('payeeCategory', record.get('payeeCategory'));
+            }
+            
+            // modify lcy 2018/1/12 16:50:23  新增CSH3200_queryDsUpdateFun事件实现核算主体限制银行
+            
+            function CSH3200_queryDsUpdateFun(dataSet, record, name, value, oldValue) {
+                if (name == 'accEntityId') {
+                    record.set('bankAccountName', '');
+                    record.set('bankAccountId', '');
+                }
+            }
+            
+            // modify lcy 2018/1/12 16:50:23  新增bank_account_focusFun事件实现核算主体限制银行
+            
+            function bank_account_focusFun() {
+                var record = $au('CSH3200_queryDs').getAt(0);
+                var acc_entity_id = record.get('accEntityId');
+                if (Ext.isEmpty(acc_entity_id)) {
+                    record.getField('bankAccountName').setOptions('');
+                    new Aurora.showMessage('$[l:prompt.error]', '$[l:fnd.acc_entity_is_null]', null, 300, 100);
+                    return;
+                }
+                record.getField('bankAccountName').setOptions('CSH3200_bankAccountDs');
+                var bank_ds = $au('CSH3200_bankAccountDs');
+                bank_ds.setQueryParameter('accEntityId', acc_entity_id);
+                bank_ds.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH3200_accEntityDs">
+                <a:datas dataSource="/model/acc_entity/records"/>
+            </a:dataSet>
+            <a:dataSet id="CSH3200_payeeCategoryDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="CSH3200_paymentMethodDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?magOrgId=$[/session/@magOrgId]&amp;companyId=$[/session/@companyId]"/>
+            <a:dataSet id="CSH3200_currencyDs" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/getGldCurrencyOption"/>
+            <a:dataSet id="CSH3200_transactionTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_TRANSACTION_TYPE"/>
+            <a:dataSet id="CSH3200_paymentDocCategory" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY"/>
+            <a:dataSet id="CSH3200_bankAccountDs" queryUrl="$[/request/@context_path]/csh/bank-account/queryBankAccountByAe"/>
+            <a:dataSet id="CSH3200_queryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityName" defaultValue="$[/model/default_acc_entity/records/record/@accEntityName]" displayField="accEntityName" options="CSH3200_accEntityDs" placeHolder="exp_report_header.acc_entity_name" required="true" returnField="accEntityId" valueField="accEntityId"/>
+                    <a:field name="accEntityId" defaultValue="$[/model/default_acc_entity/records/record/@accEntityId]"/>
+                    <a:field name="transactionDateFrom" defaultValue="$[/model/current_date/records/record/@currentDate30]" placeHolder="csh_transaction_header.transaction_date_from" required="true"/>
+                    <a:field name="transactionDateTo" defaultValue="$[/model/current_date/records/record/@currentDate]" placeHolder="csh_transaction_header.transaction_date_to" required="true"/>
+                    <a:field name="transactionNum" placeHolder="csh_transaction_headers.transaction_num"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="CSH3200_payeeCategoryDs" placeHolder="exp_mo_report_type.payee_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeName" lovCode="LOV_GLD_PAYEE"  placeHolder="csh_transaction_line.payee_name" title="csh_transaction_line.payee_name">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="agentEmployeeName" lovCode="LOV_EXP_EMPLOYEE"  placeHolder="csh_transaction_line.agent_employee_name" title="csh_transaction_line.agent_employee_name">
+                        <a:mapping>
+                            <a:map from="employeeName" to="agentEmployeeName"/>
+                            <a:map from="employeeId" to="agentEmployeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="agentEmployeeId"/>
+                    <a:field name="paymentEmployeeName" lovCode="LOV_EXP_EMPLOYEE" placeHolder="payment_employee_id" title="payment_employee_id">
+                        <a:mapping>
+                            <a:map from="employeeName" to="paymentEmployeeName"/>
+                            <a:map from="employeeId" to="paymentEmployeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="paymentEmployeeId"/>
+                    <a:field name="bankAccountName" displayField="bankAccountName" placeHolder="csh_bank_account.bank_account_num" returnField="bankAccountId" valueField="bankAccountId"/>
+                    <a:field name="bankAccountId"/>
+                    <a:field name="currencyName" displayField="currencyName" options="CSH3200_currencyDs" placeHolder="csh_bank_account.currency_code" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="paymentMethodName" displayField="description" options="CSH3200_paymentMethodDs" placeHolder="exp_report_header.payment_method" returnField="paymentMethodId" valueField="paymentMethodId"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="transactionTypeName" displayField="meaning" options="CSH3200_transactionTypeDs" placeHolder="csh_mo_transaction_classes.csh_transaction_type_code" returnField="transactionType" valueField="value"/>
+                    <a:field name="transactionType"/>
+                    <a:field name="transactionAmountFrom" placeHolder="csh_transaction_line.transaction_amount_from"/>
+                    <a:field name="transactionAmountTo" placeHolder="csh_transaction_line.transaction_amount_to"/>
+                    <a:field name="docNumber" placeHolder="ssc_task_pool.doc_number"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="CSH3200_paymentDocCategory" placeHolder="ssc_task_pool.doc_category" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="sourceTransactionNum" placeHolder="source_csh_transaction"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH3200_queryDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="csh_transaction_reuslt_ds" autoPageSize="true" queryUrl="$[/request/@context_path]/csh/transaction-header/cshTransactionQuery" autoQuery="true" queryDataSet="CSH3200_queryDs">
+                <a:fields>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="transactionDate" prompt="csh_transaction_headers.transaction_date"/>
+                    <a:field name="docNumber" prompt="ssc_task_pool.doc_number"/>
+                    <a:field name="docCategoryName" prompt="ssc_task_pool.doc_category"/>
+                    <a:field name="transactionTypeName" prompt="csh_mo_transaction_classes.csh_transaction_type_code"/>
+                    <a:field name="currencyName" prompt="csh_bank_account.currency_code"/>
+                    <a:field name="transactionAmount" prompt="csh_transaction_line.transaction_amount"/>
+                    <a:field name="bankAccountName" prompt="csh_transaction_query.company_name"/>
+                    <a:field name="bankAccountNum" prompt="csh_transaction_query.company_account_num"/>
+                    <a:field name="payeeCategoryName" prompt="exp_mo_report_type.payee_category"/>
+                    <a:field name="payeeName" prompt="csh_transaction_line.payee_name"/>
+                    <a:field name="agentEmployeeName" prompt="csh_transaction_line.agent_employee_name"/>
+                    <a:field name="paymentEmployeeName" prompt="payment_employee_id"/>
+                    <a:field name="returnedFlagName" prompt="refund_status"/>
+                    <a:field name="reversedFlagName" prompt="bgt_journal_main.reversed_flag_name"/>
+                    <a:field name="sourceTransactionNum" prompt="source_csh_transaction"/>
+                    <a:field name="description" prompt="acp_requisition.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+<!--                <a:gridButton bind="CSH3200_grid" type="excel"/>-->
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH3200_queryDs" resultTarget="csh_transaction_reuslt_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="accEntityName" bindTarget="CSH3200_queryDs"/>
+                    <a:datePicker name="transactionDateFrom" bindTarget="CSH3200_queryDs"/>
+                    <a:datePicker name="transactionDateTo" bindTarget="CSH3200_queryDs"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:textField name="transactionNum" bindTarget="CSH3200_queryDs"/>
+                    <a:comboBox name="bankAccountName" bindTarget="CSH3200_queryDs">
+                        <a:events>
+                            <a:event name="focus" handler="bank_account_focusFun"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="payeeCategoryName" bindTarget="CSH3200_queryDs"/>
+                    <a:lov name="payeeName" bindTarget="CSH3200_queryDs">
+                        <a:events>
+                            <a:event name="focus" handler="EXP3200_payee_nameFocusFun"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="agentEmployeeName" bindTarget="CSH3200_queryDs"/>
+                    <a:lov name="paymentEmployeeName" bindTarget="CSH3200_queryDs"/>
+                    <a:comboBox name="currencyName" bindTarget="CSH3200_queryDs"/>
+                    <a:comboBox name="paymentMethodName" bindTarget="CSH3200_queryDs"/>
+                    <a:comboBox name="transactionTypeName" bindTarget="CSH3200_queryDs"/>
+                    <a:numberField name="transactionAmountFrom" bindTarget="CSH3200_queryDs"/>
+                    <a:numberField name="transactionAmountTo" bindTarget="CSH3200_queryDs"/>
+                    <a:textField name="docNumber" bindTarget="CSH3200_queryDs"/>
+                    <a:comboBox name="docCategoryName" bindTarget="CSH3200_queryDs"/>
+                    <a:textField name="sourceTransactionNum" bindTarget="CSH3200_queryDs"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH3200_grid" bindTarget="csh_transaction_reuslt_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="transactionNum" align="center" renderer="CSH3200_mainCshTransactionRenderer" width="120"/>
+                <a:column name="transactionDate" align="center" width="80"/>
+                <a:column name="docNumber" align="center" renderer="CSH3200_mainDocNumberRenderer" width="120"/>
+                <a:column name="docCategoryName" align="center" width="100"/>
+                <a:column name="transactionTypeName" align="center" width="80"/>
+                <a:column name="currencyName" align="center" width="80"/>
+                <a:column name="transactionAmount" align="right" renderer="Aurora.formatMoney" width="80"/>
+                <a:column name="bankAccountName" align="center" width="120"/>
+                <a:column name="bankAccountNum" align="center" width="120"/>
+                <a:column name="payeeCategoryName" align="center" width="80"/>
+                <a:column name="payeeName" align="center" width="120"/>
+                <a:column name="agentEmployeeName" align="center" width="80"/>
+                <a:column name="paymentEmployeeName" align="center" width="80"/>
+                <a:column name="returnedFlagName" align="center" width="80"/>
+                <a:column name="reversedFlagName" align="center" width="80"/>
+                <a:column name="sourceTransactionNum" align="center" renderer="CSH3200_mainSourceCshTransactionRenderer" width="120"/>
+                <a:column name="description" align="left" editor="CSH3200_ta" width="150"/>
+            </a:columns>
+            <a:editors>
+                <a:textArea id="CSH3200_ta"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

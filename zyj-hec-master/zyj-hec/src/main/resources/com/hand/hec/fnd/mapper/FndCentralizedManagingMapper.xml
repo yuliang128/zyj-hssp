@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.FndCentralizedManagingMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.FndCentralizedManaging">
+        <result column="CENTRALIZED_MAG_ID" property="centralizedMagId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="APPROVE_TYPE" property="approveType" jdbcType="VARCHAR"/>
+        <result column="CONDITION_TYPE" property="conditionType" jdbcType="VARCHAR"/>
+        <result column="CONDITION_TYPE_NAME" property="conditionTypeName" jdbcType="VARCHAR"/>
+        <result column="CONDITION_VALUE_ID" property="conditionValueId" jdbcType="DECIMAL"/>
+        <result column="CONDITION_VALUE_CODE" property="conditionValueCode" jdbcType="VARCHAR"/>
+        <result column="CONDITION_VALUE_DESC" property="conditionValueDesc" jdbcType="VARCHAR"/>
+        <result column="CENTRALIZED_MAG_TYPE" property="centralizedMagType" jdbcType="VARCHAR"/>
+        <result column="CENTRALIZED_MAG_VALUE_ID" property="centralizedMagValueId" jdbcType="DECIMAL"/>
+        <result column="CENTRALIZED_MAG_VALUE_CODE" property="centralizedMagValueCode" jdbcType="VARCHAR"/>
+        <result column="CENTRALIZED_MAG_VALUE_DESC" property="centralizedMagValueDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+
+
+    <select id="selectCentralizedMagList" parameterType="com.hand.hec.fnd.dto.FndCentralizedManaging" resultMap="BaseResultMap">
+        SELECT
+          *
+        FROM(
+            SELECT
+                cm.centralized_mag_id,
+                cm.company_id,
+                (SELECT
+                    cp.company_code
+                FROM
+                    fnd_company cp
+                WHERE
+                    cp.company_id = cm.company_id
+                ) company_code,
+                (SELECT
+                    cp.company_short_name
+                FROM
+                    fnd_company cp
+                WHERE
+                    cp.company_id = cm.company_id
+                ) company_short_name,
+                (SELECT
+                    cp.mag_org_id
+                FROM
+                    fnd_company cp
+                WHERE
+                    cp.company_id = cm.company_id
+                ) mag_org_id,
+                cm.approve_type,
+                cm.condition_type,
+                cm.condition_value_id,
+                CASE WHEN
+                    condition_type='REQ_ITEMS'
+                THEN (SELECT
+                        ri.mo_req_item_code
+                    FROM
+                        exp_mo_req_item ri
+                    WHERE
+                        ri.mo_req_item_id = cm.condition_value_id
+                    )
+                WHEN
+                    condition_type='REP_ITEMS'
+                THEN (SELECT
+                        ei.mo_expense_item_code
+                    FROM
+                        exp_mo_expense_item ei
+                    WHERE
+                        ei.mo_expense_item_id = cm.condition_value_id
+                    )
+                WHEN
+                    condition_type='BGT_ITEMS'
+                THEN (SELECT
+                        bi.budget_item_code
+                    FROM
+                        bgt_budget_item bi
+                    WHERE
+                        bi.budget_item_id = cm.condition_value_id
+                    )
+                END condition_value_code,
+                CASE WHEN
+                    condition_type='REQ_ITEMS'
+                THEN (SELECT
+                        ri.description
+                    FROM
+                        exp_mo_req_item ri
+                    WHERE
+                        ri.mo_req_item_id = cm.condition_value_id
+                    )
+                WHEN
+                    condition_type='REP_ITEMS'
+                THEN (SELECT
+                        ei.description
+                    FROM
+                        exp_mo_expense_item ei
+                    WHERE
+                        ei.mo_expense_item_id = cm.condition_value_id
+                    )
+                WHEN
+                    condition_type='BGT_ITEMS'
+                THEN (SELECT
+                        bi.description
+                    FROM
+                        bgt_budget_item bi
+                    WHERE
+                        bi.budget_item_id = cm.condition_value_id
+                    )
+                END condition_value_desc,
+                cm.centralized_mag_type,
+                cm.centralized_mag_value_id,
+                CASE WHEN
+                    centralized_mag_type='EMPLOYEE'
+                THEN (SELECT
+                        ee.employee_code
+                    FROM
+                        exp_employee ee
+                    WHERE
+                        ee.employee_id = cm.centralized_mag_value_id
+                    )
+                WHEN
+                    centralized_mag_type='POSITION'
+                THEN (SELECT
+                        op.position_code
+                    FROM
+                        exp_org_position op
+                    WHERE
+                        op.position_id = cm.centralized_mag_value_id
+                    )
+                END centralized_mag_value_code,
+                CASE WHEN
+                    centralized_mag_type='EMPLOYEE'
+                THEN (SELECT
+                        ee.name
+                    FROM
+                        exp_employee ee
+                    WHERE
+                        ee.employee_id = cm.centralized_mag_value_id
+                    )
+                WHEN
+                    centralized_mag_type='POSITION'
+                THEN (SELECT
+                        op.description
+                    FROM
+                        exp_org_position op
+                    WHERE
+                        op.position_id = cm.centralized_mag_value_id
+                    )
+                END centralized_mag_value_desc
+            FROM
+                fnd_centralized_managing cm) t
+        <where>
+                t.mag_org_id = #{magOrgId}
+            <if test="companyId!=null and companyId!=''">
+                AND t.company_id = #{companyId}
+            </if>
+            <if test="centralizedMagType!=null and centralizedMagType!=''">
+                AND t.centralized_mag_type = #{centralizedMagType}
+            </if>
+            <if test="conditionType!=null and conditionType!=''">
+                AND t.condition_type = #{conditionType}
+            </if>
+        </where>
+        ORDER BY
+            company_code,approve_type,condition_type
+    </select>
+
+</mapper>

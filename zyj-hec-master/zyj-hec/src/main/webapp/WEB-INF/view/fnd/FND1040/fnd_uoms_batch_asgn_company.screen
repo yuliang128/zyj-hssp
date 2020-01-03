@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan  
+    $Date: 2018-9-1 10:33:39
+    $Revision: 1.0  
+    $Purpose: 计量单位批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND1040_fnd_uom_com_batch_assign_link" url="$[/request/@context_path]/fnd/uom-asgn-com/batchAssignCompanyManytoMany"/>
+        <script><![CDATA[
+        	var window_id = this.__host.id;
+            function FND1040_BatchComAddAssignFun() {
+                var companyRecordsData = $au('FND1040_add_batch_com_result_ds').getJsonData(true);
+                var uomresultData = $au('FND1040_fnd_uoms_result_ds').getJsonData(true);
+                if (companyRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                    return;
+                }
+                for(var i = 0 ; i < uomresultData.length ; i ++){
+                    uomresultData[i]['companyInfo'] = companyRecordsData;
+                }
+                Aurora.request({lockMessage:'$[l:hap_waiting]',lockMessage:'$[l:hap_waiting]',
+                    url: $au('FND1040_fnd_uom_com_batch_assign_link').getUrl(),
+                    para: uomresultData,
+                    success: function(res) {
+                        FND1040_BatchComAddReturnFun();
+                        $au('FND1040_fnd_uoms_result_ds').query();
+                    },
+                    scope: this
+                });
+
+            }
+            
+            function FND1040_BatchComAddReturnFun() {
+                $au(window_id).close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1040_add_batch_com_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyCodeName" prompt="fnd_company.company_name"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND1040_add_batch_com_result_ds" autoQuery="true" baseUrl="/fnd/uom-asgn-com"   queryDataSet="FND1040_add_batch_com_query_ds" queryUrl="$[/request/@context_path]/fnd/uom-asgn-com/queryCompanyForUoms" selectable="true">
+                <a:fields>
+                    <a:field name="magOrgId"/>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCodeName" prompt="fnd_company.company_name"/>
+                    <a:field name="magOrgCodeName" prompt="sys_parameter.mag_org_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:label width="5"/>
+                <a:toolbarButton click="FND1040_BatchComAddAssignFun" text="HEC_ASSIGN" width="80"/>
+                <a:toolbarButton click="FND1040_BatchComAddReturnFun" text="HAP_BACK" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="FND1040_add_batch_com_query_ds" resultTarget="FND1040_add_batch_com_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:textField name="companyCode" bindTarget="FND1040_add_batch_com_query_ds" prompt="fnd_company.company_code" readOnly="false"/>
+                    <a:textField name="companyName" bindTarget="FND1040_add_batch_com_query_ds" prompt="fnd_company.company_name" readOnly="false"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:screenBody>
+            <a:grid Width="1010" bindTarget="FND1040_add_batch_com_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="companyCodeName" align="center" width="200"/>
+                    <a:column name="magOrgCodeName" align="center" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

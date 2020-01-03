@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-5-12 下午4:06:33  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+        function BPM102_doLovMapSave() {
+            $au('BPM102_pageTagLovMapDs').submit();
+        }
+
+        function BPM102_doLovMapBack() {
+            $au('BPM102_pageTagLovMapScreen').close();
+        }
+
+        function BPM102_onLovMapAdd(ds, record, index) {
+            var lineNum = 0;
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('mapSequence') > lineNum) {
+                    lineNum = records[i].get('mapSequence');
+                }
+            }
+            record.set('mapSequence', (Math.floor(lineNum / 10) + 1) * 10);
+        }
+
+        function lovMapPvFunction() {
+            window.open('$[/request/@context_path]/' + $au('BPM102_pageGroupResultDs').getCurrentRecord().get('template_screen') + '?page_id=' + $au('BPM102_pageResultDs').getCurrentRecord().get('page_id') + '&refreshCache=Y');
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_pageTagLovMapDs" autoQuery="true" fetchAll="true"
+                       baseUrl="/bpm/pageTagLovMap"
+                       queryUrl="$[/request/@context_path]/bpm/pageTagLovMap/query?tagId=$[/parameter/@tagId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="mapSequence" required="true"/>
+                    <a:field name="fromField"
+                             lovCode="LOV_BPM_LOV_FIELD?lovCode=$[/parameter/@lovcode]" required="true">
+                        <a:mapping>
+                            <a:map from="gridFieldName" to="fromField"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="toField" lovCode="LOV_BPM_PAGE_GROUP_FIELD?layoutId=$[/parameter/@layoutId]"
+                             required="true">
+                        <a:mapping>
+                            <a:map from="fieldName" to="toField"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="tagId" defaultValue="$[/parameter/@tagId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="BPM102_onLovMapAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" column="3" title="bpm_page_tag_lov_map" width="800">
+                <!--<a:label name="groupTypeDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_type"/>-->
+                <!--<a:label name="groupCode" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_code"/>-->
+                <!--<a:label name="groupDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_desc"/>-->
+                <!--<a:label name="pageTypeDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_type"/>-->
+                <!--<a:label name="pageCode" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_code"/>-->
+                <!--<a:label name="pageDesc" bindTarget="BPM102_pageResultDs" prompt="bpm_page.page_desc"/>-->
+                <a:label name="layoutTypeDesc" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_type"/>
+                <a:label name="layoutCode" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_code"/>
+                <a:label name="layoutDesc" bindTarget="BPM102_pageLayoutBasicDs"
+                         prompt="bpm_page_layout_basic.layout_desc"/>
+                <a:label name="tagTypeDesc" bindTarget="BPM102_pageTagBasicResultDs"
+                         prompt="bpm_page_tag_basic.tag_type"/>
+                <a:label name="tagCode" bindTarget="BPM102_pageTagBasicResultDs" prompt="bpm_page_tag_basic.tag_code"/>
+                <a:label name="tagDesc" bindTarget="BPM102_pageTagBasicResultDs" prompt="bpm_page_tag_basic.tag_desc"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doLovMapSave" text="hap.save"/>
+                <a:button click="BPM102_doLovMapBack" text="hap.back"/>
+            </a:hBox>
+            <a:grid bindTarget="BPM102_pageTagLovMapDs" height="280" marginHeight="230" marginWidth="40" navBar="true"
+                    width="850">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="mapSequence" editor="BPM102_lovMapNf" prompt="bpm_page_tag_lov_map.map_sequence"/>
+                    <a:column name="toField" editor="BPM102_lovMapLov" prompt="bpm_page_tag_lov_map.to_field"/>
+                    <a:column name="fromField" editor="BPM102_lovMapLov" prompt="bpm_page_tag_lov_map.from_field"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="BPM102_lovMapNf"/>
+                    <a:lov id="BPM102_lovMapLov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

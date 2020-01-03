@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: ouyangzhaochang2663 $
+    $Date: 2010/11/15 07:46:40 $
+    $Revision: 1.2 $
+    $Purpose: 部门级别定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+        function queryOrgUnitLevels() {
+            $au('EXP1120_exp_org_unit_levels_result_ds').query();
+        }
+
+        function EXP1120_levelCodeEditFun(record, name) {
+            if (record.isNew) {
+                return 'EXP1120_unit_level_code_tf';
+            }
+            return '';
+        }
+
+        function EXP1120_add(ds) {
+            var magOrgId = $au('exp_org_unit_levels_query_ds').getCurrentRecord().get('magOrgId');
+            if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function EXP1120_focus() {
+            $au('EXP1120_mange_organizationlist_ds').query();
+        }
+
+        function EXP1120_onExpOrgUnitLevelUpdate(ds, record, name, value) {
+            if (name == 'magOrgId') {
+                $au('EXP1120_exp_org_unit_levels_result_ds').query();
+            }
+        }
+
+        // Modify Tagin/2017.12.05 增加新增按钮前管理组织必输校验
+
+
+        function EXP1120_beforeCreateFunc() {
+            var magName = $au('exp_org_unit_levels_query_ds').getAt(0).get('magOrgName');
+            if (Ext.isEmpty(magName)) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1120_mange_organizationlist_ds" fetchAll="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="exp_org_unit_levels_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="orgUnitLevelCode" prompt="exp_org_unit_levels.org_unit_level_code"/>
+                    <a:field name="description" prompt="exp_org_unit_levels.description"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/defaultMagList/records/record/@magOrgCodeName]"
+                             displayField="magOrgCodeName" options="EXP1120_mange_organizationlist_ds"
+                             prompt="exp_mo_req_type.mag_org_id" required="true" returnField="magOrgId"
+                             valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMagList/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1120_onExpOrgUnitLevelUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1120_exp_org_unit_levels_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false"
+                       baseUrl="/exp/org-unit-level" queryDataSet="exp_org_unit_levels_query_ds" selectable="false">
+                <a:fields>
+                    <a:field name="magOrgId" prompt="exp_mo_req_type.mag_org_id" required="true"/>
+                    <a:field name="orgUnitLevelCode" required="true" prompt="exp_org_unit_levels.org_unit_level_code"/>
+                    <a:field name="description" required="true" prompt="exp_org_unit_levels.description" dto="com.hand.hec.exp.dto.ExpOrgUnitLevel" dtoId="orgUnitLevelId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforecreate" handler="EXP1120_beforeCreateFunc"/>
+                    <a:event name="add" handler="EXP1120_add"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1120_exp_org_unit_levels_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1120_exp_org_unit_levels_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="exp_org_unit_levels_query_ds" resultTarget="EXP1120_exp_org_unit_levels_result_ds"
+                         style="width:100%;border:none">
+                <a:formToolBar LabelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="exp_org_unit_levels_query_ds"
+                                prompt="exp_mo_req_type.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1120_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="orgUnitLevelCode" bindTarget="exp_org_unit_levels_query_ds" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="exp_org_unit_levels_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1120_exp_org_unit_levels_grid" bindTarget="EXP1120_exp_org_unit_levels_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="orgUnitLevelCode" align="center" editorFunction="EXP1120_levelCodeEditFun"
+                          sortable="true" width="120"/>
+                <a:column name="description" align="left" editor="EXP1120_unit_level_description_tld" width="200"/>
+                <a:column name="enabledFlag" align="center" editor="EXP1120_unit_level_cb" sortable="true" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="EXP1120_unit_level_code_tf" typeCase="upper"/>
+                <a:tledit id="EXP1120_unit_level_description_tld"/>
+                <a:checkBox id="EXP1120_unit_level_cb"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

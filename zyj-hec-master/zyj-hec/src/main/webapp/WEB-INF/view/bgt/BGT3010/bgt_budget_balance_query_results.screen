@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: lixi  
+    $Date: 2011-7-28 上午09:35:12  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_budget_balance_details_down_link" url="$[/request/@context_path]/bgt/public/bgt_budget_balance_details_down.screen"/>
+        <a:link id="bgt_budget_balance_details_down_deal_link" url="$[/request/@context_path]/bgt/balance-detail-init/downDeal"/>
+        <script><![CDATA[
+            //取得Display值
+            
+            function getDisplayValue(value, ds, valueName, displayName) {
+                var allDatas = $au(ds).getAll();
+                for (var i = 0;i < allDatas.length;i++) {
+                    if (allDatas[i].get(valueName) == value) {
+                        return allDatas[i].get(displayName);
+                    }
+                }
+            }
+            //返回
+            
+            function back() {
+                $au('bgt_budget_balance_qurey_results_window').close();
+            }
+            //保留额单据明细
+            
+            function reserveClick() {
+                var record = $au('result_detail_ds').getJsonData(true);
+                for (var i = 0;i < record.length;i++) {
+                    record[i]['reserveFlag'] = 'R';
+                }
+                if (record.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                } else {
+                    Aurora.request({
+                        lockMessage: '处理中,请稍候!',
+                        url: $au('bgt_budget_balance_details_down_deal_link').getUrl(),
+                        para: record,
+                        success: function() {
+                            new Aurora.Window({
+                                id: 'bgt_budget_balance_details_down_window',
+                                url: $au('bgt_budget_balance_details_down_link').getUrl() + '?reserveFlag=R',
+                                title: '',
+                                fullScreen: true
+                            });
+                        },
+                        scope: this
+                    });
+                }
+            }
+            //发生额单据明细
+            
+            function uesedClick() {
+                var record = $au('result_detail_ds').getJsonData(true);
+                for (var i = 0;i < record.length;i++) {
+                    record[i]['reserveFlag'] = 'U';
+                }
+                if (record.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select_one]');
+                } else {
+                    Aurora.request({
+                        lockMessage: '处理中,请稍候!',
+                        url: $au('bgt_budget_balance_details_down_deal_link').getUrl(),
+                        para: record,
+                        success: function() {
+                            new Aurora.Window({
+                                id: 'bgt_budget_balance_details_down_window',
+                                url: $au('bgt_budget_balance_details_down_link').getUrl() + '?reserveFlag=U',
+                                title: '',
+                                fullScreen: true
+                            });
+                        },
+                        scope: this
+                    });
+                }
+            }
+            
+            function summaryRenderer(datas, name) {
+                var sum = 0;
+                for (var i = 0;i < datas.length;i++) {
+                    var r = datas[i];
+                    var d = r.get(name);
+                    var n = parseFloat(d);
+                    if (!isNaN(n)) {
+                        sum += n;
+                    }
+                }
+                return '<font>' + Aurora.formatMoney(sum, 0) + '</font>';
+            }
+            
+            function BGT3010_resultInitFunction() {
+                var bgtRecords = $au('bgt_tab_ds').getAll();
+                for (var i = 0;i < bgtRecords.length;i++) {
+                    if (bgtRecords[i].get('parameterCode') == 'BUDGET_ITEM' && !bgtRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('budgetItem');
+                    } else if (bgtRecords[i].get('parameterCode') == 'BUDGET_ITEM_TYPE' && !bgtRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('budget_item_type');
+                    } else if (bgtRecords[i].get('parameterCode') == 'BGT_ENTITY' && !bgtRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('bgt_entity_name');
+                    } else if (bgtRecords[i].get('parameterCode') == 'BGT_CENTER' && !bgtRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('bgtCenterName');
+                    }
+                }
+            
+                var orgRecords = $au('org_tab_ds').getAll();
+                for (i = 0;i < orgRecords.length;i++) {
+                    if (orgRecords[i].get('parameterCode') == 'EMPLOYEE' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('employee');
+                    } else if (orgRecords[i].get('parameterCode') == 'EMPLOYEE_GROUP' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('employeeGroup');
+                    } else if (orgRecords[i].get('parameterCode') == 'EMPLOYEE_JOB' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('employeeJob');
+                    } else if (orgRecords[i].get('parameterCode') == 'EMPLOYEE_LEVEL' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('employeeLevel');
+                    } else if (orgRecords[i].get('parameterCode') == 'ORG_POSITION' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('position');
+                    } else if (orgRecords[i].get('parameterCode') == 'ORG_POSITION_GROUP' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('positionGroup');
+                    } else if (orgRecords[i].get('parameterCode') == 'ORG_UNIT' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('unit');
+                    } else if (orgRecords[i].get('parameterCode') == 'ORG_UNIT_GROUP' && !orgRecords[i].get('controlRuleRange')) {
+                        $au('bgt_balance_query_res_grid').hideColumn('unitGroup');
+                    }
+                }
+            }
+            
+            Aurora.onReady(BGT3010_resultInitFunction);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="result_detail_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/balance-query-result" queryUrl="$[/request/@context_path]/bgt/balance-query-result/query?quantityAmountCode=$[/parameter/@quantityAmountCode]" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="bgtOrgName" prompt="bgt_budget_item.budget_org_id"/>
+                    <a:field name="bgtEntityName" prompt="bgt_entities.bgt_entity_name"/>
+                    <a:field name="bgtCenterName" prompt="bgt_center.center_id"/>
+                    <a:field name="budgetItemType" prompt="bgt_budget_item.budget_item_type"/>
+                    <a:field name="budgetItem" prompt="bgt_budget_item_mapping.budget_item_description"/>
+                    <a:field name="periodYear" prompt="gld_period.period_year"/>
+                    <a:field name="periodQuarter" prompt="bgt_journal_header.period_quarter"/>
+                    <a:field name="periodName" prompt="bgt_budget_reserve.period_name"/>
+                    <a:field name="currency" prompt="bgt_journal_balance.currency_code"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="bgt" prompt="bgt_budget_balance_details.bgt_amount"/>
+                    <a:field name="reserve" prompt="bgt_budget_balance_details.reserve_amount"/>
+                    <a:field name="used" prompt="used_amount"/>
+                    <a:field name="available" prompt="bgt_budget_balance_details.available_amount"/>
+                    <a:field name="company" prompt="bgt_journal_balance.company_id"/>
+                    <a:field name="unit" prompt="bgt_budget_reserves.unit_id"/>
+                    <a:field name="unitGroup" prompt="bgt_journal_balances.unit_group_id"/>
+                    <a:field name="position" prompt="bgt_budget_reserves.position_id"/>
+                    <a:field name="positionGroup" prompt="bgt_journal_balances.position_group_id"/>
+                    <a:field name="employee" prompt="acp_acp_requisition_hds.employee_id"/>
+                    <a:field name="employeeGroup" prompt="bgt_journal_balances.employee_group_id"/>
+                    <a:field name="employeeJob" prompt="exp_employee_assigns.employee_job_id"/>
+                    <a:field name="employeeLevel" prompt="bgt_budget_item_mapping.employee_levels_id"/>
+                    <a:field name="budgetStructure" prompt="bgt_journal_header.bgt_structure"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form padding="0" showmargin="false" shrinkable="false" title="budget_balance_query">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="bgt_balance_query_res_grid" type="excel" width="80"/>
+                    <a:toolbarButton click="reserveClick" text="reserve_amount_documents_detail" width="80"/>
+                    <a:toolbarButton click="uesedClick" text="used_amount_documents_detail" width="80"/>
+                    <a:toolbarButton click="back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:grid id="bgt_balance_query_res_grid" bindTarget="result_detail_ds" marginHeight="130" marginWidth="3" navBar="true">
+                    <a:columns>
+                        <a:column name="bgtOrgName" align="center"/>
+                        <a:column name="bgtEntityName" align="center"/>
+                        <a:column name="bgtCenterName" align="center"/>
+                        <a:column name="budgetItem" align="center" sortable="true"/>
+                        <a:column name="periodYear" align="center" sortable="true"/>
+                        <a:column name="periodQuarter" align="center" sortable="true"/>
+                        <a:column name="periodName" align="center" sortable="true"/>
+                        <a:column name="currency" align="center" sortable="true"/>
+                        <a:column name="bgt" align="right" footerRenderer="summaryRenderer" renderer="Aurora.formatMoney" sortable="true"/>
+                        <a:column name="reserve" align="right" footerRenderer="summaryRenderer" renderer="Aurora.formatMoney" sortable="true"/>
+                        <a:column name="used" align="right" footerRenderer="summaryRenderer" renderer="Aurora.formatMoney" sortable="true"/>
+                        <a:column name="available" align="right" footerRenderer="summaryRenderer" renderer="Aurora.formatMoney" sortable="true"/>
+                        <a:column name="company" align="center" sortable="true"/>
+                        <a:column name="unit" align="center" sortable="true"/>
+                        <a:column name="unitGroup" align="center" sortable="true"/>
+                        <a:column name="position" align="center" sortable="true"/>
+                        <a:column name="positionGroup" align="center" sortable="true"/>
+                        <a:column name="employee" align="center" sortable="true"/>
+                        <a:column name="employeeGroup" align="center" sortable="true"/>
+                        <a:column name="employeeJob" align="center" sortable="true"/>
+                        <a:column name="employeeLevel" align="center" sortable="true"/>
+                        <a:column name="budgetStructure" align="center" sortable="true"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

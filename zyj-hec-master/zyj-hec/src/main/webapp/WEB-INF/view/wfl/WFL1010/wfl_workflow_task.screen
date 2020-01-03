@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw
+    $Date: 2018
+    $Revision: 工作流定义
+    $Purpose:
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="WFL1010_taskDetailLink"
+                url="$[/request/@context_path]/wfl/WFL1010/wfl_workflow_task_detail.screen"/>
+        <a:link id="WFL1010_generateProcessLink" url="$[/request/@context_path]/wfl/process/generate-process"/>
+        <script><![CDATA[
+        function WFL1010_onTaskCellClickFun(grid, row, name, record) {
+
+        }
+
+        function WFL1010_onTaskSubmitSuccess(ds, res) {
+
+        }
+
+        function WFL1010_taskDetailRenderer(value, record, name) {
+            if (record.get('taskId') != null) {
+                return '<a href="javascript:WFL1010_openTaskDetail(' + record.get('taskId') + ')">$[l:wfl_process.task_detail]</a>';
+            }
+        }
+
+        function WFL1010_openTaskDetail(taskId) {
+            new Aurora.Window({
+                id: 'WFL1010_taskDetailWindow',
+                url: $au('WFL1010_taskDetailLink').getUrl() + '?taskId=' + taskId + '&processId=$[/parameter/@processId]',
+                title: '$[l:wfl_process.task_detail]',
+                side: 'right',
+                fullScreen: true
+            });
+        }
+
+        function WFL1010_generateProcess() {
+            Aurora.request({
+                url: $au('WFL1010_generateProcessLink').getUrl(),
+                para: {
+                    processId: '$[/parameter/@processId]'
+                },
+                success: function (res) {
+                    debugger;
+                }
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL1010_taskTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_TASK_TYPE/"/>
+            <a:dataSet id="WFL1010_receiveTypeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_RECEIVE_TYPE/"/>
+            <a:dataSet id="WFL1010_taskDs" autoQuery="true" bindName="task"
+                       baseUrl="/wfl/task"
+                       queryUrl="$[/request/@context_path]/wfl/task/query?processId=$[/parameter/@processId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="processId" defaultValue="$[/parameter/@processId]"/>
+                    <a:field name="taskId"/>
+                    <a:field name="taskCode" prompt="wfl_task.task_code" required="true"/>
+                    <a:field name="taskName" prompt="wfl_task.task_name" required="true"
+                             dto="com.hand.hec.wfl.dto.WflTask" dtoId="taskId"/>
+                    <a:field name="sequence" prompt="wfl_task.sequence" required="true"/>
+                    <a:field name="taskTypeName" displayField="meaning" options="WFL1010_taskTypeDs"
+                             prompt="wfl_task.task_type_name" returnField="taskType" valueField="value"/>
+                    <a:field name="taskType" defaultValue="USER"/>
+                    <a:field name="receiveTypeName" displayField="meaning" options="WFL1010_receiveTypeDs"
+                             prompt="wfl_task.receive_type_name" returnField="receiveType" valueField="value"
+                             required="true"/>
+                    <a:field name="receiveType"/>
+                    <a:field name="processPageName" lovCode="LOV_WFL_PAGE" prompt="wfl_task.process_page_name"
+                             title="wfl_task.process_page_name">
+                        <a:mapping>
+                            <a:map from="pageName" to="processPageName"/>
+                            <a:map from="pageId" to="processPageId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="processPageId"/>
+                    <a:field name="viewPageName" lovCode="LOV_WFL_PAGE" lovWidth="500"
+                             prompt="wfl_task.view_page_name" title="wfl_task.view_page_name">
+                        <a:mapping>
+                            <a:map from="pageName" to="viewPageName"/>
+                            <a:map from="pageId" to="viewPageId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="viewPageId"/>
+                    <a:field name="arriveProcedureName" lovCode="LOV_WFL_PROCEDURE"
+                             prompt="wfl_task.arrive_procedure_name" title="wfl_task.arrive_procedure_name">
+                        <a:mapping>
+                            <a:map from="procedureName" to="arriveProcedureName"/>
+                            <a:map from="procedureId" to="arriveProcedureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="arriveProcedureId"/>
+                    <a:field name="departProcedureName" lovCode="LOV_WFL_PROCEDURE"
+                             prompt="wfl_task.depart_procedure_name" title="wfl_task.depart_procedure_name">
+                        <a:mapping>
+                            <a:map from="procedureName" to="departProcedureName"/>
+                            <a:map from="procedureId" to="departProcedureId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="departProcedureId"/>
+                    <a:field name="enabledFlag" defaultValue="Y"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="WFL1010_onTaskSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:gridButton bind="WFL1010_taskGrid" text="hap.add" type="add" width="80"/>
+                <a:gridButton bind="WFL1010_taskGrid" text="hap.save" type="save" width="80"/>
+                <a:gridButton bind="WFL1010_taskGrid" text="hap.delete" type="delete" width="80"/>
+                <a:button text="wfl_process.generate_process" click="WFL1010_generateProcess" width="80"/>
+            </a:screenTopToolbar>
+            <a:grid id="WFL1010_taskGrid" bindTarget="WFL1010_taskDs" marginHeight="125" marginWidth="23"
+                    navBar="true">
+                <a:columns>
+                    <a:column name="taskCode" align="left" editor="WFL1010_task_tf_edit" width="80"/>
+                    <a:column name="taskName" align="left" editor="WFL1010_task_tld" width="120"/>
+                    <a:column name="sequence" align="right" editor="WFL1010_task_nf" width="80"/>
+                    <a:column name="receiveTypeName" align="center" editor="WFL1010_task_cb" width="80"/>
+                    <a:column name="processPageName" align="center" editor="WFL1010_task_lov" width="80"/>
+                    <a:column name="viewPageName" align="center" editor="WFL1010_task_lov" width="80"/>
+                    <a:column name="arriveProcedureName" align="center" editor="WFL1010_task_lov"
+                              width="80"/>
+                    <a:column name="departProcedureName" align="center" editor="WFL1010_task_lov"
+                              width="80"/>
+                    <a:column name="taskDetail" align="center" renderer="WFL1010_taskDetailRenderer"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="WFL1010_task_tf_edit" typeCase="upper"/>
+                    <a:textField id="WFL1010_task_tf"/>
+                    <a:comboBox id="WFL1010_task_cb"/>
+                    <a:checkBox id="WFL1010_task_chk"/>
+                    <a:lov id="WFL1010_task_lov"/>
+                    <a:tledit id="WFL1010_task_tld"/>
+                    <a:numberField id="WFL1010_task_nf" allowDecimals="false"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="WFL1010_onTaskCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/05/08 $
+    $Revision: 1.1 $
+    $Purpose: 预算日记账类型定义-对象
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <div/>
+        <script><![CDATA[
+            function BGT2200_back() {
+                $au("BGT2200_view_jour_ref_object_window").close();
+            }
+            
+            function gridcellclick(grid, row, name, record) {
+                var MetaData = record.getMeta();
+                var MetaField = MetaData.getField('defaultObjectCode');
+                MetaField.setLovPara('expenseObjectTypeId', record.get('expenseObjectTypeId'));
+            }
+            
+            function gridEditorFunction(record, name) {
+                if (record.isNew) {
+                    return 'expense_object_type_code_errot_lov';
+                }
+                return '';
+            }
+            
+            
+            function BGT2200_DefaultObjectCodeLovUpdate(dataSet, record, name, value, oldValue) {
+                if (name == 'expenseObjectTypeCode') {
+                    record.set('defaultObjectCode', '');
+                    record.set('defaultObjectDesc', '');
+                    if (!Ext.isEmpty(value)) {
+                        record.getField('defaultObjectCode').setLovPara('expenseObjectTypeId', record.get('expenseObjectTypeId'));
+                    } else {
+                        record.getField('defaultObjectCode').setLovCode('');
+                    }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2200_journal_type_object_ds" autoQuery="true"  baseUrl="/bgt/journal-type" queryUrl="$[/request/@context_path]/bgt/journal-type/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]&amp;bgtOrgId=$[/parameter/@bgtOrgId]">
+                <a:fields>
+                    <a:field name="bgtJournalTypeCode" prompt="bgt_budget_item_type.budget_item_type_code" readOnly="true"/>
+                    <a:field name="description" prompt="bgt_budget_item_type.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="bgt_jour_ref_object_layout_list" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/LAYOUT_LOCALITY/"/>
+            <a:dataSet id="BGT2200_jour_ref_object_types_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/journal-type-ref-obj" queryUrl="$[/request/@context_path]/bgt/journal-type-ref-obj/query?bgtJournalTypeId=$[/parameter/@bgtJournalTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="bgtJournalTypeId" defaultValue="$[/parameter/@bgtJournalTypeId]"/>
+                    <a:field name="expenseObjectTypeCode" autoComplete="true" autoCompleteField="moExpObjTypeName" lovGridHeight="320" lovHeight="450" lovCode="LOV_BGT_JOURNAL_EXPENSE_OBJ_TYPE?magOrgId=$[/session/@magOrgId]" lovWidth="500" prompt="exp_expense_object_type.expense_object_type_code" required="true" title="exp_expense_object_type.expense_object_type_code">
+                        <a:mapping>
+                            <a:map from="moExpObjTypeId" to="expenseObjectTypeId"/>
+                            <a:map from="moExpObjTypeCode" to="expenseObjectTypeCode"/>
+                            <a:map from="moExpObjTypeName" to="expenseObjectTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="expenseObjectTypeId"/>
+                    <a:field name="expenseObjectTypeName" prompt="approvestrategy.description"/>
+                    <a:field name="layoutPositionDisplay" displayField="meaning" options="bgt_jour_ref_object_layout_list" prompt="bgt_stru.layout_position" required="true" returnField="layoutPosition" valueField="value"/>
+                    <a:field name="layoutPriority" prompt="exp_mo_rep_type_ref_hd_dim.layout_priority" required="true"/>
+                    <a:field name="defaultObjectId"/>
+                    <a:field name="defaultObjectCode" autoComplete="true" autoCompleteField="description" lovGridHeight="320" lovHeight="450" lovCode="LOV_BGT_JOURNAL_EXPENSE_OBJ" lovWidth="500" prompt="exp_mo_rep_type_ref_hd_obj.default_object" title="exp_mo_rep_type_ref_hd_obj.default_object">
+                        <a:mapping>
+                            <a:map from="moExpenseObjectCode" to="defaultObjectCode"/>
+                            <a:map from="moExpenseObjectName" to="defaultObjectDesc"/>
+                            <a:map from="moExpenseObjectId" to="defaultObjectId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultObjectDesc" prompt="exp_mo_rep_type_ref_hd_obj.default_object_desc"/>
+                    <a:field name="requiredFlag" checkedValue="Y" defaultValue="Y" prompt="exp_mo_rep_type_ref_hd_obj.required_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2200_DefaultObjectCodeLovUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="90" marginWidth="10" row="1" title="bgt_journal_type.budget_object">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="BGT2200_jour_ref_object_types_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT2200_jour_ref_object_types_grid" type="save" width="80"/>
+                    <a:gridButton bind="BGT2200_jour_ref_object_types_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="BGT2200_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="bgtJournalTypeCode" bindTarget="BGT2200_journal_type_object_ds"/>
+                <a:textField name="description" bindTarget="BGT2200_journal_type_object_ds"/>
+            </a:form>
+            <a:grid id="BGT2200_jour_ref_object_types_grid" bindTarget="BGT2200_jour_ref_object_types_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="expenseObjectTypeCode" align="center" editorFunction="gridEditorFunction" width="80"/>
+                    <a:column name="expenseObjectTypeName" width="100"/>
+                    <a:column name="layoutPositionDisplay" align="center" editor="code_value_name_errot_cmb" width="80"/>
+                    <a:column name="layoutPriority" align="center" editor="layout_priority_errot_tf" width="80"/>
+                    <a:column name="defaultObjectCode" align="center" editor="default_object_code_errot_lov" width="80"/>
+                    <a:column name="defaultObjectDesc" width="100"/>
+                    <a:column name="requiredFlag" align="center" editor="required_flag_errot_cb" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="expense_object_type_code_errot_lov"/>
+                    <a:comboBox id="code_value_name_errot_cmb"/>
+                    <a:numberField id="layout_priority_errot_tf"/>
+                    <a:lov id="default_object_code_errot_lov"/>
+                    <a:checkBox id="required_flag_errot_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="gridcellclick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

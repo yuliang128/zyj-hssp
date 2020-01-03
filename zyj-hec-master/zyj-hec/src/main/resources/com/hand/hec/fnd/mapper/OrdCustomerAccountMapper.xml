@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.OrdCustomerAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.OrdCustomerAccount">
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL"/>
+        <result column="CUSTOMER_ID" property="customerId" jdbcType="DECIMAL"/>
+        <result column="BANK_ID" property="bankId" jdbcType="DECIMAL"/>
+        <result column="CNAPS_CODE" property="cnapsCode" jdbcType="VARCHAR"/>
+        <result column="CNAPS_NAME" property="cnapsName" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_CODE" property="provinceCode" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_NAME" property="provinceName" jdbcType="VARCHAR"/>
+        <result column="CITY_CODE" property="cityCode" jdbcType="VARCHAR"/>
+        <result column="CITY_NAME" property="cityName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="NOTES" property="notes" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="PRIMARY_FLAG" property="primaryFlag" jdbcType="VARCHAR"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="queryByAccEntity" parameterType="com.hand.hec.fnd.dto.OrdCustomerAccount" resultMap="BaseResultMap">
+        SELECT
+        oca.account_id,
+        oca.customer_id,
+        ocre.acc_entity_id,
+        oca.bank_id,
+        cb.bank_code,
+        cbl.bank_name,
+        oca.cnaps_code,
+        oca.province_code,
+        oca.province_name,
+        oca.city_code,
+        oca.city_name,
+        oca.account_name,
+        oca.account_number,
+        oca.notes,
+        ocre.primary_flag,
+        oca.enabled_flag
+        FROM
+        ord_customer_account oca,
+        csh_bank cb
+        left outer join csh_bank_tl cbl on (cb.BANK_ID = cbl.BANK_ID and cbl.lang = #{request.locale,jdbcType=VARCHAR}),
+        ord_customer_account_ref_ae ocre
+        WHERE
+        oca.bank_id = cb.bank_id
+        AND oca.account_id = ocre.account_id
+        <if test="accEntityId!=null">
+            AND ocre.acc_entity_id = #{accEntityId}
+        </if>
+        <if test="customerId!=null">
+            AND oca.customer_id = #{customerId}
+        </if>
+    </select>
+
+    <select id="queryBySysCustomer" parameterType="com.hand.hec.fnd.dto.OrdCustomerAccount" resultMap="BaseResultMap">
+        select
+        oca.account_id,
+        oca.customer_id,
+        oca.bank_id,
+        cb.bank_code,
+        cbl.bank_name,
+        oca.cnaps_code,
+        cc.bank_location_name cnaps_name,
+        oca.province_code,
+        oca.province_name,
+        oca.city_code,
+        oca.city_name,
+        oca.account_name,
+        oca.account_number,
+        oca.notes,
+        oca.enabled_flag
+        from
+        ord_customer_account oca
+        left outer join csh_cnaps cc on
+        oca.cnaps_code = cc.bank_location_code,
+        csh_bank cb
+        left outer join csh_bank_tl cbl on
+        (cb.bank_id = cbl.bank_id
+        and cbl.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        where
+        oca.bank_id = cb.bank_id
+        <if test="customerId != null and customerId != '' ">
+            AND oca.customer_id = #{customerId}
+        </if>
+    </select>
+</mapper>

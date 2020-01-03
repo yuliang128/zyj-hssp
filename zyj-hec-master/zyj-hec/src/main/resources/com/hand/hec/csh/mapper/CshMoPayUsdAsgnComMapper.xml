@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoPayUsdAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoPayUsdAsgnCom">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL" />
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR" />
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR" />
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL" />
+    </resultMap>
+
+    <select id="queryLov"  resultMap="BaseResultMap">
+        SELECT
+        fv.company_id,
+        fv.company_code,
+        fct.company_short_name
+        FROM
+        fnd_company fv  left join fnd_company_tl fct on (fv.COMPANY_ID = fct.company_id and fct.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        1=1
+        <if test = "magOrgId != null">
+            and fv.mag_org_id = #{magOrgId} AND
+            (
+            fv.end_date_active IS NULL OR
+            now() BETWEEN fv.start_date_active AND fv.end_date_active
+            )
+        </if>
+        <if test = "paymentUsedeId != null">
+            AND
+            NOT EXISTS
+            (SELECT
+            1
+            FROM
+            csh_mo_pay_usd_asgn_com ec
+            WHERE
+            ec.company_id       = fv.company_id AND
+            ec.payment_usede_id = #{paymentUsedeId}
+            )
+            ORDER BY
+            fv.company_code
+        </if>
+    </select>
+
+    <select id="query" parameterType="com.hand.hec.csh.dto.CshMoPayUsdAsgnCom" resultMap="BaseResultMap">
+        select cmpuac.assign_id,
+        cmpuac.payment_usede_id,
+        cmpuac.enabled_flag,
+        fc.company_id,
+        fc.company_code,
+        fct.company_short_name,
+        fc.mag_org_id
+        FROM
+        csh_mo_pay_usd_asgn_com cmpuac
+        LEFT JOIN	fnd_company fc on cmpuac.COMPANY_ID = fc.COMPANY_ID
+        LEFT JOIN fnd_company_tl fct ON (fc.COMPANY_ID = fct.company_id and fct.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        1=1
+        <if test = "magOrgId != null">
+            and fc.mag_org_id = #{magOrgId}
+        </if>
+        <if test = "paymentUsedeId != null">
+            and cmpuac.payment_usede_id = #{paymentUsedeId}
+        </if>
+        <if test = "companyCode != null">
+            and fc.company_code like '%${companyCode}%'
+        </if>
+        <if test = "companyShortName != null">
+            and fct.company_short_name like '%${companyShortName}%'
+        </if>
+        ORDER BY
+        fc.company_code
+    </select>
+</mapper>

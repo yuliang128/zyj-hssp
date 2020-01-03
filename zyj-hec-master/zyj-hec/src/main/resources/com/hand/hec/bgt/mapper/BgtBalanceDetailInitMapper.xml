@@ -1,0 +1,530 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBalanceDetailInitMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtBalanceDetailInit">
+        <result column="SESSION_ID" property="sessionId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_RESERVE_LINE_ID" property="budgetReserveLineId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="BGT_ENTITY_ID" property="bgtEntityId" jdbcType="DECIMAL"/>
+        <result column="BGT_CENTER_ID" property="bgtCenterId" jdbcType="DECIMAL"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="RELEASE_ID" property="releaseId" jdbcType="DECIMAL"/>
+        <result column="DOC_TYPE" property="docType" jdbcType="VARCHAR"/>
+        <result column="RESERVE_FLAG" property="reserveFlag" jdbcType="VARCHAR"/>
+        <result column="STATUS" property="status" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="CURRENCY" property="currency" jdbcType="VARCHAR"/>
+        <result column="BUDGET_ITEM_ID" property="budgetItemId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_ITEM_DESC" property="budgetItemDesc" jdbcType="DECIMAL"/>
+        <result column="DOC_AMOUNT" property="docAmount" jdbcType="DECIMAL"/>
+        <result column="DOC_NUMBER" property="docNumber" jdbcType="VARCHAR"/>
+        <result column="DOC_DATE" property="docDate" jdbcType="TIMESTAMP"/>
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_DESC" property="companyDesc" jdbcType="VARCHAR"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="UNIT_DESC" property="unitDesc" jdbcType="VARCHAR"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_DESC" property="employeeDesc" jdbcType="VARCHAR"/>
+        <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL"/>
+        <result column="TYPE_DESC" property="typeDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <delete id="deleteBgtBalanceDetailInit">
+        DELETE a
+        FROM
+            bgt_balance_detail_init a
+        WHERE
+            a.session_id = #{request.sessionId}
+            AND EXISTS (
+                SELECT 1
+                FROM bgt_budget_reserve b
+                WHERE a.budget_reserve_line_id = b.budget_reserve_line_id
+                AND b.reserve_flag = #{reserveFlag})
+    </delete>
+
+    <insert id="insertBgtBalanceDetailInit">
+        insert into bgt_balance_detail_init(session_id,budget_reserve_line_id) values (#{sessionId},#{budgetReserveLineId})
+    </insert>
+
+    <select id="queryFromBalanceReserve" parameterType="com.hand.hec.bgt.dto.BgtBalanceDetailInit" resultMap="BaseResultMap">
+        select t.budget_reserve_line_id,
+                t.period_name,
+                t.budget_item_id
+            from bgt_budget_reserve t
+           where t.status = 'P'
+                 and t.reserve_flag = #{reserveFlag}
+                 and (t.bgt_org_id = #{bgtOrgId} or #{bgtOrgId} is null)
+                 and
+                 (t.bgt_entity_id = #{bgtEntityId} or #{bgtEntityId} is null)
+                 and
+                 (t.bgt_center_id = #{bgtCenterId} or #{bgtCenterId} is null)
+                 and ((exists (select 1
+                                 from bgt_budget_item a
+                                where a.budget_item_id = t.budget_item_id
+                                      and a.budget_item_type_id =
+                                      ifnull(#{budgetItemTypeId},
+                                              a.budget_item_type_id))) or
+                 (#{budgetItemTypeId} is not null))
+                 and
+                 ((exists (select 1
+                             from bgt_entity be
+                            where be.entity_id = t.bgt_entity_id
+                                  and be.entity_type = 'DETAILS'
+                                  and be.entity_id in
+                                  (select eh.entity_id
+                                         from bgt_entity_hierarchy eh
+                                        where eh.parent_entity_id = #{bgtEntityId}
+                                       union
+                                       select #{bgtEntityId}
+                                         from dual))) or
+                 (#{bgtEntityId} is null))
+                 and
+                 ((exists (select 1
+                             from bgt_center bc
+                            where bc.center_id = t.bgt_center_id
+                                  and bc.center_type = 'DETAILS'
+                                  and bc.center_id in
+                                  (select ch.center_id
+                                         from bgt_center_hierarchy ch
+                                        where ch.parent_center_id = #{bgtCenterId}
+                                       union
+                                       select #{bgtCenterId}
+                                         from dual))) or
+                 (#{bgtCenterId} is null))
+                 and
+                 ((t.currency = ifnull(#{currencyCode},
+                                    t.currency)) or (#{currencyCode} is null))
+                 and
+                 (t.reserve_company_id = #{companyId} or #{companyId} is null)
+                 and (t.unit_id = #{unitId} or #{unitId} is null)
+                 and
+                 ((exists (select 1
+                             from exp_mo_unit_group         b,
+                                  exp_mo_unit_group_asgn_com ac,
+                                  exp_com_unit_gp_ref_unit  ru
+                            where ru.unit_id = t.unit_id
+                                  and ru.unit_group_com_assign_id = ac.assign_id
+                                  and ac.mo_unit_group_id = b.mo_unit_group_id
+                                  and b.mo_unit_group_id =
+                                  ifnull(#{unitGroupId},
+                                          b.mo_unit_group_id))) or
+                 (#{unitGroupId} is null))
+                 and ((exists (select 1
+                                 from exp_org_unit c
+                                where c.unit_id = t.unit_id
+                                      and c.org_unit_level_id =
+                                      ifnull(#{orgUnitLevelId},
+                                              c.org_unit_level_id))) or
+                 (#{orgUnitLevelId} is null))
+                 and (t.position_id = ifnull(#{positionId},
+                                          t.position_id) or
+                 (t.business_type = 'PUR_ORDER' and t.position_id is null))
+                 and ((exists (select 1
+                                 from exp_position_group_relation d
+                                where d.position_id = t.position_id
+                                      and d.position_group_id =
+                                      ifnull(#{positionGroupId},
+                                              d.position_group_id))) or
+                 (#{positionGroupId} is null))
+                 and (t.employee_id = ifnull(#{employeeId},
+                                          t.employee_id) or
+                 (t.business_type = 'PUR_ORDER' and t.employee_id is null))
+                 and ((exists (select 1
+                                 from exp_mo_emp_group          e,
+                                      exp_mo_emp_group_asgn_com  ac,
+                                      exp_com_emp_group_ref_emp re
+                                where re.employee_id = t.employee_id
+                                      and re.emp_group_com_assign_id = ac.assign_id
+                                      and ac.mo_emp_group_id = e.mo_emp_group_id
+                                      and e.mo_emp_group_id =
+                                      ifnull(#{expenseUserGroupId},
+                                              e.mo_emp_group_id))) or
+                 (#{expenseUserGroupId} is null))
+                 and ((exists (select 1
+                                 from exp_employee_assign f
+                                where f.employee_id = t.employee_id
+                                      and f.company_id = t.company_id
+                                      and f.employee_job_id =
+                                      ifnull(#{employeeJobId},
+                                              f.employee_job_id))) or
+                 (#{employeeJobId} is null))
+                 and ((exists (select 1
+                                 from exp_employee_assign g
+                                where g.employee_id = t.employee_id
+                                      and g.company_id = t.company_id
+                                      and g.employee_levels_id =
+                                      ifnull(#{employeeLevelsId},
+                                              g.employee_levels_id))) or
+                 (#{employeeLevelsId} is null))
+                 <if test="dimension1Id!=null">
+                    and
+                     ((exists
+                     (select 1
+                     from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension1_id
+                     and h.summary_flag = 'N'
+                     and h.dimension_value_id in
+                     ( ${dimension1Ids} ) )) or (#{dimension1Id} is null))
+                 </if>
+                <if test="dimension2Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension2_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension2Ids} ))) or (#{dimension2Id} is null))
+                </if>
+                <if test="dimension3Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension3_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension3Ids} ))) or (#{dimension3Id} is null))
+                </if>
+                <if test="dimension4Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension4_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension4Ids} ))) or (#{dimension4Id} is null))
+                </if>
+              <if test="dimension5Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension5_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension5Ids} ))) or (#{dimension5Id} is null))
+              </if>
+              <if test="dimension6Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension6_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension6Ids} ))) or (#{dimension6Id} is null))
+              </if>
+            <if test="dimension7Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension7_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension7Ids} ))) or (#{dimension7Id} is null))
+            </if>
+            <if test="dimension8Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension8_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension8Ids} ))) or (#{dimension8Id} is null))
+            </if>
+        <if test="dimension9Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension9_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension9Ids} ))) or (#{dimension9Id} is null))
+        </if>
+        <if test="dimension10Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension10_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension10Ids} ))) or (#{dimension10Id} is null))
+        </if>
+        <if test="dimension11Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension11_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension11Ids} ))) or (#{dimension11Id} is null))
+        </if>
+        <if test="dimension12Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension12_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension12Ids} ))) or (#{dimension12Id} is null))
+        </if>
+        <if test="dimension13Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension13_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension13Ids} ))) or (#{dimension13Id} is null))
+        </if>
+        <if test="dimension14Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension14_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension14Ids} ))) or (#{dimension14Id} is null))
+        </if>
+        <if test="dimension15Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension15_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension15Ids} ))) or (#{dimension15Id} is null))
+        </if>
+        <if test="dimension16Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension16_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension16Ids} ))) or (#{dimension16Id} is null))
+        </if>
+        <if test="dimension17Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension17_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension17Ids} ))) or (#{dimension17Id} is null))
+        </if>
+        <if test="dimension18Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension18_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension18Ids} ))) or (#{dimension18Id} is null))
+        </if>
+        <if test="dimension19Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension19_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension19Ids} ))) or (#{dimension19Id} is null))
+        </if>
+        <if test="dimension20Id!=null">
+                 and
+                 ((exists
+                  (select 1
+                      from fnd_dimension_value h
+                     where h.dimension_value_id = t.dimension20_id
+                           and h.summary_flag = 'N'
+                           and h.dimension_value_id in
+                           ( ${dimension20Ids} ))) or (#{dimension20Id} is null))
+        </if>
+    </select>
+
+    <select id="queryBgtBalanceInit" parameterType="com.hand.hec.bgt.dto.BgtBalanceDetailInit"
+            resultMap="BaseResultMap">
+        SELECT *
+        FROM (
+            SELECT
+                a.reserve_flag,
+                a.company_id,
+                a.doc_type,
+                (
+            SELECT
+                fcl.COMPANY_SHORT_NAME
+            FROM
+                fnd_company_tl fcl
+            WHERE
+                fcl.company_id = a.company_id
+                AND fcl.lang = #{request.locale,jdbcType=VARCHAR} ) AS company_desc,
+                a.unit_id,
+                (
+            SELECT
+                ut.description
+            FROM
+                exp_org_unit_tl ut
+            WHERE
+                ut.unit_id = a.unit_id
+                AND ut.lang = #{request.locale,jdbcType=VARCHAR} ) AS unit_desc,
+                ( SELECT NAME FROM exp_employee ee WHERE ee.employee_id = a.employee_id ) AS employee_desc,
+                a.type_id,
+                (
+            SELECT
+                al.DESCRIPTION
+            FROM
+                acp_mo_pay_req_type_tl al
+            WHERE
+                al.MO_PAY_REQ_TYPE_ID = a.type_id
+                AND al.lang = #{request.locale,jdbcType=VARCHAR} ) AS type_desc,
+                a.doc_id,
+                a.doc_number,
+                a.doc_date,
+                a.line_number,
+                a.budget_item_id,
+                (
+            SELECT bbl.description
+            FROM
+                bgt_budget_item_tl bbl
+            WHERE
+                bbl.BUDGET_ITEM_ID = a.budget_item_id
+                AND bbl.lang = #{request.locale,jdbcType=VARCHAR}) budget_item_desc,
+                a.doc_amount,
+                ( SELECT cv.meaning FROM sys_code_v cv WHERE cv.CODE = 'EXP_EXPENSE_REPORT_STATUS' AND cv.VALUE = a.requisition_status ) STATUS,
+                a.description
+            FROM
+                (
+                SELECT
+                    erd.company_id,
+                    erd.unit_id,
+                    ( SELECT erl.line_number FROM exp_requisition_line erl WHERE erl.exp_requisition_line_id = erd.exp_requisition_line_id ) AS line_number,
+                    erh.exp_requisition_header_id AS doc_id,
+                    erh.exp_requisition_number AS doc_number,
+                    erh.requisition_date doc_date,
+                    erh.description,
+                    erh.employee_id,
+                    erh.mo_exp_req_type_id AS type_id,
+                    erd.budget_item_id,
+                    br.amount AS doc_amount,
+                    br.business_type AS doc_type,
+                    br.reserve_flag,
+                    erh.requisition_status
+                FROM
+                    bgt_balance_detail_init t,
+                    bgt_budget_reserve br,
+                    exp_requisition_header erh,
+                    exp_requisition_dist erd
+                WHERE
+                    t.session_id = #{request.sessionId} AND
+                    br.budget_reserve_line_id = t.budget_reserve_line_id
+                    AND br.document_id = erh.exp_requisition_header_id
+                    AND br.document_line_id = erd.exp_requisition_dist_id
+                    AND br.business_type = 'EXP_REQUISITION'
+                    AND 'R' = #{reserveFlag}
+
+                    ) a UNION ALL
+            SELECT
+                b.reserve_flag,
+                b.company_id,
+                b.doc_type,
+                (
+                SELECT
+                    fcl.COMPANY_SHORT_NAME
+                FROM
+                    fnd_company_tl fcl
+                WHERE
+                    fcl.company_id = b.company_id
+                    AND fcl.lang = #{request.locale,jdbcType=VARCHAR} ) AS company_desc,
+                    b.unit_id,
+                    (
+                    SELECT
+                        ut.description
+                    FROM
+                        exp_org_unit_tl ut
+                    WHERE
+                        ut.unit_id = b.unit_id
+                        AND ut.lang = #{request.locale,jdbcType=VARCHAR} ) AS unit_desc,
+                        ( SELECT NAME FROM exp_employee ee WHERE ee.employee_id = b.employee_id ) AS employee_desc,
+                        b.type_id,
+                        (
+                        SELECT
+                            al.DESCRIPTION
+                        FROM
+                            acp_mo_pay_req_type_tl al
+                        WHERE
+                            al.MO_PAY_REQ_TYPE_ID = b.type_id
+                            AND al.lang = #{request.locale,jdbcType=VARCHAR} ) AS type_desc,
+                            b.doc_id,
+                            b.doc_number,
+                            b.doc_date,
+                            b.line_number,
+                            b.budget_item_id,
+                            (
+                            SELECT bbl.description
+                            FROM
+                                bgt_budget_item_tl bbl
+                            WHERE
+                                bbl.BUDGET_ITEM_ID = b.budget_item_id
+                                AND bbl.lang = #{request.locale,jdbcType=VARCHAR}) AS budget_item_desc,
+                                b.doc_amount,
+                                ( SELECT cv.meaning FROM sys_code_v cv WHERE cv.CODE = 'EXP_EXPENSE_REPORT_STATUS' AND cv.VALUE = b.report_status ) STATUS,
+                                b.description
+                            FROM
+                                (
+                                SELECT
+                                    erd.company_id,
+                                    erd.unit_id,
+                                    ( SELECT erl.line_number FROM exp_report_line erl WHERE erl.exp_report_line_id = erd.exp_report_line_id ) AS line_number,
+                                    erh.exp_report_header_id AS doc_id,
+                                    erh.exp_report_number AS doc_number,
+                                    erh.description,
+                                    erh.source_exp_rep_header_id,
+                                    erh.mo_exp_report_type_id AS type_id,
+                                    erh.employee_id,
+                                    erh.report_date doc_date,
+                                    erd.budget_item_id,
+                                    br.reserve_flag,
+                                    br.amount AS doc_amount,
+                                    br.business_type AS doc_type,
+                                    erh.report_status,
+                                    erh.reversed_flag
+                                FROM
+                                    bgt_balance_detail_init t,
+                                    bgt_budget_reserve br,
+                                    exp_report_header erh,
+                                    exp_report_dist erd
+                                WHERE
+                                    t.session_id = #{request.sessionId} AND
+                                    br.budget_reserve_line_id = t.budget_reserve_line_id
+                                    AND br.document_id = erh.exp_report_header_id
+                                    AND br.document_line_id = erd.exp_report_dist_id
+                                    AND br.business_type = 'EXP_REPORT'
+                                    AND 'U' = #{reserveFlag}
+
+                                ) b
+            ) w
+         ORDER BY doc_date,doc_number,line_number,doc_amount DESC
+    </select>
+
+
+</mapper>

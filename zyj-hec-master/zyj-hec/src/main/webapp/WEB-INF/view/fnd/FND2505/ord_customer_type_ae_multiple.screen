@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019-02-14
+    $Revision: 1.0
+    $Purpose: 客户类型批量分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2505_customerTypeMultipleSave_link" url="$[/request/@context_path]/ord/customer-type-ref-ae/insertAccEntities"/>
+        <script><![CDATA[
+            function FND2505_customerTypeMultipleQueryFunc() {
+                $au('FND2505_customerTypeMultipleResult_ds').query();
+            }
+            
+            function FND2505_customerTypeMultipleSave() {
+                var params = $au('FND2505_customerTypeResult_ds').getJsonData(true);
+                var aeRecords = $au('FND2505_customerTypeMultipleResult_ds').getJsonData(true);
+                var datas2 = new Array(params.length * aeRecords.length);
+                if (aeRecords.length < 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return false;
+                }
+                var k = 0;
+
+                for (var i = 0;i < params.length ;i++) {
+                    for (var j = 0;j < aeRecords.length;j++) {
+                        datas2[k] = {};
+                        datas2[k]['customerTypeId'] = params[i]['customerTypeId'];
+                        datas2[k]['accEntityCode'] =  aeRecords[j]['accEntityCode'];
+                        datas2[k]['accEntityId'] = aeRecords[j]['accEntityId'];
+                        datas2[k]['accEntityName'] = aeRecords[j]['accEntityName'];
+                        datas2[k]['enabledFlag'] = 'Y';
+                        datas2[k]['__status'] = 'add';
+                        datas2[k]['_token'] = null;
+                        k++;
+                    }
+                }
+                Aurora.request({
+                    lockMessage: '[l:hap_waiting]',
+                    url: $au('FND2505_customerTypeMultipleSave_link').getUrl(),
+                    para: datas2,
+                    success: function() {
+                        FND2505_customerTypeMultipleBack();
+                    },
+                    scope: this
+                });
+            }
+            
+            function FND2505_customerTypeMultipleBack() {
+                $au('FND2505_customerTypeMultiple_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2505_customerTypeMultipleQuery_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="accEntityCodeFrom"/>
+                    <a:field name="accEntityNameFrom" LovCode="CUSTOMER_TYPE_ASGN_ACC_ENTTITY"  prompt="gld_accounting_entity.acc_entity_from" title="gld_accounting_entities.acc_entity_name">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeFrom"/>
+                            <a:map from="accEntityName" to="accEntityNameFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityCodeTo"/>
+                    <a:field name="accEntityNameTo" LovCode="CUSTOMER_TYPE_ASGN_ACC_ENTTITY"  prompt="gld_accounting_entity.acc_entity_from" title="gld_accounting_entities.acc_entity_name" >
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCodeTo"/>
+                            <a:map from="accEntityName" to="accEntityNameTo"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2505_customerTypeMultipleResult_ds" autoPageSize="true"  pageSize="10" queryDataSet="FND2505_customerTypeMultipleQuery_ds" autoQuery="true" queryUrl="$[/request/@context_path]/ord/customer-type-ref-ae/queryAllAccountingEntity" selectable="true">
+            <a:fields>
+                <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+            </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:toolbarButton click="FND2505_customerTypeMultipleSave" text="HAP_SAVE" width="80"/>
+                    <a:toolbarButton click="FND2505_customerTypeMultipleBack" text="HAP_BACK" width="80"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="FND2505_customerTypeMultipleQuery_ds" resultTarget="FND2505_customerTypeMultipleResult_ds" style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:lov name="accEntityNameFrom" bindTarget="FND2505_customerTypeMultipleQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2505_customerTypeMultipleQueryFunc"/>
+                            </a:events>
+                        </a:lov>
+                        <a:lov name="accEntityNameTo" bindTarget="FND2505_customerTypeMultipleQuery_ds">
+                            <a:events>
+                                <a:event name="enterdown" handler="FND2505_customerTypeMultipleQueryFunc"/>
+                            </a:events>
+                        </a:lov>
+                    </a:formToolBar>
+                </a:queryForm>
+            </span>
+            <a:grid id="FND2505_customerTypeMultiple_grid" bindTarget="FND2505_customerTypeMultipleResult_ds" marginHeight="150" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

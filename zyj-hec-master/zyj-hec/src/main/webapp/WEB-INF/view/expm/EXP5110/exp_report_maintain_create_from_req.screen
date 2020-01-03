@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            function EXP5110_onReady() {
+                var createFromReqID = Ext.get('createFromReqID');
+                var report_page_element_code = '$[/parameter/@reportPageElementCode]';
+                if (report_page_element_code == '') {
+                    // Ext.get('createFromReqID').hide();
+            
+                    createFromReqID.parent().setStyle('display', 'none');
+                } else {
+                    createFromReqID.parent().setStyle('display', 'table-cell');
+                    // Ext.get('createFromReqID').show();
+                }
+            }
+            
+            function EXP5110_onFromReqReqItemFocusFun() {
+                var expenseTypeId = $au('EXP5110_createFromReqQueryDs').getAt(0).get('moExpenseTypeId');
+                //modify lcy 2018/1/18 14:10:23 增加申请项目和报销逻辑校验
+                if (expenseTypeId) {
+                    $au('EXP5110_reqItemDs').setQueryParameter('moExpenseTypeId', expenseTypeId);
+                    $au('EXP5110_reqItemDs').query();
+                }
+                //注释by chao.dai 2018-09-26
+                /* else {
+                 Aurora.showMessage('$[l:PROMPT]', '$[l:PLEASE_SELECT_EXPENSE_TYPE]', null, 300, 100);
+                 } */
+            }
+            function EXP5110_expenseTypeFocusFun() {
+                $au('EXP5110_expenseTypeDs').setQueryParameter('magOrgId','$[/session/@magOrgId]');
+                $au('EXP5110_expenseTypeDs').query();
+            }
+            
+            function EXP5110_onFromReqQueryDsUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'moExpenseTypeId') {
+                    record.set('moReqItemName', '');
+                    record.set('moReqItemId', '');
+                    //add by chao.dai 2018-09-26 查询栏未选报销类型，把申请项目灰掉
+                    if (value) {
+                        record.getMeta().getField('moReqItemName').setReadOnly(false);
+                    } else {
+                        record.getMeta().getField('moReqItemName').setReadOnly(true);
+                    }
+                    //end add
+            
+                }
+            }
+            
+            function EXP5110_createFromReq() {
+                /*Modified by Arthur.Chen Date:2017-08-22 10:02:01
+                 1.增加“请至少选择一行数据”提示。
+                 */
+                var datas = $au('EXP5110_createFromReqResultDs').getJsonData(true);
+                if (datas.length == 0) {
+                    new Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select_one]', null, 300, 100);
+                } else {
+                    datas['fields'] = $au('EXP5110_createFromReqResultDs').fields;
+                    Ext.each(datas, function(data) {
+                        var hecUtil = new HecUtil();
+                        var rate = data['unreleasedAmount'] / data['paymentAmount'];
+                        data['businessPrice'] = hecUtil.calAmount(data['businessPrice'] * rate, 1, data['businessPrecision']);
+                        data['businessAmount'] = hecUtil.calAmount(data['businessAmount'] * rate, 1, data['businessPrecision']);
+                        data['paymentPrice'] = hecUtil.calAmount(data['paymentPrice'] * rate, 1, data['paymentPrecision']);
+                        data['paymentAmount'] = hecUtil.calAmount(data['paymentAmount'] * rate, 1, data['paymentPrecision']);
+                        data['managementPrice'] = hecUtil.calAmount(data['businessPrice'] * rate, 1, data['managementPrecision']);
+                        data['managementAmount'] = hecUtil.calAmount(data['businessPrice'] * rate, 1, data['managementPrecision']);
+                        data['requisitionFunctionalAmount'] = hecUtil.calAmount(data['requisitionFunctionalAmount'] * rate, 1, data['functionalCurrencyPrecision']);
+                        data['reportFunctionalAmount'] = hecUtil.calAmount(data['requisitionFunctionalAmount'] * rate, 1, data['functionalCurrencyPrecision']);
+                    });
+            
+                    // Modify Taign/2017.10.26 判断时从精简、标准页面进入调用不同的添加行方法
+                    // Modified by Arthur.Chen 2017-11-10 10:09:16 更改判断条件
+                    // update by penglei 20171224 为保证多个行页面同时使用其id不重复的情况，需要根据其类型判断
+                    var report_page_element_code = '$[/parameter/@reportPageElementCode]';
+                    if (report_page_element_code == 'TRAVEL_LINES') {
+                        var dsFromTravel = $au('EXP5110_exp_report_travel_line_ds');
+                        if (!Ext.isEmpty(dsFromTravel)) {
+                            EXP5110_travelLineAdd(datas);
+                        }
+                    } else if (report_page_element_code == 'TRAVEL_STAY_LINES') {
+                        var dsFromTravelStay = $au('EXP5110_exp_report_travel_stay_line_ds');
+                        if (!Ext.isEmpty(dsFromTravelStay)) {
+                            EXP5110_travelStayLineAdd(datas);
+                        }
+                    } else if (report_page_element_code == 'TRAVEL_STAY_UNIFIED') {
+                        var dsFromTravelStayUnified = $au('EXP5110_exp_report_travel_stay_unified_line_ds');
+                        if (!Ext.isEmpty(dsFromTravelStayUnified)) {
+                            EXP5110_travelStayUnifiedLineAdd(datas);
+                        }
+                    } else if (report_page_element_code == 'TRAVEL_SUBSIDY_LINES') {
+                        var dsFromTravelSubsidy = $au('EXP5110_exp_report_travel_subsidy_line_ds');
+                        if (!Ext.isEmpty(dsFromTravelSubsidy)) {
+                            EXP5110_travelSubsidyLineAdd(datas);
+                        }
+                    } else if (report_page_element_code == 'TICKET_UNIFIED') {
+                        var dsFromTravelTicketUnified = $au('EXP5110_exp_report_ticket_unified_line_ds');
+                        if (!Ext.isEmpty(dsFromTravelTicketUnified)) {
+                            EXP5110_ticketUnifiedLineAdd(datas);
+                        }
+                    }
+                    //标准行
+                    else if (report_page_element_code == 'STANDARD') {
+                        if (Aurora.CmpManager.get('EXP5110_exp_report_standard_line_ds')) {
+                            EXP5110_standardLineAdd(datas);
+                        }
+                    }
+                    //精简行
+                    else if (report_page_element_code == 'STREAMLINED') {
+                        if (Aurora.CmpManager.get('EXP5110_exp_report_streamlined_line_ds')) {
+                            EXP5110_streamlinedLineAdd(datas);
+                        }
+                    }
+                    $au(this.__host.id).close();
+                    // EXP5110_closeFromReq();
+                }
+            }
+            
+            function EXP5110_closeFromReq() {
+                //modify lcy 2018/1/18 14:10:23  修改close方式
+                //  $au('EXP5110_exp_report_maintain_create_from_req_window').close();
+                $au(this.__host.id).close();
+            }
+            //modify lcy 2018/1/18 14:10:23 增加超链接逻辑
+            
+            function EXP5110_fromReqReqNumRenderer(value, record, name) {
+                var readonly_service_name = record.get('readonlyServiceName');
+                var exp_requisition_header_id = record.get('expRequisitionHeaderId');
+                if (readonly_service_name != '' && readonly_service_name != 'undefined' && readonly_service_name != null) {
+                    return '<a href="javascript:EXP5110_fromReqReqNumRendererInfo(\'' + readonly_service_name + '\',\'' + exp_requisition_header_id + '\')">' + value + '</a>';
+                }
+            
+            }
+            
+            function EXP5110_fromReqReqNumRendererInfo(readonly_service_name, exp_requisition_header_id) {
+                new Aurora.Window({
+                    title: '',
+                    id: 'EXP5110_exp_report_create_from_req_renderer_window',
+                    url: '$[/request/@context_path]/' + readonly_service_name + '?expRequisitionHeaderId=' + exp_requisition_header_id,
+                    fullScreen: true
+                });
+            }
+            Aurora.onReady(EXP5110_onReady);
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_expenseTypeDs" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/exp/mo-expense-type/query"/>
+            <a:dataSet id="EXP5110_reqItemDs" fetchAll="true" loadData="true" queryUrl="$[/request/@context_path]/exp/mo-req-item/getReqItemByExpenseType"/>
+            <a:dataSet id="EXP5110_createFromReqQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="expRequisitionNumber" prompt="exp_requisition_header.exp_requisition_number"/>
+                    <a:field name="requesitionDateTo" prompt="exp_requisition_header.requisition_date_to"/>
+                    <a:field name="requesitionDateFrom" prompt="exp_requisition_header.requisition_date_from"/>
+                    <a:field name="uncompletelyReleasedFlag" checkedValue="Y" defaultValue="N" prompt="not_fully_issued" uncheckedValue="N"/>
+                    <a:field name="moExpenseTypeName" displayField="description" options="EXP5110_expenseTypeDs" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moReqItemName" displayField="description" options="EXP5110_reqItemDs" readOnly="true" returnField="moReqItemId" valueField="moReqItemId"/>
+                    <a:field name="moExpReportTypeId" defaultValue="$[/parameter/@moExpReportTypeId]"/>
+                    <a:field name="reportPageElementCode" defaultValue="$[/parameter/@reportPageElementCode]"/>
+                    <a:field name="paymentCurrencyCode" defaultValue="$[/parameter/@paymentCurrencyCode]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5110_onFromReqQueryDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_createFromReqResultDs" autoQuery="true"  queryDataSet="EXP5110_createFromReqQueryDs" queryUrl="$[/request/@context_path]/exp/requisition-line/expReportFromReqQuery?monopolizeFlag=$[/parameter/@monopolizeFlag]&amp;expRequisitionHeaderId=$[/parameter/@expRequisitionHeaderId]" selectable="true">
+                <a:fields>
+                    <!-- 页面元素代码 -->
+                    <a:field name="reportPageElementCode"/>
+                    <!-- 标准费用行开始 -->
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="expRequisitionNumber"/>
+                    <a:field name="expRequisitionLineId"/>
+                    <a:field name="expRequisitionDistId"/>
+                    <a:field name="lineNumber"/>
+                    <a:field name="description"/>
+                    <a:field name="companyName"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="unitName"/>
+                    <a:field name="unitId"/>
+                    <a:field name="positionName"/>
+                    <a:field name="positionId"/>
+                    <a:field name="employeeName"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="respCenterName"/>
+                    <a:field name="respCenterId"/>
+                    <a:field name="placeTypeName"/>
+                    <a:field name="placeTypeId"/>
+                    <a:field name="placeName"/>
+                    <a:field name="placeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="dateFrom"/>
+                    <a:field name="dateTo"/>
+                    <a:field name="periodName"/>
+                    <a:field name="moExpenseTypeName"/>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moExpenseItemName"/>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="primaryQuantity"/>
+                    <a:field name="businessCurrencyName"/>
+                    <a:field name="businessCurrencyCode"/>
+                    <a:field name="biz2payExchangeTypeName"/>
+                    <a:field name="biz2payExchangeType"/>
+                    <a:field name="biz2payExchangeRate"/>
+                    <a:field name="businessPrice"/>
+                    <a:field name="businessAmount"/>
+                    <a:field name="paymentCurrencyName"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="pay2funExchangeTypeName"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate"/>
+                    <a:field name="paymentPrice"/>
+                    <a:field name="paymentAmount"/>
+                    <a:field name="managementCurrencyName"/>
+                    <a:field name="managementCurrencyCode"/>
+                    <a:field name="pay2magExchangeTypeName"/>
+                    <a:field name="pay2magExchangeType"/>
+                    <a:field name="pay2magExchangeRate"/>
+                    <a:field name="managementPrice"/>
+                    <a:field name="managementAmount"/>
+                    <a:field name="reportFunctionalAmount"/>
+                    <a:field name="releasedAmount"/>
+                    <a:field name="releasedQuantity"/>
+                    <a:field name="releasedStatus"/>
+                    <a:field name="unreleasedAmount"/>
+                    <a:field name="dimension1Id"/>
+                    <a:field name="dimension2Id"/>
+                    <a:field name="dimension3Id"/>
+                    <a:field name="dimension4Id"/>
+                    <a:field name="dimension5Id"/>
+                    <a:field name="dimension6Id"/>
+                    <a:field name="dimension7Id"/>
+                    <a:field name="dimension8Id"/>
+                    <a:field name="dimension9Id"/>
+                    <a:field name="dimension10Id"/>
+                    <a:field name="dimension11Id"/>
+                    <a:field name="dimension12Id"/>
+                    <a:field name="dimension13Id"/>
+                    <a:field name="dimension14Id"/>
+                    <a:field name="dimension15Id"/>
+                    <a:field name="dimension16Id"/>
+                    <a:field name="dimension17Id"/>
+                    <a:field name="dimension18Id"/>
+                    <a:field name="dimension19Id"/>
+                    <a:field name="dimension20Id"/>
+                    <a:field name="dimension1Name"/>
+                    <a:field name="dimension2Name"/>
+                    <a:field name="dimension3Name"/>
+                    <a:field name="dimension4Name"/>
+                    <a:field name="dimension5Name"/>
+                    <a:field name="dimension6Name"/>
+                    <a:field name="dimension7Name"/>
+                    <a:field name="dimension8Name"/>
+                    <a:field name="dimension9Name"/>
+                    <a:field name="dimension10Name"/>
+                    <a:field name="dimension11Name"/>
+                    <a:field name="dimension12Name"/>
+                    <a:field name="dimension13Name"/>
+                    <a:field name="dimension14Name"/>
+                    <a:field name="dimension15Name"/>
+                    <a:field name="dimension16Name"/>
+                    <a:field name="dimension17Name"/>
+                    <a:field name="dimension18Name"/>
+                    <a:field name="dimension19Name"/>
+                    <a:field name="dimension20Name"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityName"/>
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="bgtCenterName"/>
+                    <!-- 标准费用行结束 -->
+                    <!-- 申请单特有行 -->
+                    <a:field name="reqMoExpenseTypeName"/>
+                    <a:field name="reqMoExpenseTypeId"/>
+                    <a:field name="moReqItemName"/>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="requisitionFunctionalAmount"/>
+                    <!-- 差旅行程行开始 -->
+                    <a:field name="transportationName"/>
+                    <a:field name="transportation"/>
+                    <a:field name="seatClassName"/>
+                    <a:field name="seatClass"/>
+                    <a:field name="departurePlaceName"/>
+                    <a:field name="departurePlaceId"/>
+                    <a:field name="arrivalPlaceName"/>
+                    <a:field name="arrivalPlaceId"/>
+                    <a:field name="departureDate"/>
+                    <a:field name="arrivalDate"/>
+                    <!-- 差旅行程行结束 -->
+                    <!-- 差旅住宿行结开始-->
+                    <a:field name="accommodationDateFrom"/>
+                    <a:field name="accommodationDateTo"/>
+                    <!-- 差旅住宿行结束 -->
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:screenTopToolbar>
+                    <a:toolbarButton id="createFromReqID" click="EXP5110_createFromReq" text="hap_confirm"/>
+                    <a:toolbarButton click="EXP5110_closeFromReq" text="hap_back"/>
+                </a:screenTopToolbar>
+                <a:queryForm bindTarget="EXP5110_createFromReqQueryDs" resultTarget="EXP5110_createFromReqResultDs" style="width:100%;border:none">
+                    <a:formToolBar>
+                        <a:textField name="expRequisitionNumber" bindTarget="EXP5110_createFromReqQueryDs"/>
+                        <a:datePicker name="requesitionDateFrom" bindTarget="EXP5110_createFromReqQueryDs"/>
+                        <a:datePicker name="requesitionDateTo" bindTarget="EXP5110_createFromReqQueryDs"/>
+                    </a:formToolBar>
+                    <a:formBody column="4">
+                        <a:comboBox name="moExpenseTypeName" bindTarget="EXP5110_createFromReqQueryDs" placeHolder="exp_requisition_lines.expense_type_id">
+                            <a:events>
+                                <a:event name="focus" handler="EXP5110_expenseTypeFocusFun"/>
+                            </a:events>
+                        </a:comboBox>
+                        <a:comboBox name="moReqItemName" bindTarget="EXP5110_createFromReqQueryDs" placeHolder="exp_requisition_lines.exp_req_item_id">
+                            <a:events>
+                                <a:event name="focus" handler="EXP5110_onFromReqReqItemFocusFun"/>
+                            </a:events>
+                        </a:comboBox>
+                        <a:checkBox name="uncompletelyReleasedFlag" bindTarget="EXP5110_createFromReqQueryDs" prompt="not_fully_issued"/>
+                    </a:formBody>
+                </a:queryForm>
+            </span>
+            <a:grid bindTarget="EXP5110_createFromReqResultDs" marginHeight="150" marginWidth="0" navBar="true">
+                <!--  modify lcy 2018/1/18 15:01:23 修改payment_currency_name与BM对应 -->
+                <a:columns>
+                    <a:column name="expRequisitionNumber" align="center" lock="true" prompt="exp_requisition_header.exp_requisition_number" renderer="EXP5110_fromReqReqNumRenderer" width="100"/>
+                    <a:column name="lineNumber" align="center" lock="true" prompt="exp_requisition_line.line_number" width="50"/>
+                    <a:column name="reqMoExpenseTypeName" align="center" prompt="exp_requisition_lines.expense_type_id" width="120"/>
+                    <a:column name="moReqItemName" align="center" prompt="exp_requisition_lines.exp_req_item_id" width="120"/>
+                    <a:column name="paymentCurrencyName" align="center" prompt="exp_requisition_header.currency_name" width="80"/>
+                    <a:column name="paymentPrice" align="right" prompt="exp_report_lines.pric" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="primaryQuantity" align="right" prompt="exp_requisition_lines.primary_quantity" width="80"/>
+                    <a:column name="paymentAmount" align="right" prompt="acp_requisition.amount" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="releasedAmount" align="right" prompt="exp_requisition_header.reimbursed_num" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="releasedQuantity" align="right" prompt="exp_requisition_header.reimbursed_adu_num" width="80"/>
+                    <a:column name="unreleasedAmount" align="right" prompt="exp_from_req.outstanding_amount" renderer="Aurora.formatMoney" width="80"/>
+                    <a:column name="periodName" align="center" prompt="exp_requisition_lines.period_name" width="80"/>
+                    <a:column name="employeeName" align="center" prompt="exp_report_lines.employee_id" width="80"/>
+                    <a:column name="bgtEntityName" align="center" prompt="bgt_entities.bgt_entity_name" width="120"/>
+                    <a:column name="bgtCenterName" align="center" prompt="bgt_center.bgt_center" width="120"/>
+                    <a:column name="companyName" align="center" prompt="exp_requisition_lines.company_id" width="120"/>
+                    <a:column name="unitName" align="center" prompt="exp_requisition_lines.unit_id" width="120"/>
+                    <a:column name="positionName" align="center" prompt="exp_requisition_lines.position_id" width="120"/>
+                    <a:column name="accEntityName" align="center" prompt="exp_requisition_header.acc_entity_name" width="120"/>
+                    <a:column name="respCenterName" align="center" prompt="exp_requisition_lines.responsibility_center_id" width="120"/>
+                    <a:column name="description" align="left" prompt="exp_requisition_lines.description" width="150"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

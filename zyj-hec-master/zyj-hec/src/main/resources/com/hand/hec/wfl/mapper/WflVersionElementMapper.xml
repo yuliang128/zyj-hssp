@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflVersionElementMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflVersionElement">
+        <result column="element_id" property="elementId" jdbcType="DECIMAL"/>
+        <result column="version" property="version" jdbcType="DECIMAL"/>
+        <result column="process_id" property="processId" jdbcType="DECIMAL"/>
+        <result column="element_code" property="elementCode" jdbcType="VARCHAR"/>
+        <result column="element_name" property="elementName" jdbcType="VARCHAR"/>
+        <result column="element_type" property="elementType" jdbcType="VARCHAR"/>
+        <result column="lang" property="lang" jdbcType="VARCHAR"/>
+        <!--<collection property="event"/>
+        <collection property="task"/>
+        <collection property="gateway"/>
+        <collection property="flow"/>-->
+    </resultMap>
+    <select id="selectVersionElement" resultMap="BaseResultMap">
+  SELECT e.event_id AS element_id,
+            e.process_id,
+            e.event_code AS element_code,
+            case
+              when t.event_name is not null THEN
+                t.event_name
+              ELSE
+                e.event_name
+            end
+              AS element_name,
+            'EVENT' AS element_type,
+            t.lang,
+            e.version
+           FROM wfl_version_event e left join
+            wfl_version_event_tl t
+          on e.version_event_id = t.version_event_id
+          and t.lang = #{request.locale}
+        UNION ALL
+         SELECT t.task_id AS element_id,
+            t.process_id,
+            t.task_code AS element_code,
+            case
+              when l.task_name is not null THEN
+                l.task_name
+              ELSE
+                t.task_name
+            end
+              AS task_name,
+            'TASK' AS element_type,
+            l.lang,
+            t.version
+           FROM wfl_version_task t left join
+            wfl_version_task_tl l
+          on t.version_task_id = l.version_task_id
+          and l.lang = #{request.locale}
+        UNION ALL
+         SELECT g.gateway_id AS element_id,
+            g.process_id,
+            g.gateway_code AS element_code,
+            case
+              when t.gateway_name is not null THEN
+                t.gateway_name
+              ELSE
+                g.gateway_name
+            end
+             AS element_name,
+            'GATEWAY' AS element_type,
+            t.lang,
+            g.version
+           FROM wfl_version_gateway g left join
+            wfl_version_gateway_tl t
+          on g.version_gateway_id = t.version_gateway_id
+          and t.lang = #{request.locale}
+    </select>
+</mapper>

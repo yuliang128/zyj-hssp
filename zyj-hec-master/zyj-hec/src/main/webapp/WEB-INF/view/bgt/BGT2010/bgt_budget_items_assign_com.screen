@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_budget_item_assgin_company_batch_link" url="$[/request/@context_path]/bgt/BGT2010/bgt_budget_items_assign_com_batch.screen"/>
+        <script><![CDATA[
+            function BGT2010_assign_com_back() {
+                $au('BGT2010_budget_assign_company_window').close();
+            }
+            
+            function BGT2010_asgn_comEditFunc(record, name) {
+                if (record.isNew) {
+                    if (name == 'companyCode') {
+                        return 'asgn_com_Lov';
+                    }
+                }
+                return '';
+            }
+            
+            function BGT2010_batch_company(dataSet) {
+                var budgetItemId = '$[/parameter/@budgetItemId]';
+                var comDs = $au('bgt_budget_item_asgn_com_header');
+                new Aurora.Window({
+                    id: 'BGT2010_budget_assign_company_batch_window',
+                    url: $au('bgt_budget_item_assgin_company_batch_link').getUrl() + '?assignMoId=' + '$[/parameter/@assignMoId]' + '&magOrgId=' + comDs.getAt(0).get('magOrgId'),
+                    title: '$[l:prompt.batch_disp_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+
+            function onItemAssignComAddFun(ds,record,index){
+                var comDs = $au('bgt_budget_item_asgn_com_header');
+                record.getField('companyCode').setLovPara('assignMoId', '$[/parameter/@assignMoId]');
+                record.getField('companyCode').setLovPara('magOrgId', comDs.getAt(0).get('magOrgId'));
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="bgt_budget_item_asgn_com_header" autoQuery="true" baseUrl="/bgt/budget-item-asgn-mo" queryUrl="$[/request/@context_path]/bgt/budget-item-asgn-mo/query?assignMoId=$[/parameter/@assignMoId]">
+                <a:fields>
+                    <a:field name="magOrgCode" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                    <a:field name="magOrgName"  prompt="bgt_budget_item_mapping.mag_org_name" readOnly="true"/>
+                    <a:field name="magOrgId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="bgt_budget_item_asgn_com_ds" autoQuery="true" baseUrl="/bgt/budget-item-asgn-com" pageSize="50" queryUrl="$[/request/@context_path]/bgt/budget-item-asgn-com/query?assignMoId=$[/parameter/@assignMoId]" selectable="true">
+                <a:fields>
+                    <a:field name="assignComId"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="companyCode" autoComplete="true" autoCompleteField="companyCode" lovGridheight="320" lovHeight="450" lovCode="LOV_BGT_ITEM_ASSIGN_COMPANY" lovWidth="500" prompt="fnd_company.company_code" required="true" title="bgt_journal_type.company_id">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="fnd_company.company_short_name" readOnly="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bgt_center.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="onItemAssignComAddFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="budget_item.assign_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="bgt_budget_item_asgn_com_grid" type="add" width="80"/>
+                    <a:gridButton bind="bgt_budget_item_asgn_com_grid" type="save" width="80"/>
+                    <a:toolbarButton click="BGT2010_batch_company" text="exp_mo_expense_object_type.batch_company" width="80"/>
+                    <a:toolbarButton click="BGT2010_assign_com_back" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="bgt_budget_item_asgn_com_header" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="bgt_budget_item_asgn_com_header" readOnly="true"/>
+            </a:form>
+            <a:grid id="bgt_budget_item_asgn_com_grid" bindTarget="bgt_budget_item_asgn_com_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="BGT2010_asgn_comEditFunc" width="120"/>
+                    <a:column name="companyName" align="left" width="250"/>
+                    <a:column name="enabledFlag" editor="asgin_com_checkBox" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="asgn_com_Lov"/>
+                    <a:checkBox id="asgin_com_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

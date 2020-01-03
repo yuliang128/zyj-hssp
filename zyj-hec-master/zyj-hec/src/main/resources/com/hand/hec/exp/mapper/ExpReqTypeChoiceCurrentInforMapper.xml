@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpReqTypeChoiceCurrentInforMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpReqTypeChoiceCurrentInfor">
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="COMPANY_SHORT_NAME" property="companyShortName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_CURRENCY_CODE" property="paymentCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_CURRENCY_NAME" property="paymentCurrencyName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="PAY_CURRENCY_CODE" property="payCurrencyCode" jdbcType="VARCHAR"/>
+        <result column="PAY_CURRENCY_NAME" property="payCurrencyName" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_NAME" property="employeeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryExpReqTypeChoiceCurrentInfor" resultMap="BaseResultMap">
+SELECT
+	v.COMPANY_ID,
+	v.COMPANY_CODE,
+	v.COMPANY_SHORT_NAME,
+	v.payment_currency_code,
+	(
+SELECT
+	gct.CURRENCY_NAME
+FROM
+	gld_currency gc
+	LEFT JOIN gld_currency_tl gct ON gc.CURRENCY_ID = gct.CURRENCY_ID
+	AND gct.LANG = 'zh_CN'
+WHERE
+	gc.COUNTRY_CODE = v.payment_currency_code
+	) payment_currency_name,
+	v.acc_entity_id,
+	gae.ACC_ENTITY_CODE,
+	gaet.ACC_ENTITY_NAME,
+	gae.PAY_CURRENCY_CODE,
+	(
+SELECT
+	gct.CURRENCY_NAME
+FROM
+	gld_currency gc
+	LEFT JOIN gld_currency_tl gct ON gc.CURRENCY_ID = gct.CURRENCY_ID
+	AND gct.LANG = 'zh_CN'
+WHERE
+	gc.COUNTRY_CODE = gae.PAY_CURRENCY_CODE
+	) PAY_CURRENCY_NAME,
+	10001 employee_id,
+	( SELECT ee.`NAME` FROM exp_employee ee WHERE ee.EMPLOYEE_ID = 10001 ) employee_name
+FROM
+	(
+SELECT
+	fc.COMPANY_ID,
+	fc.COMPANY_CODE,
+	fct.COMPANY_SHORT_NAME,
+	(
+SELECT
+	IFNULL( gae.FUNCTIONAL_CURRENCY_CODE, gsob.FUNCTIONAL_CURRENCY_CODE )
+FROM
+	fnd_company_ref_acc_entity fae,
+	gld_accounting_entity gae,
+	gld_set_of_book gsob
+WHERE
+	fae.COMPANY_ID = fc.COMPANY_ID
+	AND gae.ACC_ENTITY_ID = fae.ACC_ENTITY_ID
+	AND gsob.SET_OF_BOOKS_ID = gae.DEFAULT_SET_OF_BOOKS_ID
+	) payment_currency_code,
+	IFNULL(
+	(
+SELECT
+	eea.acc_entity_id
+FROM
+	exp_employee_assign eea
+WHERE
+	eea.employee_id = 10001
+	AND eea.company_id = fc.COMPANY_ID
+	AND eea.primary_position_flag = 'Y'
+	AND eea.enabled_flag = 'Y'
+	),
+	(
+SELECT
+	ae.acc_entity_id
+FROM
+	fnd_company_ref_acc_entity ae
+WHERE
+	ae.company_id = fc.COMPANY_ID
+	AND ae.enabled_flag = 'Y'
+	AND ae.default_flag = 'Y'
+	)
+	) acc_entity_id
+FROM
+	fnd_company fc
+	LEFT JOIN fnd_company_tl fct ON fc.COMPANY_ID = fct.company_id
+	AND fct.LANG = 'zh_CN'
+WHERE
+	fc.COMPANY_ID = 10001
+	) v,
+	gld_accounting_entity gae
+	LEFT JOIN gld_accounting_entity_tl gaet ON gae.ACC_ENTITY_ID = gaet.ACC_ENTITY_ID
+	AND gaet.LANG = 'zh_CN'
+WHERE
+	v.acc_entity_id = gae.ACC_ENTITY_ID
+
+</select>
+
+</mapper>

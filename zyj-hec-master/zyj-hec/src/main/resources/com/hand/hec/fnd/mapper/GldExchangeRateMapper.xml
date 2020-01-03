@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+        *
+        * 汇率定义mapper.xml
+        *
+        * @weikun.wang xxx 2019-02-22
+ /-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldExchangeRateMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldExchangeRate">
+        <result column="CONVERSION_RATE" property="conversionRate" jdbcType="DECIMAL"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="CONVERSION_DATE" property="conversionDate" jdbcType="DATE"/>
+        <result column="EXCHANGE_RATE_ID" property="exchangeRateId" jdbcType="DECIMAL"/>
+        <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL"/>
+        <result column="FROM_CURRENCY" property="fromCurrency" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_VOLUME" property="currencyVolume" jdbcType="DECIMAL"/>
+        <result column="TO_CURRENCY" property="toCurrency" jdbcType="VARCHAR"/>
+        <result column="FROM_CURRENCY_NAME" property="fromCurrencyName" jdbcType="VARCHAR"/>
+        <result column="TO_CURRENCY_NAME" property="toCurrencyName" jdbcType="VARCHAR"/>
+
+        <result column="PERIOD_FROM" property="periodFrom" jdbcType="VARCHAR"/>
+        <result column="PERIOD_TO" property="periodTo" jdbcType="VARCHAR"/>
+
+        <result column="DATE_FROM" property="dateFrom" jdbcType="VARCHAR"/>
+        <result column="DATE_TO" property="dateTo" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- Modify Tagin/2019.03.06 获取汇率转换值及装换汇率 -->
+    <select id="queryConversion" resultMap="BaseResultMap">
+        SELECT
+        ger.currency_volume,
+        ger.conversion_rate
+        FROM
+        gld_exchange_rate ger,
+        gld_exchangerate_type getx
+        WHERE
+        getx.type_code = #{exchangeRateType, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND getx.type_id = ger.type_id
+        AND ger.from_currency = #{fromCurrency, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND ger.to_currency = #{toCurrency, jdbcType=VARCHAR, javaType= java.lang.String}
+        <if test="exchangeDate != null and accurateFlag == 'Y'.toString() ">
+            AND (getx.method_code != 'DETAIL' OR IFNULL(ger.conversion_date,CURRENT_DATE) =
+            IFNULL(#{exchangeDate, jdbcType=DATE, javaType=java.util.Date},CURRENT_DATE))
+        </if>
+        <if test="periodName != null and accurateFlag == 'Y'.toString() ">
+            AND (getx.method_code != 'PERIOD' OR IFNULL(ger.period_name,'x') =
+            IFNULL(#{periodName, jdbcType=VARCHAR, javaType=java.lang.String},'x'))
+        </if>
+        <if test="exchangeDate != null and accurateFlag == 'N'.toString() ">
+            AND ger.conversion_date = #{exchangeDate, jdbcType=DATE, javaType=java.util.Date}
+        </if>
+        <if test="periodName != null and accurateFlag == 'N'.toString() ">
+            AND ger.period_name = #{periodName, jdbcType=VARCHAR, javaType=java.lang.String}
+        </if>
+    </select>
+
+    <!-- Modify Tagin/2019.03.06 获取最大日期 -->
+    <select id="queryMaxDate" resultType="java.util.Date">
+        SELECT
+        max( ger.conversion_date ) AS conversionDate
+        FROM
+        gld_exchange_rate ger,
+        gld_exchangerate_type getx
+        WHERE
+        getx.type_code = #{exchangeRateType, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND getx.type_id = ger.type_id
+        AND ger.from_currency = #{fromCurrency, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND ger.to_currency = #{toCurrency, jdbcType=VARCHAR, javaType= java.lang.String}
+        AND ger.conversion_date <![CDATA[<=]]> #{exchangeDate, jdbcType=DATE, javaType=java.util.Date}
+    </select>
+
+    <!-- Modify Tagin/2019.03.06 获取最大期间 -->
+    <select id="queryMaxPeriod" resultType="java.lang.String">
+        SELECT
+        max( ger.period_name ) AS periodName
+        FROM
+        gld_exchange_rate ger,
+        gld_exchangerate_type getx
+        WHERE
+        getx.type_code = #{exchangeRateType, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND getx.type_id = ger.type_id
+        AND ger.from_currency = #{fromCurrency, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND ger.to_currency = #{toCurrency, jdbcType=VARCHAR, javaType= java.lang.String}
+        AND  ger.period_name <![CDATA[<=]]> #{periodName, jdbcType=VARCHAR, javaType=java.lang.String}
+    </select>
+</mapper>

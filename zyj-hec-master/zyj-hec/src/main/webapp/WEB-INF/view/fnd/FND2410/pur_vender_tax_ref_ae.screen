@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-1 上午11:36:25  
+    $Revision: 1.0  
+    $Purpose: 供应商税务信息分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="FND2410_pur_vender_tax_ref_ae_batch_link"
+                url="$[/request/@context_path]/fnd/FND2410/pur_vender_tax_ref_ae_batch_asgn.screen"/>
+        <script><![CDATA[
+        function FND2410_closeAccEntityCreateWindow() {
+            $au('FND2410_pur_vender_tax_ref_ae_window').close();
+        }
+
+        function FND2410_batchAsgnAccEntity() {
+            var url = $au('FND2410_pur_vender_tax_ref_ae_batch_link').getUrl() + '?taxId=' + '$[/parameter/@taxId]' + '&venderId=' + '$[/parameter/@venderId]';
+            new Aurora.Window({
+                id: 'FND2410_pur_vender_tax_ref_ae_batch_window',
+                url: url,
+                title: '$[l:hec_batch_assign]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND2410_taxRefAeEdit(record) {
+            if (record.isNew) {
+                return "FND2410_taxRefAe_lov";
+            }
+            return '';
+        }
+
+        function FND2410_taxRefAeSubmit() {
+            $au('FND2410_pur_vender_tax_ref_ae_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2410_pur_vender_tax_ref_ae_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/pur/vender-tax-ref-ae"
+                       queryUrl="$[/request/@context_path]/pur/vender-tax-ref-ae/query/$[/parameter/@taxId]">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityCode" autoComplete="true" autoCompleteField="accEntityCodeName"
+                             lovCode="LOV_VENDER_TAX_ASSIGN_ACC_ENTITY?venderId=$[/parameter/@venderId]&amp;taxId=$[/parameter/@taxId]"
+                             prompt="gld_accounting_entity.acc_entity_code" required="true"
+                             title="gld_responsibility_centers.acc_entitychoice">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="venderId" defaultValue="$[/parameter/@venderId]"/>
+                    <a:field name="taxId" defaultValue="$[/parameter/@taxId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2410_taxRefAeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2410_pur_vender_tax_ref_ae_form" column="2" title="pur_system_vender.info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2410_pur_vender_tax_ref_ae_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2410_pur_vender_tax_ref_ae_grid" type="save" width="80"/>
+                    <a:toolbarButton click="FND2410_batchAsgnAccEntity" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="FND2410_closeAccEntityCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="venderCode" bindTarget="FND2410_pur_system_vender_result_ds"
+                             prompt="pursystemvender.vendercode" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2410_pur_system_vender_result_ds"
+                             prompt="pur_system_vender.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2410_pur_vender_tax_ref_ae_grid" bindTarget="FND2410_pur_vender_tax_ref_ae_ds"
+                    marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="FND2410_taxRefAeEdit"
+                              prompt="gld_accounting_entity.acc_entity_code" width="80"/>
+                    <a:column name="accEntityName" align="left"
+                              prompt="gld_accounting_entity.acc_entity_name_display" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2410_taxRefAe_checkBox"
+                              prompt="hap_enabled_flag" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="FND2410_taxRefAe_checkBox"/>
+                    <a:lov id="FND2410_taxRefAe_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

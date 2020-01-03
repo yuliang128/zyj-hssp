@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Zealot  
+    $Date: 2014-5-23 上午9:56:54  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <style><![CDATA[
+        	.item-grid{
+     			-webkit-box-sizing: unset; 
+    			-moz-box-sizing: unset;
+    		 	box-sizing: unset; 
+			}
+			
+			.item-grid-wrap table{
+			    border-collapse:separate;
+			}
+        ]]></style>
+        <script><![CDATA[
+        function saveFunction() {
+                $au('bpm_page_tags_lov_mapper_bmurl_ds').submit();
+            }            
+            
+            function backFunction() {
+                $au('bpm_page_tags_lov_mapper_bmurl_screen').close();
+            }
+  
+  			function onLovMapperAdd(ds, record, index) {
+                var lineNum = 0;
+                var records = ds.getAll();
+                for (var i = 0;i < ds.getAll().length - 1;i++) {
+                    if (records[i].get('mapper_sequence') > lineNum) {
+                        lineNum = records[i].get('mapper_sequence');
+                    }
+                }
+                record.set('mapper_sequence', (Math.floor(lineNum / 10) + 1) * 10);
+            }
+            
+            function lovMapBrPvFunction() {
+                window.open('${/request/@context_path}/'+$au('bpm_page_groups_result_ds').getCurrentRecord().get('template_screen') + '?page_id=' + $au('bpm_pages_result_ds').getCurrentRecord().get('page_id') + '&refresh_cache=Y');
+            }
+  ]]></script>
+        <a:dataSets>
+            <a:dataSet id="bpm_page_tags_lov_mapper_bmurl_ds" autoQuery="true" model="bpm.BPM1020.bpm_page_tags_lov_mapper" queryUrl="${/request/@context_path}/autocrud/bpm.BPM1020.bpm_page_tags_lov_mapper/query?tag_id=${/parameter/@tag_id}" selectable="true">
+                <a:fields>
+                    <a:field name="mapper_sequence" required="true"/>
+                    <a:field name="to_field" autoComplete="true" autoCompleteField="name" lovHeight="500" lovService="bpm.BPM1020.bpm_page_group_fields_for_writeback?layout_id=${/parameter/@layout_id}" lovWidth="700" required="true">
+                        <a:mapping>
+                            <a:map from="name" to="to_field"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="from_field"/>
+                    <a:field name="tag_id" defaultValue="${/parameter/@tag_id}"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="onLovMapperAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:hBox>
+                <a:button click="saveFunction" text="HAP_SAVE"/>
+                <a:button click="backFunction" text="HAP_BACK"/>
+            </a:hBox>
+            <a:grid bindTarget="bpm_page_tags_lov_mapper_bmurl_ds" height="280" navBar="true" width="600">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="mapper_sequence" editor="nfEdit" prompt="BPM_PAGE_TAGS_MAPPER.MAPPER_SEQUENCE" width="80"/>
+                    <a:column name="to_field" editor="lovEditer" prompt="BPM_PAGE_TAGS_MAPPER.TO_FIELD" width="200"/>
+                    <a:column name="from_field" editor="tfEditer" prompt="BPM_PAGE_TAGS_MAPPER.FROM_FIELD" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="nfEdit"/>
+                    <a:textField id="tfEditer"/>
+                    <a:lov id="lovEditer"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

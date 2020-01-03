@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: guiyuting
+    $Date: 2017-6-2 下午1:53:55  
+    $Revision: 1.0  
+    $Purpose: 核算主体-批量分配(税务信息)
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function FND2515_closeAsgnBatchCreateWindow() {
+                $au('FND2515_ord_customer_tax_ref_ae_batch_window').close();
+            }
+            
+            function FND2515_taxAssignAccEntity() {
+                var batchDs = $au('FND2515_ord_customer_tax_ref_ae_batch_ds');
+                var datas = $au('FND2515_tax_batch_asgn_acc_entity_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    var record = batchDs.create();
+                    record.set('accEntityId',datas[i]['accEntityId']);
+                }
+
+                batchDs.submit();
+            }
+            
+            function FND2515_closeAssignPage(res) {
+                $au('FND2515_ord_customer_tax_ref_ae_batch_window').close();
+                $au('FND2515_ord_customer_tax_ref_ae_ds').query();
+            }
+
+            function FND2515_entityBatchSubmit(){
+                FND2515_closeAsgnBatchCreateWindow();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2515_ord_customer_tax_ref_ae_batch_ds" autoQuery="false" baseUrl="/ord/customer-tax-ref-ae">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="primaryFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="taxId" defaultValue="$[/parameter/@taxId]"/>
+                    <a:field name="accountId" defaultValue="$[/parameter/@accountId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="FND2515_entityBatchSubmit"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="FND2515_tax_batch_asgn_acc_entity_ds" autoPageSize="true" autoQuery="true" model="fnd.FND2515.ord_customer_tax_ref_asgn_acc_entity_lov" pageSize="50" queryUrl="$[/request/@context_path]/gld/account-entity/ordSystemCustomerQuery?accountId=$[/parameter/@accountId]&amp;customerId=$[/parameter/@customerId]&amp;taxId=$[/parameter/@taxId]" selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2515_batch_asgn_acc_entity_form" column="2" title="fnd_sys_vender.batch_disp_account_entity" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="FND2515_taxAssignAccEntity" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="FND2515_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="customerCode" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.customer_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2515_ord_system_customer_result_ds" prompt="ord_system_customer.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="FND2515_tax_batch_asgn_acc_entity_ds" marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" prompt="gld_accounting_entity.acc_entity_code" width="80"/>
+                    <a:column name="accEntityName" align="left" prompt="gld_accounting_entity.acc_entity_name_display" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

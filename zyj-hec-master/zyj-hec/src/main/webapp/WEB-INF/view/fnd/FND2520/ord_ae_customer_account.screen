@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin
+    $Date: 2017-08-02 上午10:02:31  
+    $Revision: 核算主体级客户银行账户分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function FND2520_aeCustomerAccountBack() {
+                $au('FND2520_aeCustomerAccount_window').close();
+            }
+            
+            function FND2520_aeCustomerAccountUpdate(ds, record, name, value) {
+                if (name == 'provinceCode') {
+                    record.set("cityCode", null);
+                    record.set("cityName", null);
+                }
+                //modify lcy 2018/3/15  16:20:33  银行改变清空分行，省名，市名
+                if (name == 'bankId') {
+                    record.set('cnapsCode', '');
+                    record.set('bankLocation', '');
+                    record.set('province_code', '');
+                    record.set('province_name', '');
+                    record.set('city_code', '');
+                    record.set('city_name', '');
+                }
+            }
+            
+            function FND2520_aeCustomerAccountAdd(ds, record, index) {
+                var name = $au("FND2520_aeCustomerResult_ds").getCurrentRecord().get("customerName");
+                record.set("accountName", name);
+            }
+            
+            function FND2520_aeCustomerAccountResponse(dataSet) {
+                dataSet.query();
+            }
+            
+            function FND2520_aeCustomerAccountCellClickFunc(grid, row, name, record) {
+                if (name == 'cityName') {
+                    var field = record.getMeta().getField('cityName');
+                    var provinceCode = record.get('provinceCode');
+                    if (provinceCode) {
+                        field.setLovPara('districtCode', provinceCode);
+                        field.setLovService('expm.EXP1310.exp_policy_place_lov');
+                    }
+                }
+                 //modify lcy 2018/3/15  16:20:33  把bank_id传给分行
+                if (name == 'cnapsCode') {
+                    var field = record.getMeta().getField('cnapsCode');
+                    field.setLovPara('bankId', record.get('bankId'));
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2520_aeCustomerAccount_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/ord/customer-account" queryUrl="$[/request/@context_path]//ord/customer-account/query?customerId=$[/parameter/@customerId]&amp;accEntityId=$[/parameter/@accEntityId]" selectable="false" submitUrl="$[/request/@context_path]//ord/customer-account/submitByCustomer">
+                <a:fields>
+                    <a:field name="accountId"/>
+                    <a:field name="customerId" defaultValue="$[/parameter/@customerId]"/>
+                    <a:field name="accEntityId" defaultValue="$[/parameter/@accEntityId]"/>
+                    <a:field name="bankId"/>
+                    <a:field name="bankName" prompt="csh_bank.bank_name"/>
+                    <a:field name="bankCode" autoComplete="true" autoCompleteField="bankName" lovGridHeight="320" lovHeight="450" lovCode="LOV_BANK" lovWidth="500" required="true" title="csh_bank.bank_code" prompt="csh_bank.bank_code">
+                        <a:mapping>
+                            <a:map from="bankId" to="bankId"/>
+                            <a:map from="bankCode" to="bankCode"/>
+                            <a:map from="bankName" to="bankName"/>
+                        </a:mapping>
+                    </a:field>
+                    <!--  modify lcy 2018/3/15  16:20:33  分行带出 省名，市名 -->
+                    <a:field name="cnapsCode" lovCode="LOV_BANK_CNAP" required="true" title="csh_bank_branch.bank_branch_code" prompt="csh_bank_branch.cnap">
+                        <a:mapping>
+                            <a:map from="bankLocationCode" to="cnapsCode"/>
+                            <a:map from="bankLocationName" to="bankLocation"/>
+                            <a:map from="provinceCode" to="provinceCode"/>
+                            <a:map from="provinceName" to="provinceName"/>
+                            <a:map from="cityCode" to="cityCode"/>
+                            <a:map from="cityName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="provinceCode"/>
+                    <a:field name="provinceName" autoComplete="true"  prompt="fnd_region_province.prov_name">
+                        <a:mapping>
+                            <a:map from="districtCode" to="provinceCode"/>
+                            <a:map from="districtDesc" to="provinceName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cityCode"/>
+                    <a:field name="cityName" autoComplete="true"  prompt="fnd_region_province.city_name">
+                        <a:mapping>
+                            <a:map from="placeCode" to="cityCode"/>
+                            <a:map from="placeName" to="cityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountName" required="true" prompt="exp_employee_account.bank_account_name"/>
+                    <a:field name="accountNumber" required="true" prompt="exp_employee.bank_account"/>
+                    <a:field name="notes" prompt="hap.comment"/>
+                    <a:field name="primaryFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="exp_employee_account.bank_account_main"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"  prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND2520_aeCustomerAccountUpdate"/>
+                    <a:event name="add" handler="FND2520_aeCustomerAccountAdd"/>
+                    <a:event name="submitsuccess" handler="FND2520_aeCustomerAccountResponse"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2520_aeCustomerAccount_form" column="2" marginWidth="10" title="customer.asgn_bank_account">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND2520_aeCustomerAccount_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND2520_aeCustomerAccount_grid" type="save" width="80"/>
+                    <a:toolbarButton click="FND2520_aeCustomerAccountBack" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="customerCode" bindTarget="FND2520_aeCustomerResult_ds" prompt="ord_system_customer.customer_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2520_aeCustomerResult_ds" prompt="ord_system_customer.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND2520_aeCustomerAccount_grid" bindTarget="FND2520_aeCustomerAccount_ds" marginHeight="195" marginWidth="0" navBar="true" showRowNumber="false">
+                <a:columns>
+                    <a:column name="bankCode" align="center" editor="FND2520_aeCustomerAccount_lov" width="120"/>
+                    <a:column name="bankName" align="left" width="200"/>
+                    <a:column name="cnapsCode" editor="FND2520_aeCustomerAccount_lov" width="120"/>
+                    <a:column name="provinceName" align="left" width="120"/>
+                    <a:column name="cityName" align="left" width="120"/>
+                    <a:column name="accountName" align="left" editor="FND2520_aeCustomerAccount_tf" width="200"/>
+                    <a:column name="accountNumber" align="left" editor="FND2520_aeCustomerAccount_tf" width="150"/>
+                    <a:column name="notes" align="left" editor="FND2520_aeCustomerAccount_tf" width="200"/>
+                    <a:column name="primaryFlag" align="center" editor="FND2520_aeCustomerAccount_cb" width="100"/>
+                    <a:column name="enabledFlag" align="center" editor="FND2520_aeCustomerAccount_cb" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND2520_aeCustomerAccount_lov"/>
+                    <a:textField id="FND2520_aeCustomerAccount_tf"/>
+                    <a:checkBox id="FND2520_aeCustomerAccount_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="FND2520_aeCustomerAccountCellClickFunc"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

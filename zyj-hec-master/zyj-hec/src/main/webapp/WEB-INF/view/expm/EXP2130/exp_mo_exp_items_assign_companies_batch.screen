@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP2130_exp_items_assign_company_batch_link" url="$[/request/@context_path]/exp/mo-exp-item-asgn-com/batchAssignCompanyOnetoMany"/>
+        <script><![CDATA[
+            function EXP2130_closeAsgnBatchCreateWindow() {
+                $au('EXP2130_exp_mo_expense_items_batch_asgn_com').close();
+            }
+            
+            function EXP2130_assignCom() {
+                var datas = $au('EXP2130_batch_asgn_company_ds').getJsonData(true);
+                if (datas.length == 0) {
+                    Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < datas.length;i++) {
+                    datas[i]['expItem'] = [{
+                        moExpenseItemId: '$[/parameter/@moExpenseItemId]'
+                    }];
+                    datas[i]['__status'] = 'add';
+                }
+            
+                Aurora.request({lockMessage:'$[l:hap_waiting]',lockMessage:'$[l:hap_waiting]',
+                    url: $au('EXP2130_exp_items_assign_company_batch_link').getUrl(),
+                    para: datas,
+                    success: EXP2030_closeAssignPage,
+                    scope: this
+                });
+            }
+            
+            function EXP2030_closeAssignPage(res) {
+                $au('EXP2130_exp_mo_expense_items_batch_asgn_com').close();
+                $au('EXP2130_exp_mo_exp_asgn_company_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP2130_batch_asgn_company_ds" autoPageSize="true" autoQuery="true" baseUrl="/exp/mo-exp-item-asgn-com" pageSize="50" queryUrl="$[/request/@context_path]/exp/mo-exp-item-asgn-com/queryCompanyByItem?magOrgId=$[/parameter/@magOrgId]&amp;moExpenseItemId=$[/parameter/@moExpenseItemId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP2130_exp_mo_expense_items_batch_asgn_com_form" column="2" title="fnd_sys_venders.batch_disp_company">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP2130_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="EXP2130_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpenseItemCode" bindTarget="EXP2130_exp_mo_expense_items_result_ds" prompt="exp_mo_expense_item.mo_expense_item_code" readOnly="true" typeCase="upper"/>
+                <a:textField name="description" bindTarget="EXP2130_exp_mo_expense_items_result_ds" prompt="exp_mo_expense_item.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP2130_batch_asgn_company_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" prompt="fnd_company.company_code" width="80"/>
+                    <a:column name="companyShortName" prompt="fnd_company.company_short_name" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflProcessMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflProcess">
+        <result column="process_id" property="processId" jdbcType="DECIMAL"/>
+        <result column="process_code" property="processCode" jdbcType="VARCHAR"/>
+        <result column="process_name" property="processName" jdbcType="VARCHAR"/>
+        <result column="doc_category" property="docCategory" jdbcType="VARCHAR"/>
+        <result column="sub_process_flag" property="subProcessFlag" jdbcType="VARCHAR"/>
+        <result column="parent_process_id" property="parentProcessId" jdbcType="DECIMAL"/>
+        <result column="parent_process_name" property="parentProcessName" jdbcType="VARCHAR"/>
+        <result column="process_page_id" property="processPageId" jdbcType="DECIMAL"/>
+        <result column="process_page_name" property="processPageName" jdbcType="VARCHAR"/>
+        <result column="view_page_id" property="viewPageId" jdbcType="DECIMAL"/>
+        <result column="view_page_Name" property="viewPageName" jdbcType="VARCHAR"/>
+        <result column="start_procedure_id" property="startProcedureId" jdbcType="DECIMAL"/>
+        <result column="start_procedure_name" property="startProcedureName" jdbcType="VARCHAR"/>
+        <result column="end_procedure_id" property="endProcedureId" jdbcType="DECIMAL"/>
+        <result column="end_procedure_name" property="endProcedureName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryWflProcess" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflProcess">
+        SELECT
+        wpv.*,
+        ( SELECT w.process_name FROM wfl_process_tl w WHERE w.process_id = wpv.parent_process_id and
+        w.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) parent_process_name,
+        ( SELECT w.page_name FROM wfl_page_tl w WHERE w.page_id = wpv.process_page_id and
+        w.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) process_page_name,
+        ( SELECT w.page_name FROM wfl_page_tl w WHERE w.page_id = wpv.view_page_id and
+        w.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) view_page_name,
+        ( SELECT w.procedure_name FROM wfl_procedure_tl w WHERE w.procedure_id = wpv.start_procedure_id and
+        w.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) start_procedure_name,
+        ( SELECT w.procedure_name FROM wfl_procedure_tl w WHERE w.procedure_id = wpv.end_procedure_id and
+        w.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) end_procedure_name
+        FROM
+        wfl_process wpv
+        <where>
+            <if test="processId != null">
+                process_id = #{processId,jdbcType=VARCHAR}
+            </if>
+            <if test="processCode != null">
+                and process_code LIKE concat('%',
+                concat(#{processCode,jdbcType=VARCHAR}, '%'))
+            </if>
+            <if test="processName != null">
+                and process_name LIKE concat('%',
+                concat(#{processName,jdbcType=VARCHAR}, '%'))
+            </if>
+            <if test="docCategory != null">
+                and doc_category LIKE concat('%',
+                concat(#{docCategory,jdbcType=VARCHAR}, '%'))
+            </if>
+        </where>
+    </select>
+    <select id="queryAllElement" resultType="java.util.Map">
+    SELECT
+      v.event_id as element_id,
+      v.event_code as element_code,
+      t.event_name as element_name,
+      'EVENT' as element_category,
+      null as from_element_id,
+      null as from_element_type,
+      null as to_element_id,
+      null as to_element_type,
+      null as sequence
+    FROM wfl_event_b v,wfl_event_tl t
+    WHERE
+      v.event_id = t.event_id AND  t.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    AND v.process_id = #{processId}
+      UNION ALL
+    SELECT
+      v.flow_id as element_id,
+      v.flow_code as element_code,
+      t.flow_name as element_name,
+      'FLOW' as element_category,
+      v.from_element_id,
+      v.from_element_type,
+      v.to_element_id,
+      v.to_element_type,
+      v.sequence
+    FROM wfl_flow_b v,wfl_flow_tl t
+    WHERE
+      v.flow_id = t.flow_id AND  t.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    and v.process_id = #{processId}
+      UNION ALL
+    SELECT
+      v.task_id as element_id,
+      v.task_code as element_code,
+      t.task_name as element_name,
+      'TASK' as element_category,
+      null as from_element_id,
+      null as from_element_type,
+      null as to_element_id,
+      null as to_element_type,
+      null as sequence
+    FROM wfl_task_b v,wfl_task_tl t
+    WHERE v.task_id = t.task_id AND  t.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    and v.process_id = #{processId}
+    UNION ALL
+    SELECT
+      v.gateway_id as element_id,
+      v.gateway_code as element_code,
+      t.gateway_name as element_name,
+      'GATEWAY' as element_category,
+      null as from_element_id,
+      null as from_element_type,
+      null as to_element_id,
+      null as to_element_type,
+      null as sequence
+    FROM wfl_gateway_b v,wfl_gateway_tl t
+    WHERE v.gateway_id = t.gateway_id AND  t.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    and v.process_id = #{processId}
+  </select>
+    <select id="queryProcessNameLov" resultMap="BaseResultMap" parameterType="com.hand.hec.wfl.dto.WflProcess">
+        select wpv.process_id,
+        wpv.process_code,
+        wpt.process_name
+        from wfl_process wpv,wfl_process_tl wpt
+        <where>
+            wpv.process_id = wpt.process_id AND wpt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+            <if test="processCode != null">
+                and
+                process_code LIKE concat('%',
+                concat(#{processCode,jdbcType=VARCHAR}, '%'))
+            </if>
+            <if test="processName != null">
+                and process_name LIKE concat('%',
+                concat(#{processName,jdbcType=VARCHAR}, '%'))
+            </if>
+        </where>
+    </select>
+    <select id="queryProcessCodeAndName" resultMap="BaseResultMap" parameterType="java.lang.Long">
+    select w.process_code, w.process_name
+    from wfl_process w,,wfl_process_tl wpt
+    where w.process_id = wpt.process_id AND  wpt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+    and w.process_id = #{processId}
+  </select>
+    <update id="changeConfigType">
+       update wfl_process p set p.config_type = #{configType} where p.process_id = #{processId}
+    </update>
+</mapper>

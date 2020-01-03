@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-24 上午10:45:19  
+    $Revision: 1.0  
+    $Purpose: 现金流量表定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1100_csh_cash_flow_items_select_link" url="$[/request/@context_path]/csh/CSH1100/csh_cash_flow_items_books_select.screen"/>
+        <a:link id="CSH1100_csh_cash_flow_item_default_account_link" url="$[/request/@context_path]/csh/CSH1100/csh_cash_flow_item_default_account.screen"/>
+        <a:link id="CSH1100_csh_cash_flow_item_formula_link" url="$[/request/@context_path]/csh/CSH1100/csh_cash_flow_item_formula.screen"/>
+        <a:link id="CSH1100_csh_cash_flow_item_account_link" url="$[/request/@context_path]/csh/CSH1100/csh_cash_flow_item_account.screen"/>
+        <div/>
+        <script><![CDATA[
+            function CSH1100_closeFlowItemsCreateWindow() {
+                window.location.href = /*csh_cash_flow_items_books_select.screen*/
+                $au('CSH1100_csh_cash_flow_items_select_link').getUrl();
+            }
+            
+            function CSH1100_cashFlowItemTypeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1100_numberField';
+                }
+                return '';
+            }
+            
+            function CSH1100_cashAccounts() {
+                var setOfBooksId = $au('CSH1100_csh_cash_flow_items_query_ds').getAt(0).get('setOfBooksId');
+                new Aurora.Window({
+                    id: 'CSH1100_cash_accounts_window',
+                    url: /*csh_cash_flow_item_account.screen*/
+                    $au('CSH1100_csh_cash_flow_item_account_link').getUrl() + '?setOfBooksId=' + setOfBooksId,
+                    title: '$[l:csh_cash_flow_item.default_cash_account]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1100_formula() {
+                var records = $au('CSH1100_csh_cash_flow_items_result_ds').getSelected();
+                if (records.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:choose_one_record]');
+                } else {
+                    var record = records[0];
+                    if (record.get('cashFlowItemId')) {
+                        new Aurora.Window({
+                            id: 'CSH1100_csh_cash_formula_window',
+                            url: $au('CSH1100_csh_cash_flow_item_formula_link').getUrl() + '?cashFlowItemId=' + record.get('cashFlowItemId') + '&setOfBooksId=' + record.get('setOfBooksId'),
+                            title: '$[l:csh_cash_flow_item.formula]',
+                            side: 'right',
+                            width: 1020
+                        });
+                    }
+                }
+            }
+            
+            function CSH1100_account() {
+                var records = $au('CSH1100_csh_cash_flow_items_result_ds').getSelected();
+                if (records.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:choose_one_record]');
+                } else {
+                    var record = records[0];
+                    if (record.get('cashFlowItemId')) {
+                        new Aurora.Window({
+                            id: 'CSH1100_csh_cash_default_window',
+                            url: /*csh_cash_flow_item_default_account.screen*/
+                            $au('CSH1100_csh_cash_flow_item_default_account_link').getUrl() + '?cashFlowItemId=' + record.get('cashFlowItemId') + '&setOfBooksId=' + record.get('setOfBooksId'),
+                            title: '$[l:csh_cash_flow_item.account]',
+                            side: 'right',
+                            width: 1020
+                        });
+                    }
+                }
+            }
+            
+            function CSH1100_selectRecord(ds, record) {
+                //获取行属性
+                var cashFlowItemType = record.get('cashFlowItemType');
+            
+                //获取公式定义的按钮
+                var formula_btn = $au('formula');
+            
+                //属性为'公式'
+                if (cashFlowItemType == 'FORMULA') {
+                    formula_btn.enable();
+                } else {
+                    formula_btn.disable();
+                }
+            
+            
+            }
+            
+            function CSH1100_beforeDsCreate() {
+                var setOfBooksName = $au('CSH1100_csh_cash_flow_items_query_ds').getAt(0).get('setOfBooksName');
+                if (Ext.isEmpty(setOfBooksName)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:gld.sob_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH1100_onDsAdd(ds, rd, idx) {
+                var setOfBooksId = $au('CSH1100_csh_cash_flow_items_query_ds').getAt(0).get('setOfBooksId');
+                rd.set('setOfBooksId', setOfBooksId);
+            }
+            
+            function CSH1100_sobsDsQuery() {
+                $au('CSH1100_sobsDs').query();
+            }
+            
+            function GLD110_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('setOfBooksName' == name) {
+                    $au('CSH1100_csh_cash_flow_items_result_ds').query();
+                }
+            }
+            function CSH1100_onSubmitSuccess(ds, res) {
+                CSH1100_selectRecord(ds, ds.getCurrentRecord());
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1100_sobsDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/cash-flow-item/queryForSob"/>
+            <a:dataSet id="CSH1100_csh_cash_flow_item_type_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/CSH_CASH_FLOW_ITEM_TYPE/"/>
+            <a:dataSet id="CSH1100_csh_cash_flow_orientation_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/CSH_CASH_FLOW_ORIENTATION/"/>
+            <a:dataSet id="CSH1100_csh_cash_flow_items_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="setOfBooksId" defaultValue="$[/model/setOfBook/records/record/@setOfBooksId]"/>
+                    <a:field name="setOfBooksName" defaultValue="$[/model/setOfBook/records/record/@setOfBooksName]" displayField="setOfBooksCodeName" options="CSH1100_sobsDs" prompt="sys_parameter.set_of_books" required="true" returnField="setOfBooksId" valueField="setOfBooksId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="GLD110_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1100_csh_cash_flow_items_result_ds" autoPageSize="true" autoQuery="true" fetchAll="false" baseUrl="/csh/cash-flow-item" queryUrl="$[/request/@context_path]/csh/cash-flow-item/queryCashItem" queryDataSet="CSH1100_csh_cash_flow_items_query_ds" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="cashFlowItemId"/>
+                    <a:field name="cashFlowLineNumber" prompt="csh_cash_flow_item.cash_flow_line_number" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto.CshCashFlowItem" dtoId="cashFlowItemId" prompt="csh_cash_flow_item.description" required="true"/>
+                    <a:field name="cashFlowItemTypeDesc" displayField="meaning" options="CSH1100_csh_cash_flow_item_type_ds" prompt="csh_cash_flow_item.cash_flow_item_type_desc" required="true" returnField="cashFlowItemType" valueField="value"/>
+                    <a:field name="cashFlowItemType"/>
+                    <a:field name="indent" prompt="csh_cash_flow_item.indent" required="true"/>
+                    <a:field name="orientationDesc" displayField="meaning" options="CSH1100_csh_cash_flow_orientation_ds" returnField="orientation" valueField="value" prompt="csh_cash_flow_item.orientation_desc"/>
+                    <a:field name="orientation"/>
+                    <a:field name="visibleFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="csh_cash_flow_item.visible_flag"/>
+                    <a:field name="setOfBooksId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="select" handler="CSH1100_selectRecord"/>
+                    <a:event name="beforecreate" handler="CSH1100_beforeDsCreate"/>
+                    <a:event name="add" handler="CSH1100_onDsAdd"/>
+                    <a:event name="submitsuccess" handler="CSH1100_onSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <!--<a:screenTitle/>-->
+                <a:gridButton bind="CSH1100_csh_cash_flow_items_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1100_csh_cash_flow_items_grid" type="save" width="80"/>
+                <a:toolbarButton id="formula" click="CSH1100_formula" text="csh_cash_flow_item.formula" width="80"/>
+                <a:toolbarButton id="cash_accounts" click="CSH1100_cashAccounts" text="csh_cash_flow_item.cash_account" width="120"/>
+                <a:toolbarButton id="account" click="CSH1100_account" text="csh_cash_flow_item.account" width="120"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1100_csh_cash_flow_items_query_ds" resultTarget="CSH1100_csh_cash_flow_items_result_ds" style="border:none;width:100%;">
+                <a:formToolBar>
+                    <a:comboBox name="setOfBooksName" bindTarget="CSH1100_csh_cash_flow_items_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1100_csh_cash_flow_items_grid" bindTarget="CSH1100_csh_cash_flow_items_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="cashFlowLineNumber" align="center" editorFunction="CSH1100_cashFlowItemTypeEdit" width="80"/>
+                <a:column name="description" editor="CSH1100_tledit" width="120"/>
+                <a:column name="cashFlowItemTypeDesc" align="center" editor="CSH1100_comboBox" width="120"/>
+                <a:column name="indent" align="right" editor="CSH1100_numberField" width="120"/>
+                <a:column name="orientationDesc" align="center" editor="CSH1100_comboBox" width="120"/>
+                <a:column name="visibleFlag" align="center" editor="CSH1100_checkBox" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="CSH1100_numberField" allowDecimals="false" allowFormat="false"/>
+                <a:textField id="CSH1100_textField"/>
+                <a:comboBox id="CSH1100_comboBox"/>
+                <a:checkBox id="CSH1100_checkBox"/>
+                <a:tledit id="CSH1100_tledit"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

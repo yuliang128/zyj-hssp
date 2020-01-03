@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscProcessMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscProcess">
+        <result column="PROCESS_ID" property="processId" jdbcType="DECIMAL" />
+        <result column="DISPATCH_RECORD_ID" property="dispatchRecordId" jdbcType="DECIMAL" />
+        <result column="TASK_ID" property="taskId" jdbcType="DECIMAL" />
+        <result column="PROCESS_TYPE_CODE" property="processTypeCode" jdbcType="VARCHAR" />
+        <result column="ACTION_ID" property="actionId" jdbcType="DECIMAL" />
+        <result column="PROCESS_TIME" property="processTime" jdbcType="DATE" />
+        <result column="PROCESS_OPINION" property="processOpinion" jdbcType="VARCHAR" />
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+
+        <result column="EMPLOYEE_NAME" property="employeeName" jdbcType="VARCHAR" />
+        <result column="ACTION_NAME" property="actionName" jdbcType="VARCHAR" />
+        <result column="WORK_TEAM_NAME" property="workTeamName" jdbcType="VARCHAR" />
+    </resultMap>
+    <select id="processQuery" resultMap="BaseResultMap">
+             select
+              p.employee_id,
+              ee.NAME employee_name,
+              p.action_id,
+              case
+                when wat.DESCRIPTION is null then (
+                select
+                  v.MEANING
+                from
+                  sys_code_value_vl v
+                where
+                  v.CODE = 'SSC_PROCESS_TYPE'
+                  and v.VALUE = p.PROCESS_TYPE_CODE)
+                when wat.DESCRIPTION is not null then wat.DESCRIPTION
+              end action_name,
+              p.process_time,
+              p.process_opinion,
+              dr.work_team_id,
+              wtt.DESCRIPTION work_team_name
+            from
+              ssc_process p
+            left join (
+              select
+                p.task_id
+              from
+                ssc_task_pool p,
+                ssc_task_dispatch_record r
+              where
+                (r.dispatch_record_id = 1
+                or p.task_id = 1 )
+                and p.task_id = r.task_id
+            union
+              select
+                h.task_id
+              from
+                ssc_task_pool_his h,
+                ssc_task_pool p,
+                ssc_task_dispatch_record r
+              where
+                (r.dispatch_record_id = 1
+                or p.task_id = 1 )
+                and r.task_id = p.task_id
+                and p.doc_category = h.doc_category
+                and p.doc_id = h.doc_id
+            union
+              select
+                r.task_id
+              from
+                ssc_task_dispatch_record_his r
+              where
+                (r.dispatch_record_id = 1
+                or r.task_id = 1 ) ) v on
+              p.task_id = v.task_id
+            left join ssc_task_dispatch_record dr on
+              p.dispatch_record_id = dr.dispatch_record_id
+            left join exp_employee ee on
+              p.EMPLOYEE_ID = ee.EMPLOYEE_ID
+            left join ssc_work_team_tl wtt on
+              wtt.WORK_TEAM_ID = dr.WORK_TEAM_ID
+              and wtt.LANG = 'zh_CN'
+            left join ssc_workflow_action_tl wat on
+              wat.ACTION_ID = p.ACTION_ID
+              and wat.LANG = 'zh_CN'
+            order by
+              p.process_time
+    </select>
+
+
+</mapper>

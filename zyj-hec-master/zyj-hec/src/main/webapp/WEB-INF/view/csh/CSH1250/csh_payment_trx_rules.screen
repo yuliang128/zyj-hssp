@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-04 09:27:26
+    $Revision: 1.0  
+    $Purpose: 管理组织级-付款事务生成规则定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1250_bussiness_scope_link" url="$[/request/@context_path]/csh/CSH1250/csh_payment_trx_rule_biz.screen"/>
+        <a:link id="CSH1250_group_rules_link" url="$[/request/@context_path]/csh/CSH1250/csh_payment_trx_rule_dtl.screen"/>
+        <a:link id="CSH1250_assign_ae_link" url="$[/request/@context_path]/csh/CSH1250/csh_payment_trx_rule_asgn_ae.screen"/>
+        <script><![CDATA[
+            function CSH1250_setinitdata(ds, record, index) {
+                var magOrgId = $au('CSH1250_pay_trx_rules_query_ds').getCurrentRecord().get('magOrgId');
+                if (!Ext.isEmpty(magOrgId)) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            
+            function CSH1250_BussinessScopeRender(value, record, name) {
+                if (!record.isNew) {
+                    var ruleId = record.get('ruleId');
+                    return '<a href="javascript:CSH1250_OpenBussinessScope(' + ruleId + ')">$[l:csh_payment_trx_rule.business_scope]</a>';
+                }
+            }
+            
+            function CSH1250_OpenBussinessScope(id) {
+                new Aurora.Window({
+                    id: 'CSH1250_assign_bus_scope_win',
+                    url: $au('CSH1250_bussiness_scope_link').getUrl() + '?ruleId=' + id,
+                    title: '$[l:csh_payment_rule_info.title]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1250_groupRulesRender(value, record, name) {
+                if (!record.isNew) {
+                    var ruleId = record.get('ruleId');
+                    return '<a href="javascript:CSH1250_OpenGroupRules(' + ruleId + ')">$[l:csh_payment_trx_rule.rule_detail]</a>';
+                }
+            }
+            
+            function CSH1250_OpenGroupRules(id) {
+                new Aurora.Window({
+                    id: 'CSH1250_assign_group_rule_win',
+                    url: $au('CSH1250_group_rules_link').getUrl() + '?ruleId=' + id,
+                    title: '$[l:csh_payment_rule_info.title]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1250_assignAeRender(value, record, name) {
+                if (!record.isNew) {
+                    var ruleId = record.get('ruleId');
+                    var magOrgId = record.get('magOrgId');
+                    return '<a href="javascript:CSH1250_OpenAssignAe(' + ruleId + ',\'' + magOrgId + '\')">$[l:csh_payment_trx_rule.asgn_ae]</a>';
+                }
+            }
+            
+            function CSH1250_OpenAssignAe(ruleId, magOrgId) {
+                new Aurora.Window({
+                    id: 'CSH1250_assign_ae_win',
+                    url: $au('CSH1250_assign_ae_link').getUrl() + '?ruleId=' + ruleId + '&magOrgId=' + magOrgId,
+                    title: '$[l:csh_payment_rule_info.title]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function CSH1250_reloadFunction(ds) {
+                ds.query();
+            }
+
+            function CSH1250_focus() {
+                $au('CSH1250_pay_trx_rules_magOrgList_ds').query();
+            }
+            
+            function CSH1250_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('CSH1250_pay_trx_rules_result_ds').query();
+                }
+            }
+            
+            function CSH1250_DateValidate(record, name, value) {
+                if (name == 'startDateActive' || name == 'endDateActive') {
+                    var start_date = record.get('startDateActive');
+                    var end_date = record.get('endDateActive');
+                    if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                        if (!compareDate(start_date, end_date)) {
+                            return '$[l:start_greater_than_end]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function compareDate(start, end) {
+                if (start.getTime() > end.getTime()) {
+                    return false;
+                }
+                return true;
+            }
+            
+            function CSH1250_ruleCode(record, name) {
+                if (record.isNew) {
+                    return 'CSH1250_textFiled';
+                }
+                return '';
+            }
+            
+            function CSH1250_businessType(record, name) {
+                if (record.isNew) {
+                    return 'CSH1250_comboBox';
+                }
+                return '';
+            }
+            
+            function CSH1250_BeforeCreate() {
+                var magName = $au('CSH1250_pay_trx_rules_query_ds').getAt(0).get('magOrgId');
+                if (Ext.isEmpty(magName)) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1250_pay_trx_rules_magOrgList_ds" autoQuery="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="cSH1250_pay_document_category_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY/"/>
+            <a:dataSet id="CSH1250_pay_trx_rules_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/defaultMag/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1250_pay_trx_rules_magOrgList_ds" prompt="fnd_managing_organization.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMag/records/record/@magOrgId]"/>
+                    <a:field name="ruleCode" prompt="csh_payment_trx_rule.rule_code"/>
+                    <a:field name="description" prompt="csh_payment_trx_rule.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1250_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1250_pay_trx_rules_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-trx-rule" queryDataSet="CSH1250_pay_trx_rules_query_ds" selectable="false">
+                <a:fields>
+                    <a:field name="ruleId"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="priority" prompt="csh_payment_trx_rule.priority" required="true"/>
+                    <a:field name="ruleCode" prompt="csh_payment_trx_rule.rule_code" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto" dtoId="ruleId" prompt="csh_payment_trx_rule.description"/>
+                    <a:field name="businessTypeCodeName" displayField="meaning" options="cSH1250_pay_document_category_ds" prompt="csh_payment_trx_rule.business_type" required="true" returnField="businessTypeCode" valueField="value"/>
+                    <a:field name="businessTypeCode"/>
+                    <a:field name="startDateActive" datatype="date" prompt="csh_payment_trx_rule.start_date_activr" required="true" validator="CSH1250_DateValidate"/>
+                    <a:field name="endDateActive" datatype="date" prompt="csh_payment_trx_rule.end_date_activr" validator="CSH1250_DateValidate"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="CSH1250_setinitdata"/>
+                    <a:event name="submitsuccess" handler="CSH1250_reloadFunction"/>
+                    <a:event name="beforecreate" handler="CSH1250_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1250_pay_trx_rules_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1250_pay_trx_rules_grid" type="save" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1250_pay_trx_rules_query_ds" resultTarget="CSH1250_pay_trx_rules_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgDisplay" bindTarget="CSH1250_pay_trx_rules_query_ds" width="170"/>
+                    <a:textField name="ruleCode" bindTarget="CSH1250_pay_trx_rules_query_ds" typeCase="upper"/>
+                    <a:textField name="description" bindTarget="CSH1250_pay_trx_rules_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1250_pay_trx_rules_grid" bindTarget="CSH1250_pay_trx_rules_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="priority" align="center" editor="CSH1250_numberFiled" width="80"/>
+                <a:column name="ruleCode" align="center" editorFunction="CSH1250_ruleCode" width="80"/>
+                <a:column name="description" align="center" editor="CSH1250_tledit" width="250"/>
+                <a:column name="businessTypeCodeName" align="center" editorFunction="CSH1250_businessType" width="80"/>
+                <a:column name="startDateActive" align="center" editor="CSH1250_datePicker" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="endDateActive" align="center" editor="CSH1250_datePicker" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="bussinessScope" align="center" renderer="CSH1250_BussinessScopeRender" width="80"/>
+                <a:column name="groupRules" align="center" renderer="CSH1250_groupRulesRender" width="80"/>
+                <a:column name="assignAcc" align="center" renderer="CSH1250_assignAeRender" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:numberField id="CSH1250_numberFiled"/>
+                <a:textField id="CSH1250_textFiled" typeCase="upper"/>
+                <a:tledit id="CSH1250_tledit"/>
+                <a:datePicker id="CSH1250_datePicker"/>
+                <a:comboBox id="CSH1250_comboBox"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

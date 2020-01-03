@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshDocPayAccEntityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshDocPayAccEntity">
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL"/>
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR"/>
+        <result column="DOC_COMPANY_ID" property="docCompanyId" jdbcType="DECIMAL"/>
+        <result column="DOC_TYPE_ID" property="docTypeId" jdbcType="DECIMAL"/>
+        <result column="DOC_ID" property="docId" jdbcType="DECIMAL"/>
+        <result column="DOC_LINE_ID" property="docLineId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_ACC_ENTITY_ID" property="paymentAccEntityId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_STATUS" property="paymentStatus" jdbcType="VARCHAR"/>
+
+        <!-- Modify Tagin/2019.03.01 增加单据支付查询主数据字段 -->
+        <result column="DOC_NUMBER" property="docNumber" jdbcType="VARCHAR"/>
+        <result column="DOC_TYPE_CODE" property="docTypeCode" jdbcType="VARCHAR"/>
+        <result column="DOC_TYPE_NAME" property="docTypeName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_CATEGORY_NAME" property="payeeCategoryName" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_CODE" property="paymentMethodCode" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_NAME" property="paymentMethodName" jdbcType="VARCHAR"/>
+        <result column="SCHEDULE_PAYMENT_DATE" property="schedulePaymentDate" jdbcType="DATE"/>
+        <result column="REQUISITION_DATE" property="requisitionDate" jdbcType="DATE"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_USEDE_CODE" property="paymentUsedeCode" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_USEDE_NAME" property="paymentUsedeName" jdbcType="VARCHAR"/>
+        <result column="NEED_PAYMENT_AMOUNT" property="needPaymentAmount" jdbcType="DECIMAL"/>
+        <result column="PAYED_AMOUNT" property="payedAmount" jdbcType="DECIMAL"/>
+        <result column="UNPAYMENT_AMOUNT" property="unPaymentAmount" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_AMOUNT" property="paymentAmount" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_CURRENCY_PRECISION" property="paymentCurrencyPrecision" jdbcType="DECIMAL"/>
+        <result column="MO_CSH_TRX_CLASS_ID" property="moCshTrxClassId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <!-- 可支付数据查询 -->
+    <select id="queryPayment" resultMap="BaseResultMap">
+        SELECT tbl.* from ( SELECT
+        'EXP_REPORT' AS doc_category,
+        v.need_payment_amount - v.payed_amount AS unpayment_amount,
+        v.need_payment_amount - v.payed_amount AS payment_amount,
+        V.*
+        FROM
+        (
+        SELECT
+        cdae.doc_id,
+        cdae.doc_line_id,
+        erh.exp_report_number doc_number,
+        emrt.mo_exp_report_type_code doc_type_code,
+        emtt.description doc_type_name,
+        erh.acc_entity_id,
+        gaet.acc_entity_name,
+        erps.payee_category,
+        (
+        SELECT
+        scvt.meaning
+        FROM
+        sys_code_b scb,
+        sys_code_value_b scvb,
+        sys_code_value_tl scvt
+        WHERE
+        scb.code = 'PAYMENT_OBJECT'
+        AND scb.code_id = scvb.code_id
+        AND scvb.
+        value
+        = erps.payee_category
+        AND scvb.code_value_id = scvt.code_value_id
+        AND scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) payee_category_name,
+        erps.payee_id,
+        CASE
+        WHEN erps.payee_category = 'EMPLOYEE' THEN
+        ( SELECT ee.name FROM exp_employee ee WHERE ee.employee_id = erps.payee_id )
+        WHEN erps.payee_category = 'VENDER' THEN
+        ( SELECT psvt.description FROM pur_system_vender_tl psvt WHERE psvt.vender_id = erps.payee_id AND psvt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHEN erps.payee_category = 'CUSTOMER' THEN
+        ( SELECT osut.description FROM ord_system_customer_tl osut WHERE osut.customer_id = erps.payee_id AND osut.lang
+        = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        END payee_name,
+        erps.account_name,
+        erps.account_number,
+        erps.bank_name,
+        erps.payment_method_id,
+        cpm.payment_method_code,
+        cpmt.description payment_method_name,
+        date_format( erps.schedule_due_date, '%Y-%m-%d' ) schedule_payment_date,
+        date_format( erh.report_date, '%Y-%m-%d' ) requisition_date,
+        erps.payment_currency_code currency_code,
+        gc.finance_precision payment_currency_precision,
+        gct.currency_name,
+        erps.payment_usede_id,
+        cmpu.payment_usede_code,
+        cmut.description payment_usede_name,
+        erps.due_amount - (
+        SELECT
+        CASE
+        WHEN
+        sum( ertl.tax_amount ) > 0 THEN
+        sum( ertl.tax_amount ) ELSE 0
+        END
+        FROM
+        exp_report_pmt_sch_tax_line ertl
+        WHERE
+        ertl.payment_schedule_line_id = erps.payment_schedule_line_id
+        ) need_payment_amount,
+        (
+        SELECT
+        CASE
+        WHEN
+        sum( cwo.csh_write_off_amount ) > 0 THEN
+        sum( cwo.csh_write_off_amount ) ELSE 0
+        END
+        FROM
+        csh_write_off cwo
+        WHERE
+        cwo.document_source = 'EXPENSE_REPORT'
+        AND cwo.document_header_id = erps.exp_report_header_id
+        AND cwo.document_line_id = erps.payment_schedule_line_id
+        ) payed_amount,
+        null mo_csh_trx_class_id,
+        erh.doc_status
+        FROM
+        exp_report_header erh
+        LEFT OUTER JOIN exp_mo_report_type emrt ON erh.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        LEFT OUTER JOIN exp_mo_report_type_tl emtt ON emtt.mo_exp_report_type_id = emrt.mo_exp_report_type_id
+        AND emtt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        LEFT OUTER JOIN gld_accounting_entity gae ON erh.acc_entity_id = gae.acc_entity_id
+        LEFT OUTER JOIN gld_accounting_entity_tl gaet ON gaet.acc_entity_id = gae.acc_entity_id
+        AND gaet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        exp_report_pmt_schedule erps
+        LEFT OUTER JOIN csh_payment_method cpm ON erps.payment_method_id = cpm.payment_method_id
+        LEFT OUTER JOIN csh_payment_method_tl cpmt ON cpmt.payment_method_id = cpm.payment_method_id
+        AND cpmt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        LEFT OUTER JOIN csh_mo_payment_used cmpu ON erps.payment_usede_id = cmpu.payment_usede_id
+        LEFT OUTER JOIN csh_mo_payment_used_tl cmut ON cmut.payment_usede_id = cmpu.payment_usede_id
+        AND cmut.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        LEFT OUTER JOIN gld_currency gc ON erps.payment_currency_code = gc.currency_code
+        LEFT OUTER JOIN gld_currency_tl gct ON gct.currency_id = gc.currency_id
+        AND gct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        csh_doc_pay_acc_entity cdae
+        WHERE
+        erh.exp_report_header_id = erps.exp_report_header_id
+        AND erh.report_status = 'COMPLETELY_APPROVED'
+        AND erh.audit_flag = 'Y'
+        AND erh.reversed_flag = 'N'
+        AND erh.write_off_status IN ( 'N', 'Y' )
+        AND cdae.doc_id = erps.exp_report_header_id
+        AND cdae.doc_line_id = erps.payment_schedule_line_id
+        AND cdae.doc_category = 'EXP_REPORT'
+        AND cdae.payment_status IN ( 'ALLOWED', 'PAID' )
+        AND cdae.payment_acc_entity_id = #{accEntityId,jdbcType=DECIMAL, javaType=java.lang.Long}
+        ) v
+        WHERE
+        v.need_payment_amount - v.payed_amount > 0 UNION ALL
+        SELECT
+        'PAYMENT_REQUISITION' doc_category,
+        v.need_payment_amount - v.payed_amount unpayment_amount,
+        v.need_payment_amount - v.payed_amount payment_amount,
+        v.*
+        FROM
+        (
+        SELECT
+        cdae.doc_id,
+        cdae.doc_line_id,
+        cprh.requisition_number doc_number,
+        cmrt.mo_payment_req_type_code doc_type_code,
+        cmtt.description doc_type_name,
+        cprh.acc_entity_id,
+        gaet.acc_entity_name,
+        cprl.payee_category,
+        (
+        SELECT
+        scvt.meaning
+        FROM
+        sys_code_b scb,
+        sys_code_value_b scvb,
+        sys_code_value_tl scvt
+        WHERE
+        scb.code = 'PAYMENT_OBJECT'
+        AND scb.code_id = scvb.code_id
+        AND scvb.
+        value
+        = cprl.payee_category
+        AND scvb.code_value_id = scvt.code_value_id
+        AND scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) payee_category_name,
+        cprl.payee_id,
+        CASE
+        WHEN cprl.payee_category = 'EMPLOYEE' THEN
+        ( SELECT ee.name FROM exp_employee ee WHERE ee.employee_id = cprl.payee_id )
+        WHEN cprl.payee_category = 'VENDER' THEN
+        ( SELECT psvt.description FROM pur_system_vender_tl psvt WHERE psvt.vender_id = cprl.payee_id AND psvt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHEN cprl.payee_category = 'CUSTOMER' THEN
+        ( SELECT osut.description FROM ord_system_customer_tl osut WHERE osut.customer_id = cprl.payee_id AND osut.lang
+        = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        END payee_name,
+        cprl.account_name,
+        cprl.account_number,
+        cprl.bank_name,
+        cprl.payment_method_id,
+        cpm.payment_method_code,
+        cpmt.description payment_method_name,
+        NULL schedule_payment_date,
+        date_format( cprh.requisition_date, '%Y-%m-%d' ) requisition_date,
+        cprh.currency_code,
+        gc.finance_precision payment_currency_precision,
+        gct.currency_name,
+        NULL payment_usede_id,
+        NULL payment_usede_code,
+        NULL payment_usede_name,
+        cprl.amount need_payment_amount,
+        (
+        SELECT
+        CASE
+        WHEN
+        SUM( cprr.amount ) > 0 THEN
+        sum( cprr.amount ) ELSE 0
+        END
+        FROM
+        csh_payment_requisition_ref cprr
+        WHERE
+        cprr.payment_requisition_line_id = cprl.payment_requisition_line_id
+        AND NOT EXISTS ( SELECT 1 FROM csh_write_off cwo, csh_repayment_register_dist crrd WHERE cwo.write_off_id =
+        cprr.write_off_id AND cwo.source_csh_trx_line_id = crrd.repayment_repay_trx_line_id )
+        ) payed_amount,
+        cprl.mo_csh_trx_class_id,
+        cprh.doc_status
+        FROM
+        csh_payment_requisition_hd cprh
+        LEFT OUTER JOIN csh_mo_payment_req_type cmrt ON cprh.payment_req_type_id = cmrt.mo_payment_req_type_id
+        LEFT OUTER JOIN csh_mo_payment_req_type_tl cmtt ON cmtt.mo_payment_req_type_id = cmrt.mo_payment_req_type_id
+        AND cmtt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        LEFT OUTER JOIN gld_accounting_entity gae ON cprh.acc_entity_id = gae.acc_entity_id
+        LEFT OUTER JOIN gld_accounting_entity_tl gaet ON gaet.acc_entity_id = gae.acc_entity_id
+        AND gaet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        LEFT OUTER JOIN gld_currency gc ON cprh.currency_code = gc.currency_code
+        LEFT OUTER JOIN gld_currency_tl gct ON gct.currency_id = gc.currency_id
+        AND gct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        csh_payment_requisition_ln cprl
+        LEFT OUTER JOIN csh_payment_method cpm ON cprl.payment_method_id = cpm.payment_method_id
+        LEFT OUTER JOIN csh_payment_method_tl cpmt ON cpmt.payment_method_id = cpm.payment_method_id
+        AND cpmt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        csh_doc_pay_acc_entity cdae
+        WHERE
+        cprh.payment_requisition_header_id = cprl.payment_requisition_header_id
+        AND cdae.doc_id = cprh.payment_requisition_header_id
+        AND cdae.doc_line_id = cprl.payment_requisition_line_id
+        AND cdae.doc_category = 'PAYMENT_REQUISITION'
+        AND cdae.payment_status IN ( 'ALLOWED', 'PAID' )
+        AND cprh.reversed_flag = 'N'
+        AND cprh.status = 'COMPLETELY_APPROVED'
+        AND cprh.audit_flag = 'Y'
+        AND cdae.payment_acc_entity_id = #{accEntityId,jdbcType=DECIMAL, javaType=java.lang.Long}
+        ) v
+        WHERE
+        v.need_payment_amount - v.payed_amount > 0 UNION ALL
+        select
+        'ACP_REQUISITION' doc_category,
+        v.need_payment_amount - v.payed_amount unpayment_amount,
+        v.need_payment_amount - v.payed_amount payment_amount,
+        v.*
+        from
+        (
+        select
+        cdae.doc_id,
+        cdae.doc_line_id,
+        arh.requisition_number doc_number,
+        amrt.mo_pay_req_type_code doc_type_code,
+        amtt.description doc_type_name,
+        arh.acc_entity_id,
+        gaet.acc_entity_name,
+        arl.payee_category,
+        (
+        select
+        scvt.meaning
+        from
+        sys_code_b scb,
+        sys_code_value_b scvb,
+        sys_code_value_tl scvt
+        where
+        scb.code = 'PAYMENT_OBJECT'
+        and scb.code_id = scvb.code_id
+        and scvb.value = arl.payee_category
+        and scvb.code_value_id = scvt.code_value_id
+        and scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) payee_category_name,
+        arl.payee_id,
+        case
+        when arl.payee_category = 'EMPLOYEE' then (
+        select
+        ee.name
+        from
+        exp_employee ee
+        where
+        ee.employee_id = arl.payee_id )
+        when arl.payee_category = 'VENDER' then (
+        select
+        psvt.description
+        from
+        pur_system_vender_tl psvt
+        where
+        psvt.vender_id = arl.payee_id
+        and psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        )
+        when arl.payee_category = 'CUSTOMER' then (
+        select
+        osut.description
+        from
+        ord_system_customer_tl osut
+        where
+        osut.customer_id = arl.payee_id
+        and osut.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        )
+        end payee_name,
+        arl.account_name,
+        arl.account_number,
+        arl.bank_name,
+        arl.payment_method_id,
+        cpm.payment_method_code,
+        cpmt.description payment_method_name,
+        date_format(arl.requisition_payment_date, '%Y-%m-%d') schedule_payment_date,
+        date_format(arh.requisition_date, '%Y-%m-%d' ) requisition_date,
+        arh.currency_code,
+        gc.finance_precision payment_currency_precision,
+        gct.currency_name,
+        arl.payment_usede_id,
+        cmpu.payment_usede_code,
+        cmut.description payment_usede_name,
+        arl.amount need_payment_amount,
+        (
+        select
+        case
+        when sum(arr.amount) > 0 then sum(arr.amount)
+        else 0
+        end
+        from
+        acp_requisition_ref arr
+        where
+        arr.requisition_lns_id = arl.requisition_lns_id) payed_amount,
+        arl.mo_csh_trx_class_id,
+        arh.doc_status
+        from
+        acp_requisition_hd arh
+        left outer join acp_mo_pay_req_type amrt on
+        amrt.mo_pay_req_type_id = arh.mo_pay_req_type_id
+        left outer join acp_mo_pay_req_type_tl amtt on
+        amtt.mo_pay_req_type_id = amrt.mo_pay_req_type_id
+        and amtt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        left outer join gld_accounting_entity gae on
+        arh.acc_entity_id = gae.acc_entity_id
+        left outer join gld_accounting_entity_tl gaet on
+        gaet.acc_entity_id = gae.acc_entity_id
+        and gaet.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        left outer join gld_currency gc on
+        arh.currency_code = gc.currency_code
+        left outer join gld_currency_tl gct on
+        gct.currency_id = gc.currency_id
+        and gct.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        acp_requisition_ln arl
+        left outer join csh_payment_method cpm on
+        arl.payment_method_id = cpm.payment_method_id
+        left outer join csh_payment_method_tl cpmt on
+        cpmt.payment_method_id = cpm.payment_method_id
+        and cpmt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        left outer join csh_mo_payment_used cmpu on
+        arl.payment_usede_id = cmpu.payment_usede_id
+        left outer join csh_mo_payment_used_tl cmut on
+        cmut.payment_usede_id = cmpu.payment_usede_id
+        and cmut.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String},
+        csh_doc_pay_acc_entity cdae
+        where
+        arh.requisition_hds_id = arl.requisition_hds_id
+        and cdae.doc_id = arh.requisition_hds_id
+        and cdae.doc_line_id = arl.requisition_lns_id
+        and cdae.doc_category = 'ACP_REQUISITION'
+        and cdae.payment_status in ( 'ALLOWED','PAID' )
+        and arh.status = 'COMPLETELY_APPROVED'
+        and arl.payment_status <![CDATA[<>]]> 'COMPLETELY'
+        and arh.reversed_flag = 'N'
+        and arh.audit_flag = 'Y'
+        and cdae.payment_acc_entity_id = #{accEntityId,jdbcType=DECIMAL, javaType=java.lang.Long}
+        ) v
+        where
+        v.need_payment_amount - v.payed_amount > 0) tbl
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            (tbl.doc_status is null or (tbl.doc_status &lt;&gt;'PAY_BACK' and tbl.doc_status &lt;&gt;'RETURN_BACK'))
+            <if test="docCategory != null and docCategory != '' ">
+                AND tbl.doc_category = #{docCategory, jdbcType=VARCHAR, javaType=java.lang.String}
+            </if>
+            <if test="docNumber != null and docNumber != '' ">
+                AND tbl.doc_number = #{docNumber, jdbcType=VARCHAR, javaType=java.lang.String}
+            </if>
+            <if test="payeeCategory != null and payeeCategory != '' ">
+                AND tbl.payee_category = #{payeeCategory, jdbcType=VARCHAR, javaType=java.lang.String}
+            </if>
+            <if test="payeeId != null and payeeId != '' ">
+                AND tbl.payee_id = #{payeeId, jdbcType=DECIMAL, javaType=java.lang.Long}
+            </if>
+            <if test="requisitionDateFrom != null  ">
+                AND <![CDATA[ tbl.requisition_date >= #{requisitionDateFrom, jdbcType=DATE, javaType=java.util.Date} ]]>
+            </if>
+            <if test="requisitionDateTo != null  ">
+                AND <![CDATA[ tbl.requisition_date <= #{requisitionDateTo, jdbcType=DATE, javaType=java.util.Date} ]]>
+            </if>
+            <if test="paymentMethodId != null and paymentMethodId != '' ">
+                AND tbl.payment_method_id = #{paymentMethodId, jdbcType=DECIMAL, javaType=java.lang.Long}
+            </if>
+            <if test="paymentUsedeId != null and paymentUsedeId != '' ">
+                AND tbl.payment_usede_id = #{paymentUsedeId, jdbcType=DECIMAL, javaType=java.lang.Long}
+            </if>
+            <if test="schedulePaymentDateFrom != null  ">
+                AND
+                <![CDATA[ tbl.schedule_payment_date >= #{schedulePaymentDateFrom, jdbcType=DATE, javaType=java.util.Date} ]]>
+            </if>
+            <if test="schedulePaymentDateTo != null ">
+                AND
+                <![CDATA[ tbl.schedule_payment_date <= #{schedulePaymentDateTo, jdbcType=DATE, javaType=java.util.Date} ]]>
+            </if>
+            <if test="currencyCode != null and currencyCode != '' ">
+                AND tbl.currency_code = #{currencyCode, jdbcType=VARCHAR, javaType=java.lang.String}
+            </if>
+        </trim>
+    </select>
+
+    <!-- Modify Tagin/2019.03.28 更新单据支付信息表状态 -->
+    <select id="updatePaymentStatus">
+        UPDATE csh_doc_pay_acc_entity cdae
+        SET cdae.payment_status = #{paymentStatus, jdbcType=VARCHAR, javaType=java.lang.String},
+        cdae.last_update_date = CURRENT_DATE,
+        cdae.last_updated_by = #{request.userId}
+        WHERE
+        cdae.doc_category = #{docCategory, jdbcType=VARCHAR, javaType=java.lang.String}
+        <if test="docId != null and docId != ''">
+            AND cdae.doc_id = #{docId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        </if>
+        AND cdae.doc_line_id = #{docLineId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        AND cdae.payment_status &lt;&gt; 'NEVER'
+    </select>
+
+    <!-- Modify Tagin/2019.03.14 增加删除付款信息表记录 -->
+    <delete id="deletePayAccEntity">
+        DELETE cdae FROM csh_doc_pay_acc_entity cdae
+        WHERE cdae.doc_category = #{docCategory, jdbcType=VARCHAR, javaType=java.lang.String}
+        AND cdae.doc_id = #{docId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        <if test="docLineId != null and docLineId != '' ">
+            AND cdae.doc_line_id = #{docLineId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        </if>
+    </delete>
+
+    <select id="countBackForExpReport" parameterType="java.lang.Long" resultType="int">
+        SELECT
+            count( * )
+        FROM
+            exp_report_header h
+        WHERE
+            h.exp_report_header_id = #{docId}
+            AND ( h.doc_status IS NULL OR h.doc_status = 'CANCEL_PAY_BACK' OR h.doc_status = 'CANCEL_RETURN_BACK' )
+    </select>
+    
+    <select id="countBackForPaymentReq" parameterType="java.lang.Long" resultType="int">
+        SELECT
+            count( * )
+        FROM
+            csh_payment_requisition_hd h
+        WHERE
+            h.payment_requisition_header_id = #{docId}
+            AND ( h.doc_status IS NULL OR h.doc_status = 'CANCEL_PAY_BACK' OR h.doc_status = 'CANCEL_RETURN_BACK' )
+    </select>
+
+    <select id="countBackForAcpReq" parameterType="java.lang.Long" resultType="int">
+        SELECT
+            count( * )
+        FROM
+            acp_requisition_hd h
+        WHERE
+            h.requisition_hds_id = #{docId}
+            AND ( h.doc_status IS NULL OR h.doc_status = 'CANCEL_PAY_BACK' OR h.doc_status = 'CANCEL_RETURN_BACK' )
+    </select>
+    
+    <select id="queryDocBackDesc" parameterType="java.lang.String" resultType="java.lang.String">
+        SELECT
+            cv.meaning
+        FROM
+            sys_code_v cv
+        WHERE
+            cv.CODE = 'CSH_DOC_BACK'
+            AND cv.VALUE = #{status}
+    </select>
+</mapper>

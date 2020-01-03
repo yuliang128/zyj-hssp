@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-20 14:29:21
+    $Revision: 1.0  
+    $Purpose: 共享业务类型分配-节点规则分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+            function SSC1050_nodeGridRenderer(value, record, name) {
+                if (record.get('fixedFlag') == 'Y') {
+                    return '';
+                }
+                return '<a href="javascript:SSC1050_rulesDsQuery(' + record.get('nodeId') + ')">$[l:ssc_doc_wfl.rule_assign]</a>';
+            }
+            
+            function SSC1050_rulesDsQuery(nodeId) {
+                var ruleDs = $au('SSC1050_RulesDs');
+                ruleDs.setQueryParameter('docWflAssignId', '$[/parameter/@docWflAssignId]');
+                ruleDs.setQueryParameter('nodeId', nodeId);
+                ruleDs.query();
+            }
+            
+            function SSC1050_closeWin() {
+                $au('SSC1050_nodeRuleAssignWin').close();
+            }
+            
+            function SSC1050_dateValidator(rd, name, value) {
+                if (name == 'startDate' && !Ext.isEmpty(rd.get('startDate'))) {
+                    if (Ext.isEmpty(rd.get('endDate'))) {} else {
+                        if (rd.get('endDate') - rd.get('startDate') >= 0) {
+                            return true;
+                        } else {
+                            new Aurora.showErrorMessage('$[l:prompt.error]', '$[l:start_date_not_later_ending_date]', null, 300, 400);
+                            return false;
+                        }
+                    }
+                }
+            
+                if (name == 'endDate' && !Ext.isEmpty(rd.get('endDate'))) {
+                    if (Ext.isEmpty(rd.get('startDate'))) {
+                        new Aurora.showErrorMessage('$[l:prompt.error]', '$[l:start_date_can_not_be_null]', null, 300, 400);
+                    } else {
+                        if (rd.get('endDate') - rd.get('startDate') >= 0) {
+                            return true;
+                        } else {
+                            new Aurora.showErrorMessage('$[l:prompt.error]', '$[l:start_date_not_later_ending_date]', null, 300, 400);
+                            return false;
+                        }
+                    }
+                }
+            
+                return true;
+            }
+            
+            
+            var rowIdFromNodes = -1; //保存nodeGrid上一次点击的行ID
+            
+            function SSC1050_onNodesGridRowClick(grid, row, record) {
+                //点击nodeGrid另一行时，刷新rulesGrid
+                if (row != rowIdFromNodes && record.get('fixedFlag') == 'N') {
+                    SSC1050_rulesDsQuery(record.get('nodeId'));
+                }
+                rowIdFromNodes = row;
+            }
+            
+            function SSC1050_onRulesDsBeforeSubmit(ds) {
+                var rds = ds.getAll();
+                for (var i = 0;i < rds.length;i++) {
+                    rds[i].set('docWflAssignId', '$[/parameter/@docWflAssignId]');
+                    rds[i].set('nodeId', $au('SSC1050_nodesDs').getCurrentRecord().get('nodeId'));
+                }
+            }
+            
+            function SSC1050_nodeGridEditor(record, name) {
+                if (name == 'fixedFlag') {
+                    if (record.isNew) {
+                        return 'SSC1050_nodeGridCb';
+                    }
+                    return '';
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1050_nodesDs" autoQuery="true" baseUrl="/ssc/workflow-node" queryUrl="$[/request/@context_path]/ssc/workflow-node/query?workflowId=$[/parameter/@workflowId]">
+                <a:fields>
+                    <a:field name="nodeId"/>
+                    <a:field name="workflowId"/>
+                    <a:field name="nodeSequence" prompt="ssc_workflow_node.node_sequence"/>
+                    <a:field name="fixedFlag" checkedValue="Y" prompt="ssc_workflow_node.fixed_flag" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" prompt="ssc_workflow_node.enabled_flag"/>
+                    <a:field name="description" prompt="ssc_workflow_node.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="SSC1050_RulesDs" baseUrl="/ssc/workflow-node-rule" selectable="true">
+                <a:fields>
+                    <a:field name="recordId"/>
+                    <a:field name="docWflAssignId"/>
+                    <a:field name="nodeId"/>
+                    <a:field name="wflBusinessRuleId"/>
+                    <a:field name="wflBusinessRuleCode" lovCode="LOV_FND_BUSINESS_RULE" prompt="ssc_doc_wfl.rule_code" required="true" title="ssc_doc_wfl.rule_assign_win">
+                        <a:mapping>
+                            <a:map from="businessRuleId" to="wflBusinessRuleId"/>
+                            <a:map from="businessRuleCode" to="wflBusinessRuleCode"/>
+                            <a:map from="businessRuleName" to="wflBusinessRuleName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="wflBusinessRuleName" prompt="ssc_doc_wfl.rule_name" required="true"/>
+                    <a:field name="startDate" prompt="ssc_workflow_node_rule.start_date" required="true" validator="SSC1050_dateValidator"/>
+                    <a:field name="endDate" prompt="ssc_workflow_node_rule.end_date" validator="SSC1050_dateValidator"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="beforesubmit" handler="SSC1050_onRulesDsBeforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="ssc_document_workflow.workflow_node" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="SSC1050_rulesGrid" type="save" width="80"/>
+                    <a:button click="SSC1050_closeWin" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="docTypeCodeName" bindTarget="ssc_document_workflow_result_ds" prompt="ssc_document_workflow.doc_type_id" readOnly="true"/>
+                <a:textField name="workflowCodeName" bindTarget="ssc_document_workflow_result_ds" prompt="ssc_document_workflow.workflow_id" readOnly="true"/>
+            </a:form>
+            <a:grid id="SSC1050_nodeGrid" bindTarget="SSC1050_nodesDs" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="nodeSequence" align="center" width="120"/>
+                    <a:column name="description" align="center" width="120"/>
+                    <a:column name="fixedFlag" align="center" width="80"/>
+                    <a:column name="ruleAsgn" align="center" renderer="SSC1050_nodeGridRenderer" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="SSC1050_nodeGridCb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="rowclick" handler="SSC1050_onNodesGridRowClick"/>
+                </a:events>
+            </a:grid>
+            <a:grid id="SSC1050_rulesGrid" bindTarget="SSC1050_RulesDs" navBar="true" width="1010">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="wflBusinessRuleCode" align="center" editor="SSC1050_rulesGridLov" width="120"/>
+                    <a:column name="wflBusinessRuleName" align="left" width="120"/>
+                    <a:column name="startDate" align="center" editor="SSC1050_rulesGridDp" renderer="Aurora.formatDate" width="120"/>
+                    <a:column name="endDate" align="center" editor="SSC1050_rulesGridDp" renderer="Aurora.formatDate" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="SSC1050_rulesGridLov"/>
+                    <a:textField id="grid_id_textField_id"/>
+                    <a:datePicker id="SSC1050_rulesGridDp"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script purpose="auto_resize"><![CDATA[
+            function SSC1050_InitSize() {
+                //描述宽度
+                var labelWidth = 75;
+                //标签宽度,5 = 3padding + 2border-spacing
+                var tagWidth = 150 + 5;
+                //页面宽度、高度
+                //var vw = $A.getViewportWidth();
+                //var vh = $A.getViewportHeight();
+                var vw = this.outerWidth;
+                var vh = this.outerHeight;
+                //留白宽度
+                var marginWidth = 0;
+                //自适应宽度
+                // var autoWidth = (vw - marginWidth) ;
+                // var leftWidth = autoWidth * 2;
+                //设置组件的自适应宽度
+                var autoHeight = (vh - 340) / 2;
+                if (Aurora.CmpManager.get('SSC1050_nodeGrid')) {
+                    $au('SSC1050_nodeGrid').setHeight(autoHeight);
+                }
+                if (Aurora.CmpManager.get('SSC1050_rulesGrid')) {
+                    $au('SSC1050_rulesGrid').setHeight(autoHeight);
+                }
+            }
+            SSC1050_InitSize();
+        ]]></script>
+    </a:view>
+</a:screen>

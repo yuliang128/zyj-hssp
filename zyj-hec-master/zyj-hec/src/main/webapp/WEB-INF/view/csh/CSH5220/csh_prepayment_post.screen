@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui $
+    $Date: 2019/03/05 $
+    $Revision: 1.1 $
+    $Purpose: 预付款核销-核销页
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH5220_writeOff_account_view_link" url="$[/request/@context_path]/csh/CSH5220/csh_prepayment_write_off_finance.screen"/>
+        <a:link id="CSH5220_writeOff_report_view_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="CSH5220_writeOff_trx_view_link" url="$[/request/@context_path]/csh/public/csh_payment_transaction_detail.screen"/>
+        <script><![CDATA[
+            function CSH5220_backFunction() {
+                $au('CSH5220_prepayment_post_window').close();
+            }
+
+            //单条核销金额必须大于等于0且小于报销单可核销金额且小于本条预付款剩余金额
+            function CSH5220_amountValidator(record, name, value) {
+                if (name == 'amount') {
+                    var headerDs = $au('CSH5220_writeOffHeaderDs').getCurrentRecord();
+                    var totalUnAmount = headerDs.get('unWriteOffAmount');
+                    var recordUnAmount = record.get('unWriteOffAmount');
+                    if (!Ext.isEmpty(value)) {
+                        if (value <= 0 || value > totalUnAmount || value > recordUnAmount) {
+                            return '$[l:csh_prepayment_post.check1]';
+                        }
+                    }
+                    return true;
+                }
+            }
+            
+            function CSH5220_postFunction() {
+                var detailDs = $au('CSH5220_writeOffDetailDs');
+                if (detailDs.validate()) {
+                    //将from里的数据提取出来，用于填充参数和校验
+                    var headerDs = $au('CSH5220_writeOffHeaderDs').getCurrentRecord();
+                    var writeOffDate = headerDs.get('writeOffDate').format('yyyy-mm-dd');
+                    var totalUnAmount = headerDs.get('unWriteOffAmount');
+                    var records = detailDs.getAll();
+                    var lineTotalAmount = 0;
+                    for (var i = 0;i < records.length;i++) {
+                        var amount = records[i].get('amount');
+                        if (!Ext.isEmpty(amount) && amount != 0) {
+                            lineTotalAmount = plus(lineTotalAmount, amount);
+                            records[i].set('writeOffDate', writeOffDate);
+                            records[i].set('requisitionHeaderId', "$[/parameter/@paymentRequisitionHeaderId]");
+                        } else {
+                            records[i].dirty = false;
+                        }
+                    }
+                    if (lineTotalAmount <= 0 || lineTotalAmount > totalUnAmount) {
+                        Aurora.showMessage('$[l:prompt]', '$[l:csh_prepayment_post.check2]');
+                    } else {
+                        detailDs.setSubmitParameter('transactionHeaderId', '$[/parameter/@transactionHeaderId]');
+                        detailDs.submit(); //提交所有的数据
+                    }
+                }
+            }
+            
+            function CSH5220_writeOffSuccess() {
+                var window = Aurora.showMessage('$[l:hap.submit]', '$[l:fnd_dimension_values.opr_suc]', function() {
+                    $au('CSH5220_writeOffHeaderDs').query();
+                    $au('CSH5220_writeOffDetailDs').query();
+                    $au('CSH5220_writeOffHistoryDs').query();
+                });
+            }
+            
+            function CSH5220_reportRenderer(value, record, name) {
+                if (value) {
+                    var id = record.get('documentHeaderId');
+                    return '<a href="javascript:CSH5220_rptWindow(\'' + id + '\');">' + value + '</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH5220_transactionRenderer(value, record, name) {
+                if (value) {
+                    var id = record.get('transactionHeaderId');
+                    return '<a href="javascript:CSH5220_trxWindow(\'' + id + '\');">' + value + '</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function CSH5220_rptWindow(id) {
+                new Aurora.Window({
+                    url: $au('CSH5220_writeOff_report_view_link').getUrl() + '?documentHeaderId=' + id,
+                    id: 'exp_report_view_main_screen',
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('CSH5220_writeOffHeaderDs').query();
+                    $au('CSH5220_writeOffDetailDs').query();
+                    $au('CSH5220_writeOffHistoryDs').query();
+                });
+            }
+            
+            function CSH5220_trxWindow(id) {
+                new Aurora.Window({
+                    url: $au('CSH5220_writeOff_trx_view_link').getUrl() + '?transactionHeaderId=' + id,
+                    id: 'CSH3200_csh_payment_transaction_detail_window',
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('CSH5220_writeOffHeaderDs').query();
+                    $au('CSH5220_writeOffDetailDs').query();
+                    $au('CSH5220_writeOffHistoryDs').query();
+                });
+            }
+            
+            function CSH5220_accountRenderer(value, record, name) {
+                var id = '$[/parameter/@transactionHeaderId]';
+                return '<a href="javascript:CSH5220_accountWindow(\'' + id + '\');">$[l:exp_prepayment_post.financeinformationtab]</a>';
+            }
+            
+            function CSH5220_accountWindow(id) {
+                new Aurora.Window({
+                    url: $au('CSH5220_writeOff_account_view_link').getUrl() + '?transactionHeaderId=' + id,
+                    id: 'CSH3200_writeOff_account_window',
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('CSH5220_writeOffHeaderDs').query();
+                    $au('CSH5220_writeOffDetailDs').query();
+                    $au('CSH5220_writeOffHistoryDs').query();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5220_writeOffHeaderDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/transaction-header/queryPrePayWtfByHId?transactionHeaderId=$[/parameter/@transactionHeaderId]">
+                <a:fields>
+                    <a:field name="transactionNum" readOnly="true" prompt="csh_prepayment_write_off.transaction_num"/>
+                    <a:field name="writeOffDate" datatype="date" required="true" prompt="csh_transaction_header.transaction_date"/>
+                    <a:field name="transactionAmount" readOnly="true" prompt="csh_transaction_line.transaction_amount"/>
+                    <a:field name="payeeCategoryName" readOnly="true" prompt="csh_transaction_line.partner_category"/>
+                    <a:field name="payeeName" readOnly="true" prompt="csh_transaction_line.partner_id"/>
+                    <a:field name="currencyCode" readOnly="true" prompt="csh_transaction_line.currency_code"/>
+                    <a:field name="exchangeRateTypeName" readOnly="true" prompt="exp_report_account.exchange_rate_type"/>
+                    <a:field name="exchangeRate" readOnly="true" prompt="exp_report_account.exchange_rate"/>
+                    <a:field name="unWriteOffAmount" readOnly="true" prompt="csh_prepayment_write_off.unwrite_off_amount"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH5220_writeOffDetailDs" autoQuery="true" pageSize="15" queryUrl="$[/request/@context_path]/csh/write-off/queryPrePayDetail?transactionHeaderId=$[/parameter/@transactionHeaderId]" submitUrl="$[/request/@context_path]/csh/write-off/post">
+                <a:fields>
+                    <a:field name="requisitionHeaderId"/>
+                    <a:field name="transactionHeaderId"/>
+                    <a:field name="cshTransactionLineId"/>
+                    <a:field name="documentHeaderId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="documentLineId"/>
+                    <a:field name="documentId"/>
+                    <a:field name="requisitionNumber" prompt="exp_report_headers.exp_report_number"/>
+                    <a:field name="writeOffTypeName" prompt="exp_prepayment_post.write_off_type"/>
+                    <a:field name="writeOffType"/>
+                    <a:field name="writeOffDate"/>
+                    <a:field name="moCshTrxClassId"/>
+                    <a:field name="auditDate" prompt="exp_report_lines.audit_date"/>
+                    <a:field name="moCshTrxClassName" prompt="csh_prepayment_post.transaction_class"/>
+                    <a:field name="dueAmount" prompt="csh_prepayment_post.due_amount"/>
+                    <a:field name="unWriteOffAmount"  prompt="exp_prepayment_post.unwrite_off_amount"/>
+                    <a:field name="amount" prompt="exp_prepayment_post.now_write_off_amount" validator="CSH5220_amountValidator"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH5220_writeOffSuccess"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5220_writeOffHistoryDs" autoQuery="true" model="csh.CSH5220.csh_prepayment_write_off_history_query" queryUrl="$[/request/@context_path]/csh/write-off/getWriteOffHistory?transactionHeaderId=$[/parameter/@transactionHeaderId]">
+                <a:fields>
+                    <a:field name="transactionId"/>
+                    <a:field name="writeOffDate" prompt="csh_transaction_headers.write_off_completed_date"/>
+                    <a:field name="periodName" prompt="csh_transaction_headers.period_name"/>
+                    <a:field name="writeOffType" prompt="exp_prepayment_post.write_off_type"/>
+                    <a:field name="expReportNumber" prompt="exp_report_headers.exp_report_number"/>
+                    <a:field name="transactionNum" prompt="csh_prepayment_write_off.transaction_num"/>
+                    <a:field name="cshWriteOffAmount" prompt="csh_write_off.write_off_amount"/>
+                    <a:field name="account" prompt="exp_prepayment_post.financeinformationtab"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="4" marginWidth="30" title="csh_prepayment_post.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="CSH5220_postFunction" text="prompt.post" width="80"/>
+                    <a:button click="CSH5220_backFunction" text="prompt.return" width="80"/>
+                </a:formToolbar>
+                <a:textField name="transactionNum" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:datePicker name="writeOffDate" bindTarget="CSH5220_writeOffHeaderDs" renderer="Aurora.formatDate"/>
+                <a:numberField name="transactionAmount" allowFormat="true" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:textField name="payeeCategoryName" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:textField name="payeeName" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:textField name="currencyCode" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:textField name="exchangeRateTypeName" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:textField name="exchangeRate" bindTarget="CSH5220_writeOffHeaderDs"/>
+                <a:numberField name="unWriteOffAmount" allowFormat="true" bindTarget="CSH5220_writeOffHeaderDs"/>
+            </a:form>
+            <a:form title="exp_non_write_off_record">
+                <a:grid id="CSH5220_writeOffDetailGird" autoAdjust="true" bindTarget="CSH5220_writeOffDetailDs" height="600" marginWidth="35" navBar="true" showRowNumber="false" style="margin-left:5px;margin-top:5px;">
+                    <a:columns>
+                        <a:column name="requisitionNumber" align="center" width="180"/>
+                        <a:column name="writeOffTypeName" align="center" width="220"/>
+                        <a:column name="auditDate" align="center" width="120"/>
+                        <a:column name="moCshTrxClassName" align="center" width="150"/>
+                        <a:column name="dueAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                        <a:column name="unWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                        <a:column name="amount" align="right" editor="CSH5220_numberField" renderer="Aurora.formatMoney" width="120"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:numberField id="CSH5220_numberField"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+            <!--将借款余额提示改为核销金额提示    Y.duan  2017-8-28 10:54:24-->
+            <a:form title="exp_write_off_record">
+                <a:grid id="CSH5220_writeOffHistoryGrid" autoAdjust="true" bindTarget="CSH5220_writeOffHistoryDs" height="600" marginWidth="35" navBar="true" showRowNumber="false" style="margin-left:5px;margin-top:5px;">
+                    <a:columns>
+                        <a:column name="writeOffDate" align="center" width="120"/>
+                        <a:column name="periodName" align="center" width="120"/>
+                        <a:column name="writeOffType" align="center" width="220"/>
+                        <a:column name="expReportNumber" align="center" renderer="CSH5220_reportRenderer" width="180"/>
+                        <a:column name="transactionNum" align="center" renderer="CSH5220_transactionRenderer" width="180"/>
+                        <a:column name="cshWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                        <a:column name="account" align="center" renderer="CSH5220_accountRenderer" width="120"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

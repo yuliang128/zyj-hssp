@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: wuxiuxian
+    $Date: 2018/01/13 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 账套级成本中心-分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="GLD2050_gld_resp_centers_asgn_ae_batch_link" url="$[/request/@context_path]/gld/GLD2050/gld_resp_centers_asgn_ae_batch.screen"/>
+        <script><![CDATA[
+            function GLD2050_closeAssignPageWindow() {
+                $au('GLD2050_respCentersAsgnAccEnttityWindow').close();
+            }
+
+            function GLD2050_batchAsgnAccEntity() {
+                var url = $au('GLD2050_gld_resp_centers_asgn_ae_batch_link').getUrl() + '?responsibilityCenterId=' + '$[/parameter/@responsibilityCenterId]' + '&setOfBooksId=' + '$[/parameter/@setOfBooksId]';
+                new Aurora.Window({
+                    id: 'GLD2050_gld_resp_centers_asgn_ae_batch_window',
+                    url: url,
+                   title: '$[l:hec_batch_assign]',
+                   side:'right',
+                   width: 1020
+                });
+            }
+
+            function GLD2050_onSubmitSuccessAsgnAccEntity(ds) {
+                ds.query();
+            }
+
+            function GLD2050_accEntityCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'GLD2050_asgnAccEntity_lov';
+                } else {
+                    return '';
+                }
+            }
+            function GLD2050_dateActiveEdit(record, name) {
+            if (record.isNew) {
+                return 'GLD2050_asgnAccEntity_dp';
+            } else {
+                return '';
+            }
+            }
+            function GLD2050_setDefaultStartDateActive(ds, rd, idx) {
+                rd.set('startDateActive', dateTimeFormmat(new Date()));
+            }
+        function dateTimeFormmat (value) {
+            var year = value.getFullYear();
+            var month = value.getMonth()+1;//js从0开始取
+            var date = value.getDate();
+            var hour = value.getHours();
+            var minutes = value.getMinutes();
+            var second = value.getSeconds();
+
+            if(month<10){
+                month = "0" + month;
+            }
+            if(date<10){
+                date = "0" + date;
+            }
+            if(hour <10){
+                hour = "0" + hour;
+            }
+            if(minutes <10){
+                minutes = "0" + minutes;
+            }
+            if(second <10){
+                second = "0" + second ;
+            }
+
+            var time = year+"-"+month+"-"+date+" "+hour+":"+minutes+":"+second; //2009-06-12 17:18:05
+            return time;
+
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2050_gld_resp_centers_asgn_acc_enttity_ds"  autoQuery="true" queryUrl="$[/request/@context_path]/gld-sob-resp-center/queryResponsibilityCenter?responsibilityCenterId=$[/parameter/@responsibilityCenterId]" submitUrl="$[/request/@context_path]/gld-sob-resp-center/submitResponsibilityCenter" autoPageSize="true"  selectable="true">
+                <a:fields>
+                    <a:field name="accEntityCode" lovCode="LOV_ASGN_ACC_ENTTITY?responsibilityCenterId=$[/parameter/@responsibilityCenterId]&amp;setOfBooksId=$[/parameter/@setOfBooksId]"  prompt="gld_accounting_entity.acc_entity_code" required="true" title="prompt.accounting_distribution">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="startDateActive"   required="true" validator="dateValidator" prompt="gld_accounting_entity.start_date_active"/>
+                    <a:field name="endDateActive" validator="dateValidator" prompt="gld_accounting_entity.end_date_active"/>
+                    <a:field name="responsibilityCenterId" defaultValue="$[/parameter/@responsibilityCenterId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2050_onSubmitSuccessAsgnAccEntity"/>
+                    <a:event name="add" handler="GLD2050_setDefaultStartDateActive"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="gld_resp_centers_asgn_acc_enttity_form" column="2" labelWidth="120" title="hap_query_title" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="gld_resp_centers_asgn_acc_enttity_grid" type="add" width="80"/>
+                    <a:gridButton bind="gld_resp_centers_asgn_acc_enttity_grid" type="save" width="80"/>
+                    <a:toolbarButton click="GLD2050_batchAsgnAccEntity" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="GLD2050_closeAssignPageWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="responsibilityCenterCode" bindTarget="GLD2050_sobRespCentersResultDs" prompt="gld_sob_resp_center.responsibility_center_code" readOnly="true"/>
+                <a:textField name="responsibilityCenterName" bindTarget="GLD2050_sobRespCentersResultDs" prompt="gld_sob_resp_center.responsibility_center_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="gld_resp_centers_asgn_acc_enttity_grid" bindTarget="GLD2050_gld_resp_centers_asgn_acc_enttity_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="GLD2050_accEntityCodeEdit" width="80"/>
+                    <a:column name="accEntityName"  width="200"/>
+                    <a:column name="startDateActive" align="center" editor="GLD2050_asgnAccEntity_dp"  renderer="Aurora.formatDateTime" width="80"/>
+                    <a:column name="endDateActive" align="center" editor="GLD2050_asgnAccEntity_dp"   renderer="Aurora.formatDateTime" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="GLD2050_asgnAccEntity_lov"/>
+                    <a:dateTimePicker id="GLD2050_asgnAccEntity_dp"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

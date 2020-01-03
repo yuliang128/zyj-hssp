@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBudgetItemAsgnMoMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtBudgetItemAsgnMo">
+        <result column="ASSIGN_MO_ID" property="assignMoId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_ITEM_ID" property="budgetItemId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="BUDGET_ITEM_CODE" property="budgetItemCode" jdbcType="VARCHAR"/>
+        <result column="BUDGET_ITEM_NAME" property="budgetItemName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_CODE" property="magOrgCode" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_NAME" property="magOrgName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryAll" resultMap="BaseResultMap" parameterType="com.hand.hec.bgt.dto.BgtBudgetItemAsgnMo">
+        SELECT
+            bbam.assign_mo_id,
+            bbam.budget_item_id,
+            bbi.budget_item_code,
+            bbt.description budget_item_name,
+            bbam.mag_org_id,
+            fmo.mag_org_code,
+            fmot.DESCRIPTION mag_org_name,
+            bbam.enabled_flag
+        FROM
+            bgt_budget_item_asgn_mo bbam
+            LEFT OUTER JOIN bgt_budget_item bbi ON ( bbam.budget_item_id = bbi.budget_item_id )
+            LEFT OUTER JOIN bgt_budget_item_tl bbt ON ( bbi.BUDGET_ITEM_ID = bbt.BUDGET_ITEM_ID AND bbt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+            LEFT OUTER JOIN fnd_managing_organization fmo ON ( bbam.mag_org_id = fmo.mag_org_id )
+            LEFT OUTER JOIN fnd_managing_organization_tl fmot ON ( fmo.MAG_ORG_ID = fmot.MAG_ORG_ID AND fmot.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        <where>
+            <if test="assignMoId!=null">
+               and bbam.assign_mo_id = #{assignMoId}
+            </if>
+            <if test="budgetItemId!=null">
+              and bbam.budget_item_id = #{budgetItemId}
+            </if>
+            <if test="magOrgId!=null">
+              and bbam.mag_org_id = #{magOrgId}
+            </if>
+        </where>
+        <trim prefix="where" prefixOverrides="and">
+        </trim>
+    </select>
+
+    <update id="updateByBudgetItemId" parameterType="com.hand.hec.bgt.dto.BgtBudgetItemAsgnMo">
+        update bgt_budget_item_asgn_mo bbam
+        set bbam.last_updated_by  = #{request.userId},
+            bbam.last_update_date = CURRENT_TIMESTAMP
+        where bbam.budget_item_id = #{budgetItemId}
+        and bbam.mag_org_id = #{magOrgId}
+    </update>
+
+
+</mapper>

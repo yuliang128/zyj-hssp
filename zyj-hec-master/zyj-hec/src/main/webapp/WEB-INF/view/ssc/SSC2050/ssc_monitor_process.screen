@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="SSC2050_do_force_return_link" model="db.ssc_core_pkg.do_force_return" modelaction="execute"/>
+        <a:link id="SSC2050_do_reject_return_link" model="db.ssc_core_pkg.do_reject_return" modelaction="execute"/>
+        <a:link id="SSC2050_do_agree_return_link" model="db.ssc_core_pkg.do_agree_return" modelaction="execute"/>
+        <a:link id="SSC2050_do_dispatch_link" model="db.ssc_core_pkg.do_dispatch" modelaction="execute"/>
+        <script><![CDATA[
+            var processType = '$[/parameter/@processType]';
+            
+            function SSC2050_doProcess() {
+                var data = $au('SSC2050_monitor_result_ds').getCurrentRecord().data;
+                var opinion = $au('SSC2050_process_ds').getAt(0).get('opinion');
+                var url = '';
+                if (!$au('SSC2050_process_ds').validate()) {
+                    return;
+                }
+                if (processType == 'FORCE_RETURN') {
+                    url = $au('SSC2050_do_force_return_link').getUrl();
+                } else if (processType == 'AGREE_RETURN') {
+                    url = $au('SSC2050_do_agree_return_link').getUrl();
+                } else if (processType == 'REJECT_RETURN') {
+                    url = $au('SSC2050_do_reject_return_link').getUrl();
+                } else if (processType == 'DISPATCH') {
+                    url = $au('SSC2050_do_dispatch_link').getUrl();
+                    var workerRecord = $au('SSC2050_dispatch_worker_result_ds').getSelected()[0];
+                    if (!workerRecord) {
+                        Aurora.showErrorMessage('错误', '请选择需要派工的人员!');
+                        return;
+                    }
+                    var workTeamId = workerRecord.get('workTeamId');
+                    var employeeId = workerRecord.get('employeeId');
+                    data['workTeamId'] = workTeamId;
+                    data['employeeId'] = employeeId;
+                    data['opinion'] = opinion;
+                }
+                Aurora.request({
+                    lockMessage: '处理中，请稍候...',
+                    url: url,
+                    para: data,
+                    success: function(resp) {
+                        $au('SSC2050_monitor_result_ds').query();
+                        SSC2050_cancelProcess();
+                    }
+                });
+            }
+            
+            function SSC2050_cancelProcess() {
+                $au('SSC2050_ssc_monitor_process_window').close();
+            }
+            
+            function SSC2050_workerQuery() {
+                $au('SSC2050_dispatch_worker_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC2050_process_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="opinion" prompt="wfl_workflow_approve.comment" required="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:switch test="/parameter/@processType">
+                <a:case value="DISPATCH">
+                    <a:dataSet id="SSC2050_dispatch_worker_query_ds" autoCreate="true">
+                        <a:fields>
+                            <a:field name="workCenterName" prompt="ssc_node_asgn_work_center.work_center_name"/>
+                            <a:field name="workTeamName" prompt="ssc_node_assign_worker.work_team_code_name"/>
+                            <a:field name="name" prompt="hap.ssc_work_employee"/>
+                        </a:fields>
+                    </a:dataSet>
+                    <a:dataSet id="SSC2050_dispatch_worker_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/ssc/work-center" queryDataSet="SSC2050_dispatch_worker_query_ds" queryUrl="$[/request/@context_path]/ssc/work-center/querySscWorkCenter" selectable="true" selectionModel="single"/>
+                </a:case>
+            </a:switch>
+        </a:dataSets>
+        <a:screenBody>
+            <a:switch test="/parameter/@processType">
+                <a:case value="DISPATCH">
+                    <a:form bindTarget="SSC2050_dispatch_worker_query_ds" column="2" shrinkable="false" title="dispatch">
+                        <a:formToolbar>
+                            <a:label name="separator"/>
+                            <a:button click="SSC2050_workerQuery" text="hap_query" width="80"/>
+                            <a:button click="SSC2050_doProcess" text="confirm" width="80"/>
+                            <a:button click="SSC2050_cancelProcess" text="hap_cancel" width="80"/>
+                        </a:formToolbar>
+                        <a:textField name="description" bindTarget="SSC2050_dispatch_worker_query_ds" prompt="ssc_node_asgn_work_center.work_center_name"/>
+                        <a:textField name="workTeamName" bindTarget="SSC2050_dispatch_worker_query_ds" prompt="ssc_node_assign_worker.work_team_code_name"/>
+                        <a:textField name="name" bindTarget="SSC2050_dispatch_worker_query_ds" prompt="hap.ssc_work_employee"/>
+                        <a:label/>
+                        <a:textArea name="opinion" bindTarget="SSC2050_process_ds" calcWidth="calc((100%  + 90px) / 2 * 2 + 150px)" height="50"/>
+                    </a:form>
+                    <a:grid bindTarget="SSC2050_dispatch_worker_result_ds" marginHeight="320" navBar="true" style="margin-top:5px;" width="1010">
+                        <a:columns>
+                            <a:column name="workCenterCodeName" align="center" prompt="ssc_node_asgn_work_center.work_center_name" width="150"/>
+                            <a:column name="workTeamCodeName" align="center" prompt="ssc_node_assign_worker.work_team_code_name" width="150"/>
+                            <a:column name="employeeCodeName" align="center" prompt="hap.ssc_work_employee" width="80"/>
+                        </a:columns>
+                    </a:grid>
+                </a:case>
+                <a:case>
+                    <a:form id="SSC2050_returnForm" padding="2" showmargin="true" shrinkable="false" style="border:none;" title="wbc_monitor.force_return">
+                        <a:formToolbar>
+                            <a:label name="separator"/>
+                            <a:button click="SSC2050_doProcess" text="confirm" width="80"/>
+                            <a:button click="SSC2050_cancelProcess" text="hap_cancel" width="80"/>
+                        </a:formToolbar>
+                        <a:fieldSet column="1" title="wfl_workflow_approve.comment" width="500">
+                            <a:textArea name="opinion" bindTarget="SSC2050_process_ds" height="100" prompt="" width="533"/>
+                        </a:fieldSet>
+                    </a:form>
+                </a:case>
+            </a:switch>
+        </a:screenBody>
+    </a:view>
+</a:screen>

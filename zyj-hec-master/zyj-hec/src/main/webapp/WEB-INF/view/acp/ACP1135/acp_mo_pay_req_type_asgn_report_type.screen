@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Arthur.Chen
+    $Date: 2017-08-31 10:35:33
+    $Revision: 1.0  
+    $Purpose: 付款申请类型定义-分配报销单和合同类型
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[ 
+            function ACP1135_closeAsgnReportWin() {
+                $au('ACP1135_asgnReportWin').close();
+            }
+            
+            function ACP1135_onAsgnReportDsAdd(ds, record, idx) {
+                var rdFromPay = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                record.set('moPayReqTypeId', rdFromPay.get('moPayReqTypeId'));
+
+                var docmentType = '$[/parameter/@documentType]';
+                if(docmentType == 'REPORT'){
+                    record.getMeta().getField('documentTypeCode').setLovCode('LOV_MO_REPORT_TYPE');
+                    record.getMeta().getField('documentTypeCode').setLovPara('companyId','$[/session/@companyId]');
+                    record.getMeta().getField('documentTypeCode').setLovPara('moPayReqTypeId',rdFromPay.get('moPayReqTypeId'));
+                }else if(docmentType == 'CONTRACT'){
+                    record.getMeta().getField('documentTypeCode').setLovCode('LOV_MO_CONTRACT_TYPE');
+                    record.getMeta().getField('documentTypeCode').setLovPara('magOrgId',rdFromPay.get('magOrgId'));
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="ACP1135_asgnReportShowDs" autoCreate="true">
+                <a:field name="moPayReqTypeId"/>
+                <a:field name="moPayReqTypeCode" readOnly="true"/>
+                <a:field name="moPayReqTypeName" readOnly="true"/>
+            </a:dataSet>
+            <a:dataSet id="ACP1135_asgnReportDs" autoQuery="true" baseUrl="/acp/mo-pay-req-tp-ref-doc" queryDataSet="ACP1135_asgnReportShowDs" selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="moPayReqTypeId"/>
+                    <a:field name="documentTypeId"/>
+                    <a:field name="documentType" defaultValue="$[/parameter/@documentType]"/>
+                    <a:field name="documentTypeCode" autoComplete="true" autoCompleteField="documentTypeCode"  prompt="exp_report_headers.mo_exp_report_type_select" required="true" title="exp_report_headers.mo_exp_report_type_select">
+                        <a:mapping>
+                            <a:map from="documentTypeId" to="documentTypeId"/>
+                            <a:map from="documentTypeCode" to="documentTypeCode"/>
+                            <a:map from="documentTypeName" to="documentTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="documentTypeName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="ACP1135_onAsgnReportDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="acp_mo_pay_req_type.$[/parameter/@title]">
+                <a:formToolbar>
+                    <a:label name="separameter"/>
+                    <a:gridButton bind="ACP1135_asgnReportGrid" type="add" width="80"/>
+                    <a:gridButton bind="ACP1135_asgnReportGrid" type="save" width="80"/>
+                    <a:gridButton bind="ACP1135_asgnReportGrid" type="delete" width="80"/>
+                    <a:button click="ACP1135_closeAsgnReportWin" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moPayReqTypeCode" bindTarget="ACP1135_asgnReportShowDs" prompt="hap.doc_type_code"/>
+                <a:textField name="moPayReqTypeName" bindTarget="ACP1135_asgnReportShowDs" prompt="hap.doc_type_name"/>
+            </a:form>
+            <a:grid id="ACP1135_asgnReportGrid" bindTarget="ACP1135_asgnReportDs" marginHeight="195" navBar="true" navBarType="complex" width="1010">
+                <a:columns>
+                    <a:column name="documentTypeCode" align="center" editor="ACP1135_asgnReportGrid_lov" prompt="exp_mo_report_type.mo_exp_report_type_code" width="120"/>
+                    <a:column name="documentTypeName" align="left" prompt="exp_mo_req_types.description" width="120"/>
+                    <a:column name="enabledFlag" align="center" editor="ACP1135_asgnReportGrid_cb" prompt="hap_enabled_flag" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="ACP1135_asgnReportGrid_lov"/>
+                    <a:checkBox id="ACP1135_asgnReportGrid_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function initPage() {
+                var record = $au('ACP1135_asgnReportShowDs').getAt(0);
+                var rdFromReq = $au('acp_mo_pay_req_type_result_ds').findById('$[/parameter/@rdId]');
+                record.set('moPayReqTypeCode', rdFromReq.get('moPayReqTypeCode'));
+                record.getField('moPayReqTypeCode').setReadOnly(true);
+                record.set('moPayReqTypeName', rdFromReq.get('description'));
+                record.getField('moPayReqTypeName').setReadOnly(true);
+                record.set('moPayReqTypeId', rdFromReq.get('moPayReqTypeId'));
+            }
+            initPage();
+        ]]></script>
+    </a:view>
+</a:screen>

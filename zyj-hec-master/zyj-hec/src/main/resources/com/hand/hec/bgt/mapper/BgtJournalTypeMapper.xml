@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtJournalTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtJournalType">
+        <result column="BGT_JOURNAL_TYPE_ID" property="bgtJournalTypeId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="BGT_JOURNAL_TYPE_CODE" property="bgtJournalTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="BGT_BUSINESS_TYPE" property="bgtBusinessType" jdbcType="VARCHAR"/>
+        <result column="AUTHORITY_TYPE" property="authorityType" jdbcType="VARCHAR"/>
+        <result column="AUTO_APPROVE_FLAG" property="autoApproveFlag" jdbcType="VARCHAR"/>
+        <result column="IMPORT_FLAG" property="importFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="DOCUMENT_PAGE_TYPE" property="documentPageType" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getJournalTypeObjInfo" resultType="java.util.Map">
+        select
+            ot.mo_exp_obj_type_id,
+            ot.mo_exp_obj_type_code,
+            ott.description as mo_exp_obj_type_name,
+            ot.expense_object_method,
+            ov.mo_expense_object_id as dft_mo_expense_object_id,
+            ov.mo_expense_object_code as dft_mo_expense_object_code,
+            ov.description as dft_mo_expense_object_name,
+            concat('#' ,ot.mo_exp_obj_type_id) as return_field,
+            concat('^#' ,ot.mo_exp_obj_type_id) as display_field,
+            case
+                when
+                case
+                    when ro.required_flag is null then 'N'
+                    else 'Y'
+                end = 'Y' then 'true'
+                else 'false'
+            end as required_flag
+        from
+            bgt_journal_type_ref_obj ro
+        left join exp_mo_expense_object_type ot on
+            ro.expense_object_type_id = ot.mo_exp_obj_type_id
+            and ot.enabled_flag = 'Y'
+        left join exp_mo_expense_object_type_tl ott on
+            ot.mo_exp_obj_type_id = ott.mo_exp_obj_type_id
+            and ott.lang = #{request.locale}
+        left join exp_mo_expense_object_value ov on
+            ro.default_object_id = ov.mo_expense_object_id
+            and ov.enabled_flag = 'Y'
+        left join exp_mo_expense_object_value_tl ovt on
+            ov.mo_expense_object_id = ovt.mo_expense_object_id
+            and ovt.lang = #{request.locale}
+        where
+            ro.bgt_journal_type_id = #{bgtJournalTypeId}
+            and ro.layout_position = #{position}
+        order by
+            ro.layout_priority
+    </select>
+    
+    <select id="queryInfoByBgtJournal" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+            company_id,
+            bjt.bgt_journal_type_id,
+            bjt.auto_approve_flag
+        FROM
+            bgt_journal_header h,
+            bgt_journal_type bjt
+        WHERE
+            h.bgt_journal_type_id = bjt.bgt_journal_type_id
+            AND h.journal_header_id = #{journalHeaderId}
+    </select>
+
+</mapper>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.fnd.mapper.FndCompanyRefBgtEntityMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.fnd.dto.FndCompanyRefBgtEntity">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL"/>
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="entity_code" property="bgtEntityCode" jdbcType="VARCHAR"/>
+        <result column="description" property="bgtEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <resultMap id="BgtEntity" type="com.hand.hap.fnd.dto.FndCompanyRefBgtEntity">
+        <result column="ENTITY_ID" property="entityId" jdbcType="DECIMAL"/>
+        <result column="entity_code" property="bgtEntityCode" jdbcType="VARCHAR"/>
+        <result column="description" property="bgtEntityName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="queryFndCompanyRefBgtEntity" resultMap="BaseResultMap"
+            parameterType="com.hand.hap.fnd.dto.FndCompanyRefBgtEntity">
+        select REF_ID from fnd_company_ref_bgt_entity where COMPANY_ID = #{companyId} and ENTITY_ID=#{entityId}
+
+    </select>
+    <update id="setDefaultFlagN" parameterType="java.lang.Long">
+        update fnd_company_ref_bgt_entity set DEFAULT_FLAG = 'N',ENABLED_FLAG = 'N' where COMPANY_ID = #{companyId} and DEFAULT_FLAG = 'Y'
+    </update>
+    <select id="queryBgtEntity" resultMap="BgtEntity" parameterType="com.hand.hap.fnd.dto.FndCompanyRefAccEntity">
+    SELECT
+	bev.entity_code,
+	bt.description,
+	bev.entity_id
+    FROM
+	fnd_mag_org_ref_bgt_org fmb,
+	bgt_entity bev
+	LEFT OUTER JOIN bgt_entity_tl bt ON (
+	bt.entity_id = bev.entity_id
+	AND bt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+    WHERE
+	fmb.bgt_org_id = bev.bgt_org_id
+	AND fmb.mag_org_id = #{magOrgId} AND
+	bev.entity_type = 'details'
+	AND bev.enabled_flag = 'Y'
+	AND fmb.enabled_flag = 'Y'
+	AND NOT EXISTS ( SELECT 1 FROM fnd_company_ref_bgt_entity fcbo WHERE fcbo.entity_id = bev.entity_id AND fcbo.company_id = #{companyId}
+	)
+    ORDER BY bev.entity_code
+
+    </select>
+
+    <select id="queryCompanyRefBgtEntityByCompanyId" resultMap="BaseResultMap"
+            parameterType="com.hand.hap.fnd.dto.FndCompanyRefBgtEntity">
+        SELECT
+        fe.REF_ID,
+        fe.COMPANY_ID,
+        fe.ENTITY_ID,
+        b.ENTITY_CODE,
+        bt.DESCRIPTION,
+        fe.DEFAULT_FLAG,
+        fe.ENABLED_FLAG
+        FROM
+        fnd_company_ref_bgt_entity fe
+        LEFT JOIN bgt_entity b
+        LEFT JOIN bgt_entity_tl bt ON ( b.ENTITY_ID = bt.ENTITY_ID AND bt.LANG =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( fe.ENTITY_ID = b.ENTITY_ID )
+        <where>
+            <if test="refId != null">
+                fe.REF_ID = #{refId}
+            </if>
+            <if test="companyId != null">
+                and fe.COMPANY_ID = #{companyId}
+            </if>
+            <if test="entityId != null">
+                and fe.ENTITY_ID = #{entityId}
+            </if>
+            <if test="defaultFlag != null">
+                and fe.DEFAULT_FLAG = #{defaultFlag}
+            </if>
+            <if test="enabledFlag != null">
+                and fe.ENABLED_FLAG = #{enabledFlag}
+            </if>
+        </where>
+        ORDER BY
+        fe.REF_ID
+    </select>
+    <select id="getDftBgtEntity" resultMap="BgtEntity">
+        select fcbe.entity_id,
+              (select bet.DESCRIPTION from bgt_entity be left join bgt_entity_tl bet on be.ENTITY_ID = bet.ENTITY_ID and bet.LANG = #{request.locale} where be.ENTITY_ID = fcbe.entity_id) description
+          from fnd_company_ref_bgt_entity fcbe
+         where fcbe.company_id = #{companyId}
+           and fcbe.default_flag = 'Y'
+           and fcbe.enabled_flag = 'Y'
+    </select>
+</mapper>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshRepaymentRegisterDistMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshRepaymentRegisterDist">
+        <result column="REGISTER_DIST_ID" property="registerDistId" jdbcType="DECIMAL" />
+        <result column="REGISTER_LNS_ID" property="registerLnsId" jdbcType="DECIMAL" />
+        <result column="PAY_TRX_LINE_ID" property="payTrxLineId" jdbcType="DECIMAL" />
+        <result column="REPAY_TRX_LINE_ID" property="repayTrxLineId" jdbcType="DECIMAL" />
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL" />
+        <result column="REPAYMENT_FLAG" property="repaymentFlag" jdbcType="VARCHAR" />
+        <result column="REPAYMENT_PAY_TRX_LINE_ID" property="repaymentPayTrxLineId" jdbcType="DECIMAL" />
+        <result column="REPAYMENT_REPAY_TRX_LINE_ID" property="repaymentRepayTrxLineId" jdbcType="DECIMAL" />
+        <result column="REVERSE_FLAG" property="reverseFlag" jdbcType="VARCHAR" />
+        <result column="REVERSE_PAY_TRX_LINE_ID" property="reversePayTrxLineId" jdbcType="DECIMAL" />
+        <result column="REVERSE_REPAY_TRX_LINE_ID" property="reverseRepayTrxLineId" jdbcType="DECIMAL" />
+        <result column="PAY_TRX_NUM" property="payTrxNum" jdbcType="VARCHAR"/>
+        <result column="REPAY_TRX_NUM" property="repayTrxNum" jdbcType="VARCHAR"/>
+        <result column="REPAYMENT_PAY_TRX_NUM" property="repaymentPayTrxNum" jdbcType="VARCHAR"/>
+        <result column="REPAYMENT_REPAY_TRX_NUM" property="repaymentRepayTrxNum" jdbcType="VARCHAR"/>
+        <result column="REVERSE_PAY_TRX_NUM" property="reversePayTrxNum" jdbcType="VARCHAR"/>
+        <result column="REVERSE_REPAY_TRX_NUM" property="reverseRepayTrxNum" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="TrxResultMap" type="java.util.Map">
+        <result column="transaction_header_id" property="transactionHeaderId" javaType="java.lang.Long" jdbcType="DECIMAL"/>
+        <result column="transaction_num" property="transactionNum" javaType="java.lang.String" jdbcType="VARCHAR"/>
+        <result column="transaction_date" property="transactionDate" javaType="java.util.Date" jdbcType="DATE"/>
+        <result column="transaction_line_id" property="transactionLineId" javaType="java.lang.Long" jdbcType="DECIMAL"/>
+        <result column="transaction_amount" property="transactionAmount" javaType="java.math.BigDecimal" jdbcType="DECIMAL"/>
+        <result column="balance" property="balance" javaType="java.math.BigDecimal" jdbcType="DECIMAL"/>
+        <result column="payment_header_id" property="paymentHeaderId" javaType="java.lang.Long" jdbcType="DECIMAL"/>
+        <result column="payment_num" property="paymentNum" javaType="java.lang.String" jdbcType="VARCHAR"/>
+        <result column="payment_line_id" property="paymentLineId" javaType="java.lang.Long" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <delete id="deleteDist" parameterType="java.lang.Long">
+        DELETE crrd
+        FROM
+            csh_repayment_register_dist crrd
+        WHERE
+            EXISTS ( SELECT 1 FROM csh_repayment_register_ln crrl WHERE crrl.register_lns_id = crrd.register_lns_id AND crrl.register_hds_id = #{registerHdId} )
+    </delete>
+
+    <select id="baseSelect" resultMap="BaseResultMap">
+        SELECT
+            t1.REGISTER_DIST_ID,
+            t1.REGISTER_LNS_ID,
+            t1.PAY_TRX_LINE_ID,
+            ( SELECT h.transaction_num FROM csh_transaction_line l, csh_transaction_header h WHERE h.transaction_header_id = l.transaction_header_id AND l.transaction_line_id = t1.pay_trx_line_id ) AS pay_trx_num,
+            t1.REPAY_TRX_LINE_ID,
+            ( SELECT h.transaction_num FROM csh_transaction_line l, csh_transaction_header h WHERE h.transaction_header_id = l.transaction_header_id AND l.transaction_line_id = t1.repay_trx_line_id ) AS repay_trx_num,
+            t1.AMOUNT,
+            t1.REPAYMENT_FLAG,
+            t1.REPAYMENT_PAY_TRX_LINE_ID,
+            ( SELECT h.transaction_num FROM csh_transaction_line l, csh_transaction_header h WHERE h.transaction_header_id = l.transaction_header_id AND l.transaction_line_id = t1.repay_trx_line_id ) AS repayment_pay_trx_num,
+            t1.REPAYMENT_REPAY_TRX_LINE_ID,
+            ( SELECT h.transaction_num FROM csh_transaction_line l, csh_transaction_header h WHERE h.transaction_header_id = l.transaction_header_id AND l.transaction_line_id = t1.repayment_repay_trx_line_id ) AS repayment_repay_trx_num,
+            t1.REVERSE_FLAG,
+            t1.REVERSE_PAY_TRX_LINE_ID,
+            ( SELECT h.transaction_num FROM csh_transaction_line l, csh_transaction_header h WHERE h.transaction_header_id = l.transaction_header_id AND l.transaction_line_id = t1.reverse_pay_trx_line_id ) AS reverse_pay_trx_num,
+            t1.REVERSE_REPAY_TRX_LINE_ID,
+            ( SELECT h.transaction_num FROM csh_transaction_line l, csh_transaction_header h WHERE h.transaction_header_id = l.transaction_header_id AND l.transaction_line_id = t1.reverse_repay_trx_line_id ) AS reverse_repay_trx_num
+        FROM
+            CSH_REPAYMENT_REGISTER_DIST t1
+        WHERE
+            t1.register_lns_id = #{registerLnId}
+    </select>
+
+    <select id="queryTrxById" resultMap="TrxResultMap">
+        SELECT
+            pcth.transaction_header_id,
+            pcth.transaction_num ,
+            pcth.transaction_date ,
+            pctl.transaction_line_id ,
+            pctl.transaction_amount ,
+            pctl.transaction_amount - (
+            SELECT
+                ifnull ( SUM( sc.csh_write_off_amount ), 0 )
+
+            FROM
+                csh_write_off sc
+            WHERE
+                sc.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+                AND sc.csh_transaction_line_id = pctl.transaction_line_id
+                ) - (
+            SELECT
+                ifnull ( SUM( ctl2.transaction_amount ), 0 )
+
+            FROM
+                csh_transaction_header cth1,
+                csh_transaction_line ctl1,
+                csh_transaction_header cth2,
+                csh_transaction_line ctl2
+            WHERE
+                ctl1.transaction_line_id = pctl.transaction_line_id
+                AND ctl1.transaction_header_id = cth1.transaction_header_id
+                AND cth2.source_header_id = cth1.transaction_header_id
+                AND cth2.transaction_header_id = ctl2.transaction_header_id
+                AND cth2.reversed_flag = 'N'
+            ) balance,
+            cth.transaction_header_id AS payment_header_id,
+            cth.transaction_num AS payment_num,
+            ctl.transaction_line_id AS payment_line_id
+        FROM
+            csh_transaction_header pcth,
+            csh_transaction_line pctl,
+            csh_transaction_header cth,
+            csh_transaction_line ctl,
+            csh_write_off cwo,
+            csh_payment_requisition_ref r
+        WHERE
+            r.payment_requisition_line_id = #{reqLnId}
+            AND r.write_off_id = cwo.write_off_id
+            AND r.csh_transaction_line_id = ctl.transaction_line_id
+            AND cwo.csh_transaction_line_id = ctl.transaction_line_id
+            AND ctl.transaction_header_id = cth.transaction_header_id
+            AND cwo.source_csh_trx_line_id = pctl.transaction_line_id
+            AND pctl.transaction_header_id = pcth.transaction_header_id
+            AND cth.transaction_type = 'PAYMENT'
+            AND cth.posted_flag = 'Y'
+            AND cth.reversed_flag = 'N'
+            AND cth.returned_flag IN ( 'Y', 'N' )
+            AND pcth.transaction_type = 'PREPAYMENT'
+            AND pcth.posted_flag = 'Y'
+            AND pcth.reversed_flag = 'N'
+            AND pcth.returned_flag IN ( 'Y', 'N' )
+        <if test="transactionNum != null and transactionNum !=''">
+            AND pcth.transaction_num LIKE concat('%', #{transactionNum}, '%')
+        </if>
+        <if test="paymentNum != null and paymentNum != ''">
+            AND payment_num LIKE concat('%', #{paymentNum}, '%')
+        </if>
+    </select>
+
+</mapper>

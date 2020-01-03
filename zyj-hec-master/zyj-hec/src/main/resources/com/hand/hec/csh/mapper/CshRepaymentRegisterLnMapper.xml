@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshRepaymentRegisterLnMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshRepaymentRegisterLn">
+        <result column="REGISTER_LNS_ID" property="registerLnsId" jdbcType="DECIMAL" />
+        <result column="REGISTER_HDS_ID" property="registerHdsId" jdbcType="DECIMAL" />
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL" />
+        <result column="PAYMENT_REQUISITION_HEADER_ID" property="paymentRequisitionHeaderId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_REQUISITION_LINE_ID" property="paymentRequisitionLineId" jdbcType="DECIMAL" />
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL" />
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR" />
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR" />
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR" />
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL" />
+        <result column="PAYEE_NAME" property="payeeName" jdbcType="VARCHAR"/>
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_NAME" property="cashFlowItemName" jdbcType="VARCHAR"/>
+        <result column="REQUISITION_NUMBER" property="requisitionNumber" jdbcType="VARCHAR"/>
+        <result column="REQUISITION_DATE" property="requisitionDate" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR"/>
+        <result column="TRANSACTION_LINE_ID" property="transactionLineId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="queryPaymentRequisition" resultMap="BaseResultMap">
+    SELECT
+        m.acc_entity_id,
+        m.payment_requisition_header_id,
+        m.payment_requisition_line_id,
+        m.line_number,
+        m.company_id,
+        m.cash_flow_item_id,
+        m.requisition_number,
+        m.requisition_date,
+        m.currency_code,
+        m.currency_name,
+        SUM( m.amount ) amount,
+        m.payee_category,
+        m.payee_id,
+        m.account_name,
+        m.account_number,
+        m.acc_entity_name,
+        m.cash_flow_item_name
+    FROM
+        (
+        SELECT
+            v.*,
+            v.transaction_amount - (
+            SELECT
+                ifnull( SUM( cwo.csh_write_off_amount ), 0 ) -- 报销单核销借款的部分
+
+            FROM
+                csh_write_off cwo
+            WHERE
+                cwo.write_off_type = 'PREPAYMENT_EXPENSE_REPORT'
+                AND cwo.csh_transaction_line_id = v.transaction_line_id
+                ) - (
+            SELECT
+                ifnull ( SUM( ctly.transaction_amount ), 0 ) -- 退款金额
+
+            FROM
+                csh_transaction_header cthx,
+                csh_transaction_line ctlx,
+                csh_transaction_header cthy,
+                csh_transaction_line ctly
+            WHERE
+                ctlx.transaction_line_id = v.transaction_line_id
+                AND ctlx.transaction_header_id = cthx.transaction_header_id
+                AND cthy.source_header_id = cthx.transaction_header_id
+                AND cthy.transaction_header_id = ctly.transaction_header_id
+                AND cthy.reversed_flag = 'N'
+            ) amount
+        FROM
+            (
+            SELECT
+                cth.transaction_header_id,
+                ctl.transaction_line_id,
+                ctl.acc_entity_id,
+                cprh.payment_requisition_header_id,
+                cprl.payment_requisition_line_id,
+                cprl.line_number,
+                cprl.company_id,
+                cprl.cash_flow_item_id,
+                cprh.requisition_number,
+                cprh.requisition_date,
+                cprh.currency_code,
+                ( SELECT gc.CURRENCY_NAME FROM gld_currency gc WHERE gc.CURRENCY_CODE = cprh.CURRENCY_CODE ) AS currency_name,
+                ctl.transaction_amount,
+                cprl.payee_category,
+                cprl.payee_id,
+                cprl.account_name,
+                cprl.account_number,
+                gaet.acc_entity_name,
+                cait.description cash_flow_item_name
+            FROM
+                csh_payment_requisition_hd cprh,
+                csh_payment_requisition_ln cprl
+                LEFT JOIN csh_cash_flow_item cai ON cprl.cash_flow_item_id = cai.cash_flow_item_id
+                LEFT JOIN csh_cash_flow_item_tl cait ON cai.CASH_FLOW_ITEM_ID = cait.CASH_FLOW_ITEM_ID
+                AND cait.lang = #{request.locale,javaType=java.lang.String},
+                csh_payment_requisition_ref cprr,
+                csh_write_off cwo,
+                csh_transaction_line ctl,
+                csh_transaction_header cth,
+                gld_accounting_entity gae
+                LEFT JOIN gld_accounting_entity_tl gaet ON gae.acc_entity_id = gaet.acc_entity_id
+                AND gaet.lang = #{request.locale,javaType=java.lang.String}
+            WHERE
+                cprh.payment_requisition_header_id = cprl.payment_requisition_header_id
+                AND cprl.payment_requisition_line_id = cprr.payment_requisition_line_id
+                AND cprh.currency_code = #{currencyCode}
+                AND cprr.write_off_id = cwo.write_off_id -- 通过核销记录找到借款单关系
+
+                AND cwo.source_csh_trx_line_id = ctl.transaction_line_id -- 找到该预付款事物对应的核销记录
+
+                AND ctl.transaction_header_id = cth.transaction_header_id
+                AND cth.transaction_type = 'PREPAYMENT' -- 预付款事物
+
+                AND cth.posted_flag = 'Y' -- 已过帐
+
+                AND cth.reversed_flag = 'N' -- 未被反冲且不是反冲事物
+
+                AND cth.returned_flag IN ( 'N', 'Y' ) -- 部分退款或未被退款
+
+                AND ( ( ctl.payee_category = 'EMPLOYEE' AND ctl.payee_id = #{employeeId} ) OR ( cprh.employee_id = #{employeeId} ) )
+                AND ctl.acc_entity_id = gae.acc_entity_id
+            ) v
+        ) m
+    WHERE
+        m.amount > 0
+    <if test="requisitionNumber != null and requisitionNumber != ''" >
+        AND m.requisition_number like concat('%', #{requisitionNumber}, '%')
+    </if>
+    GROUP BY
+        m.acc_entity_id,
+        m.payment_requisition_header_id,
+        m.payment_requisition_line_id,
+        m.line_number,
+        m.company_id,
+        m.cash_flow_item_id,
+        m.requisition_number,
+        m.requisition_date,
+        m.currency_code,
+        m.currency_name,
+        m.payee_category,
+        m.payee_id,
+        m.account_name,
+        m.account_number,
+        m.acc_entity_name,
+        m.cash_flow_item_name
+    </select>
+
+    <select id="queryLinesByHeaderId" resultMap="BaseResultMap">
+        SELECT
+            crrl.register_lns_id,
+            crrl.register_hds_id,
+            crrl.line_number,
+            crrl.payment_requisition_line_id,
+            ( SELECT cprh.requisition_number FROM csh_payment_requisition_hd cprh WHERE cprh.payment_requisition_header_id = ( SELECT cprl.payment_requisition_header_id FROM csh_payment_requisition_ln cprl WHERE cprl.payment_requisition_line_id = crrl.payment_requisition_line_id ) ) AS requisition_number,
+            crrl.company_id,
+            fc.company_code,
+            fct.company_short_name company_name,
+            crrl.acc_entity_id,
+            gae.acc_entity_code,
+            gaet.acc_entity_name,
+            crrl.account_name,
+            crrl.account_number,
+            crrl.amount,
+            crrl.description,
+            crrl.payee_category,
+            ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'PAYMENT_OBJECT' AND cv.VALUE = crrl.payee_category ) payee_category_name,
+            crrl.payee_id,
+            /*( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = crrl.payee_id ) payee_name,*/
+            crrl.cash_flow_item_id,
+            ccit.description cash_flow_item_name,
+            ( SELECT d.repayment_pay_trx_line_id FROM csh_repayment_register_dist d WHERE d.register_lns_id = crrl.register_lns_id ) AS transaction_line_id 
+        FROM
+            csh_repayment_register_ln crrl
+            LEFT JOIN csh_cash_flow_item cci ON crrl.cash_flow_item_id = cci.cash_flow_item_id
+            LEFT JOIN csh_cash_flow_item_tl ccit ON cci.cash_flow_item_id = ccit.cash_flow_item_id 
+            AND ccit.lang = #{request.locale,javaType=java.lang.String}
+            JOIN fnd_company fc ON crrl.company_id = fc.company_id
+            LEFT JOIN fnd_company_tl fct ON fc.company_id = fct.company_id 
+            AND fct.lang = #{request.locale,javaType=java.lang.String}
+            JOIN gld_accounting_entity gae ON crrl.acc_entity_id = gae.acc_entity_id
+            LEFT JOIN gld_accounting_entity_tl gaet ON gae.acc_entity_id = gaet.acc_entity_id 
+            AND gaet.lang = #{request.locale,javaType=java.lang.String} 
+        where
+            crrl.register_hds_id = #{registerHdsId}
+        ORDER BY
+            line_number
+    </select>
+
+</mapper>

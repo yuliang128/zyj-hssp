@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <script><![CDATA[
+            var cmpId = '${/parameter/@component_id}';
+            
+            Aurora.onReady(function() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('input_placeholder_ds').getAt(0);
+                 cmp.initRecord(record);
+                 
+                 var layout_view_id=record.get('layout_view_id');
+                if(layout_view_id){
+                    var layoutCmp=$AE.get(layout_view_id);
+                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+                        $au('colspanfield').show();
+                        $au('rowspanfield').show();
+                    }
+                }
+            });
+            
+            function savePlaceHolder() {
+                var cmp = $AE.get(cmpId);
+                var record = $au('input_placeholder_ds').getAt(0);
+                cmp.setAttr(record);
+              
+                cancelPlaceHolder();
+            }
+            
+            function cancelPlaceHolder() {
+                $au('Box_window').close();
+            }
+            
+            function onUpdateHandler(ds,record,name,newValue,oldValue){
+                if(name=='colspan'){
+                    var layout_view_id=record.get('layout_view_id');
+	                if(layout_view_id){
+	                    var layoutCmp=$AE.get(layout_view_id);
+	                    if( layoutCmp && layoutCmp.getCmpType()=='form'){
+	                        var column=layoutCmp.getColumn();
+	                        if(column){
+	                            if(newValue>column){
+	                                Aurora.showWarningMessage('警告', '最大值为：'+column, function(){
+	                                    newValue=column;
+	                                });
+	                            }
+	                        }
+	                    }
+	                }
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="layout_type_list" autoCreate="true" autoQuery="true" lookupCode="BPM_COMPONENT_TYPE"/>
+            <a:dataSet id="input_placeholder_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="layout_code" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_CODE"/>
+                    <a:field name="layout_desc" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_DESC"/>
+                    <a:field name="prompt" prompt="字段描述"/>
+                    <a:field name="dataset" displayField="datasetId" options="bpm_bindtarget_lists" prompt="绑定dataset" returnField="dataset" valueField="datasetId"/>
+                    <a:field name="id" prompt="PROMPT.LAYOUT_ID"/>
+                    <a:field name="labelwidth" prompt="BPM_TPLT_LAYOUT_BASIC.LABELWIDTH"/>
+                    <a:field name="row" defaultValue="1" prompt="BPM_TPLT_LAYOUT_BASIC.ROW"/>
+                    <a:field name="column" defaultValue="1" prompt="BPM_TPLT_LAYOUT_BASIC.COLUMN"/>
+                    <a:field name="layout_sequence" prompt="组件序号" readOnly="true"/>
+                    <a:field name="layout_type_desc" displayfield="code_value_name" options="layout_type_list" prompt="BPM_TPLT_LAYOUT_BASIC.LAYOUT_TYPE" readOnly="true" returnField="layout_type" valueField="code_value"/>
+                    <a:field name="layout_type" readOnly="true"/>
+                    <a:field name="view_parent_layout_id" prompt="父级layout" readOnly="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdateHandler"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="PlaceHolder">
+                <a:comboBox name="layout_type_desc" bindTarget="input_placeholder_ds"/>
+                <a:textField name="id" bindTarget="input_placeholder_ds"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="savePlaceHolder" skin="green" text="确定"/>
+                <a:button click="cancelPlaceHolder" skin="red" text="取消"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+</a:screen>

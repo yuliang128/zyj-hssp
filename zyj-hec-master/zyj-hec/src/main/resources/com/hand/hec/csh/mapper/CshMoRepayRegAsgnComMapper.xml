@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoRepayRegAsgnComMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoRepayRegAsgnCom">
+        <result column="ASSIGN_ID" property="assignId" jdbcType="DECIMAL"/>
+        <result column="MO_REPAYMENT_REG_TYPE_ID" property="moRepaymentRegTypeId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR"/>
+        <result column="COMPANY_CODE" property="companyCode" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="select" resultMap="BaseResultMap">
+        SELECT
+            t1.assign_id,
+            t1.mo_repayment_reg_type_id,
+            t1.company_id,
+            fc.company_code,
+            fct.company_short_name AS company_name,
+            t1.enabled_flag
+        FROM
+            csh_mo_repay_reg_asgn_com t1,
+            fnd_company fc
+            LEFT JOIN fnd_company_tl fct ON ( fc.company_id = fct.company_id AND fct.lang = #{request.locale,javaType=java.lang.String} )
+        WHERE
+            fc.company_id = t1.company_id
+            AND mo_repayment_reg_type_id = #{moRepaymentRegTypeId}
+        ORDER BY
+            company_code
+    </select>
+
+    <select id="queryUnallocatedCompanies" resultMap="BaseResultMap">
+        SELECT
+            cv.company_id companyId,
+            cv.company_code companyCode,
+            ct.company_short_name companyName
+        FROM
+            fnd_company cv
+            LEFT JOIN fnd_company_tl ct ON cv.company_id = ct.company_id
+            AND ct.lang = #{request.locale,javaType=java.lang.String}
+        WHERE
+            ( cv.end_date_active IS NULL OR CURRENT_TIME BETWEEN cv.start_date_active AND cv.end_date_active )
+            AND cv.mag_org_id = #{magOrgId,javaType = java.lang.Long}
+            AND NOT EXISTS ( SELECT 1 FROM CSH_MO_REPAY_REG_ASGN_COM rac WHERE rac.mo_repayment_reg_type_id = #{dto.moRepaymentRegTypeId} AND rac.company_id = cv.company_id )
+    </select>
+
+</mapper>

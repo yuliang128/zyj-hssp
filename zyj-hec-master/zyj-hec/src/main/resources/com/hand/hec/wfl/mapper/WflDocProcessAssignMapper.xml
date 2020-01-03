@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.wfl.mapper.WflDocProcessAssignMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.wfl.dto.WflDocProcessAssign">
+        <result column="assign_id" property="assignId" jdbcType="DECIMAL"/>
+        <result column="priority" property="priority" jdbcType="DECIMAL"/>
+        <result column="doc_category" property="docCategory" jdbcType="VARCHAR"/>
+        <result column="doc_type_id" property="docTypeId" jdbcType="DECIMAL"/>
+        <result column="process_id" property="processId" jdbcType="DECIMAL"/>
+        <result column="start_date" property="startDate" jdbcType="DATE"/>
+        <result column="end_date" property="endDate" jdbcType="DATE"/>
+    </resultMap>
+    <select id="queryAssignByDocInfo" resultMap="BaseResultMap">
+        select * from wfl_doc_process_assign a
+        <where>
+            a.doc_category = #{docCategory}
+            and (a.start_date is NULL OR a.start_date &lt;= CURRENT_DATE)
+            and (a.end_date is NULL OR a.end_date >= CURRENT_DATE )
+            <if test="docTypeId != null">
+                and (a.doc_type_id is null or a.doc_type_id = #{docTypeId})
+            </if>
+        </where>
+        order by priority asc
+    </select>
+    <select id="queryWflDocProcessAssign" resultMap="BaseResultMap"
+            parameterType="com.hand.hec.wfl.dto.WflDocProcessAssign">
+        select *
+        from
+        (select
+        wdpa.* ,
+        ( select sc.meaning
+        from sys_code_value_b scv,sys_code_b sc
+        where scv.code_id = sc.code_id
+        and sc.code = 'FND.DOC_CATEGORY'
+        and c.code_value = wdpa.doc_category) doc_category_name,
+        (select wp.process_name
+        from wfl_process_b wp
+        where wp.process_id =wdpa.process_id
+        and wp.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) process_name
+
+        from wfl_doc_process_assign wdpa
+        ) f
+        <where>
+            <if test="docCategoryName!=null">
+                AND f.doc_category_name LIKE concat('%', concat(#{docCategoryName,jdbcType=VARCHAR}, '%'))
+            </if>
+            <if test="processName!=null">
+                AND f.process_name LIKE concat('%', concat(#{processName,jdbcType=VARCHAR}, '%'))
+            </if>
+        </where>
+    </select>
+</mapper>

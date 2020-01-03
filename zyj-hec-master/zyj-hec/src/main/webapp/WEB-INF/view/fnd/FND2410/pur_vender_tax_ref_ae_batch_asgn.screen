@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-1 下午12:38:12  
+    $Revision: 1.0  
+    $Purpose: 核算主体-批量分配(税务信息)
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="ND2410_pur_vender_tax_ref_ae_batch_url"
+                url="$[/request/@context_path]/pur/vender-tax-ref-ae/batch-assign/submit"/>
+        <script><![CDATA[
+        function FND2410_closeAsgnBatchCreateWindow() {
+            $au('FND2410_pur_vender_tax_ref_ae_batch_window').close();
+        }
+
+        function FND2410_assignAccEntity() {
+            var datas = $au('FND2410_batch_asgn_acc_entity_ds').getJsonData(true);
+            if (datas.length === 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                return;
+            }
+            for (var i = 0; i < datas.length; i++) {
+                datas[i]['taxId'] = '$[/parameter/@taxId]';
+                datas[i]['enabledFlag'] = 'Y';
+            }
+
+            Aurora.request({
+                lockMessage: '$[l:hap_waiting]',
+                url: $au('ND2410_pur_vender_tax_ref_ae_batch_url').getUrl(),
+                para: datas,
+                success: FND2410_closeAssignPage,
+                scope: this
+            });
+        }
+
+        function FND2410_closeAssignPage(res) {
+            $au('FND2410_pur_vender_tax_ref_ae_batch_window').close();
+            $au('FND2410_pur_vender_tax_ref_ae_ds').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND2410_batch_asgn_acc_entity_ds" autoPageSize="true" autoQuery="true"
+                       model="/pur/vender-tax-ref-ae"
+                       queryUrl="$[/request/@context_path]/pur/vender-tax-ref-ae/query/$[/parameter/@venderId]/$[/parameter/@taxId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name_display"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="FND2410_batch_asgn_acc_entity_form" column="2" title="pur_system_vender.info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="FND2410_assignAccEntity" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="FND2410_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="venderCode" bindTarget="FND2410_pur_system_vender_result_ds"
+                             prompt="pursystemvender.vendercode" readOnly="true"/>
+                <a:textField name="description" bindTarget="FND2410_pur_system_vender_result_ds"
+                             prompt="pur_system_vender.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="FND2410_batch_asgn_acc_entity_ds" marginHeight="195" navBar="true" showRowNumber="false"
+                    width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="200"/>
+                    <a:column name="accEntityName" align="left" width="500"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

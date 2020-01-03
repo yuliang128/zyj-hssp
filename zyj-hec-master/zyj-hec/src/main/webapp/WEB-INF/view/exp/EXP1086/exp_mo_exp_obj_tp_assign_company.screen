@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-4-13 下午05:24:32  
+    $Revision: 1.0  
+    $Purpose: 费用对象分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+
+
+        function EXP1086_AssignComGridCellClickFun(grid, row, name, record) {
+            var magOrgId = '$[/parameter/@magOrgId]';
+            if (name == 'companyCode') {
+                if (!magOrgId) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:fnd_company.company_org_code]', null, 250, 100);
+                    return;
+                } else {
+                    record.getMeta().getField('companyCode').setLovPara('magOrgId', magOrgId);
+                    record.getMeta().getField('companyCode').setLovPara('moExpObjTypeId', '$[/parameter/@moExpObjTypeId]');
+                }
+            }
+        }
+
+        function EXP1086_batchAssignCom() {
+            new Aurora.Window({
+                id: 'EXP1086_mo_req_type_batch_asgn_com_window',
+                url: $au('EXP1086_mo_exp_obj_tp_batch_assign_company_link').getUrl() + '?moExpObjTypeId=' + '$[/parameter/@moExpObjTypeId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                title: '$[l:exp_mo_req_type.batch_assign_company]',
+                width: 1020,
+                side: 'right'
+            }).on('close', EXP1086_EXP1086_moExpObjectTypeAsgnComQuery);
+        }
+
+        function EXP1086_EXP1086_moExpObjectTypeAsgnComQuery() {
+            $au('EXP1086_moExpObjectTypeAsgnComDs').query();
+        }
+
+        function EXP1086_closeAsgnComCreateWindow() {
+            $au('EXP1086_mo_exp_obj_tp_asgn_com_batch_window').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1086_asgnComMoExpObjectTypeDs" autoCreate="true" autoQuery="true"
+                       baseUrl="/exp/mo-expense-object-type"
+                       queryUrl="$[/request/@context_path]/exp/mo-expense-object-type/query?moExpObjTypeId=$[/parameter/@moExpObjTypeId]">
+                <a:fields>
+                    <a:field name="moExpObjTypeCode" prompt="exp_mo_expense_object_type.mo_exp_obj_type_code"/>
+                    <a:field name="description" prompt="exp_mo_expense_object_type.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1086_moExpObjectTypeAsgnComDs" autoQuery="true"
+                       baseUrl="/exp/mo-exp-obj-tp-asgn-com"
+                       queryUrl="$[/request/@context_path]/exp/mo-exp-obj-tp-asgn-com/query?moExpObjTypeId=$[/parameter/@moExpObjTypeId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="moExpObjTypeId" defaultValue="$[/parameter/@moExpObjTypeId]"/>
+                    <a:field name="companyCode" lovCode="EXP_OBJECT_COMPANY_LOV" prompt="fnd_company.company_code"
+                             required="true">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="fnd_company.company_short_name"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y"
+                             prompt="exp_mo_exp_obj_tp_asgn_com.enabled_flag"
+                             uncheckedValue="N"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1086_moExpObjTpAssignCompanyForm" column="2" labelWidth="120"
+                    title="exp_mo_exp_obj_tp_asgn_com.form" marginWidth="80">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1086_moExpObjAsgnComGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1086_moExpObjAsgnComGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP1086_moExpObjAsgnComGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP1086_batchAssignCom" text="HEC_BATCH_ASSIGN" width="80"/>
+                    <a:toolbarButton click="EXP1086_closeAsgnComCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpObjTypeCode" bindTarget="EXP1086_asgnComMoExpObjectTypeDs"/>
+                <a:textField name="description" bindTarget="EXP1086_asgnComMoExpObjectTypeDs"/>
+            </a:form>
+            <a:grid id="EXP1086_moExpObjAsgnComGrid"
+                    bindTarget="EXP1086_moExpObjectTypeAsgnComDs" marginHeight="195" Width="1010" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editor="EXP1086_Lov" width="80"/>
+                    <a:column name="companyName" width="200"/>
+                    <a:column name="enabledFlag" editor="EXP1086_comAssignCheckBox"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="EXP1086_comAssignCheckBox"/>
+                    <a:lov id="EXP1086_Lov"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP1086_AssignComGridCellClickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

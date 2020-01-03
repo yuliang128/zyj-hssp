@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscWorkflowMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscWorkflow">
+        <result column="WORKFLOW_ID" property="workflowId" jdbcType="DECIMAL" />
+        <result column="WORKFLOW_CODE" property="workflowCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="DOC_CATEGORY" property="docCategory" jdbcType="VARCHAR" />
+        <result column="PAGE_ID" property="pageId" jdbcType="DECIMAL" />
+        <result column="FINISH_PROCEDURE_ID" property="finishProcedureId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="FINISH_PROCEDURE" property="finishProcedure" jdbcType="VARCHAR"/>
+        <result column="DOC_CATEGORY_NAME" property="docCategoryName" jdbcType="VARCHAR"/>
+        <result column="PAGE_TITLE" property="pageTitle" jdbcType="VARCHAR"/>
+        <result column="PAGE" property="page" jdbcType="VARCHAR"/>
+    </resultMap>
+    
+    <select id="querySscWorkflow" resultMap="BaseResultMap">
+    SELECT
+	t1.*
+FROM
+	(
+		SELECT
+			w.workflow_id,
+			w.workflow_code,
+			wt.DESCRIPTION,
+			w.doc_category,
+			(
+				SELECT
+					v1.DESCRIPTION
+				FROM
+					sys_code_b sc,
+					sys_code_value_b v,
+					sys_code_value_tl v1
+				WHERE
+					sc. CODE = 'WFL_WORKFLOW_CATEGORY'
+				AND sc.code_id = v.code_id
+				AND v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+				AND v1.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+				AND v.`VALUE` = w.doc_category
+			) AS doc_category_name,
+			page_id,
+			(
+				SELECT
+					ss.SERVICE_NAME
+				FROM
+					wfl_workflow_page ss
+				WHERE
+					ss.record_id = w.page_id
+			) page,
+			(
+				SELECT
+					ss.SERVICE_DESCRIPTION
+				FROM
+					wfl_workflow_page_tl ss
+				WHERE
+					ss.record_id = w.page_id
+				AND ss.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) page_title,
+			w.finish_procedure_id,
+			(
+				SELECT
+					pt.DESCRIPTION
+				FROM
+					wfl_workflow_procedure_base_tl pt
+				WHERE
+					pt.PROC_ID = w.finish_procedure_id
+				AND pt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+			) finish_procedure,
+			enabled_flag
+		FROM
+			ssc_workflow w,
+			ssc_workflow_tl wt
+where w.WORKFLOW_ID=wt.WORKFLOW_ID
+and wt.LANG=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+	) t1
+        where  1=1
+        <if test="workflowCode!=null">
+            and t1.workflow_Code like concat('%',#{workflowCode},'%')
+        </if>
+        <if test="description!=null">
+            AND t1.description like concat('%',#{description},'%')
+        </if>
+        <if test="docCategory!=null">
+            AND t1.doc_Category like concat('%',#{docCategory},'%')
+        </if>
+ORDER BY
+	T1.workflow_id DESC
+    </select>
+
+
+</mapper>

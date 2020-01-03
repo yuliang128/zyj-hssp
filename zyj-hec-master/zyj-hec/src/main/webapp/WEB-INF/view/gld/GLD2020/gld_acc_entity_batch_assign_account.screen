@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-17 下午4:24:07
+    $Revision: 1.0  
+    $Purpose: 核算主体定义-明细-分配科目-批量分配科目
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+                function GLD2020_closeAccCreateWindow() {
+                    $au('GLD2020_batchAsgnAccount_window').close();
+                    $au('GLD2020_gld_acc_entity_account_ds').query();
+                }
+                
+                function GLD2020_assignAccount(ds) {
+                    ds.query();
+                }
+                
+                function GLD2020_AccAssignFun() {
+
+                    var records = $au('GLD2020_account_query_ds').getSelected();
+                    if(records.length == 0){
+                        Aurora.showInfoMessage('$[l:prompt]', '$[l:hap.tip.selectrows]', null, 250, 100);
+                        return;
+                    }
+                    for(var i = 0;i<records.length;i++){
+                        debugger;
+                        var record = $au('GLD2020_account_result_ds').create();
+                        record.set('accountId',records[i].get('accountId'));
+                        record.set('accountCode',records[i].get('accountCode'));
+                        record.set('description',records[i].get('description'));
+                        record.set('enabledFlag',records[i].get('enabledFlag'));
+                        record.set('setOfBooksId',$[/parameter/@setOfBooksId]);
+                        record.set('accEntityId',$[/parameter/@accEntityId]);
+                    }
+                    if($au('GLD2020_account_result_ds').validate()){
+                        //提交到controller，保存逻辑需要调整（主键ID）
+                        $au('GLD2020_account_result_ds').submit();
+                    }
+                    /*var accountRecordsData = $au('GLD2020_account_result_ds').getJsonData(true);
+                    if (accountRecordsData.length == 0) {
+                        Aurora.showInfoMessage('$[l:prompt]', '$[l:hap.tip.selectrows]', null, 250, 100);
+                        return;
+                    }
+
+                    for (var i = 0;i < accountRecordsData.length;i++) {
+                      //  var param = accountRecordsData[i];
+                        accountRecordsData[i]['detail2'] = [{
+                            accEntityId: $[/parameter/@accEntityId],
+                            setOfBooksId: $[/parameter/@setOfBooksId]
+                        }];
+
+                    }
+                    Aurora.request({
+                        lockMessage: '$[l:hap_waiting]',
+                        url: $au('GLD2020_entities_asgn_accunt_link').getUrl(),
+                        para: accountRecordsData,
+                        success: GLD2020_closeAccCreateWindow,
+                        scope: this
+                    });*/
+                }
+            ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2020_account_query_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" queryUrl="$[/request/@context_path]/gld/acc-entity-ref-account/queryActNotAsgnAccE?accEntityId=$[/parameter/@accEntityId]&amp;setOfBooksId=$[/parameter/@setOfBooksId]" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="accountId"/>
+                    <a:field name="accountCode" prompt="gld_account.account_code"/>
+                    <a:field name="description" prompt="gld_account.account_description"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="gld_acc_entity_ref_account.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="GLD2020_account_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" fetchAll="false" submitUrl="$[/request/@context_path]/gld/acc-entity-ref-account/submit" selectable="true">
+                <a:fields>
+                    <a:field name="refId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="accountId"/>
+                    <a:field name="accountCode" prompt="gld_account.account_code"/>
+                    <a:field name="description" prompt="gld_account.account_description"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="gld_acc_entity_ref_account.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="GLD2020_assignAccount"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="gld.batch_assign_account">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="GLD2020_AccAssignFun" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="GLD2020_closeAccCreateWindow" text="hap.back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="accEntityCode" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_code" readOnly="true"/>
+                <a:textField name="accEntityName" bindTarget="GLD2020_accounting_entities_result_ds" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="GLD2020_gld_assign_grid" bindTarget="GLD2020_account_query_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" width="80"/>
+                    <a:column name="description" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

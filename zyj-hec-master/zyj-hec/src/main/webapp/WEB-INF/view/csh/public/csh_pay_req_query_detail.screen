@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="csh_pay_req_detail_history_link_4"
+                url="$[/request/@context_path]/csh/public/csh_pay_req_detail_history.screen"/>
+        <a:link id="check_uploadFile_link_5" url="$[/request/@context_path]/check_uploadFile.screen"/>
+        <a:link id="exp_bank_assign_link_1"
+                url="$[/request/@context_path]/exp/EXP1050/exp_bank_assign_pmt_schedule_readonly.screen"/>
+        <script><![CDATA[
+
+        function printFunction() {
+            var reportName = $au('pay_req_update_header_ds').getAt(0).get('reportName');
+            var reportParamName = $au('pay_req_update_header_ds').getAt(0).get('reportParamName');
+
+            if (!reportName) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:sys_report_not_assign]');
+                return;
+            }
+
+            if (!reportParamName) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:sys_report_param_not_defined]');
+                return;
+            }
+
+            window.open('$[/request/@context_path]/reports?__report=' + reportName + '&' + reportParamName + '=' + $au('pay_req_update_header_ds').getAt(0).get('paymentRequisitionHeaderId') + '&__format=pdf');
+
+        }
+
+        function trackHistory() {
+            var head = '$[/parameter/@paymentRequisitionHeaderId]';
+            var urlPath = /*$[/request/@context_path]/modules/csh/csh_pay_req_detail_history.screen*/
+                $au('csh_pay_req_detail_history_link_4').getUrl() + '?cshPayHeaderId=' + head;
+            new Aurora.Window({
+                id: 'pay_req_detail_history_screen',
+                url: urlPath,
+                title: '$[l:prompt.history]',
+                fullScreen: false,
+                width: 1020,
+                side: 'right'
+            });
+        }
+
+        function getValueByKey(keyName, keyValue, dataSet, valueName) {
+            var records = dataSet.getAll();
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                if (record.get(keyName) === keyValue) {
+                    return record.get(valueName);
+                }
+            }
+            return null;
+        }
+
+        function uploadFile() {
+            var url = /*$[/request/@context_path]/check_uploadFile.screen*/
+                $au('check_uploadFile_link_5').getUrl() + '?table_name=CSH_PAYMENT_REQUISITION_HD&header_id=$[/parameter/@payment_requisition_header_id]';
+            new Aurora.Window({
+                url: url,
+                title: '$[l:prompt.view_attachment]',
+                id: 'exp_report_pmtplan_schedules_screen',
+                id: 'check_upload_file_screen',
+                width: 600,
+                height: 400
+            });
+        }
+
+        function bankAssign(value, record, name) {
+            var lineIndex = $au('pay_req_update_line_ds').indexOf(record);
+            return '<a href="javascript:bankAssignInfo(' + lineIndex + ')">$[l:csh_payment.bank_account_code]</a>';
+        }
+
+        function bankAssignInfo(lineIndex) {
+            new Aurora.Window({
+                id: 'exp_bank_assign_window',
+                url: $au('exp_bank_assign_link_1').getUrl() + '?lineIndex=' + lineIndex + '&dsName=pay_req_update_line_ds',
+                title: '$[l:csh_payment.bank_account_code]',
+                fullScreen: true
+            });
+        }
+
+        function detailBackFun() {
+            if (Aurora.CmpManager.get('csh_payment_doc_detail_window')) {
+                $au('csh_payment_doc_detail_window').close();
+            } else if (Aurora.CmpManager.get('csh_pay_req_query_detail_window')) {
+                $au('csh_pay_req_query_detail_window').close();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="detail_grid_cust_ds">
+            </a:dataSet>
+            <a:dataSet id="trans_classes_ds">
+            </a:dataSet>
+            <a:dataSet id="payment_object_list_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="doc_category_list_ds" lookupCode="PAYMENT_REQ_DOC_CATEGORY"/>
+            <a:dataSet id="pay_req_update_header_ds" autoCreate="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryDetail?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]">
+                <a:fields>
+                    <a:field name="paymentRequisitionHeaderId" readOnly="true"/>
+                    <a:field name="operationUnitId" readOnly="true"/>
+                    <a:field name="contractHeaderId" readOnly="true"/>
+                    <a:field name="pPayeeId" readOnly="true"/>
+                    <a:field name="pReqId" readOnly="true"/>
+                    <a:field name="pContFlag" readOnly="true"/>
+                    <a:field name="employeeIdDisplay" prompt="exp_requisition_header.employee_id" readOnly="true"/>
+                    <a:field name="employeeId" readOnly="true"/>
+                    <a:field name="positionIdDisplay" prompt="csh_payment_requisition_hd.position_id" readOnly="true"/>
+                    <a:field name="positionId" readOnly="true"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date"
+                             readOnly="true"/>
+                    <a:field name="requisitionNumber" prompt="csh_doc_payment_company.document_id" readOnly="true"/>
+                    <a:field name="payeeCategoryDisplay" prompt="exp_report_header.payee_category" readOnly="true"/>
+                    <a:field name="payeeCategory" readOnly="true"/>
+                    <a:field name="pPayeeName" prompt="exp_report_header.payee_id" readOnly="true"/>
+                    <a:field name="currencyCodeDisplay" prompt="gld_exchange_rates.from_currency" readOnly="true"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.amount" readOnly="true"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description" readOnly="true"/>
+                    <a:field name="paymentMethodIdDisplay" prompt="csh_payment_requisition_hd.payment_method_name"
+                             readOnly="true"/>
+                    <a:field name="paymentMethodId" readOnly="true"/>
+                    <a:field name="statusName" prompt="pur_purchase_order.document_status" readOnly="true"/>
+                    <a:field name="cshTypeIdDisplay" prompt="csh_payment_requisition_hd.payment_req_type_name"
+                             readOnly="true"/>
+                    <a:field name="paymentRequisitionAttachId" prompt="exp_report_header.attach_id" readOnly="true"/>
+                    <a:field name="paymentRequisitionCreateBy" prompt="exp_report_header.create_by" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="pay_req_update_line_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-requisition-ln/queryByHeaderId?paymentRequisitionHeaderId=$[/parameter/@paymentRequisitionHeaderId]">
+                <a:fields>
+                    <a:field name="cshTransactionClassCode"/>
+                    <a:field name="cshTransactionClassName" displayField="description" options="trans_classes_ds"
+                             prompt="csh_payment_requisition_ln.cls_des" returnField="csh_transaction_class_code"
+                             valueField="csh_transaction_class_code"/>
+                    <a:field name="paymentRequisitionLineType"/>
+                    <a:field name="payRequisitionLineTypeDesc"
+                             prompt="csh_payment_requisition_ln.payment_requisition_line_type"/>
+                    <a:field name="refDocumentIdDisplay" prompt="csh_payment_requisition_ln.ref_document_id"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryDisplay" displayField="meaning" options="payment_object_list_ds"
+                             prompt="exp_report_header.payee_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeName" prompt="exp_report_header.payee_id"/>
+                    <a:field name="contractNumber" prompt="con_contract_header.contract_number"/>
+                    <a:field name="lineNumber" prompt="con_payment_schedule.payment_schedule_line_number"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description"/>
+                    <a:field name="needPaymentAmount" prompt="csh_payment_requisition_ln.need_payment_amount"/>
+                    <a:field name="requisitedAmount" prompt="csh_payment_requisition_ln.requisited_amount"/>
+                    <a:field name="requisitedUnpaymentAmount"
+                             prompt="csh_payment_requisition_ln.requisited_unpayment_amount"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_ln.current_amount"/>
+                    <a:field name="paymentScheduleLineId"/>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="paymentRequisitionLineId"/>
+                    <a:field name="contractHeaderId"/>
+                    <a:field name="refDocumentId"/>
+                    <a:field name="contFlag"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="pay_req_update_form" column="1" title="csh_payment_requisition_hd.detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="trackHistory" text="prompt.history" width="80"/>
+                    <a:toolbarButton click="printFunction" text="prompt.print" width="80"/>
+                    <a:toolbarButton id="detailUploadBtn" text="prompt.view_attachment" width="80"/>
+                    <a:toolbarButton click="detailBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:box column="4" style="width:100%">
+                    <a:textField name="requisitionNumber" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="cshTypeIdDisplay" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="requisitionDate" bindTarget="pay_req_update_header_ds"/>
+                    <a:numberField name="amount" allowFormat="true" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="employeeIdDisplay" id="employee_id_cmp" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="positionIdDisplay" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="paymentRequisitionAttachId" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="currencyCodeDisplay" id="currency_code_cmp"
+                                 bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="paymentRequisitionCreateBy" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="paymentMethodIdDisplay" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="payeeCategoryDisplay" bindTarget="pay_req_update_header_ds"/>
+                    <a:textField name="pPayeeName" bindTarget="pay_req_update_header_ds"/>
+                </a:box>
+                <a:box style="width:100%">
+                    <a:textArea name="description" id="pay_req_create_ta" bindtarget="pay_req_update_header_ds"
+                                calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" colspan="4" width="800"/>
+                </a:box>
+            </a:form>
+            <a:grid id="grid_1" autoAdjustHeight="true" bindTarget="pay_req_update_line_ds" marginHeight="335"
+                    marginWidth="0" minHeight="100" navBar="true">
+                <a:columns>
+                    <a:column name="cshTransactionClassName" align="left" sortable="true" width="120"/>
+                    <a:column name="payRequisitionLineTypeDesc" align="left" sortable="true" width="120"/>
+                    <a:column name="refDocumentIdDisplay" align="left" sortable="true" width="120"/>
+                    <a:column name="payeeCategoryDisplay" align="left" sortable="true" width="120"/>
+                    <a:column name="payeeName" align="left" sortable="true" width="120"/>
+                    <a:column name="paymentMethodName" align="left"
+                              prompt="csh_payment_requisition_hd.payment_method_name" sortable="true" width="120"/>
+                    <a:column name="accountNumber" align="left" prompt="csh_bank_account.bank_account_num"
+                              sortable="true" width="120"/>
+                    <a:column name="accountName" align="left" prompt="exp_employee_account.bank_account_name"
+                              sortable="true" width="120"/>
+                    <a:column name="contractNumber" align="left" sortable="true" width="120"/>
+                    <a:column name="lineNumber" align="left" sortable="true" width="120"/>
+                    <a:column name="description" align="left" sortable="true" width="150"/>
+                    <a:column name="needPaymentAmount" align="right" renderer="Aurora.formatMoney" sortable="true"
+                              width="100"/>
+                    <a:column name="requisitedAmount" align="right" renderer="Aurora.formatMoney" sortable="true"
+                              width="100"/>
+                    <a:column name="requisitedUnpaymentAmount" align="right" renderer="Aurora.formatMoney"
+                              sortable="true" width="100"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" sortable="true" width="100"/>
+                    <a:column name="bankId" align="center" prompt="csh_payment.bank_account_code" renderer="bankAssign"
+                              width="80"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

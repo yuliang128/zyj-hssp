@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-24 下午15:45:19  
+    $Revision: 1.0  
+    $Purpose: 现金流量表定义-流量项缺省科目
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH1100_csh_account_batch_link"
+                url="$[/request/@context_path]/csh/CSH1100/csh_cash_account_batch.screen"/>
+        <div/>
+        <script><![CDATA[
+
+        function CSH1100_closeDefaultAccountCreateWindow() {
+            $au('CSH1100_csh_cash_default_window').close();
+        }
+
+        /**
+         * @return {string}
+         */
+        function CSH1100_accountCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'CSH1100_accountCode_lov';
+            }
+            return '';
+        }
+
+        function CSH1100_batchadd() {
+            new Aurora.Window({
+                id: 'CSH1100_csh_account_batch_screen',
+                url: $au('CSH1100_csh_account_batch_link').getUrl() + '?cashFlowItemId=' + '$[/parameter/@cashFlowItemId]' + '&setOfBooksId=' + '$[/parameter/@setOfBooksId]',
+                title: '$[l:prompt.batch_disp]',
+                fullScreen: false,
+                width: 1020,
+                side: 'right'
+            });
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1100_csh_cash_flow_items_default_query_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/cash-flow-item/queryCashItem?cashFlowItemId=$[/parameter/@cashFlowItemId]">
+                <a:fields>
+                    <a:field name="cashFlowLineNumber" prompt="csh_cash_flow_item.cash_flow_line_number"
+                             readonly="true"/>
+                    <a:field name="description" prompt="csh_cash_flow_item.description" readonly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH1100_csh_cash_flow_items_default_result_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/csh/default-cash-flow-item" queryDataSet="CSH1100_csh_cash_flow_items_default_query_ds"
+                       queryUrl="$[/request/@context_path]/csh/default-cash-flow-item/queryByItemId?cashFlowItemId=$[/parameter/@cashFlowItemId]&amp;setOfBooksId=$[/parameter/@setOfBooksId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accountCode" autoComplete="true" autoCompleteField="accountCode"
+                             lovCode="LOV_CASH_FLOW_ASSIGN_DEF_ACCOUNT?setOfBooksId=$[/parameter/@setOfBooksId]"
+                             required="true" prompt="gld_account.account_code" title="gld_account.account_code">
+                        <a:mapping>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="description" to="description"/>
+                            <a:map from="accountId" to="accountId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="description" prompt="gld_account.account_description"/>
+                    <a:field name="cashFlowItemId" defaultValue="$[/parameter/@cashFlowItemId]"/>
+                    <a:field name="setOfBooksId" defaultValue="$[/parameter/@setOfBooksId]"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="CSH1100_csh_cash_flow_item_default_account_form" column="2"
+                    title="csh_cash_flow_item.default_cash_account" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1100_csh_cash_flow_item_default_account_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1100_csh_cash_flow_item_default_account_grid" type="save" width="80"/>
+                    <a:gridButton bind="CSH1100_csh_cash_flow_item_default_account_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="CSH1100_batchadd" text="fnd.batch_add" width="80"/>
+                    <a:toolbarButton click="CSH1100_closeDefaultAccountCreateWindow" text="prompt.return" width="80"/>
+                </a:formToolbar>
+                <a:textField name="cashFlowLineNumber" bindTarget="CSH1100_csh_cash_flow_items_default_query_ds"
+                             readOnly="true" width="120"/>
+                <a:textField name="description" bindTarget="CSH1100_csh_cash_flow_items_default_query_ds"
+                             readOnly="true" width="120"/>
+            </a:form>
+            <a:grid id="CSH1100_csh_cash_flow_item_default_account_grid"
+                    bindTarget="CSH1100_csh_cash_flow_items_default_result_ds" marginHeight="195" navBar="true"
+                    width="1010">
+                <a:columns>
+                    <a:column name="accountCode" align="center" editorFunction="CSH1100_accountCodeEdit" width="120"/>
+                    <a:column name="description" width="200"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1100_accountCode_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

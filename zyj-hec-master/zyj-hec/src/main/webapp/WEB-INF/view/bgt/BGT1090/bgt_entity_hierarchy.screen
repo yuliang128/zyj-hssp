@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: chenhuiqi $
+    $Date: 2017/04/20 $
+    $Revision: 1.1 $
+    $Purpose: 预算实体定义-分配明细实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1090_entity_hierarchy_batch_link" url="$[/request/@context_path]/bgt/BGT1090/bgt_entity_hierarchy_batch.screen"/>
+        <script><![CDATA[
+            function BGT1090_ReturnEntities() {
+                $au('bgt1090_entity_hierarchy_window').close();
+            }
+            
+            function BGT1090_lov_func(record, name) {
+                if (record.isNew) {
+                    return 'BGT1090_hierarchy_lov';
+                }
+                return '';
+            }
+            
+            function BGT1090_BatchAllEntity() {
+                var bgtParentEntityId = '$[/parameter/@parentEntityId]';
+                var BgtOrgId = '$[/parameter/@bgtOrgId]';
+                new Aurora.Window({
+                    id: 'bgt1090_entity_hierarchy_batch_window',
+                    url: $au('BGT1090_entity_hierarchy_batch_link').getUrl() + '?parentEntityId=' + bgtParentEntityId + '&bgtOrgId=' + BgtOrgId,
+                    title: '$[l:bgt_entity_batch_assign]',
+                    side: 'right',
+                    width: 1020
+                }).on('close', function() {
+                    $au('BGT1090_entity_hierarchy_ds').query();
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1090_bgt_entity_org_ds" autoQuery="true" baseUrl="/bgt/organization" queryUrl="$[/request/@context_path]/bgt/organization/query?bgtOrgId=$[/parameter/@bgtOrgId]">
+                <a:fields>
+                    <a:field name="sourceTypeCode"></a:field>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BGT1090_entity_hierarchy_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/entity-hierarchy" queryUrl="$[/request/@context_path]/bgt/entity-hierarchy/query?parentEntityId=$[/parameter/@parentEntityId]" selectable="false">
+                <a:fields>
+                    <a:field name="hierarchyId"/>
+                    <a:field name="parentEntityId" defaultValue="$[/parameter/@parentEntityId]"/>
+                    <a:field name="entityId"/>
+                    <a:field name="entityName" prompt="bgt_entities.description" readOnly="true"/>
+                    <a:field name="entityCode" prompt="bgt_entities.entity_code" autoComplete="true" autoCompleteField="entityCode" autoCompleteSize="1" lovHeight="480" lovLabelWidth="100" lovCode="LOV_BGT_ENTITY_DETAIL?bgtOrgId=$[/parameter/@bgtOrgId]" lovWidth="540" required="true" title="exp_org_unit.choice_bgt_entity_display">
+                        <a:mapping>
+                            <a:map from="entityId" to="entityId"/>
+                            <a:map from="entityCode" to="entityCode"/>
+                            <a:map from="description" to="entityName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_entity.entity_type_detail">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton id="BGT1090_hierarchy_add_btn" bind="BGT1090_entity_hierarchy_grid" type="add" width="80"/>
+                    <a:gridButton bind="BGT1090_entity_hierarchy_grid" type="save" width="80"/>
+                    <a:toolbarButton id="BGT1090_hierarchy_batch_btn" click="BGT1090_BatchAllEntity" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="BGT1090_ReturnEntities" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="entityCode" bindTarget="BGT1090_entity_ds" prompt="bgt_entities.entity_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="BGT1090_entity_ds" prompt="bgt_entities.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="BGT1090_entity_hierarchy_grid" bindTarget="BGT1090_entity_hierarchy_ds" marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="entityCode" align="center" editorFunction="BGT1090_lov_func" width="80"/>
+                    <a:column name="entityName" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="BGT1090_hierarchy_checkbox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="BGT1090_hierarchy_lov"/>
+                    <a:checkBox id="BGT1090_hierarchy_checkbox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            function BGT1090_HIERARCHY_INIT() {
+                var bgtSourceRecord = $au('BGT1090_bgt_entity_org_ds').get(0);
+                var bgtSourceType = bgtSourceRecord.get('sourceTypeCode');
+                if (bgtSourceType == 'BGT_AF' || bgtSourceType == 'BGT_MF') {
+                    if (bgtSourceType == 'ACCOUNTING') {
+                        $au('BGT1090_hierarchy_add_btn').disable();
+                        $au('BGT1090_hierarchy_batch_btn').disable();
+                    }
+                }
+            }
+            BGT1090_HIERARCHY_INIT();
+        ]]></script>
+    </a:view>
+</a:screen>

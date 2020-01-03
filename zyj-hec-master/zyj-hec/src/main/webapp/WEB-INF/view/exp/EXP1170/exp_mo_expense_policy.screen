@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2019/02/20 15:05
+    $Revision: 1.0  
+    $Purpose: 管理组织级政策标准定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP1170_exp_mo_expense_policy_asgn_com_link"
+                url="$[/request/@context_path]/exp/EXP1170/exp_mo_exp_policy_asgn_com.screen"/>
+        <a:link id="EXP1170_exp_mo_exp_policy_detail_link"
+                url="$[/request/@context_path]/exp/EXP1170/exp_mo_exp_policy_detail.screen"/>
+        <script><![CDATA[
+
+        function EXP1170_expensePolicyCodeEdit(record) {
+            if (record.isNew) {
+                return 'EXP1170_textField';
+            }
+            return '';
+        }
+
+        function EXP1170_onSubmitExpensePolicy(ds) {
+            ds.query();
+        }
+
+        //校验日期起始不能大于终止
+
+        function dateValidator(record, name, value) {
+            if (name == 'startDateActive' || name == 'endDateActive') {
+                var start_date = record.get('startDateActive');
+                var end_date = record.get('endDateActive');
+                if (typeof(end_date) != 'undefined' && !Ext.isEmpty(end_date)) {
+                    if (!compareDate(start_date, end_date)) {
+                        return '$[l:start_greater_than_end]';
+                    }
+                }
+                return true;
+            }
+        }
+
+        function compareDate(start, end) {
+            if (new Date(start) > new Date(end)) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        //分配明细
+
+        function EXP1170_assignExpPolicyDetailFun(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:EXP1170_openAsgnExpenseDetail(\'' + record.get('expensePolicyId') + '\')">$[l:exp_mo_expense_policy.detail]</>';
+        }
+
+        function EXP1170_openAsgnExpenseDetail(expensePolicyId) {
+            var magOrgId = $au('EXP1170_exp_mo_expense_policy_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'EXP1170_exp_mo_exp_policy_detail_window',
+                url: $au('EXP1170_exp_mo_exp_policy_detail_link').getUrl() + '?expensePolicyId=' + expensePolicyId + '&magOrgId=' + magOrgId,
+                title: '$[l:exp_mo_expense_policy.expense_detail]',
+                fullScreen: true
+            }).on('close', function () {
+                $au('EXP1170_exp_mo_expense_policy_result_ds').query();
+            });
+        }
+
+        //分配公司
+
+        function EXP1170_assignCompanyFun(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:EXP1170_openAsgnCompany(\'' + record.get('expensePolicyId') + '\')">$[l:exp_mo_expense_policy.asgn_company]</>';
+        }
+
+        function EXP1170_openAsgnCompany(expensePolicyId) {
+            var magOrgId = $au('EXP1170_exp_mo_expense_policy_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'EXP1170_exp_mo_expense_policy_asgn_com_window',
+                url: $au('EXP1170_exp_mo_expense_policy_asgn_com_link').getUrl() + '?expensePolicyId=' + expensePolicyId + '&magOrgId=' + magOrgId,
+                title: '$[l:exp_mo_expense_policy.asgn_company]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                $au('EXP1170_exp_mo_expense_policy_result_ds').query();
+            });
+        }
+
+        function EXP1170_add(ds) {
+            var magOrgId = $au('EXP1170_exp_mo_expense_policy_query_ds').getCurrentRecord().get('magOrgId');
+            if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function EXP1170_focus() {
+            $au('EXP1170_magOrgList_ds').query();
+        }
+
+        function EXP1170_update(ds, record, name, value) {
+            if (name == 'magOrgId') {
+                $au('EXP1170_exp_mo_expense_policy_result_ds').query();
+            }
+        }
+
+        function EXP1170_BeforeCreate() {
+            if (Ext.isEmpty($au('EXP1170_exp_mo_expense_policy_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        //add lcy 2017/12/25 11:04:54 保存前校验管理组织
+
+        function EXP1170_beforeSubmit() {
+            if (Ext.isEmpty($au('EXP1170_exp_mo_expense_policy_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1170_magOrgList_ds" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP1170_exp_mo_expense_policy_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/@magOrgCodeName]" displayField="magOrgCodeName"
+                             options="EXP1170_magOrgList_ds" prompt="exp_mo_req_type.mag_org_id" required="true"
+                             returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/@magOrgId]"/>
+                    <a:field name="expensePolicyCode" prompt="exp_mo_expense_policy.expense_policy_code"/>
+                    <a:field name="description" prompt="exp_mo_expense_policy.expense_policy_name"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP1170_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP1170_exp_mo_expense_policy_result_ds" autoQuery="true" pageSize="10"
+                       queryDataSet="EXP1170_exp_mo_expense_policy_query_ds"
+                       queryUrl="$[/request/@context_path]/exp/mo-expense-policy/query" selectable="true"
+                       baseUrl="/exp/mo-expense-policy">
+                <a:fields>
+                    <a:field name="expensePolicyId"/>
+                    <a:field name="expensePolicyCode" required="true"
+                             prompt="exp_mo_expense_policy.expense_policy_code"/>
+                    <a:field name="description" dto="com.hand.hec.exp.dto.ExpMoExpensePolicy" dtoId="expensePolicyId"
+                             required="true" prompt="exp_mo_expense_policy.expense_policy_name"/>
+                    <a:field name="startDateActive" required="true" validator="dateValidator"
+                             prompt="exp_mo_expense_policy.start_date_active"/>
+                    <a:field name="endDateActive" validator="dateValidator"
+                             prompt="exp_mo_expense_policy.end_date_active"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_type.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1170_onSubmitExpensePolicy"/>
+                    <a:event name="add" handler="EXP1170_add"/>
+                    <a:event name="beforecreate" handler="EXP1170_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP1170_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP1170_exp_mo_expense_policy_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP1170_exp_mo_expense_policy_grid" type="save" width="80"/>
+                <a:gridButton bind="EXP1170_exp_mo_expense_policy_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP1170_exp_mo_expense_policy_query_ds"
+                         resultTarget="EXP1170_exp_mo_expense_policy_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:label name="separator"/>
+                    <a:comboBox name="magOrgDisplay" bindTarget="EXP1170_exp_mo_expense_policy_query_ds" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP1170_focus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="expensePolicyCode" bindTarget="EXP1170_exp_mo_expense_policy_query_ds"/>
+                    <a:textField name="description" bindTarget="EXP1170_exp_mo_expense_policy_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP1170_exp_mo_expense_policy_grid" bindTarget="EXP1170_exp_mo_expense_policy_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="expensePolicyCode" align="center" editorFunction="EXP1170_expensePolicyCodeEdit"
+                          width="80"/>
+                <a:column name="description" editor="EXP1170_tledit" width="250"/>
+                <a:column name="startDateActive" align="center" editor="EXP1170_dp" renderer="Aurora.formatDateTime"
+                          width="80"/>
+                <a:column name="endDateActive" align="center" editor="EXP1170_dp" renderer="Aurora.formatDateTime"
+                          width="80"/>
+                <a:column name="expenseDetail" align="center" renderer="EXP1170_assignExpPolicyDetailFun" width="80"/>
+                <a:column name="asgnCompany" align="center" renderer="EXP1170_assignCompanyFun" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="EXP1170_tledit"/>
+                <a:textField id="EXP1170_textField"/>
+                <a:dateTimePicker id="EXP1170_dp"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

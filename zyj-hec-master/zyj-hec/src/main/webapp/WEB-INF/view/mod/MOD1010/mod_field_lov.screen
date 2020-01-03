@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: 周皓
+    $Date: 2019年6月4日15:44:03
+    $Revision: 1.0
+    $Purpose: 工作中心定义
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc"
+          xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <script><![CDATA[
+        function MOD1010_onFieldLovLoadFun(ds) {
+            /**
+             * 如果ds查询完之后，没有数据，则新增一条数据
+             */
+            if (ds.getAll().length == 0) {
+                ds.create();
+            }
+        }
+
+        function MOD1010_fieldLovSave() {
+            $au('MOD1010_fieldLovDs').submit()
+        }
+
+        function MOD1010_fieldLovReturn() {
+            $au('MOD1010_fieldLovWindow').close()
+        }
+
+        function MOD1010_onFieldLovSubmitSuccessFun() {
+            MOD1010_fieldLovReturn();
+        }
+
+        function MOD1010_onFieldLovUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'lovCode') {
+                record.getField('lovFieldName').setLovCode('LOV_BPM_LOV_FIELD?lovCode=' + value)
+                record.set('lovFieldName', '')
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="MOD1010_fieldLovDataTypeDs" queryUrl="$[/request/@context_path]/common/auroraCode/MOD_FIELD_DATA_TYPE" autoQuery="true"/>
+            <a:dataSet id="MOD1010_fieldLovDs" baseUrl="/mod/field-lov"
+                       queryUrl="$[/request/@context_pat h]/mod/field-lov/query?field=$[/parameter/@fieldId]"
+                       selectable="true"
+                       autoQuery="true">
+                <a:fields>
+                    <a:field name="fieldId" defaultValue="$[/parameter/@fieldId]"/>
+                    <a:field name="lovCode" prompt="Lov代码" required="true" lovCode="LOV_BPM_LOV">
+                        <a:mapping>
+                            <a:map from="code" to="lovCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="lovFieldName" prompt="Lov字段" required="true" lovCode="LOV_BPM_LOV_FIELD">
+                        <a:mapping>
+                            <a:map from="gridFieldName" to="lovFieldName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="lovParamName" prompt="Lov参数名称" required="true"/>
+                    <a:field name="lovParamDataTypeName" prompt="Lov参数数据类型" required="true" options="MOD1010_fieldLovDataTypeDs" displayField="meaning" valueField="value" returnField="lovParamDataType"/>
+                    <a:field name="lovParamDataType"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="MOD1010_onFieldLovUpdateFun"/>
+                    <a:event name="load" handler="MOD1010_onFieldLovLoadFun"/>
+                    <a:event name="submitsuccess" handler="MOD1010_onFieldLovSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:fieldSet title="Lov字段" width="600" column="1" labelWidth="150">
+                <a:label name="fieldName" bindTarget="MOD1010_fieldDs" prompt="字段名称"/>
+                <a:lov name="lovCode" bindTarget="MOD1010_fieldLovDs"/>
+                <a:lov name="lovFieldName" bindTarget="MOD1010_fieldLovDs"/>
+                <a:textField name="lovParamName" bindTarget="MOD1010_fieldLovDs"/>
+                <a:comboBox name="lovParamDataTypeName" bindTarget="MOD1010_fieldLovDs"/>
+            </a:fieldSet>
+            <a:hBox>
+                <a:button text="保存" click="MOD1010_fieldLovSave"/>
+                <a:button text="返回" click="MOD1010_fieldLovReturn"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+</a:screen>

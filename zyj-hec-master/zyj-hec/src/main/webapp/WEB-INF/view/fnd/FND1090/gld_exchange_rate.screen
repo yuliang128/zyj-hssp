@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: leiwang12 $
+    $Date: 2017/04/11 08:13:56 $
+    $Revision: 1.0
+    $Purpose: “汇率定义”模块的页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <!--
+    <a:init-procedure>
+    -->
+    <!--取消初始化查询   Y.duan  2017-8-22 17:27:50-->
+    <!-- <a:model-query defaultWhereClause="gc.currency_code =gld_common_pkg.get_company_currency_code($[/session/@company_id])" model="gld.gld_currency" rootPath="gerc"/> -->
+    <!--
+    </a:init-procedure>
+    -->
+    <a:view>
+        <a:link id="FND1090_gld_exchange_rate_detail_link" url="$[/request/@context_path]/fnd/FND1090/gld_exchangerate_detail.screen"/>
+        <script><![CDATA[
+        function FND1090_createRate() {
+            /*var record = $au('FND1090_gld_exchange_rate_ds').getAt(0);
+            console.log(record.get('methodCode'));*/
+           /*$au('FND1090_gld_exchange_rate_ds').post($au('FND1090_gld_exchange_rate_detail_link').getUrl());
+            */
+            if(!$au('FND1090_gld_exchange_rate_ds').validate()){
+                return;
+            }
+            var record = $au('FND1090_gld_exchange_rate_ds').getAt(0);
+            var methodCode = record.get('methodCode');
+            var periodFrom ;
+            var periodTo;
+            var dateFrom;
+            var dateTo ;
+            if (record.get('periodFrom')!='undefined' && record.get('periodFrom')!=null && record.get('periodFrom')!='') {
+                var periodFrom = record.get('periodFrom');
+            }
+            if (record.get('periodTo')!='undefined' && record.get('periodTo')!=null && record.get('periodTo')!='') {
+                var periodTo = record.get('periodTo');
+            }
+            if (record.get('dateFrom')!='undefined' && record.get('dateFrom')!=null && record.get('dateFrom')!='') {
+                var dateFrom = record.get('dateFrom');
+            }
+            if (record.get('dateTo')!='undefined' && record.get('dateTo')!=null && record.get('dateTo')!='') {
+                var dateTo = record.get('dateTo');
+            }
+            var typeId = record.get('typeId');
+            /*console.log(periodFrom+"  "+periodTo+"  ");*/
+            new Aurora.Window({
+                id: 'FND1090_gld_exchange_rate_detail',
+                url: $au('FND1090_gld_exchange_rate_detail_link').getUrl()+"?methodCode="+methodCode+"&periodFrom="+periodFrom+"&periodTo="+periodTo+"&dateFrom="+dateFrom+"&dateTo="+dateTo+"&typeId="+typeId,
+                title: '汇率定义明细',
+                fullScreen: true
+            });
+        }
+
+        function FND1090_dataSetUpdate(ds, record, name, value) {
+
+            if (name =="methodCode") {
+                /*var currency_code_frn = record.getMeta().getField('currency_code_frn');
+                 var currency_name_frn = record.getMeta().getField('currency_name_frn');
+                 var currencyCodeValue = record.get("currency_code");
+                 var typeNameValue = record.get("rate_method_code");
+                 if (name == 'currency_code') {
+                 var field = record.getMeta().getField('currency_code_frn');
+                 field.setLovPara('currency_code_frn', record.get('currency_code'));
+                 } */
+                var period_from = record.getMeta().getField('periodFrom');
+                var period_to = record.getMeta().getField('periodTo');
+                var date_from = record.getMeta().getField('dateFrom');
+                var date_to = record.getMeta().getField('dateTo');
+                if (value == "DAILY") { //汇率类型方式为'每日'
+                    period_from.setReadOnly(true);
+                    period_to.setReadOnly(true);
+
+                    date_from.setReadOnly(false);
+                    date_to.setReadOnly(false);
+                    record.set('dateFrom', null);
+                    record.set('dateTo', null);
+                } else if (value == "PERIOD") { //汇率类型方式为'期间'
+                    period_from.setReadOnly(false);
+                    period_to.setReadOnly(false);
+                    record.set('periodFrom', null);
+                    record.set('periodTo', null);
+
+                    date_from.setReadOnly(true);
+                    date_to.setReadOnly(true);
+                } else {
+                    period_from.setReadOnly(true);
+                    period_to.setReadOnly(true);
+                    date_from.setReadOnly(true);
+                    date_to.setReadOnly(true);
+
+                    record.set('dateFrom', null);
+                    record.set('dateTo', null);
+                    record.set('periodFrom', null);
+                    record.set('periodTo', null);
+                }
+            }
+        }
+
+        //add by chao.dai 2018-12-27 如果方式为‘期间’则期间从和期间至的查询需要根据汇率类型定义中的‘期间类型’查找不同的值
+        //1.期间类型为预算期间，查询预算期间的主数据
+        //2.期间类型为会计期间，查询会计期间的主数据
+
+        function FND1090_focusPeriod() {
+
+            var record = $au('FND1090_gld_exchange_rate_ds').getAt(0);
+            var period_type = record.get('periodType');
+            /*console.log("111"+period_type);*/
+            if (period_type == 'PERIOD') {
+                record.getMeta().getField('periodFrom').setLovCode('LOV_START_PERIOD');
+                record.getMeta().getField('periodTo').setLovCode('LOV_START_PERIOD');
+            }else{
+                record.getMeta().getField('periodFrom').setLovService('hec_util.gld_bgt_periods_all_lov');
+                record.getMeta().getField('periodTo').setLovService('hec_util.gld_bgt_periods_all_lov');
+            }
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1090_gld_exchange_rate_ds">
+                <!-- <a:datas dataSource="/model/gerc"/> -->
+                <a:fields>
+                    <a:field name="typeCode" autoComplete="true" autoCompleteField="type_name_code"  lovCode="GLD_EXCHANGERATE_TYPE_LOV"  prompt="gld_exchangerate_type.type_code" required="true" title="gld_exchangerate_type_selection">
+                        <a:mapping>
+                            <a:map from="typeName" to="typeName"/>
+                            <a:map from="typeCode" to="typeCode"/>
+                            <a:map from="typeId" to="typeId"/>
+                            <a:map from="methodCode" to="methodCode"/>
+                            <a:map from="periodType" to="periodType"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="methodCode"/>
+                    <a:field name="periodType"/>
+                    <a:field name="typeId"/>
+                    <a:field name="typeName"/>
+                    <!-- modify lcy 2018/3/22 15:44:23 修改period_from和period_to的lovService -->
+                    <a:field name="periodFrom" lovCode="LOV_GLD_EXCHANGE_RATE_PERIOD" autoComplete="true" autoCompleteField="periodName" lovWidth="500" readonly="true" prompt="gld_exchange_rate.period_from">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodFrom"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="periodTo" lovCode="LOV_GLD_EXCHANGE_RATE_PERIOD" autoComplete="true" autoCompleteField="periodName" lovWidth="500" readonly="true" prompt="gld_exchange_rate.period_to">
+                        <a:mapping>
+                            <a:map from="periodName" to="periodTo"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="dateFrom" prompt="gld_exchange_rate.start_date" readonly="true"/>
+                    <a:field name="dateTo" prompt="gld_exchange_rate.end_date" readonly="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="FND1090_dataSetUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form column="1" labelWidth="120" marginWidth="0" title="please_select_exchangerate_type">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:toolbarButton click="FND1090_createRate" text="HAP.OK" width="80"/>
+            </a:formToolbar>
+            <a:lov name="typeCode" bindTarget="FND1090_gld_exchange_rate_ds" prompt="gld_exchange_rate_type.type_code"/>
+            <a:lov name="periodFrom" bindTarget="FND1090_gld_exchange_rate_ds" prompt="gld_exchange_rate.period_from">
+                <a:events>
+                    <a:event name="focus" handler="FND1090_focusPeriod"/>
+                </a:events>
+            </a:lov>
+            <a:lov name="periodTo" bindTarget="FND1090_gld_exchange_rate_ds" prompt="gld_exchange_rate.period_to">
+                <a:events>
+                    <a:event name="focus" handler="FND1090_focusPeriod"/>
+                </a:events>
+            </a:lov>
+            <a:dateTimePicker name="dateFrom" bindTarget="FND1090_gld_exchange_rate_ds"  renderer="Aurora.formatDate"/>
+            <a:dateTimePicker name="dateTo" bindTarget="FND1090_gld_exchange_rate_ds"  renderer="Aurora.formatDate"/>
+        </a:form>
+    </a:view>
+</a:screen>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong  
+    $Date: 2017-4-17 下午05:24:32  
+    $Revision: 1.0  
+    $Purpose: 管理组织级部门类型定义批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <!--<a:link id="EXP1012_exp_org_unit_types_batch_assign_com_link" url="$[/request/@context_path]/modules/exp/EXP1012/exp_org_unit_types_batch_assign_com.svc"/>-->
+        <a:link id="EXP1012_exp_org_unit_types_batch_assign_com_link" url="$[/request/@context_path]/exp/org-unit-type-asgn-com/submit"/>
+        <script><![CDATA[
+            function EXP1012_comAddAssignFun() {
+                debugger
+                //var companyRecord = $au('EXP1012_exp_org_unit_batch_assign_result_ds').getJsonData(true);
+                var companyRecord = $au('EXP1012_exp_org_unit_batch_assign_result_ds').getSelected();
+                if (companyRecord.length == 0) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.select_line_date]', null, 250, 100);
+                    return;
+                }
+
+                // 通过创建一个新的DataSet来解决token验证失败的问题
+                var submitDs = $au('EXP1012_exp_org_unit_batch_assign_submit_ds');
+                for (var i = 0;i < companyRecord.length;i++) {
+                    var record = submitDs.create();
+                    record.set('companyId', companyRecord[i].get('companyId') );
+                }
+
+                submitDs.submit();
+                EXP1012_batchAssignBackFun();
+
+             /*   Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('EXP1012_exp_org_unit_types_batch_assign_com_link').getUrl(),
+                    para: submitDs,
+                    success: EXP1012_batchAssignBackFun,
+                    scope: this
+                });*/
+            }
+            
+            function queryCompany() {
+                $au('EXP1012_exp_org_unit_batch_assign_result_ds').query();
+            }
+            
+            
+            function EXP1012_batchAssignBackFun() {
+                $au('EXP1012_exp_org_unit_types_batch_assign_window').close();
+                $au('EXP1012_exp_org_types_assign_com_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <!--<a:dataSet id="EXP1012_exp_org_unit_batch_assign_result_ds" autoQuery="true" loadData="true" model="exp.EXP1012.exp_org_assign_batch_lov" queryUrl="$[/request/@context_path]/autocrud/exp.EXP1012.exp_org_assign_batch_lov/query?unitTypeId=$[/parameter/@unitTypeId]&amp;mag_org_id=$[/parameter/@mag_org_id]" selectable="true">-->
+                <!--<a:fields>-->
+                    <!--<a:field name="companyId"/>-->
+                    <!--<a:field name="companyCode"/>-->
+                    <!--<a:field name="companyShortName"/>-->
+                <!--</a:fields>-->
+            <!--</a:dataSet>-->
+
+            <a:dataSet id="EXP1012_exp_org_unit_batch_assign_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/exp/org-unit-type-asgn-com" queryUrl="$[/request/@context_path]/fnd-company/unitTypeAssignCompany?magOrgId=$[/parameter/@magOrgId]&amp;unitTypeId=$[/parameter/@unitTypeId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" />
+                    <a:field name="companyShortName"/>
+                </a:fields>
+            </a:dataSet>
+
+            <a:dataSet id="EXP1012_exp_org_unit_batch_assign_submit_ds" autoPageSize="true" autoQuery="false"   baseUrl="/exp/org-unit-type-asgn-com" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="unitTypeId" defaultValue="$[/parameter/@unitTypeId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="companyCode" />
+                    <a:field name="companyShortName"/>
+                </a:fields>
+            </a:dataSet>
+
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="prompt.batch_disp_company">
+                <a:formToolbar>
+                    <a:label naem="separator"/>
+                    <a:gridButton click="EXP1012_comAddAssignFun" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="EXP1012_batchAssignBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="unitTypeCode" bindTarget="EXP1012_exp_org_unit_types_result_ds" prompt="exp_org_unit_types.unit_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP1012_exp_org_unit_types_result_ds" prompt="exp_org_unit_types.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP1012_exp_org_unit_batch_assign_grid" Width="1010" bindTarget="EXP1012_exp_org_unit_batch_assign_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="companyCode" Width="80" align="center" prompt="fnd_company.company_code"/>
+                    <a:column name="companyShortName" Width="200" align="left" prompt="fnd_company.company_short_name"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

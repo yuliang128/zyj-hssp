@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoRepTypeRefHdDimMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoRepTypeRefHdDim">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="MO_EXP_REPORT_TYPE_ID" property="moExpReportTypeId" jdbcType="DECIMAL" />
+        <result column="DIMENSION_ID" property="dimensionId" jdbcType="DECIMAL" />
+        <result column="LAYOUT_PRIORITY" property="layoutPriority" jdbcType="DECIMAL" />
+        <result column="DEFAULT_DIM_VALUE_ID" property="defaultDimValueId" jdbcType="DECIMAL" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="DIMENSION_CODE" property="dimensionCode" jdbcType="VARCHAR"/>
+        <result column="DIMENSION_NAME" property="dimensionName" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_DIM_VALUE_CODE" property="defaultDimValueCode" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_DIM_VALUE_NAME" property="defaultDimValueName" jdbcType="VARCHAR"/>
+        <result column="SYSTEM_LEVEL" property="systemLevel" jdbcType="VARCHAR"/>
+        <result column="COMPANY_LEVEL" property="companyLevel" jdbcType="VARCHAR"/>
+        <result column="RETURN_FIELD" property="returnField" jdbcType="VARCHAR"/>
+        <result column="DISPLAY_FIELD" property="displayField" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryRepTypeRefHdDim" resultType="int" parameterType="com.hand.hec.exp.dto.ExpMoRepEleRefLnDim">
+         select count(*)
+           from exp_mo_rep_type_ref_hd_dim h
+          where h.mo_exp_report_type_id = (select e.mo_exp_report_type_id
+                                             from exp_mo_rep_type_ref_ele e
+                                            where e.rep_page_ele_ref_id = #{repPageEleRefId})
+            and h.dimension_id = #{dimensionId}
+            and h.enabled_flag = 'Y';
+    </select>
+    <select id="getDftDimensionValue" resultMap="com.hand.hec.fnd.mapper.FndDimensionValueMapper.BaseResultMap">
+        SELECT
+           hd.DEFAULT_DIM_VALUE_ID DIMENSION_VALUE_ID,
+	       v.description
+        FROM
+	       exp_mo_rep_type_ref_hd_dim hd
+	    LEFT JOIN fnd_dimension fd ON hd.DIMENSION_ID = fd.DIMENSION_ID
+	    LEFT JOIN (SELECT fdv.DIMENSION_VALUE_ID,fdvt.description
+                     FROM fnd_dimension_value fdv
+	            LEFT JOIN fnd_dimension_value_tl fdvt ON fdv.DIMENSION_VALUE_ID = fdvt.DIMENSION_VALUE_ID
+	                  AND fdvt.lang = #{request.locale}) v ON hd.DEFAULT_DIM_VALUE_ID = v.DIMENSION_VALUE_ID
+        WHERE hd.mo_exp_report_type_id = #{moExpReportTypeId}
+          and hd.ENABLED_FLAG = 'Y'
+          and fd.DIMENSION_SEQUENCE = #{sequence}
+          and fd.ENABLED_FLAG = 'Y'
+    </select>
+    <select id="getHeaderDimInfo" resultType="java.util.Map">
+       select
+            d.dimension_id as dimensionId,
+            d.dimension_sequence as dimensionSequence,
+            d.dimension_code as dimensionCode,
+            d.description as dimensionName,
+            (case when d.company_level is null then d.system_level else d.company_level end) as companyLevel,
+            dv.dimension_value_id as defaultDimValueId,
+            dvt.description as defaultDimValueName,
+            concat('dimension' , d.dimension_sequence , 'Id') as returnField,
+            concat('dimension' , d.dimension_sequence , 'Name') as displayField,
+            h.layout_priority
+        from
+            exp_mo_rep_type_ref_hd_dim h
+        left join fnd_dimension d on
+            h.dimension_id = d.dimension_id
+            and d.enabled_flag = 'Y'
+        left join fnd_dimension_value dv on
+            h.default_dim_value_id = dv.dimension_value_id
+            and dv.enabled_flag = 'Y'
+        left join fnd_dimension_value_tl dvt on
+            dv.dimension_value_id = dvt.dimension_value_id
+            and dvt.lang = #{request.locale}
+        where
+            h.mo_exp_report_type_id = #{moExpReportTypeId}
+            and h.enabled_flag = 'Y'
+        order by
+            h.layout_priority
+    </select>
+
+</mapper>

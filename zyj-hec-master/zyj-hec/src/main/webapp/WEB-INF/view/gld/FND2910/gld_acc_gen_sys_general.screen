@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: ouyangzhaochang2663 $
+    $Date: 2010/12/07 07:25:47 $
+    $Revision: 1.1 $
+    $Purpose: 用途代码定义 - 配置匹配值(预定义)
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function FND2910_closeAccGenWindow() {
+                $au('gld_acc_gen_window').close();
+            }
+            
+            function gridCellClick(grid, row, name, record) {
+                if (name == 'accountCode') {
+                    var setOfBooksId = record.get('setOfBooksId');
+                    var accountSetId = record.get('accountSetId');
+                    if (setOfBooksId == null || setOfBooksId == 'undefined') {
+                        Aurora.showMessage('$[l:prompt]', '$[l:fnd_company.company_org_code]');
+                        return;
+                    }
+                    record.getField('accountCode').setLovPara('accountSetId', accountSetId);
+                }
+            }
+            
+            function FND2910_gridEditorFun(record, name) {
+                if (record.isNew) {
+                    return 'FND2910_cb';
+                }
+                return '';
+            }
+            
+            function onUpdate(ds, record, name, value, oldvalue) {
+                if (name == 'setOfBooksId') {
+                    //账套发生变化,清除科目    Y.duan  2017-8-17 16:23:16
+                    record.set('accountId', '');
+                    record.set('accountCode', '');
+                    record.getField('accountCode').setLovPara('accountSetId', value);
+                    record.getField('accountCode').setLovCode('GLD_ACC_GEN_ACCOUNT_LOV');
+                }
+                //管理组织发生变化,清除账套和科目, Y.duan  2017-8-17 16:13:11
+                if (name == 'mag_org_id') {
+                    record.set('setOfBooksName', '');
+                    record.set('setOfBooksId', '');
+                    record.set('accountId', '');
+                    record.set('accountCode', '');
+                }
+            }
+            
+            function onLoadFun(ds) {
+                var records = ds.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    var record = records[i];
+                    record.getField('accountCode').setLovPara('accountSetId', record.get('accountSetId'));
+                    record.getField('accountCode').setLovCode('GLD_ACC_GEN_ACCOUNT_LOV');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="gld_mapping_conds_grps_hd_info_ds" autoQuery="true" baseUrl="/gld/mapping-cond-grp-hd" queryUrl="$[/request/@context_path]/gld/mapping-cond-grp-hd/query?groupName=$[/parameter/@group_name]&amp;usageCode=$[/parameter/@usage_code_hd]">
+                <a:fields>
+                    <a:field name="usageCodeDesc" readOnly="true"/>
+                    <a:field name="groupName" readOnly="true"/>
+                    <a:field name="description" readOnly="true"/>
+                    <a:field name="priority" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="FND2910_mag_org_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/fnd/fnd-managing-organizations/query"/>
+            <a:dataSet id="FND2910_set_of_book_ds" loadData="true" autoQuery="true" queryUrl="$[/request/@context_path]/gld-set-of-book/query"/>
+            <a:dataSet id="gld_acc_gen_user_dy_query_ds" autoCreate="true"/>
+            <a:dataSet id="gld_acc_gen_sys_genral_modify_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/acc-gen-sys-general" queryUrl="$[/request/@context_path]/gld/acc-gen-sys-general/query?usageCode=$[/parameter/@usage_code_hd]" selectable="true" submitUrl="$[/request/@context_path]/gld/acc-gen-sys-general/submit">
+                <a:fields>
+                    <a:field name="usageCode" defaultValue="$[/parameter/@usage_code_hd]"/>
+                    <a:field name="magOrgName" displayField="description" options="FND2910_mag_org_ds" prompt="fnd_managing_organizations.mag_org_name" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId"/>
+                    <!--增加映射关系account_set_id==>account_set_id   Y.duan  2017-8-17 15:49:19-->
+                    <a:field name="setOfBooksName" displayField="setOfBooksName" options="FND2910_set_of_book_ds" prompt="gld_set_of_book.set_of_books_name" required="true">
+                        <a:mapping>
+                            <a:map from="setOfBooksId" to="setOfBooksId"/>
+                            <a:map from="accountSetId" to="accountSetId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="setOfBooksId"/>
+                    <a:field name="accountCode" autoComplete="true" autoCompleteField="accountCode" lovGridHeight="320" lovHeight="450" lovCode = "GLD_ACC_GEN_ACCOUNT_LOV" lovWidth="500" prompt="gld_accounts.account_code" required="true" title="csh_account_code">
+                        <a:mapping>
+                            <a:map from="accountId" to="accountId"/>
+                            <a:map from="accountCode" to="accountCode"/>
+                            <a:map from="description" to="accountDescription"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accountDescription"/>
+                    <a:field name="accountSetId"/>
+                    <a:field name="generalId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="onUpdate"/>
+                    <a:event name="load" handler="onLoadFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="gld_acc_gen_sys_general_form" column="2" title="gld_usage_codes.info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="gld_acc_gen_sys_general_grid" type="add" width="80"/>
+                    <a:gridButton bind="gld_acc_gen_sys_general_grid" type="save" width="80"/>
+                    <a:gridButton bind="gld_acc_gen_sys_general_grid" type="delete" width="80"/>
+                    <a:toolbarButton click="FND2910_closeAccGenWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="usageCode" bindTarget="usage_code_info_ds" prompt="gld_usage_codes.usage_code"/>
+                <a:textField name="description" bindTarget="usage_code_info_ds" prompt="gld_usage_codes.usage_codes_description"/>
+                <a:textField name="groupName" bindTarget="gld_mapping_conds_grps_hd_info_ds" prompt="gld_mapping_conds_grps_hd.group_name"/>
+                <a:textField name="description" bindTarget="gld_mapping_conds_grps_hd_info_ds" prompt="gld_mapping_conds_grps_hd.mapping_conds_grps_description"/>
+                <a:textField name="priority" bindTarget="gld_mapping_conds_grps_hd_info_ds" prompt="gld_mapping_conds_grps_hd.priority"/>
+            </a:form>
+            <a:grid id="gld_acc_gen_sys_general_grid" marginWidth="0" bindTarget="gld_acc_gen_sys_genral_modify_ds" marginHeight="267" navBar="true">
+                <a:columns>
+                    <a:column name="magOrgName" align="center" editorFunction="FND2910_gridEditorFun"/>
+                    <a:column name="setOfBooksName" editorFunction="FND2910_gridEditorFun" width="120"/>
+                    <a:column name="accountCode" align="center" editor="FND2910_lov" width="80"/>
+                    <a:column name="accountDescription" prompt="gld_accounts.account_description" width="120"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND2910_lov"/>
+                    <a:comboBox id="FND2910_cb"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="gridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

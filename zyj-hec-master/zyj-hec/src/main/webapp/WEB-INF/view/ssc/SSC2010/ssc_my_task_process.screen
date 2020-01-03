@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="SSC2010_do_batch_process_link" url="$[/request/@context_path]/ssc/task-pool/do-batch-process"/>
+        <script><![CDATA[
+            var processType = '$[/parameter/@processType]';
+            
+            function SSC2010_doProcess() {
+                if (processType == 'CANCEL_HOLD') {
+                    var records = $au('SSC2010_my_task_hold_ds').getJsonData(true);
+                } else {
+                    records = $au('SSC2010_my_task_result_ds').getJsonData(true);
+                }
+                var opinion = $au('SSC2010_process_ds').getAt(0).get('opinion');
+                var url = '';
+            
+                for (var i = 0;i < records.length;i++) {
+                    records[i]['opinion'] = opinion;
+                    records[i]['actionType'] = processType;
+                }
+                $au("SSC2010_process_ds").getAt(0).getMeta().getField("opinion").setRequired(false);
+                url = $au('SSC2010_do_batch_process_link').getUrl();
+                if (processType == 'APPROVE') {} else if (processType == 'REJECT') {
+                    $au("SSC2010_process_ds").getAt(0).getMeta().getField("opinion").setRequired(true);
+                } else if (processType == 'HOLD') {
+                    $au("SSC2010_process_ds").getAt(0).getMeta().getField("opinion").setRequired(true);
+                } else if (processType == 'CANCEL_HOLD') {} else if (processType == 'RETURN_BACK') {
+                    $au("SSC2010_process_ds").getAt(0).getMeta().getField("opinion").setRequired(true);
+                } else if (processType == 'APPLY_RETURN') {
+                    $au("SSC2010_process_ds").getAt(0).getMeta().getField("opinion").setRequired(true);
+                }
+            
+                if (!$au('SSC2010_process_ds').validate()) {
+                    return;
+                }
+            
+                Aurora.request({
+                    lockMessage: '${l:hap_handle_waiting}',
+                    url: url,
+                    para: records,
+                    success: function(resp) {
+                        $au('SSC2010_my_task_result_ds').query();
+                        $au('SSC2010_my_task_hold_ds').query();
+                        $au('SSC2010_my_task_return_back_ds').query();
+                        $au('SSC2010_ssc_my_task_process_window').close();
+                    }
+                });
+            }
+            
+            function SSC2010_cancelProcess() {
+                $au('SSC2010_ssc_my_task_process_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC2010_process_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="opinion"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="0" showmargin="false" shrinkable="false" style="border:none;" title="ptl_logs.log_view">
+            <a:formToolBar>
+                <a:label name="separator"/>
+                <a:button click="SSC2010_doProcess" text="confirm" width="80"/>
+                <a:button click="SSC2010_cancelProcess" text="hap.cancel" width="80"/>
+            </a:formToolBar>
+            <a:textArea name="opinion" bindTarget="SSC2010_process_ds" height="200" width="490"/>
+        </a:form>
+    </a:view>
+</a:screen>

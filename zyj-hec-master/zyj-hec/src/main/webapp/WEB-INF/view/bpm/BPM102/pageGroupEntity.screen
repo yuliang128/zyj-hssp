@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-5-5 下午4:14:05  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="BPM102_bpmPageGroupFieldLink"
+                url="$[/request/@context_path]/bpm/BPM102/pageGroupField.screen"/>
+        <script><![CDATA[
+
+        function BPM102_doEntitySave() {
+            var records = $au('BPM102_entityResultDs').getAll();
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                record.dirty = true;
+            }
+            $au('BPM102_entityResultDs').submit();
+        }
+
+        function BPM102_doEntityBack() {
+            $au('BPM102_pageGroupEntityScreen').close();
+        }
+
+        function BPM102_doEntityQuery() {
+            $au('BPM102_entityResultDs').query();
+        }
+
+        function BPM102_addChildEntityRenderer(value, record, name) {
+            if (record.get('entityCode')) {
+                return '<a href="javascript:BPM102_addChildEntity(\'' + record.get('entityCode') + '\')">添加子实体</a>'
+            }
+        }
+
+        function BPM102_addChildEntity(entityCode) {
+            /**
+             * 找到父节点为当前实体的子实体的最后一个的位置，将本次新增的子实体插入其后
+             */
+            var ds = $au('BPM102_entityResultDs');
+            var records = $au('BPM102_entityResultDs').getAll();
+            var maxChildIndex = 0;
+            var parentIndex = 0;
+            var parentRecord = null;
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i]
+                if (record.get('entityCode') == entityCode) {
+                    parentIndex = ds.indexOf(record)
+                    parentRecord = record
+                }
+
+                if (record.get('parentEntityCode') == entityCode && ds.indexOf(record) > maxChildIndex) {
+                    maxChildIndex = ds.indexOf(record)
+                }
+            }
+
+            var entityLevel = parentRecord.get('entityLevel') ? parentRecord.get('entityLevel') + 1 : 2;
+
+            ds.create({parentEntityCode: entityCode, entityLevel: entityLevel}, maxChildIndex + 1)
+        }
+
+        function BPM102_deleteEntityRenderer(value, record, name) {
+            return '<a href="javascript:BPM102_deleteEntity(\'' + record.id + '\')">删除实体</a>'
+        }
+
+        function BPM102_deleteEntity(recordId) {
+            var ds = $au('BPM102_entityResultDs')
+            var records = ds.getAll()
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                if (record.id == recordId) {
+                    BPM102_deleteChildEntity(ds, record, true);
+                    return
+                }
+            }
+        }
+
+        function BPM102_deleteChildEntity(ds, record, rootFlag) {
+            var records = ds.getAll()
+            /**
+             * 如果当前记录的entityCode为空，暂时不进行子实体的删除
+             */
+            if (record.get('entityCode')) {
+                for (var i = 0; i < records.length; i++) {
+                    var currentRecord = records[i]
+                    if (currentRecord.get('parentEntityCode') == record.get('entityCode')) {
+                        BPM102_deleteChildEntity(ds, currentRecord, false)
+                    }
+                }
+            }
+
+            //如果是根节点的删除，那么执行remove，否则执行removeLocal操作
+            if (rootFlag) {
+                ds.remove(record);
+            } else {
+                ds.removeLocal(record);
+            }
+        }
+
+        function BPM102_onEntityUpdate(ds, record, name, value, oldValue) {
+            if (name == 'entityCode') {
+
+                var records = ds.getAll();
+
+                /**
+                 * 检查是否entityCode重复
+                 */
+                for (var i = 0; i < records.length; i++) {
+                    var currentRecord = records[i];
+                    if (currentRecord.get('entityCode') == value && currentRecord != record) {
+                        Aurora.showErrorMessage('错误', '实体代码重复!')
+                        return
+                    }
+                }
+
+                /**
+                 * entityCode更新，更新子实体的父实体代码
+                 */
+                for (var i = 0; i < records.length; i++) {
+                    var currentRecord = records[i];
+                    if (oldValue && record.get('parentEntityCode') == oldValue) {
+                        currentRecord.set('parentEntityCode', value);
+                    }
+                }
+
+            }
+        }
+
+        function BPM102_entityLevelRenderer(value, record, name) {
+            if (!value) {
+                value = 1
+            }
+
+            return '<span style="font-weight:bold;color:#ff0000;">Level' + value + '&nbsp;</span>'
+        }
+
+        function BPM102_fieldConfigRenderer(value, record, name) {
+            if (record.get('entityId')) {
+                return '<a href="javascript:BPM102_fieldConfig(' + record.get('entityId') + ')">字段定义</a>'
+            }
+        }
+
+        function BPM102_fieldConfig(entityId) {
+            new Aurora.Window({
+                id: 'BPM102_pageGroupFieldScreen',
+                url: $au('BPM102_bpmPageGroupFieldLink').getUrl() + '?entityId=' + entityId,
+                title: '字段定义',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_onEntitySubmitSuccess() {
+            BPM102_doEntityQuery();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_entityResultDs" autoQuery="true"
+                       baseUrl="/bpm/pageGroupEntity"
+                       queryUrl="$[/request/@context_path]/bpm/pageGroupEntity/query?groupId=$[/parameter/@groupId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="entityId"/>
+                    <a:field name="orderNum" prompt="顺序" required="true"/>
+                    <a:field name="entityCode" prompt="实体代码" required="true"/>
+                    <a:field name="entityName" prompt="实体名称" required="true"/>
+                    <a:field name="parentEntityCode" prompt="上级实体"/>
+                    <a:field name="parentEntityId"/>
+                    <a:field name="groupId" defaultValue="$[/parameter/@groupId]"/>
+                    <a:field name="entityLevel" prompt="层级"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BPM102_onEntityUpdate"/>
+                    <a:event name="submitsuccess" handler="BPM102_onEntitySubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="3" title="实体定义" style="width:100%">
+                <a:label name="groupTypeDesc" bindTarget="BPM102_pageGroupResultDs"
+                         prompt="bpm_page_group.group_type"/>
+                <a:label name="groupCode" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_code"/>
+                <a:label name="groupDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_desc"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doEntitySave" text="hap.save"/>
+                <a:button click="BPM102_doEntityBack" text="hap.back"/>
+            </a:hBox>
+            <a:treeGrid id="BPM102_entityTree" bindTarget="BPM102_entityResultDs" height="330" marginHeight="230"
+                        idField="entityCode" parentField="parentEntityCode" showCheckBox="false" expandField="expand"
+                        marginWidth="40" navBar="true" width="805">
+                <a:toolBar>
+                    <a:button text="hap.new" type="add"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="entityLevel" width="100" align="right" renderer="BPM102_entityLevelRenderer"/>
+                    <a:column name="entityCode" width="100" editor="BPM102_entityTf"/>
+                    <a:column name="entityName" width="150" editor="BPM102_entityTf"/>
+                    <a:column name="orderNum" width="100" editor="BPM102_entityNf"/>
+                    <a:column name="parentEntityCode" width="150"/>
+                    <a:column name="addChild" width="100" prompt="添加子实体" renderer="BPM102_addChildEntityRenderer"
+                              align="center"/>
+                    <a:column name="removeEntity" width="100" prompt="删除实体" renderer="BPM102_deleteEntityRenderer"
+                              align="center"/>
+                    <a:column name="fieldConfig" width="100" prompt="设置字段" renderer="BPM102_fieldConfigRenderer"
+                              align="center"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BPM102_entityTf"/>
+                    <a:numberField id="BPM102_entityNf"/>
+                    <a:checkBox id="BPM102_entityCb"/>
+                </a:editors>
+                <a:events>
+                </a:events>
+            </a:treeGrid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

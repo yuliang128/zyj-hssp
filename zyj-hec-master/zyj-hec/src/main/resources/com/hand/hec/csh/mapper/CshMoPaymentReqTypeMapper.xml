@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoPaymentReqTypeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoPaymentReqType">
+        <result column="MO_PAYMENT_REQ_TYPE_ID" property="moPaymentReqTypeId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MO_PAYMENT_REQ_TYPE_CODE" property="moPaymentReqTypeCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="AUTO_APPROVE_FLAG" property="autoApproveFlag" jdbcType="VARCHAR"/>
+        <result column="AUTO_AUDIT_FLAG" property="autoAuditFlag" jdbcType="VARCHAR"/>
+        <result column="REPORT_NAME" property="reportName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="ICON" property="icon" jdbcType="VARCHAR"/>
+        <result column="CAPTION_HDS_ID" property="captionHdsId" jdbcType="DECIMAL"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="magOrgQuery" resultMap="com.hand.hap.fnd.mapper.FndManagingOrganizationMapper.BaseResultMap">
+      SELECT
+            *
+        FROM
+            (
+        SELECT
+            fmov.mag_org_id,
+            fmov.mag_org_code,
+            fmot.description mag_org_name,
+            concat(fmov.mag_org_code,'-',fmov.description) mag_org_code_name
+        FROM
+            fnd_managing_organization fmov
+         left join fnd_managing_organization_tl fmot
+           on fmov.MAG_ORG_ID = fmot.MAG_ORG_ID
+          and fmot.LANG = #{request.locale}
+        WHERE
+            fmov.enabled_flag = 'Y'
+            AND #{allOrganizationalFlag} = "Y"
+        UNION ALL
+        SELECT
+            fmov.mag_org_id,
+            fmov.mag_org_code,
+            fmov.description mag_org_name,
+            concat(fmov.mag_org_code,'-',fmov.description) mag_org_code_name
+        FROM
+            fnd_managing_organization fmov
+         left join fnd_managing_organization_tl fmot
+           on fmov.MAG_ORG_ID = fmot.MAG_ORG_ID
+          and fmot.LANG = #{request.locale}
+        WHERE
+            fmov.enabled_flag = 'Y'
+            AND fmov.mag_org_id = #{magOrgId}
+            AND ifnull(#{allOrganizationalFlag},'N') = 'N'
+            ) v
+        ORDER BY
+            v.mag_org_code
+    </select>
+
+    <!-- Modify Tagin/2019.02.25 根据借款单头ID/借款申请单类型ID获取借款单自审核标志 -->
+    <select id="getAuitFlag" parameterType="java.lang.Long" resultType="java.lang.String">
+        SELECT
+        cmrt.auto_audit_flag
+        FROM
+        csh_mo_payment_req_type cmrt
+        <trim prefix="WHERE" prefixOverrides="AND | OR">
+            <if test="moPaymentReqTypeId != null and moPaymentReqTypeId != ''">
+                AND cmrt.mo_payment_req_type_id = #{moPaymentReqTypeId}
+            </if>
+            <if test="paymentRequisitionHeaderId != null and paymentRequisitionHeaderId != ''">
+                AND EXISTS ( SELECT 1 FROM csh_payment_requisition_hd cprh WHERE cprh.payment_requisition_header_id =
+                #{paymentRequisitionHeaderId}
+                AND
+                cprh.payment_req_type_id = cmrt.mo_payment_req_type_id )
+            </if>
+        </trim>
+    </select>
+
+    <select id="queryDftPayReqType" resultMap="BaseResultMap">
+      SELECT
+            v.*
+        FROM
+            (
+        SELECT
+            ct.mo_payment_req_type_id,
+            ct.mo_payment_req_type_code,
+            (select rtt.description from csh_mo_payment_req_type_tl rtt
+              where rtt.mo_payment_req_type_id = ct.mo_payment_req_type_id
+                  and rtt.lang = #{request.locale}) description
+        FROM
+            csh_mo_payment_req_type ct,
+            csh_mo_pay_req_asgn_com cc
+        WHERE
+            ct.mo_payment_req_type_id = cc.mo_payment_req_type_id
+            AND cc.company_id = #{request.companyId}
+            AND ct.enabled_flag = 'Y'
+            AND cc.enabled_flag = 'Y'
+            ) v
+        ORDER BY
+            v.mo_payment_req_type_code
+    </select>
+
+    <select id="queryTypeForPayReq" resultMap="BaseResultMap">
+        SELECT
+        *
+        FROM
+        (SELECT
+        prt.mo_payment_req_type_code,
+        prtt.description AS description,
+        prt.mo_payment_req_type_id,
+        prt.currency_code,
+        ifnull(prt.icon, 'resources/images/aurora/4.0/documents/Default.png') AS iconFileName
+        FROM
+        csh_mo_payment_req_type prt left join csh_mo_payment_req_type_tl prtt
+        on(prt.mo_payment_req_type_id = prtt.mo_payment_req_type_id and prtt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        prt.enabled_flag = 'Y' AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        csh_mo_pay_req_ref_emp_gp reg,
+        exp_mo_emp_group eg,
+        exp_mo_emp_group_asgn_com ac,
+        exp_com_emp_group_ref_emp re
+        WHERE
+        reg.mo_payment_req_type_id = prt.mo_payment_req_type_id AND
+        reg.enabled_flag = 'Y' AND
+        eg.mo_emp_group_id = reg.mo_emp_group_id AND
+        eg.enabled_flag = 'Y' AND
+        ac.mo_emp_group_id = eg.mo_emp_group_id AND
+        ac.enabled_flag = 'Y' AND
+        re.emp_group_com_assign_id = ac.assign_id AND
+        re.enabled_flag = 'Y' AND
+        re.employee_id = #{employeeId} AND
+        ac.company_id = #{request.companyId}
+        ) AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        csh_mo_pay_req_asgn_com cmpa
+        WHERE
+        cmpa.mo_payment_req_type_id = prt.mo_payment_req_type_id AND
+        cmpa.enabled_flag ='Y' AND
+        cmpa.company_id =#{request.companyId}
+        ) AND
+        (SELECT
+        COUNT(1)
+        FROM
+        exp_document_authority a,
+        exp_employee_assign t,
+        exp_employee_assign t2,
+        exp_org_position p,
+        exp_org_unit u,
+        sys_user su,
+        exp_employee ee
+        WHERE
+        a.doc_category = 'PAYMENT_REQUISITION' AND
+        (
+        ifnull(a.granted_position_id,t.position_id)=t.position_id AND
+        t.enabled_flag = 'Y' AND
+        t.company_id = a.company_id AND
+        t.employee_id = ee.employee_id
+        )
+        AND
+        (
+        ifnull(a.granted_employee_id,ee.employee_id)=ee.employee_id
+        )
+        AND
+        ee.employee_id = su.employee_id AND
+        su.user_id = #{request.userId} AND
+        t2.employee_id = #{employeeId} AND
+        t2.enabled_flag = 'Y' AND
+        p.enabled_flag = 'Y' AND
+        u.enabled_flag = 'Y' AND
+        p.position_id = t2.position_id AND
+        u.unit_id = p.unit_id AND
+        a.start_date_active &lt;= str_to_date(date_format(CURRENT_DATE,'%Y-%m-%d'),"%Y-%m-%d") AND
+        (
+        a.end_date_active IS NULL OR
+        a.end_date_active >= str_to_date(date_format(CURRENT_DATE,'%Y-%m-%d'),"%Y-%m-%d")
+        )
+        AND
+        (
+        a.inquire_flag = 'Y' OR
+        a.maintain_flag = 'Y'
+        )
+        AND
+        t2.company_id = a.company_id AND
+        (
+        ifnull(a.unit_id,u.unit_id)=u.unit_id
+        )
+        AND
+        (
+        ifnull(a.position_id,p.position_id)=p.position_id
+        )
+        AND
+        (
+        ifnull(a.employee_id,t2.employee_id)=t2.employee_id
+        )
+        AND
+        a.doc_type_id IS NOT NULL
+        )
+        =0
+        UNION
+        (SELECT
+        prt.mo_payment_req_type_code,
+        prtt.description AS description,
+        prt.mo_payment_req_type_id,
+        prt.currency_code,
+        ifnull(prt.icon, 'resources/images/aurora/4.0/documents/Default.png') AS iconFileName
+        FROM
+        csh_mo_payment_req_type prt left join csh_mo_payment_req_type_tl prtt
+        on(prt.mo_payment_req_type_id = prtt.mo_payment_req_type_id and prtt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        prt.enabled_flag = 'Y' AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        csh_mo_pay_req_ref_emp_gp reg,
+        exp_mo_emp_group eg,
+        exp_mo_emp_group_asgn_com ac,
+        exp_com_emp_group_ref_emp re
+        WHERE
+        reg.mo_payment_req_type_id = prt.mo_payment_req_type_id AND
+        reg.enabled_flag = 'Y' AND
+        eg.mo_emp_group_id = reg.mo_emp_group_id AND
+        eg.enabled_flag = 'Y' AND
+        ac.mo_emp_group_id = eg.mo_emp_group_id AND
+        ac.enabled_flag = 'Y' AND
+        re.emp_group_com_assign_id = ac.assign_id AND
+        re.enabled_flag = 'Y' AND
+        re.employee_id = #{employeeId} AND
+        ac.company_id = #{request.companyId}
+        ) AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        csh_mo_pay_req_asgn_com cmpa
+        WHERE
+        cmpa.mo_payment_req_type_id = prt.mo_payment_req_type_id AND
+        cmpa.enabled_flag ='Y' AND
+        cmpa.company_id =#{request.companyId}
+        ) AND
+        EXISTS
+        (SELECT
+        1
+        FROM
+        exp_document_authority a,
+        exp_employee_assign t,
+        exp_employee_assign t2,
+        exp_org_position p,
+        exp_org_unit u,
+        sys_user su,
+        exp_employee ee
+        WHERE
+        a.doc_category = 'PAYMENT_REQUISITION' AND
+        (
+        ifnull(a.granted_position_id,t.position_id)=t.position_id AND
+        t.enabled_flag = 'Y' AND
+        t.company_id = a.company_id AND
+        t.employee_id = ee.employee_id
+        )
+        AND
+        (
+        ifnull(a.granted_employee_id,ee.employee_id)=ee.employee_id
+        )
+        AND
+        ee.employee_id = su.employee_id AND
+        su.user_id = #{request.userId} AND
+        t2.employee_id = #{employeeId} AND
+        t2.enabled_flag = 'Y' AND
+        p.enabled_flag = 'Y' AND
+        u.enabled_flag = 'Y' AND
+        p.position_id = t2.position_id AND
+        u.unit_id = p.unit_id AND
+        a.start_date_active &lt;= str_to_date(date_format(CURRENT_DATE,'%Y-%m-%d'),"%Y-%m-%d") AND
+        (
+        a.end_date_active IS NULL OR
+        a.end_date_active >= str_to_date(date_format(CURRENT_DATE,'%Y-%m-%d'),"%Y-%m-%d")
+        )
+        AND
+        (
+        a.inquire_flag = 'Y' OR
+        a.maintain_flag = 'Y'
+        )
+        AND
+        t2.company_id = a.company_id AND
+        (
+        ifnull(a.unit_id,u.unit_id)=u.unit_id
+        )
+        AND
+        (
+        ifnull(a.position_id,p.position_id)=p.position_id
+        )
+        AND
+        (
+        ifnull(a.employee_id,t2.employee_id)=t2.employee_id
+        )
+        AND
+        a.doc_type_id =prt.mo_payment_req_type_id
+        )
+        )
+        ) v
+        <if test="moPaymentReqTypeCode != null">
+            WHERE
+            v.mo_payment_req_type_code like concat('%',#{moPaymentReqTypeCode},'%')
+        </if>
+        <if test="description != null">
+            WHERE
+            v.description like concat('%',#{description},'%')
+        </if>
+        ORDER BY
+        mo_payment_req_type_code
+    </select>
+</mapper>

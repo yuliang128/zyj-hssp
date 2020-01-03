@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentRequisitionLnMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentRequisitionLn">
+        <result column="PAYMENT_REQUISITION_LINE_ID" property="paymentRequisitionLineId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_REQUISITION_HEADER_ID" property="paymentRequisitionHeaderId" jdbcType="DECIMAL"/>
+        <result column="LINE_NUMBER" property="lineNumber" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_REQUISITION_LINE_TYPE" property="paymentRequisitionLineType" jdbcType="VARCHAR"/>
+        <result column="REF_DOCUMENT_ID" property="refDocumentId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_CATEGORY" property="payeeCategory" jdbcType="VARCHAR"/>
+        <result column="PAYEE_ID" property="payeeId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_NAME" property="accountName" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_NUMBER" property="accountNumber" jdbcType="VARCHAR"/>
+        <result column="MO_CSH_TRX_CLASS_ID" property="moCshTrxClassId" jdbcType="DECIMAL"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_STATUS" property="paymentStatus" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_COMPLETED_DATE" property="paymentCompletedDate" jdbcType="DATE"/>
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_CODE" property="bankLocationCode" jdbcType="VARCHAR"/>
+        <result column="BANK_LOCATION_NAME" property="bankLocationName" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_CODE" property="provinceCode" jdbcType="VARCHAR"/>
+        <result column="PROVINCE_NAME" property="provinceName" jdbcType="VARCHAR"/>
+        <result column="CITY_CODE" property="cityCode" jdbcType="VARCHAR"/>
+        <result column="CITY_NAME" property="cityName" jdbcType="VARCHAR"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="PAYEE_TYPE_ID" property="payeeTypeId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="HEADER_ACC_ENTITY_ID" property="headerAccEntityId" jdbcType="DECIMAL"/>
+        <result column="MO_CSH_TRX_CLASS_CODE" property="moCshTrxClassCode" jdbcType="VARCHAR"/>
+        <result column="RESP_CENTER_ID" property="respCenterId" jdbcType="DECIMAL"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="HEADER_DESCRIPTION" property="headerDescription" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="selectForFlowId" resultType="java.lang.Long">
+        select ci.cash_flow_item_id
+          from csh_mo_trx_cls_ref_flow_it ci
+         where exists (select 1
+                         from csh_mo_transaction_class cc
+                        where cc.mo_csh_trx_class_id = ci.mo_csh_trx_class_id
+                          and cc.mo_csh_trx_class_id = #{moCshTrxClassId}
+                          and cc.enabled_flag = 'Y'
+                          and cc.mag_org_id = #{magOrgId})
+          and ci.default_flag = 'Y'
+          and ci.enabled_flag = 'Y'
+          and exists (select 1
+                        from csh_cash_flow_item cf,
+                             gld_acc_entity_ref_sob ers,
+							 gld_accounting_entity ge
+                       where cf.cash_flow_item_id = ci.cash_flow_item_id
+                         and cf.set_of_books_id = ers.SET_OF_BOOKS_ID
+						 and ers.acc_entity_id = ge.acc_entity_id
+                         and ers.acc_entity_id = #{accEntityId}
+						 and ers.enabled_flag = 'Y'
+						 and ers.default_flag = 'Y'
+                         and ge.start_date_active &lt; CURRENT_TIMESTAMP
+                         and (ge.end_date_active is null or ge.end_date_active &gt; CURRENT_TIMESTAMP))
+
+    </select>
+
+    <select id="selectForAccEntityId" resultType="java.lang.Long">
+      select t.acc_entity_id
+        from csh_payment_entity_rule t
+       where t.document_category = #{documentCategory}
+         and t.mag_org_id = #{magOrgId}
+         and (t.company_id is null or t.company_id = #{companyId})
+         and (t.document_type_id is null or t.document_type_id = #{documentTypeId})
+         and (t.payee_category is null or t.payee_category = #{payeeCategory})
+         and (t.payment_method_id is null or t.payment_method_id = #{paymentMethodId})
+    order by t.priority asc
+       limit 1
+    </select>
+
+    <select id="selectForFlowId2" resultType="java.lang.Long">
+        select ci.cash_flow_item_id
+          from csh_mo_trx_cls_ref_flow_it ci
+         where exists
+         (select 1
+                  from csh_mo_transaction_class cc
+                 where cc.mo_csh_trx_class_id = ci.mo_csh_trx_class_id
+                       and cc.mo_csh_trx_class_id = #{moCshTrxClassId}
+                       and cc.mag_org_id = #{magOrgId})
+               and ci.default_flag = 'Y'
+               and ci.enabled_flag = 'Y'
+               limit 1
+    </select>
+
+    <select id="selectByHeaderId" resultType="java.util.Map">
+        SELECT
+            v.*,
+            (case when paymentRequisitionLineType='EXP_REQUISITION' then
+            requisitionNeedPayAmount - requisitedAmount
+            else null end) needPaymentAmount,
+            (case when paymentRequisitionLineType = 'EXP_REQUISITION' then
+            requisitedAmount - requisitedPaymentAmount
+            else null end) requisitedUnpaymentAmount,
+             (SELECT
+                 cch.contract_number
+             FROM
+                 con_contract_header cch
+             WHERE
+                 cch.contract_header_id = v.contractHeaderId
+             ) contractNumber,
+             (SELECT
+                 conl.payment_schedule_line_id
+             FROM
+                 con_payment_schedule conl
+             WHERE
+                 conl.payment_schedule_line_id = v.contractLId
+             ) paymentScheduleLineId
+        FROM
+            (SELECT
+                cprl.payment_requisition_header_id AS paymentRequisitionHeaderId,
+                cprl.payment_requisition_line_id AS paymentRequisitionLineId,
+                cprl.line_number AS lineNumber,
+                cprl.payment_requisition_line_type AS paymentRequisitionLineType,
+                (SELECT
+                    scvt.meaning
+                    FROM
+                    sys_code_b scb,
+                    sys_code_value_b scvb
+                    LEFT JOIN sys_code_value_tl scvt ON
+                    ( scvb.code_value_id = scvt.code_value_id AND scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                WHERE
+                    scb.code_id = scvb.code_id
+                    AND scb.code = 'PAYMENT_REQ_DOC_CATEGORY'
+                    AND scvb.value = cprl.payment_requisition_line_type
+                     ) AS payRequisitionLineTypeDesc,
+                cprl.payment_method_id AS paymentMethodId,
+                (select cpmt.description
+                    from csh_payment_method cpm left join csh_payment_method_tl cpmt
+                    on(cpm.payment_method_id = cpmt.payment_method_id and cpmt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                 where cpm.payment_method_id = cprl.payment_method_id) AS paymentMethodName,
+                cprl.amount,
+                cprl.description,
+                cprl.ref_document_id AS refDocumentId,
+                cprl.account_number AS accountNumber,
+                cprl.account_name AS accountName,
+                cprl.bank_code AS bankCode,
+                cprl.bank_name AS bankName,
+                cprl.bank_location_code AS bankLocationCode,
+                cprl.bank_location_name AS bankLocationName,
+                cprl.province_code AS provinceCode,
+                cprl.province_name AS provinceName,
+                cprl.city_code AS cityCode,
+                cprl.city_name AS cityName,
+                (SELECT
+                    erh.exp_requisition_number
+                FROM
+                    exp_requisition_header erh
+                WHERE
+                    erh.exp_requisition_header_id = cprl.ref_document_id
+                ) refDocumentIdDisplay,
+                (case when payment_requisition_line_type='EXP_REQUISITION' then
+                (SELECT
+                    ifnull(SUM(erl.payment_amount), 0)
+                FROM
+                    exp_requisition_line erl
+                WHERE
+                    erl.exp_requisition_header_id = cprl.ref_document_id
+                )
+                else NULL end) requisitionNeedPayAmount,
+                (case when cprl.payment_requisition_line_type= 'EXP_REQUISITION' then
+                (SELECT
+                    ifnull(SUM(cprl1.amount), 0)
+                FROM
+                    csh_payment_requisition_ln cprl1,
+                    csh_payment_requisition_hd cprh
+                WHERE
+                    cprl1.ref_document_id              = cprl.ref_document_id AND
+                    cprh.payment_requisition_header_id = cprl1.payment_requisition_header_id AND
+                    cprh.status NOT IN ('GENERATE', 'REJECTED', 'TAKEN_BACK')
+                )
+                else NULL end) requisitedAmount,
+                (case when cprl.payment_requisition_line_type='EXP_REQUISITION' then
+                (SELECT
+                    ifnull(SUM(cprr.amount), 0)
+                FROM
+                    csh_payment_requisition_ln cprl2,
+                    csh_payment_requisition_ref cprr,
+                    csh_transaction_line ctl,
+                    csh_transaction_header cth
+                WHERE
+                    cprl2.ref_document_id             = cprl.ref_document_id AND
+                    cprl2.payment_requisition_line_id = cprr.payment_requisition_line_id AND
+                    cprr.csh_transaction_line_id      = ctl.transaction_line_id AND
+                    ctl.transaction_header_id         = cth.transaction_header_id AND
+                    cth.posted_flag                   = 'Y'
+                )
+                else NULL end) requisitedPaymentAmount,
+                (SELECT
+                    cdf.document_id
+                FROM
+                    con_document_flow cdf
+                WHERE
+                    cdf.document_type           = 'CON_CONTRACT' AND
+                    cdf.source_document_type    = 'CSH_PAYMENT_REQUISITION_LNS' AND
+                    cdf.source_document_id      = cprl.payment_requisition_header_id AND
+                    cdf.source_document_line_id = cprl.payment_requisition_line_id
+                ) contractHeaderId,
+                (SELECT
+                    cdf.document_line_id
+                FROM
+                    con_document_flow cdf
+                WHERE
+                    cdf.document_type           = 'CON_CONTRACT' AND
+                    cdf.source_document_type    = 'CSH_PAYMENT_REQUISITION_LNS' AND
+                    cdf.source_document_id      = cprl.payment_requisition_header_id AND
+                    cdf.source_document_line_id = cprl.payment_requisition_line_id
+                ) contractLId,
+                (case when cprl.payee_category = 'EMPLOYEE' then
+                (select ee.name
+                    from exp_employee ee
+                 where ee.employee_id = cprl.payee_id)
+                when cprl.payee_category = 'VENDER' then
+                (select psvt.description
+                    from pur_system_vender psv left join pur_system_vender_tl psvt
+                    on(psv.vender_id=psvt.vender_id and psvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                 where psv.vender_id = cprl.payee_id)
+                when cprl.payee_category = 'CUSTOMER' then
+                (select osct.description
+                    from ord_system_customer osc left join ord_system_customer_tl osct
+                    on(osc.customer_id = osct.customer_id and osct.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                 where osc.customer_id = cprl.payee_id)
+                 end) AS payeeName,
+                cprl.company_id AS companyId,
+                (select fct.company_short_name
+                    from fnd_company fc left join fnd_company_tl fct
+                    on(fc.company_id=fct.company_id and fct.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                 where fc.company_id = cprl.company_id) AS companyName,
+                cprl.acc_entity_id AS accEntityId,
+                (select gaet.acc_entity_name
+                    from gld_accounting_entity gae left join gld_accounting_entity_tl gaet
+                    on(gae.acc_entity_id=gaet.acc_entity_id and gaet.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                 where gae.acc_entity_id = cprl.acc_entity_id) AS accEntityName,
+                cprl.payee_category AS payeeCategory,
+                (SELECT
+                scvt.meaning
+                FROM
+                sys_code_b scb,
+                sys_code_value_b scvb
+                LEFT JOIN sys_code_value_tl scvt ON
+                ( scvb.code_value_id = scvt.code_value_id AND scvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                WHERE
+                scb.code_id = scvb.code_id
+                AND scb.code = 'PAYMENT_OBJECT'
+                AND scvb.value = cprl.payee_category
+                 ) AS payeeCategoryName,
+                cprl.payee_id AS payeeId,
+                cprl.mo_csh_trx_class_id AS moCshTrxClassId,
+                (SELECT
+                    ccft.description
+                FROM
+                    csh_cash_flow_item ccf left join csh_cash_flow_item_tl ccft on
+                    (ccf.cash_flow_item_id = ccft.cash_flow_item_id and ccft.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                WHERE
+                    ccf.cash_flow_item_id = cprl.cash_flow_item_id
+                ) cashFlowItemDescription,
+                cprl.cash_flow_item_id AS cashFlowItemId,
+                (SELECT
+                    cmtc.description
+                FROM
+                    csh_mo_transaction_class cmtc left join csh_mo_transaction_class_tl cmtct on
+                    (cmtc.mo_csh_trx_class_id = cmtct.mo_csh_trx_class_id and cmtct.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+                WHERE
+                    cmtc.csh_transaction_type_code = 'PREPAYMENT' AND
+                    cmtc.enabled_flag              = 'Y' AND
+                    cmtc.mo_csh_trx_class_id     = cprl.mo_csh_trx_class_id AND
+                    EXISTS
+                    (SELECT
+                        1
+                    FROM
+                        fnd_company f
+                    WHERE
+                        f.mag_org_id = cmtc.mag_org_id AND
+                        f.company_id = cprl.company_id
+                    )
+                ) cshTransactionClassName
+            FROM
+                csh_payment_requisition_ln cprl
+                                WHERE
+                cprl.payment_requisition_header_id = #{paymentRequisitionHeaderId}
+            ) v
+        ORDER BY
+            paymentRequisitionLineId
+        </select>
+
+    <select id="getCshPaymentRequisitionLns" resultMap="BaseResultMap">
+        SELECT
+	      cprh.payment_requisition_header_id,
+	      cprl.payment_requisition_line_id,
+	      cprh.description header_description,
+	      cprh.currency_code,
+	      cprh.acc_entity_id AS header_acc_entity_id,
+	      v.payee_type_id,
+	      cprl.company_id,
+	      cprl.acc_entity_id,
+	      fc.mag_org_id,
+	      gae.DEFAULT_SET_OF_BOOKS_ID set_of_books_id,
+	      cprh.position_id,
+	      ao.RESP_CENTER_ID resp_center_id,
+          cprl.payee_category,
+	      cprl.payee_id,
+	      cprl.mo_csh_trx_class_id,
+	      tc.MO_CSH_TRX_CLASS_CODE,
+	      cprl.amount
+        FROM
+	      csh_payment_requisition_hd cprh
+        LEFT JOIN csh_payment_requisition_ln cprl ON cprh.PAYMENT_REQUISITION_HEADER_ID = cprl.PAYMENT_REQUISITION_HEADER_ID
+        LEFT JOIN (
+	      SELECT
+		    ee.EMPLOYEE_ID payee_id,
+		    ee.EMPLOYEE_TYPE_ID payee_type_id,
+		    'EMPLOYEE' payee_category
+	      FROM
+		    exp_employee ee
+	      UNION ALL
+		  SELECT
+			psv.VENDER_ID payee_id,
+			psv.VENDER_TYPE_ID payee_type_id,
+			'VENDER' payee_category
+		  FROM
+			pur_system_vender psv
+		  UNION ALL
+			SELECT
+				osc.CUSTOMER_ID payee_id,
+				osc.CUSTOMER_TYPE_ID payee_type_id,
+				'CUSTOMER' payee_category
+			FROM
+				ord_system_customer osc
+        ) v ON v.payee_category = cprl.PAYEE_CATEGORY
+        AND v.payee_id = cprl.PAYEE_ID
+        LEFT JOIN fnd_company fc ON cprh.COMPANY_ID = fc.COMPANY_ID
+        LEFT JOIN gld_accounting_entity gae ON gae.ACC_ENTITY_ID = cprl.ACC_ENTITY_ID
+        LEFT JOIN exp_org_unit_ref_acc_org ao ON (
+	              ao.unit_id = cprh.UNIT_ID
+	          AND cprl.ACC_ENTITY_ID
+	          AND ao.enabled_flag = 'Y'
+	          AND ao.default_flag = 'Y')
+        LEFT JOIN csh_mo_transaction_class tc ON cprl.MO_CSH_TRX_CLASS_ID = tc.MO_CSH_TRX_CLASS_ID
+        WHERE
+          cprh.PAYMENT_REQUISITION_HEADER_ID = #{paymentRequisitionHeaderId}
+
+    </select>
+
+    <select id="getDocId" resultType="long">
+        select l.payment_requisition_header_id
+            from csh_payment_requisition_ln  l,
+                 csh_payment_requisition_ref r,
+                 csh_transaction_line        ctl
+           where r.csh_transaction_line_id = ctl.transaction_line_id
+                 and ctl.transaction_header_id = #{transactionHeaderId}
+                 and r.payment_requisition_line_id =
+                 l.payment_requisition_line_id
+                 limit 1
+    </select>
+
+</mapper>

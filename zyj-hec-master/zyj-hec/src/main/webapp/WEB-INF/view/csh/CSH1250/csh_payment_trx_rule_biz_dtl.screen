@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-04 19:27:26
+    $Revision: 1.0  
+    $Purpose: 管理组织级-付款事务生成规则定义-分配业务范围明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function CSH1250_dtlSubmitSuccess(ds) {
+                ds.query();
+            }
+            function CSH1250_dtlBack(){
+                $au('CSH1250_pay_trx_bus_scope_detail_win').close();
+                $au('CSH1250_pay_trx_rules_biz_ds').query();
+            }
+            function CSH1250_setEdit(record, ds_string, edit_id, flag) {
+                if (flag == 'comboBox') {
+                    var u_mapping = [{
+                        from: 'value',
+                        to: 'upperLimit'
+                    }];
+                    var l_mapping = [{
+                        from: 'value',
+                        to: 'lowerLimit'
+                    }];
+                    record.getMeta().getField('upperLimit').setOptions(ds_string);
+                    record.getMeta().getField('lowerLimit').setOptions(ds_string);
+                }
+                if (flag == 'lov') {
+                    u_mapping = [{
+                        from: 'code',
+                        to: 'upperLimit'
+                    }];
+                    l_mapping = [{
+                        from: 'code',
+                        to: 'lowerLimit'
+                    }];
+                    record.getMeta().getField('upperLimit').setLovCode(ds_string);
+                    record.getMeta().getField('lowerLimit').setLovCode(ds_string);
+                }
+                record.getMeta().getField('upperLimit').setMapping(u_mapping);
+                record.getMeta().getField('lowerLimit').setMapping(l_mapping);
+                $au('CSH1250_pay_trx_biz_dtl_grid').setEditor('upperLimit', edit_id);
+                $au('CSH1250_pay_trx_biz_dtl_grid').setEditor('lowerLimit', edit_id);
+            }
+            
+            function CSH1250_CellClick(grid, row, name, record) {
+                if (name == 'upperLimit' || name == 'lowerLimit') {
+                    var value = record.get('ruleParameter');
+                    if (Ext.isEmpty(value)) {
+                        record.getMeta().getField('upperLimit').setReadOnly(true);
+                        record.getMeta().getField('lowerLimit').setReadOnly(true);
+                        Aurora.showMessage('$[l:prompt]', '$[l:csh_pay_rule.choose_rule_parameter]!');
+                        return;
+                    } else {
+                        record.getMeta().getField('upperLimit').setReadOnly(false);
+                        record.getMeta().getField('lowerLimit').setReadOnly(false);
+                        if (value == 'DOCUMENT_CATEGORY') {
+                            CSH1250_setEdit(record, 'doc_category_ds', 'CSH1250_biz_dtl_comboBox', 'comboBox');
+                        }
+                        if (value == 'PAYEE_CATEGORY') {
+                            CSH1250_setEdit(record, 'payee_category_ds', 'CSH1250_biz_dtl_comboBox', 'comboBox');
+                        }
+                        if (value == 'DOCUMENT_TYPE') {
+                            CSH1250_setEdit(record, 'LOV_DOC_TYPE_BY_MAG', 'CSH1250_Dtl_Lov', 'lov');
+                        }
+                        if (value == 'PAYMENT_USEDE') {
+                            CSH1250_setEdit(record, 'LOV_OAY_USED_MAG_COMPANY', 'CSH1250_Dtl_Lov', 'lov');
+                        }
+                        if (value == 'PAYMENT_METHOD') {
+                            CSH1250_setEdit(record, 'LOV_PAY_METHOD_MAG_COMPANY', 'CSH1250_Dtl_Lov', 'lov');
+                        }
+                        if (value == 'PAYMENT_CURRENCY') {
+                            CSH1250_setEdit(record, 'LOV_CURRENCY_PAY_BATCH', 'CSH1250_Dtl_Lov', 'lov');
+                        }
+                        if (value == 'PAYEE') {
+                            var u_mapping = [{
+                                from: 'payee_code',
+                                to: 'upperLimit'
+                            }];
+                            var l_mapping = [{
+                                from: 'payee_code',
+                                to: 'lowerLimit'
+                            }];
+                            record.getMeta().getField('upperLimit').setLovCode('LOV_GLD_PAYEE');
+                            record.getMeta().getField('lowerLimit').setLovCode('LOV_GLD_PAYEE');
+                            record.getMeta().getField('upperLimit').setMapping(u_mapping);
+                            record.getMeta().getField('lowerLimit').setMapping(l_mapping);
+                            $au('CSH1250_pay_trx_biz_dtl_grid').setEditor('upperLimit', 'CSH1250_Dtl_Lov');
+                            $au('CSH1250_pay_trx_biz_dtl_grid').setEditor('lowerLimit', 'CSH1250_Dtl_Lov');
+                        }
+                        if (value == 'PAYMENT_ACCOUNT') {
+                            CSH1250_setEdit(record, 'LOV_PAY_ACCOUNT', 'CSH1250_Dtl_Lov', 'lov');
+                        }
+                    }
+                }
+            }
+             function paymentRuleUpdate(ds, record, name, value) {
+                if (name == 'ruleParameter') {
+                    record.set('filtrateMethodName', '');
+                    record.set('filtrateMethod', '');
+                    record.set('upperLimit', '');
+                    record.set('lowerLimit', '');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="doc_category_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY/"/>
+            <a:dataSet id="payee_category_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT/"/>
+            <a:dataSet id="CSH1250_pay_rule_parameter_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_TRX_RULE_PARAMETER/"/>
+            <a:dataSet id="CSH1250_workflow_method_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/WFL_WORKFLOW_FILTRATE_METHOD/"/>
+            <a:dataSet id="CSH1250_pay_trx_biz_dtl_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-trx-rule-biz-dtl" queryUrl="$[/request/@context_path]/csh/payment-trx-rule-biz-dtl/query?ruleBizId=$[/parameter/@ruleBizId]" selectable="true">
+                <a:fields>
+                    <a:field name="bizDtlId"/>
+                    <a:field name="ruleBizId" defaultValue="$[/parameter/@ruleBizId]"/>
+                    <a:field name="ruleParameter"/>
+                    <a:field name="ruleParameterName" displayField="meaning" options="CSH1250_pay_rule_parameter_ds" prompt="csh_payment_trx_rule_biz_dtl.rule_parameter" required="true" returnField="ruleParameter" valueField="value"/>
+                    <a:field name="filtrateMethodName" displayField="meaning" options="CSH1250_workflow_method_ds" prompt="csh_payment_trx_rule_biz_dtl.filtrate_method" required="true" returnField="filtrateMethod" valueField="value"/>
+                    <a:field name="filtrateMethod"/>
+                    <a:field name="upperLimit" displayField="meaning" prompt="csh_payment_trx_rule_biz_dtl.upper_limit"/>
+                    <a:field name="lowerLimit" displayField="meaning" prompt="csh_payment_trx_rule_biz_dtl.lower_limit"/>
+                    <a:field name="invalidDate" prompt="csh_payment_trx_rule_biz_dtl.invalid_date"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1250_dtlSubmitSuccess"/>
+                    <a:event name="update" handler="paymentRuleUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:form id="CSH1250_pay_trx_rule_biz_dtl_form" column="2" title="csh_payment_trx_rule_biz.detail">
+                    <a:formToolbar>
+                        <a:label name="separator"/>
+                        <a:gridButton bind="CSH1250_pay_trx_biz_dtl_grid" type="add" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_biz_dtl_grid" type="save" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_biz_dtl_grid" type="clear" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_biz_dtl_grid" click="CSH1250_dtlBack" text="hap.back" width="80"/>
+                    </a:formToolbar>
+                    <a:textField name="ruleBizCode" bindTarget="CSH1250_pay_trx_rules_biz_ds" prompt="csh_payment_trx_rule_biz.rule_code" readOnly="true"/>
+                    <a:textField name="description" bindTarget="CSH1250_pay_trx_rules_biz_ds" prompt="csh_payment_trx_rule_biz.rule_name" readOnly="true"/>
+                </a:form>
+            </span>
+            <a:grid id="CSH1250_pay_trx_biz_dtl_grid" bindTarget="CSH1250_pay_trx_biz_dtl_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="ruleParameterName" align="center" editor="CSH1250_biz_dtl_comboBox" width="100"/>
+                    <a:column name="filtrateMethodName" align="center" editor="CSH1250_biz_dtl_comboBox" width="80"/>
+                    <a:column name="lowerLimit" align="center" width="100"/>
+                    <a:column name="upperLimit" align="center" width="100"/>
+                    <a:column name="invalidDate" align="center" editor="CSH1250_biz_dtl_datePicker" renderer="Aurora.formatDate" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="CSH1250_biz_dtl_textField"/>
+                    <a:comboBox id="CSH1250_biz_dtl_comboBox"/>
+                    <a:datePicker id="CSH1250_biz_dtl_datePicker"/>
+                    <a:lov id="CSH1250_Dtl_Lov"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="CSH1250_CellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

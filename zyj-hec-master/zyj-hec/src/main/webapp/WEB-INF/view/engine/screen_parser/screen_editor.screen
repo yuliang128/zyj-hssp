@@ -1,0 +1,745 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-5-14 上午11:19:56  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <!-- <s:server-script exp="j" import="screen_parse.js" resultpath="/parameter/@screen_conf"/> -->
+        <a:model-insert model="sys.ENGINE.sys_screen"/>
+        <a:model-query model="sys.ENGINE.sys_screen" rootPath="screenRoot"/>
+        <a:model-query autoCount="true" defaultWhereClause="t1.screen_id=${/model/screenRoot/record/@screen_id}" fetchAll="true" model="sys.ENGINE.sys_screen_layout_basic" rootPath="screenLayoutInit"/>
+        <a:model-query autoCount="true" defaultWhereClause="t1.screen_id=${/model/screenRoot/record/@screen_id}" fetchAll="true" model="sys.ENGINE.sys_screen_datasets" rootPath="screenDsInit"/>
+        <s:server-script import="screen_parse.js"/>
+    </a:init-procedure>
+    <a:view template="editor">
+        <a:link id="prompt_query_link" model="sys.ENGINE.sys_prompt_query" modelaction="query"/>
+        <a:link id="screen_rebuild_link" url="${/request/@context_path}/modules/engine/screen_parser/screen_rebuild.svc"/>
+        <script src="${/request/@context_path}/javascripts/4.0/screen_editor.js" type="text/javascript"/>
+        <script><![CDATA[
+        var bpm_type=''; 
+        var loadFlag=true;
+        var componentScreen = {
+            'TextField': '${/request/@context_path}/modules/engine/screen_parser/input_textfield.screen',
+            'NumberField': '${/request/@context_path}/modules/engine/screen_parser/input_numberfield.screen',
+            'Lov': '${/request/@context_path}/modules/engine/screen_parser/input_lov.screen',
+            'ComboBox': '${/request/@context_path}/modules/engine/screen_parser/input_combobox.screen',
+            'CheckBox': '${/request/@context_path}/modules/engine/screen_parser/input_checkbox.screen',
+            'DatePicker': '${/request/@context_path}/modules/engine/screen_parser/input_datepicker.screen',
+            'DateTimePicker': '${/request/@context_path}/modules/engine/screen_parser/input_datetimepicker.screen',
+            'Label': '${/request/@context_path}/modules/engine/screen_parser/input_label.screen',
+            'TextArea': '${/request/@context_path}/modules/engine/screen_parser/input_textarea.screen',
+            'Box': '${/request/@context_path}/modules/engine/screen_parser/layout_box.screen',
+            'FieldSet': '${/request/@context_path}/modules/engine/screen_parser/layout_fieldset.screen',
+            'Form': '${/request/@context_path}/modules/engine/screen_parser/layout_form.screen',
+            'Grid': '${/request/@context_path}/modules/engine/screen_parser/layout_grid.screen',
+            'HBox': '${/request/@context_path}/modules/engine/screen_parser/layout_hbox.screen',
+            'VBox': '${/request/@context_path}/modules/engine/screen_parser/layout_vbox.screen',
+            'Button': '${/request/@context_path}/modules/engine/screen_parser/button.screen',
+            'DataSet': '${/request/@context_path}/modules/engine/screen_parser/dataset.screen',
+            'Hidden' : '${/request/@context_path}/modules/engine/screen_parser/hidden.screen',
+            'Radio' : '${/request/@context_path}/modules/engine/screen_parser/input_radio.screen',
+            'QueryForm' : '${/request/@context_path}/modules/engine/screen_parser/layout_queryform.screen',
+            'TabPanel' : '${/request/@context_path}/modules/engine/screen_parser/layout_tabpanel.screen',
+            'Tab' : '${/request/@context_path}/modules/engine/screen_parser/layout_tab.screen',
+            'Basic':'${/request/@context_path}/modules/engine/screen_parser/layout_basic.screen',
+            'PlaceHolder':'${/request/@context_path}/modules/engine/screen_parser/input_placeholder.screen'
+        };
+        
+        var dsIndex=1;
+        
+            function onDatasetSubmitSuccessFun(ds,result){
+        		//Aurora.showMessage("${l:PROMPT}", "DataSet保存成功！",null,null,null,85);
+        		toastr.remove();
+                toastr.success("操作成功");
+        	}
+        	function onBtnSubmitSuccessFun(ds,result){
+        		//Aurora.showMessage("${l:PROMPT}", "按钮保存成功！",null,null,null,85);
+        		toastr.remove();
+                toastr.success("操作成功");
+        	}
+        	function onLayoutSubmitSuccessFun(ds,result){
+        		//Aurora.showMessage("${l:PROMPT}", "Layout保存成功！",null,null,null,85);
+        		toastr.remove();
+                toastr.success("操作成功");
+        	}
+        	
+        	function onDsLoadSuccessFun(ds){
+        	     loadData(ds,'dataset');
+        	}
+        	function onLayoutLoadSuccessFun(ds){
+	        	    loadData(ds,'');
+	        	    ds.locate(1,true);
+        	}//循环+异步
+        	
+        	function onTagLoadSuccessFun(ds){
+	        	$au('screen_layout_basic_ds').locate(++dsIndex,true);
+        	}
+        	function onBtnLoadSuccessFun(ds){
+        	     if(loadFlag && $au('screen_layout_basic_ds').currentIndex==$au('screen_layout_basic_ds').getAll().length){
+                	var records=$au('screen_layout_basic_ds').getAll();
+                	for(var i=0;i<records.length;i++){
+                    	if(records[i].get('tags')){
+                        	loadTags(records[i].get('tags').data,records[i]);//loadtag之前要先locate
+                    	}
+                    	if(records[i].get('buttons')){
+                        	loadButtons(records[i].get('buttons').data,records[i]);
+                    	}
+                	}
+                	loadFlag=false;
+            	}
+        	}
+        	function onTagDimensionLoadFun(ds){
+        	    //console.log(ds);
+        	}
+        	function onPlaceHolderTagLoad(ds){
+        	   // loadTags(records[i].get('tags').data,records[i]);
+        	   console.log($au('sys_screen_placeholder_tag_ds'));
+        	}
+        ]]></script>
+        <style><![CDATA[
+        	.col-md-2 {
+            width: 12%;
+        }
+        ]]></style>
+        <div id="main-container" class="clearfix">
+            <div id="component-lib">
+                <div id="component-lib-title"><![CDATA[
+                    组件库
+                ]]></div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[数据组件]]></span>
+                        <a id="a-datasets" class="expand-down"/>
+                    </div>
+                    <div id="datasets">
+                        <div class="component-type-content row">
+                            <div aetype="DataSet" cmptype="dataset">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_dataset.png"/>
+                                    <span><![CDATA[DataSet]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[布局组件]]></span>
+                        <a id="a-layouts" class="expand-down"/>
+                    </div>
+                    <div id="layouts">
+                        <div class="component-type-content row">
+                            <div aetype="Box" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_box.png"/>
+                                    <span><![CDATA[盒布局]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Form" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_form.png"/>
+                                    <span><![CDATA[表单布局]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="HBox" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_hbox.png"/>
+                                    <span><![CDATA[横向布局]]></span>
+                                </div>
+                            </div>
+                            <div aetype="VBox" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_vbox.png"/>
+                                    <span><![CDATA[纵向布局]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="FieldSet" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_fieldset.png"/>
+                                    <span><![CDATA[FieldSet]]></span>
+                                </div>
+                            </div>
+                            <div aetype="QueryForm" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_queryform.png"/>
+                                    <span><![CDATA[QueryForm]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="TabPanel" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_tabpanel.png"/>
+                                    <span><![CDATA[标签组]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Tab" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_tab.png"/>
+                                    <span><![CDATA[标签页]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[输入组件]]></span>
+                        <a id="a-inputs" class="expand-down"/>
+                    </div>
+                    <div id="inputs">
+                        <div class="component-type-content row">
+                            <div aetype="TextField" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_textfield.png"/>
+                                    <span><![CDATA[文本域]]></span>
+                                </div>
+                            </div>
+                            <div aetype="NumberField" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_numberfield.png"/>
+                                    <span><![CDATA[数字域]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="ComboBox" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_combobox.png"/>
+                                    <span><![CDATA[下拉框]]></span>
+                                </div>
+                            </div>
+                            <div aetype="CheckBox" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_checkbox.png"/>
+                                    <span><![CDATA[复选框]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="Lov" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_lov.png"/>
+                                    <span><![CDATA[Lov]]></span>
+                                </div>
+                            </div>
+                            <div aetype="TextArea" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_textarea.png"/>
+                                    <span><![CDATA[多行文本]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="DatePicker" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_datepicker.png"/>
+                                    <span><![CDATA[日期域]]></span>
+                                </div>
+                            </div>
+                            <div aetype="DateTimePicker" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_datetimepicker.png"/>
+                                    <span><![CDATA[时间域]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="Label" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_label.png"/>
+                                    <span><![CDATA[标签]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Radio" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_radio.png"/>
+                                    <span><![CDATA[单选框]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[其他组件]]></span>
+                        <a id="a-others" class="expand-down"/>
+                    </div>
+                    <div id="others">
+                        <div class="component-type-content row">
+                            <div aetype="Button" class="component-shell" cmptype="btn">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_button.png"/>
+                                    <span><![CDATA[按钮]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Hidden" cmptype="hidden">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_hidden.png"/>
+                                    <span><![CDATA[隐藏域]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[Grid]]></span>
+                        <a id="a-grids" class="expand-down"/>
+                    </div>
+                    <div id="grids">
+                        <div class="component-type-content row">
+                            <div aetype="Grid" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_grid.png"/>
+                                    <span><![CDATA[Grid]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridSelectBox" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_gridselectbox.png"/>
+                                    <span><![CDATA[多选框]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="GridRadioBox" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_gridradiobox.png"/>
+                                    <span><![CDATA[单选框]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridNavBar" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_gridnavbar.png"/>
+                                    <span><![CDATA[导航]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="GridAddButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_gridaddbtn.png"/>
+                                    <span><![CDATA[新增]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridDeleteButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_griddeletebtn.png"/>
+                                    <span><![CDATA[删除]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="GridSaveButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_gridsavebtn.png"/>
+                                    <span><![CDATA[保存]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridClearButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="${/request/@context_path}/images/4.0/screen_editor/_gridclearbtn.png"/>
+                                    <span><![CDATA[清除]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="screen-editor">
+                <div style="float: right;margin: 0px 20px;border: none;padding: 2px;">
+                    <button id="save_btn" class="save-button"><![CDATA[保存]]></button>
+                </div>
+                <div id="editor-title">
+                    <h5><![CDATA[编辑器]]></h5>
+                </div>
+                <div id="editor-shell">
+                    <div id="editor-container" class="drag-container row"><![CDATA[
+
+                        ]]></div>
+                </div>
+            </div>
+            <div id="attr-editor">
+                <div id="dataset-container-title"><![CDATA[
+                    DataSet存放区
+                ]]></div>
+                <div id="dataset-container-shell">
+                    <div id="dataset-container" class="dataset-drag-container"><![CDATA[
+
+                        ]]></div>
+                </div>
+                <div id="hidden-title"><![CDATA[
+                    隐藏域存放区
+                ]]></div>
+                <div id="hidden-shell">
+                    <div id="hidden-container" class="hidden-drag-container"><![CDATA[
+
+                        ]]></div>
+                </div>
+                <div id="recycle-title"><![CDATA[
+                    回收站
+                ]]></div>
+                <div id="recycle-shell">
+                    <div id="recycle-container" class="recyle-drag-container"><![CDATA[
+
+                        ]]></div>
+                </div>
+            </div>
+        </div>
+        <a:dataSets>
+            <a:dataSet id="bpm_bindtarget_lists">
+                <a:fields>
+                    <a:field name="datasetId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="prompt_ds" autoQuery="false" fetchAll="true" model="sys.ENGINE.sys_prompt_query">
+                <a:fields>
+                    <a:field name="description"/>
+                    <a:field name="prompt_code"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="screen_dataset_ds" autoQuery="false" fetchAll="true" model="sys.ENGINE.sys_screen_datasets" queryUrl="${/request/@context_path}/autocrud/sys.ENGINE.sys_screen_datasets/query?screen_id=${/parameter/@screen_id}" selectable="true">
+                <!--  <a:datas dataSource="${/model/screenDsInit}"/> -->
+                <a:fields>
+                    <a:field name="dataset_id"/>
+                    <a:field name="dataset_usage"/>
+                    <a:field name="datasource_type"/>
+                    <a:field name="model"/>
+                    <a:field name="autoquery"/>
+                    <a:field name="queryurl"/>
+                    <a:field name="autocreate"/>
+                    <a:field name="submiturl"/>
+                    <a:field name="bindname"/>
+                    <a:field name="bindtarget"/>
+                    <a:field name="selectable"/>
+                    <a:field name="selection_model"/>
+                    <a:field name="loaddata"/>
+                    <a:field name="lookupcode"/>
+                    <a:field name="querydataset"/>
+                    <a:field name="fetchall"/>
+                    <a:field name="pagesize"/>
+                    <a:field name="autocount"/>
+                    <a:field name="autopagesize"/>
+                    <a:field name="maxpagesize"/>
+                    <a:field name="modifiedcheck"/>
+                    <a:field name="notification"/>
+                    <a:field name="screen_id" defaultValue="${/model/screenRoot/record/@screen_id}"/>
+                    <a:field name="enable_flag" defaultValue="Y"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onDatasetSubmitSuccessFun"/>
+                    <a:event name="loadsuccess" handler="onDsLoadSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="screen_dataset_fields_ds" autoQuery="false" bindName="fields" bindTarget="screen_dataset_ds" model="sys.ENGINE.sys_screen_datasets_fields" selectable="true">
+                <a:fields>
+                    <a:field name="field_id"/>
+                    <a:field name="dataset_id"/>
+                    <a:field name="field_sequence"/>
+                    <a:field name="name"/>
+                    <a:field name="required"/>
+                    <a:field name="requiredmessage"/>
+                    <a:field name="readonly"/>
+                    <a:field name="returnfield"/>
+                    <a:field name="options"/>
+                    <a:field name="displayfield"/>
+                    <a:field name="prompt"/>
+                    <a:field name="title"/>
+                    <a:field name="lovservice"/>
+                    <a:field name="lovwidth"/>
+                    <a:field name="lovlabelwidth"/>
+                    <a:field name="lovheight"/>
+                    <a:field name="lovgridheight"/>
+                    <a:field name="lovautoquery"/>
+                    <a:field name="defaultvalue"/>
+                    <a:field name="checkedvalue"/>
+                    <a:field name="uncheckvalue"/>
+                    <a:field name="lovurl"/>
+                    <a:field name="autocomplete"/>
+                    <a:field name="autocompletefield"/>
+                    <a:field name="autocompletepagesize"/>
+                    <a:field name="validator"/>
+                    <a:field name="datatype"/>
+                    <a:field name="typecase"/>
+                    <a:field name="tooltip"/>
+                    <a:field name="fuzzyfetch"/>
+                    <a:field name="fetchremote"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="screen_field_mapper_ds" autoQuery="false" bindName="mappers" bindTarget="screen_dataset_fields_ds" model="sys.ENGINE.sys_screen_fields_mapper" selectable="true">
+                <a:fields>
+                    <a:field name="mapper_id"/>
+                    <a:field name="field_id"/>
+                    <a:field name="mapper_sequence"/>
+                    <a:field name="from"/>
+                    <a:field name="to"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="screen_layout_basic_ds" autoCreate="false" autoQuery="false" fetchAll="true" model="sys.ENGINE.sys_screen_layout_basic" queryUrl="${/request/@context_path}/autocrud/sys.ENGINE.sys_screen_layout_basic/query?screen_id=${/model/screenRoot/record/@screen_id}" selectionModel="single" submitUrl="${/request/@context_path}/modules/engine/screen_parser/sys_screen_save.svc">
+                <a:datas dataSource="${/model/screenLayoutInit}"/>
+                <a:fields>
+                    <a:field name="layout_id"/>
+                    <a:field name="screen_id" defaultValue="${/model/screenRoot/record/@screen_id}"/>
+                    <a:field name="layout_sequence"/>
+                    <a:field name="layout_code"/>
+                    <a:field name="layout_desc"/>
+                    <a:field name="layout_type_desc"/>
+                    <a:field name="layout_type"/>
+                    <a:field name="parent_layout_desc" autoComplete="true" autoCompleteField="layout_desc" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1010.bpm_tplt_layout_basic" lovWidth="540" title="BPM_TPLT_LAYOUT_BASIC.PARENT_LAYOUT_ID">
+                        <a:mapping>
+                            <a:map from="layout_desc" to="parent_layout_desc"/>
+                            <a:map from="layout_id" to="parent_layout_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parent_layout_id"/>
+                    <a:field name="view_parent_layout_id"/>
+                    <a:field name="dataset"/>
+                    <a:field name="id"/>
+                    <a:field name="tab_group_number" readOnly="true"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="marginwidth"/>
+                    <a:field name="marginheight"/>
+                    <a:field name="style"/>
+                    <a:field name="hidden" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="labelwidth" readOnly="true"/>
+                    <a:field name="row" readOnly="true"/>
+                    <a:field name="column" readOnly="true"/>
+                    <a:field name="navbar" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="navbarType"/>
+                    <a:field name="ref" readOnly="true"/>
+                    <a:field name="selected" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="closeable" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="disabled" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="resulttarget"/>
+                    <a:field name="autoadjust"/>
+                    <a:field name="autoadjustheight"/>
+                    <a:field name="autoadjustwidth"/>
+                    <a:field name="enable_flag" defaultValue="Y"/>
+                    <a:field name="title"/>
+                    <a:field name="title_display"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onLayoutSubmitSuccessFun"/>
+                    <a:event name="loadsuccess" handler="onLayoutLoadSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="screen_tags_basic_ds" autoCreate="false" autoQuery="false" bindName="tags" bindTarget="screen_layout_basic_ds" fetchAll="true" model="sys.ENGINE.sys_screen_tag_basic" queryUrl="${/request/@context_path}/autocrud/sys.ENGINE.sys_screen_tag_basic/query" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="tag_id"/>
+                    <a:field name="layout_id"/>
+                    <a:field name="layout_type"/>
+                    <a:field name="tag_sequence"/>
+                    <a:field name="tag_type_desc"/>
+                    <a:field name="tag_type"/>
+                    <a:field name="name"/>
+                    <a:field name="defaultvalue"/>
+                    <a:field name="readonly" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="required" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="prompt"/>
+                    <a:field name="validator"/>
+                    <a:field name="requiredmessage"/>
+                    <a:field name="id"/>
+                    <a:field name="bindtarget"/>
+                    <a:field name="width"/>
+                    <a:field name="height" readOnly="true"/>
+                    <a:field name="style"/>
+                    <a:field name="colspan" readOnly="true"/>
+                    <a:field name="rowspan" readOnly="true"/>
+                    <a:field name="hidden" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="align_desc"/>
+                    <a:field name="align"/>
+                    <a:field name="cloumnwidth" readOnly="true"/>
+                    <a:field name="editor"/>
+                    <a:field name="editorfunction"/>
+                    <a:field name="footerrenderer" readOnly="true"/>
+                    <a:field name="lock_flag" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="renderer"/>
+                    <a:field name="resizable" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="sortable" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="tf_typecase_desc"/>
+                    <a:field name="tf_typecase" readOnly="true"/>
+                    <a:field name="nf_allowdecimals" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="nf_decimalprecision" readOnly="true"/>
+                    <a:field name="nf_allownegative" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="nf_allowformat" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="cb_datasource_desc"/>
+                    <a:field name="cb_datasource"/>
+                    <a:field name="cb_options" readOnly="true"/>
+                    <a:field name="cb_valuefield" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_combobox_fields" lovWidth="250" prompt="BPM_PAGE_TAGS_BASIC.CB_VALUEFIELD" readOnly="true" title="BPM_PAGE_TAGS_BASIC.CB_VALUEFIELD">
+                        <a:mapping>
+                            <a:map from="combobox_field" to="cb_valuefield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cb_returnfield_desc"/>
+                    <a:field name="cb_returnfield"/>
+                    <a:field name="cb_displayfield" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_combobox_fields" lovWidth="250" prompt="BPM_PAGE_TAGS_BASIC.CB_DISPLAYFIELD" readOnly="true" title="BPM_PAGE_TAGS_BASIC.CB_DISPLAYFIELD">
+                        <a:mapping>
+                            <a:map from="combobox_field" to="cb_displayfield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cb_syscode" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_combobox_syscode_lov" lovWidth="500" prompt="BPM_PAGE_TAGS_BASIC.CB_SYSCODE" readOnly="true" title="BPM_PAGE_TAGS_BASIC.CB_SYSCODE">
+                        <a:mapping>
+                            <a:map from="code" to="cb_syscode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cb_sqltext" lovHeight="400" lovUrl="${/request/@context_path}/modules/bpm/BPM1020/bpm_page_tags_combobox_sqltext_lov.screen" lovWidth="800" readOnly="true"/>
+                    <a:field name="lov_datasource_desc"/>
+                    <a:field name="lov_datasource" readOnly="true"/>
+                    <a:field name="lov_lovservice" readOnly="true"/>
+                    <a:field name="lov_lovurl" readOnly="true"/>
+                    <a:field name="lov_lovautoquery" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="lov_lovgridheight" readOnly="true"/>
+                    <a:field name="lov_lovheight" readOnly="true"/>
+                    <a:field name="lov_lovwidth" readOnly="true"/>
+                    <a:field name="lov_lovlabelwidth" readOnly="true"/>
+                    <a:field name="lov_autocomplete" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="lov_autocompletefield" readOnly="true"/>
+                    <a:field name="lov_title" readOnly="true"/>
+                    <a:field name="lov_sqltext" lovHeight="400" lovUrl="${/request/@context_path}/modules/bpm/BPM1020/bpm_page_tags_lov_sqltext_lov.screen" lovWidth="800" readOnly="true"/>
+                    <a:field name="lov_syscode" readOnly="true"/>
+                    <a:field name="l_renderer" readOnly="true"/>
+                    <a:field name="r_datasource_desc"/>
+                    <a:field name="r_datasource" readOnly="true"/>
+                    <a:field name="r_options" readOnly="true"/>
+                    <a:field name="r_valuefield" readOnly="true"/>
+                    <a:field name="r_labelexpression" readOnly="true"/>
+                    <a:field name="r_labelfield" readOnly="true"/>
+                    <a:field name="r_layout_desc"/>
+                    <a:field name="r_layout" readOnly="true"/>
+                    <a:field name="r_syscode" lovGridHeight="300" lovHeight="460" lovService="bpm.BPM1020.bpm_page_tags_combobox_syscode_lov" lovWidth="500" prompt="BPM_PAGE_TAGS_BASIC.R_SYSCODE" readOnly="true" title="BPM_PAGE_TAGS_BASIC.R_SYSCODE">
+                        <a:mapping>
+                            <a:map from="code" to="r_syscode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="r_sqltext" readOnly="true"/>
+                    <a:field name="ck_checkedvalue" readOnly="true"/>
+                    <a:field name="ck_uncheckedvalue" readOnly="true"/>
+                    <a:field name="ck_label" readOnly="true"/>
+                    <a:field name="dk_dayrenderer" readOnly="true"/>
+                    <a:field name="dk_enablebesidedays" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dk_enablemonthbtn" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dk_viewsize" readOnly="true"/>
+                    <a:field name="dk_renderer" readOnly="true"/>
+                    <a:field name="dtk_dayrenderer" readOnly="true"/>
+                    <a:field name="dtk_enablebesidedays" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dtk_enablemonthbtn" checkedValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dtk_viewsize" readOnly="true"/>
+                    <a:field name="dtk_renderer" readOnly="true"/>
+                    <a:field name="dtk_hour" readOnly="true"/>
+                    <a:field name="dtk_minute" readOnly="true"/>
+                    <a:field name="dtk_second" readOnly="true"/>
+                    <a:field name="printable" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="percentwidth"/>
+                    <a:field name="forexport"/>
+                    <a:field name="autoadjust"/>
+                    <a:field name="maxadjustwidth"/>
+                    <a:field name="exportdataformat"/>
+                    <a:field name="exportdatatype"/>
+                    <a:field name="exportfield"/>
+                    <a:field name="showtitle"/>
+                    <a:field name="enable_flag" defaultValue="Y"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="loadsuccess" handler="onTagLoadSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="screen_buttons_result_ds" autoQuery="false" bindName="buttons" bindTarget="screen_layout_basic_ds" fetchAll="true" model="sys.ENGINE.sys_screen_buttons" selectable="true">
+                <a:fields>
+                    <a:field name="button_id"/>
+                    <a:field name="layout_id"/>
+                    <a:field name="button_sequence"/>
+                    <a:field name="button_code" typeCase="upper"/>
+                    <a:field name="button_desc"/>
+                    <a:field name="operation_type_desc"/>
+                    <a:field name="operation_type"/>
+                    <a:field name="template_flag" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="id"/>
+                    <a:field name="type_desc"/>
+                    <a:field name="type"/>
+                    <a:field name="text"/>
+                    <a:field name="text_display"/>
+                    <a:field name="click"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" uncheckedValue="false"/>
+                    <a:field name="style"/>
+                    <a:field name="btnstyle"/>
+                    <a:field name="button_tag"/>
+                    <a:field name="bind"/>
+                    <a:field name="enable_flag" defaultValue="Y"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="loadsuccess" handler="onBtnLoadSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="sys_screen_dimension_ds" autoCreate="false" autoQuery="false" bindName="dimensions" bindTarget="screen_tags_basic_ds" model="sys.ENGINE.sys_screen_dimensions" queryUrl="${/request/@context_path}/autocrud/sys.ENGINE.sys_screen_dimensions/query">
+                <a:fields>
+                    <a:field name="dimension_id"/>
+                    <a:field name="dimension_sequence"/>
+                    <a:field name="targetid"/>
+                    <a:field name="source"/>
+                    <a:field name="test"/>
+                    <a:field name="value"/>
+                    <a:field name="tag_id"/>
+                    <a:field name="doc_id"/>
+                    <a:field name="doc_type"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="loadsuccess" handler="onTagDimensionLoadFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="sys_screen_placeholder_tag_ds" autoCreate="false" autoQuery="false" fetchAll="true" model="sys.ENGINE.sys_screen_placeholder_tag_query" queryUrl="${/request/@context_path}/autocrud/sys.ENGINE.sys_screen_placeholder_tag_query/query">
+                <a:events>
+                    <a:event name="loadsuccess" handler="onPlaceHolderTagLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <script><![CDATA[
+        	Aurora.onReady(function () {
+	        	dataSetDs=$au('screen_dataset_ds');
+	        	btnDs=$au('screen_buttons_result_ds');
+	        	layoutDs=$au('screen_layout_basic_ds');
+	        	tagDs=$au('screen_tags_basic_ds');
+	        	layoutBtnDs=$au('screen_buttons_result_ds');
+	        	dimensionDs=$au('sys_screen_dimension_ds');
+	        	var parse_flag='${/model/screenRoot/record/@parse_flag}';
+	        	screen_edit='Y';
+	        	if(parse_flag!='Y'){
+	        	    var screen_config=decodeURI('${/parameter/@screen_config}');//<view>
+	        	    var view_config=decodeURI("${/parameter/@view_config}");//<view-config>
+	        	    init_models=decodeURI("${/parameter/@init_models}");//<init-procedure>
+	        	    doc_id='${/parameter/@doc_id}';//单据ID
+	        	    doc_type='${/parameter/@doc_type}';//单据类型，例：exp_report_header_id
+	        	    if(!doc_id){doc_id=-1;}
+	        	    if(!doc_type){doc_id='';}
+	        	    if(init_models){init_models=eval('('+init_models+')');}
+	        	    if(view_config){
+	        	        vc = $.parseXML(view_config);
+	        	    }
+	        	     if(screen_config){
+	        	    	init(screen_config);
+	        	    } 
+	        	}
+	        	else{
+	        	    layoutDs.setQueryParameter('screen_id','${/model/screenRoot/record/@screen_id}');
+	        	    layoutDs.query();
+	        	    dataSetDs.setQueryParameter('screen_id','${/model/screenRoot/record/@screen_id}');
+	        	    dataSetDs.query();
+	        	}
+        	});
+        	$('#save_btn').click(function(){
+    			$au('screen_dataset_ds').submit();
+    			$au('screen_layout_basic_ds').submit();
+    		});
+        ]]></script>
+    </a:view>
+</a:screen>

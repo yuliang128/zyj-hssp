@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP5110_delete_vat_invoice_link" model="db.vat_invoice_pkg.delete_vat_invoice" modelaction="delete"/>
+        <script><![CDATA[
+            var lineDsId = '${/parameter/@line_ds_id}';
+            var vatInvoiceId = '${/parameter/@vat_invoice_id}';
+            var vatInvoiceLineId = '${/parameter/@vat_invoice_line_id}';
+            
+            var accEntityIds = '[' + $au('EXP5110_exp_report_header_ds').getAt(0).get('acc_entity_id') + '][' + $au(lineDsId).getCurrentRecord().get('acc_entity_id') + ']';
+            
+            function EXP5110_closeInvoice() {
+                $au('EXP5110_exp_report_maintain_vat_invoice_window').close();
+            }
+            
+            function EXP5110_confirmAssignInvoice() {
+                var selectedRecords = $au('EXP5110_invoiceLineDs').getSelected();
+                if (selectedRecords.length != 1) {
+                    Aurora.showErrorMessage('错误', '请选择一条关联记录');
+                    return;
+                }
+            
+                var lineRecord = $au(lineDsId).getCurrentRecord();
+                var invoiceRecord = $au('EXP5110_invoiceDs').getAt(0);
+                lineRecord.set('vat_invoice_id', invoiceRecord.get('vat_invoice_id'));
+                lineRecord.set('vat_invoice_line_id', selectedRecords[0].get('vat_invoice_line_id'));
+                lineRecord.set('invoice_code', invoiceRecord.get('invoice_code'));
+                lineRecord.set('invoice_number', invoiceRecord.get('invoice_number'));
+                EXP5110_closeInvoice();
+            }
+            
+            function EXP5110_cancelAssignInvoice() {
+                $au('EXP5110_exp_report_maintain_vat_invoice_window')['un']('beforeclose', EXP5110_vatInvoiceCheckAmount);
+            
+                var lineRecord = $au(lineDsId).getCurrentRecord();
+                lineRecord.set('vat_invoice_id', '');
+                lineRecord.set('vat_invoice_line_id', '');
+                lineRecord.set('invoice_code', '');
+                lineRecord.set('invoice_number', '');
+                lineRecord.set('invoice_item_name', '');
+                lineRecord.set('invoice_item_id', '');
+                lineRecord.set('invoice_usede_name', '');
+                lineRecord.set('invoice_usede_id', '');
+                EXP5110_closeInvoice();
+            }
+            
+            function EXP5110_saveInvoice() {
+                $au('EXP5110_invoiceDs').submit();
+            }
+            
+            function EXP5110_deleteInvoice() {
+                var record = $au('EXP5110_invoiceDs').getAt(0);
+                if (record.get('vat_invoice_id')) {
+                    Aurora.showConfirm('提示', '是否需要删除当前增值税专票?', EXP5110_forceDeleteInvoice);
+                } else {
+                    Aurora.showConfirm('提示', '当前发票尚未保存，是否删除?', EXP5110_createInovice);
+                }
+            }
+            
+            function EXP5110_forceDeleteInvoice() {
+                Aurora.request({
+                    url: $au('EXP5110_delete_vat_invoice_link').getUrl() + '?vat_invoice_id=' + $au('EXP5110_invoiceDs').getAt(0).get('vat_invoice_id'),
+                    success: function() {
+                        EXP5110_createInovice();
+                    }
+                });
+            }
+            
+            function EXP5110_queryInvoiceLine() {
+                $au('EXP5110_invoiceLineDs').query();
+            }
+            
+            function EXP5110_createInovice() {
+                Ext.get('EXP5110_invoiceCodeLov').setStyle('display', 'none');
+                Ext.get('EXP5110_invoiceCodeTf').setStyle('display', 'block');
+                var record = $au('EXP5110_invoiceDs').getAt(0);
+                var accEntityRecord = $au('EXP5110_invoiceAccEntityDs').getAt(0);
+            
+                $au('EXP5110_invoiceDs').removeLocal(record);
+                $au('EXP5110_invoiceDs').create({
+                    acc_entity_name: accEntityRecord.get('acc_entity_name'),
+                    acc_entity_id: accEntityRecord.get('acc_entity_id'),
+                    taxpayer_number: accEntityRecord.get('taxpayer_number'),
+                    bank_account_number: accEntityRecord.get('bank_account'),
+                    bank_account_id: accEntityRecord.get('bank_account_id')
+                });
+            }
+            
+            function EXP5110_chooseInovice() {
+                Ext.get('EXP5110_invoiceCodeLov').setStyle('display', 'block');
+                Ext.get('EXP5110_invoiceCodeTf').setStyle('display', 'none');
+                var accEntityRecord = $au('EXP5110_invoiceAccEntityDs').getAt(0);
+            
+                $au('EXP5110_invoiceDs').removeLocal(record);
+                $au('EXP5110_invoiceDs').create({
+                    acc_entity_name: accEntityRecord.get('acc_entity_name'),
+                    acc_entity_id: accEntityRecord.get('acc_entity_id'),
+                    taxpayer_number: accEntityRecord.get('taxpayer_number'),
+                    bank_account_number: accEntityRecord.get('bank_account'),
+                    bank_account_id: accEntityRecord.get('bank_account_id')
+                });
+            }
+            
+            function EXP5110_onInvoiceUpdate(ds, record, name, value, oldValue) {
+                if (name == 'vat_invoice_id' && value) {
+                    $au('EXP5110_invoiceDs').setQueryParameter('vat_invoice_id', value);
+                    $au('EXP5110_invoiceDs').query();
+                }
+            
+                if (name == 'without_tax_amount' || name == 'tax_type_rate') {
+                    record.set('tax_amount', mul(record.get('without_tax_amount'), record.get('tax_type_rate')).toFixed(2));
+                }
+            
+                if (name == 'without_tax_amount' || name == 'tax_amount') {
+                    var amount = plus(record.get('without_tax_amount'), record.get('tax_amount'));
+                    record.set('amount', amount);
+                }
+            }
+            
+            function EXP5110_onInvoiceSubmitSuccess() {
+                EXP5110_queryInvoiceLine();
+            }
+            
+            function EXP5110_onInvoiceCodeFocus() {
+                var record = $au('EXP5110_invoiceDs').getAt(0);
+                record.getField('invoice_code').setLovPara('acc_entity_id', record.get('acc_entity_id'));
+            }
+            
+            function EXP5110_onInvoiceLineAdd(ds, record, index) {
+                var records = $au('EXP5110_invoiceLineDs').getAll();
+                var maxLineNumber = 0;
+                for (var i = 0;i < records.length;i++) {
+                    if (maxLineNumber < records[i].get('line_number')) {
+                        maxLineNumber = records[i].get('line_number');
+                    }
+                }
+            
+                record.set('line_number', maxLineNumber + 10);
+            }
+            
+            function EXP5110_onInvoiceLineUpdate(ds, record, name, value, oldValue) {
+                if (name == 'without_tax_amount' || name == 'tax_amount') {
+                    record.set('amount', plus(record.get('without_tax_amount'), record.get('tax_amount')));
+                }
+            
+                if (name == 'without_tax_amount' || name == 'tax_type_rate') {
+                    record.set('tax_amount', mul(record.get('without_tax_amount'), record.get('tax_type_rate')));
+                }
+            }
+            
+            function EXP5110_invoiceLineRowRenderer(record) {
+                if (record.isSelected) {
+                    return 'background-image:url(${/request/@context_path}/images/bgcolor_d43f3a.png);background-repeat:repeat-x;';
+                }
+            }
+            
+            function EXP5110_onInvoiceLineSelect(ds, record) {
+                var records = ds.getAll();
+                for (var i = 0;i < records.length;i++) {
+                    if (records[i] != record) {
+                        ds.unSelect(records[i]);
+                    }
+                }
+            
+                $au('EXP5110_invoiceLineGrid').onLoad();
+            }
+            
+            function EXP5110_onInvoiceLineUnSelect() {
+                $au('EXP5110_invoiceLineGrid').onLoad();
+            }
+            
+            function EXP5110_onVatAccEntityFocus() {
+                $au('EXP5110_invoiceDs').getAt(0).getField('acc_entity_name').setLovPara('acc_entity_ids', accEntityIds);
+            }
+            
+            function EXP5110_onInvoiceLineLoad(ds) {
+            
+                Aurora.Masker.unmask(Ext.get('EXP5110_exp_report_maintain_vat_invoice_window'));
+            
+                if (vatInvoiceLineId) {
+                    var records = ds.getAll();
+                    for (var i = 0;i < records.length;i++) {
+                        if (records[i].get('vat_invoice_line_id') == vatInvoiceLineId) {
+                            ds.select(records[i]);
+                        }
+                    }
+                } else {
+            
+                   }
+            }
+            
+            function EXP5110_vatInvoiceInit() {
+                if (vatInvoiceId) {
+                    $au('EXP5110_invoiceDs').setQueryParameter('vat_invoice_id', vatInvoiceId);
+                    $au('EXP5110_invoiceDs').query();
+                } else {
+                    var accEntityRecord = $au('EXP5110_invoiceAccEntityDs').getAt(0);
+                    var invoiceRecord = $au('EXP5110_invoiceDs').getAt(0);
+            
+                    invoiceRecord.set('acc_entity_name', accEntityRecord.get('acc_entity_name'));
+                    invoiceRecord.set('acc_entity_id', accEntityRecord.get('acc_entity_id'));
+                    invoiceRecord.set('taxpayer_number', accEntityRecord.get('taxpayer_number'));
+                    invoiceRecord.set('bank_account_number', accEntityRecord.get('bank_account'));
+                    invoiceRecord.set('bank_account_id', accEntityRecord.get('bank_account_id'));
+            
+                    invoiceRecord.dirty = false;
+                }
+            }
+            
+            function EXP5110_vatInvoiceWithoutTaxAmountFootRenderer(data, name) {
+                var records = $au('EXP5110_invoiceLineDs').getAll();
+                var totalWithoutTaxAmount = 0;
+                for (var i = 0;i < records.length;i++) {
+                    totalWithoutTaxAmount = plus(totalWithoutTaxAmount, records[i].get('without_tax_amount'));
+                }
+            
+                return Aurora.formatMoney(totalWithoutTaxAmount);
+            }
+            
+            function EXP5110_vatInvoiceTaxAmountFootRenderer(data, name) {
+                var records = $au('EXP5110_invoiceLineDs').getAll();
+                var totalTaxAmount = 0;
+                for (var i = 0;i < records.length;i++) {
+                    totalTaxAmount = plus(totalTaxAmount, records[i].get('tax_amount'));
+                }
+            
+                return Aurora.formatMoney(totalTaxAmount);
+            }
+            
+            function EXP5110_vatInvoiceAmountFootRenderer(data, name) {
+                var records = $au('EXP5110_invoiceLineDs').getAll();
+                var totalAmount = 0;
+                for (var i = 0;i < records.length;i++) {
+                    totalAmount = plus(totalAmount, records[i].get('amount'));
+                }
+            
+                return Aurora.formatMoney(totalAmount);
+            }
+            
+            function EXP5110_vatInvoiceCheckAmount() {
+                if ($au('EXP5110_invoiceDs').isModified()) {
+                    Aurora.showConfirm('提示', '当前发票尚未保存,是否关闭!', function() {
+                        $au('EXP5110_exp_report_maintain_vat_invoice_window')['un']('beforeclose', EXP5110_vatInvoiceCheckAmount);
+                        EXP5110_closeInvoice();
+                    });
+            
+                    return false;
+                }
+            
+                var selectedRecords = $au('EXP5110_invoiceLineDs').getSelected();
+                if (selectedRecords.length > 1) {
+                    Aurora.showErrorMessage('错误', '请选择一条关联记录');
+                    return false;
+                }
+            
+                if (selectedRecords.length == 1 && selectedRecords[0].get('vat_invoice_line_id') != $au(lineDsId).getCurrentRecord().get('vat_invoice_line_id')) {
+                    Aurora.showInfoMessage('提示', '关联发票行已变更,请先进行确认关联操作!');
+            
+                    return false;
+                }
+            
+                var invoiceRecord = $au('EXP5110_invoiceDs').getAt(0);
+                var lineRecords = $au('EXP5110_invoiceLineDs').getAll();
+                var checkMsg = '';
+                var lineTotalWithoutTaxAmount = 0;
+                var lineTotalTaxAmount = 0;
+                var lineTotalAmount = 0;
+                for (var i = 0;i < lineRecords.length;i++) {
+                    lineTotalWithoutTaxAmount = plus(lineTotalWithoutTaxAmount, lineRecords[i].get('without_tax_amount'));
+                    lineTotalTaxAmount = plus(lineTotalTaxAmount, lineRecords[i].get('tax_amount'));
+                    lineTotalAmount = plus(lineTotalAmount, lineRecords[i].get('amount'));
+                }
+            
+                if (invoiceRecord.get('amount') && lineTotalWithoutTaxAmount != invoiceRecord.get('without_tax_amount')) {
+                    checkMsg = '发票行不含税金额总和不等于发票不含税金额,请检查数据!';
+                }
+            
+                if (invoiceRecord.get('tax_amount') && lineTotalTaxAmount != invoiceRecord.get('tax_amount')) {
+                    checkMsg = '发票行税额总和不等于发票税额,请检查数据!';
+                }
+            
+                if (invoiceRecord.get('amount') && lineTotalAmount != invoiceRecord.get('amount')) {
+                    checkMsg = '发票行含税金额总和不等于发票金额,请检查数据!';
+                }
+            
+                if (checkMsg) {
+                    Aurora.showErrorMessage('错误', checkMsg);
+                    return false;
+                }
+            
+                return true;
+            }
+            
+            Aurora.onReady(EXP5110_vatInvoiceInit);
+            
+            $au('EXP5110_exp_report_maintain_vat_invoice_window')['on']('beforeclose', EXP5110_vatInvoiceCheckAmount);
+            
+            if (vatInvoiceLineId) {
+                Aurora.Masker.mask(Ext.get('EXP5110_exp_report_maintain_vat_invoice_window'), '查询中，请稍候！');
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_invoiceAccEntityDs" loadData="true" model="hec_util.gld_accounting_entities_vl_lov"/>
+            <a:dataSet id="EXP5110_taxTypeDs" loadData="true" model="hec_util.fnd_tax_type_code_vl_lov"/>
+            <a:dataSet id="EXP5110_invoiceDs" autoCreate="true" model="expm.EXP5110.vat_invoices_query" submitUrl="${/request/@context_path}/modules/expm/EXP5110/exp_report_maintain_vat_invoice_save.svc">
+                <a:fields>
+                    <a:field name="acc_entity_name" lovService="hec_util.gld_accounting_entities_vl_lov" prompt="开票主体" readOnly="true" required="true">
+                        <a:mapping>
+                            <a:map from="acc_entity_name" to="acc_entity_name"/>
+                            <a:map from="acc_entity_id" to="acc_entity_id"/>
+                            <a:map from="taxpayer_number" to="taxpayer_number"/>
+                            <a:map from="bank_account" to="bank_account_number"/>
+                            <a:map from="bank_account_id" to="bank_account_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="acc_entity_id"/>
+                    <a:field name="taxpayer_number" prompt="纳税人识别号" readOnly="true" required="true"/>
+                    <a:field name="bank_account_number" prompt="银行账号" readOnly="true" required="true"/>
+                    <a:field name="bank_account_id"/>
+                    <a:field name="invoice_code" lovHeight="520" lovService="hec_util.vat_invoices_lov" lovWidth="600" prompt="发票代码" required="true">
+                        <a:mapping>
+                            <a:map from="vat_invoice_id" to="vat_invoice_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="invoice_number" prompt="发票号" required="true"/>
+                    <a:field name="invoice_date" prompt="开票日期" required="true"/>
+                    <a:field name="tax_type_name" displayField="tax_type_name" options="EXP5110_taxTypeDs" prompt="税率类型(任一)" required="true">
+                        <a:mapping>
+                            <a:map from="tax_type_id" to="tax_type_id"/>
+                            <a:map from="tax_type_rate" to="tax_type_rate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="tax_type_rate" prompt="税率" readOnly="true" required="true"/>
+                    <a:field name="without_tax_amount" prompt="不含税金额" required="true"/>
+                    <a:field name="tax_amount" prompt="税额" required="ture"/>
+                    <a:field name="amount" prompt="含税金额" readOnly="true" required="ture"/>
+                    <a:field name="description" prompt="发票描述"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5110_onInvoiceUpdate"/>
+                    <a:event name="submitsuccess" handler="EXP5110_onInvoiceSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_invoiceLineDs" bindName="lines" bindTarget="EXP5110_invoiceDs" fetchAll="true" model="expm.EXP5110.vat_invoice_lines_query" queryDataSet="EXP5110_invoiceDs" selectable="true" submitUrl="${/request/@context_path}/autocrud/db.vat_invoice_pkg.delete_vat_invoice_line/batch_update">
+                <a:fields>
+                    <a:field name="without_tax_amount" prompt="不含税金额"/>
+                    <a:field name="tax_amount" prompt="税额"/>
+                    <a:field name="amount" prompt="含税金额"/>
+                    <a:field name="tax_type_name" displayField="tax_type_name" options="EXP5110_taxTypeDs" prompt="税率类型">
+                        <a:mapping>
+                            <a:map from="tax_type_id" to="tax_type_id"/>
+                            <a:map from="tax_type_rate" to="tax_type_rate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="tax_type_rate" prompt="税率"/>
+                    <a:field name="sale_tax_type_name" displayField="tax_type_name" options="EXP5110_taxTypeDs" prompt="销项税率类型">
+                        <a:mapping>
+                            <a:map from="tax_type_id" to="sale_tax_type_id"/>
+                            <a:map from="tax_type_rate" to="sale_tax_type_rate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sale_tax_type_rate" prompt="销项税率"/>
+                    <a:field name="line_number" prompt="行号"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="EXP5110_onInvoiceLineLoad"/>
+                    <a:event name="add" handler="EXP5110_onInvoiceLineAdd"/>
+                    <a:event name="update" handler="EXP5110_onInvoiceLineUpdate"/>
+                    <a:event name="select" handler="EXP5110_onInvoiceLineSelect"/>
+                    <a:event name="unselect" handler="EXP5110_onInvoiceLineUnSelect"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:button click="EXP5110_confirmAssignInvoice" text="确定关联" width="80"/>
+                <a:button click="EXP5110_cancelAssignInvoice" text="取消关联" width="80"/>
+                <a:button click="EXP5110_createInovice" text="新增发票"/>
+                <a:button click="EXP5110_chooseInovice" text="选择已有发票"/>
+                <a:button click="EXP5110_closeInvoice" text="返回" width="80"/>
+                <a:button click="EXP5110_saveInvoice" text="保存发票"/>
+                <a:button click="EXP5110_deleteInvoice" text="删除发票"/>
+            </a:screenTopToolbar>
+            <a:form title="发票信息" width="1000">
+                <a:box column="3" padding="10" style="box-shadow:none;width:100%;" title="开票主体">
+                    <a:lov name="acc_entity_name" bindTarget="EXP5110_invoiceDs">
+                        <a:events>
+                            <a:event name="focus" handler="EXP5110_onVatAccEntityFocus"/>
+                        </a:events>
+                    </a:lov>
+                    <a:textField name="taxpayer_number" bindTarget="EXP5110_invoiceDs"/>
+                    <a:textField name="bank_account_number" bindTarget="EXP5110_invoiceDs"/>
+                </a:box>
+                <a:box column="3" padding="10" showBorder="false" style="box-shadow:none;width:100%;">
+                    <div padding="0" prompt="发票代码" showBorder="false">
+                        <a:textField name="invoice_code" id="EXP5110_invoiceCodeTf" bindTarget="EXP5110_invoiceDs" style="display:none;"/>
+                        <a:lov name="invoice_code" id="EXP5110_invoiceCodeLov" bindTarget="EXP5110_invoiceDs">
+                            <a:events>
+                                <a:event name="focus" handler="EXP5110_onInvoiceCodeFocus"/>
+                            </a:events>
+                        </a:lov>
+                    </div>
+                    <a:textField name="invoice_number" bindTarget="EXP5110_invoiceDs"/>
+                    <a:datePicker name="invoice_date" bindTarget="EXP5110_invoiceDs"/>
+                    <a:comboBox name="tax_type_name" bindTarget="EXP5110_invoiceDs"/>
+                    <a:numberField name="tax_type_rate" bindTarget="EXP5110_invoiceDs"/>
+                    <a:numberField name="without_tax_amount" allowDecimals="true" allowNegative="false" bindTarget="EXP5110_invoiceDs" decimalPrecision="2"/>
+                    <a:numberField name="tax_amount" allowDecimals="true" allowNegative="false" bindTarget="EXP5110_invoiceDs" decimalPrecision="2"/>
+                    <a:numberField name="amount" bindTarget="EXP5110_invoiceDs"/>
+                </a:box>
+                <a:box column="1" padding="10" showBorder="false" tyle="box-shadow:none;width:100%;">
+                    <a:textArea name="description" bindTarget="EXP5110_invoiceDs" width="872"/>
+                </a:box>
+            </a:form>
+            <a:grid id="EXP5110_invoiceLineGrid" autoAdjustHeight="true" bindTarget="EXP5110_invoiceLineDs" navBar="true" rowRenderer="EXP5110_invoiceLineRowRenderer" width="1000">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="line_number" align="center" width="50"/>
+                    <a:column name="tax_type_name" align="center" editor="EXP5110_invoiceLineCb"/>
+                    <a:column name="tax_type_rate" align="right"/>
+                    <a:column name="without_tax_amount" align="right" editor="EXP5110_invoiceLineNf" footerRenderer="EXP5110_vatInvoiceWithoutTaxAmountFootRenderer" renderer="Aurora.formatMoney"/>
+                    <a:column name="tax_amount" align="right" editor="EXP5110_invoiceLineNf" footerRenderer="EXP5110_vatInvoiceTaxAmountFootRenderer" renderer="Aurora.formatMoney"/>
+                    <a:column name="amount" align="right" footerRenderer="EXP5110_vatInvoiceAmountFootRenderer" renderer="Aurora.formatMoney"/>
+                    <a:column name="sale_tax_type_name" align="center" editor="EXP5110_invoiceLineCb"/>
+                    <a:column name="sale_tax_type_rate" align="right"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP5110_invoiceLineLov"/>
+                    <a:comboBox id="EXP5110_invoiceLineCb"/>
+                    <a:numberField id="EXP5110_invoiceLineNf" allowDecimals="true" allowNegative="false" decimalPrecision="2"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

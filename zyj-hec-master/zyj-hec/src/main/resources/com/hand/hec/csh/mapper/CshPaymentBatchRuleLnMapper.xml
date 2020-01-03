@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshPaymentBatchRuleLnMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshPaymentBatchRuleLn">
+        <result column="RULE_LNS_ID" property="ruleLnsId" jdbcType="DECIMAL"/>
+        <result column="RULE_ID" property="ruleId" jdbcType="DECIMAL"/>
+        <result column="RULE_CODE" property="ruleCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="TYPE_CODE" property="typeCode" jdbcType="VARCHAR"/>
+        <result column="CUSTOM_FUNCTION" property="customFunction" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <!-- Modify Tagin/2019.04.03 获取付款批决定规则行记录 -->
+    <select id="getBatchRuleLn" resultMap="BaseResultMap">
+        select
+        cpbr.rule_id,
+        cpbr.type_id,
+        cprl.rule_lns_id,
+        cprl.rule_code,
+        cprl.type_code,
+        cprl.custom_function
+        from
+        csh_payment_batch_rule cpbr,
+        csh_payment_batch_rule_ln cprl
+        where
+        cpbr.mag_org_id = #{magOrgId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        and cpbr.start_date_active <![CDATA[<=]]> CURRENT_DATE ( )
+        and (cpbr.end_date_active is null
+        or cpbr.end_date_active >= CURRENT_DATE ( ))
+        and cpbr.rule_id = cprl.rule_id
+        and cprl.start_date_active <![CDATA[<=]]> CURRENT_DATE ( )
+        and (cprl.end_date_active is null
+        or cprl.end_date_active >= CURRENT_DATE ( ))
+        and exists (
+        select 1
+        from
+        csh_payment_bat_rule_asgn_ae cpaa
+        where
+        cpaa.rule_id = cpbr.rule_id
+        and cpaa.acc_entity_id = #{accEntityId, jdbcType=DECIMAL, javaType=java.lang.Long}
+        and cpaa.enabled_flag = 'Y')
+        order by
+        cpbr.priority
+    </select>
+</mapper>

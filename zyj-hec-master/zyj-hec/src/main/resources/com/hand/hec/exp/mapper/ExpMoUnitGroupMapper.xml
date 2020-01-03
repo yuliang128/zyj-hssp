@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoUnitGroupMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoUnitGroup">
+        <result column="MO_UNIT_GROUP_ID" property="moUnitGroupId" jdbcType="DECIMAL"/>
+        <result column="MAG_ORG_ID" property="magOrgId" jdbcType="DECIMAL"/>
+        <result column="MO_UNIT_GROUP_CODE" property="moUnitGroupCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+    </resultMap>
+    <select id="checkExpOrgUnitGroup" resultMap="BaseResultMap">
+
+        select ug.*
+        from exp_org_unit u,
+        exp_mo_unit_group ug,
+        exp_mo_unit_group_asgn_com ac,
+        exp_com_unit_gp_ref_unit ru
+        where u.unit_id = #{unitId}
+        and
+        (
+          (
+            #{filtrateMethod} = 'INCLUDE'
+            and (#{controlUnitGroupCodeFrom} is null or ug.mo_unit_group_code &gt;= #{controlUnitGroupCodeFrom})
+            and (#{controlUnitGroupCodeTo} is null or ug.mo_unit_group_code &lt;= #{controlUnitGroupCodeTo})
+          )
+          or
+          (
+            #{filtrateMethod} = 'EXCLUDE'
+            and
+            (
+                (#{controlUnitGroupCodeFrom} is null or ug.mo_unit_group_code &lt; #{controlUnitGroupCodeFrom})
+                or (#{controlUnitGroupCodeTo} is null or ug.mo_unit_group_code &gt; #{controlUnitGroupCodeTo})
+            )
+          )
+        )
+        and u.unit_id = ru.unit_id
+        and ug.mo_unit_group_id = ac.mo_unit_group_id
+        and ac.assign_id = ru.unit_group_com_assign_id
+        and ru.unit_id = u.unit_id
+        and u.enabled_flag = 'Y'
+        and ug.enabled_flag = 'Y'
+        and ac.enabled_flag = 'Y'
+        and ru.enabled_flag = 'Y'
+    </select>
+
+    <select id="getUnitGroupListForQuery" resultMap="BaseResultMap">
+        SELECT
+            ug.*,
+            u.unit_id
+        FROM
+            exp_mo_unit_group ug
+            LEFT JOIN exp_mo_unit_group_asgn_com ac ON ug.mo_unit_group_id = ac.mo_unit_group_id
+            LEFT JOIN exp_com_unit_gp_ref_unit ru ON ac.assign_id = ru.unit_group_com_assign_id
+            LEFT JOIN exp_org_unit u ON ru.unit_id = u.unit_id
+        WHERE
+            ug.mag_org_id = #{request.magOrgId}
+            AND u.enabled_flag = 'Y'
+            AND ug.enabled_flag = 'Y'
+            AND ac.enabled_flag = 'Y'
+            AND ru.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR ug.mo_unit_group_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR ug.mo_unit_group_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR ug.mo_unit_group_code &lt;= #{parameterUpperLimit})
+    </select>
+
+</mapper>

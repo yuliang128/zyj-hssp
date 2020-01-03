@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.gld.mapper.GldSobRespCenterMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.gld.dto.GldSobRespCenter">
+        <result column="RESPONSIBILITY_CENTER_ID" property="responsibilityCenterId" jdbcType="DECIMAL"/>
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL"/>
+        <result column="RESPONSIBILITY_CENTER_CODE" property="responsibilityCenterCode" jdbcType="VARCHAR"/>
+        <result column="RESPONSIBILITY_CENTER_NAME" property="responsibilityCenterName" jdbcType="VARCHAR"/>
+        <result column="RESP_CENTER_TYPE_CODE" property="respCenterTypeCode" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="SUMMARY_FLAG" property="summaryFlag" jdbcType="VARCHAR"/>
+    </resultMap>
+    <resultMap id="AccountingEntity" type="com.hand.hec.gld.dto.GldResponsibilityCenter">
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_CODE" property="accEntityCode" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="responsibility_center_id" property="responsibilityCenterId" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="selectAccountingEntity" resultMap="AccountingEntity"
+            parameterType="com.hand.hec.gld.dto.GldResponsibilityCenter">
+  SELECT
+	e.ACC_ENTITY_ID,
+	e.ACC_ENTITY_CODE,
+	gt.ACC_ENTITY_NAME,
+	c.START_DATE_ACTIVE,
+	c.END_DATE_ACTIVE,
+	c.PARENT_RESP_CENTER_ID responsibility_center_id
+  FROM
+	gld_accounting_entity e
+	LEFT OUTER JOIN gld_accounting_entity_tl gt ON (
+	e.ACC_ENTITY_ID = gt.ACC_ENTITY_ID
+	AND gt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) ,gld_responsibility_center c
+	where e.ACC_ENTITY_ID = c.ACC_ENTITY_ID
+	AND c.PARENT_RESP_CENTER_ID = #{responsibilityCenterId}
+	order by e.ACC_ENTITY_CODE
+    </select>
+
+    <select id="queryAccountingEntity" resultMap="AccountingEntity"
+            parameterType="com.hand.hec.gld.dto.GldSobRespCenter">
+    SELECT
+	s.acc_entity_id,
+	s.acc_entity_code,
+	AT.acc_entity_name
+    FROM
+	(
+    SELECT
+	ev.acc_entity_id,
+	ev.acc_entity_code,
+	ev.acc_entity_name
+    FROM
+	gld_accounting_entity ev,
+	gld_acc_entity_ref_sob gs
+    WHERE
+	ev.acc_entity_id = gs.acc_entity_id
+	AND gs.set_of_books_id = #{setOfBooksId} and
+	ev.start_date_active &lt;= sysdate( )
+    AND ( ev.end_date_active IS NULL OR ev.end_date_active &gt;= sysdate( ) )
+    AND ev.company_type != '2'
+    AND gs.enabled_flag = 'Y'
+    AND NOT EXISTS ( SELECT 1 FROM gld_responsibility_center gc WHERE gc.acc_entity_id = ev.acc_entity_id AND gc.parent_resp_center_id = #{responsibilityCenterId}
+    )
+   ) s
+     LEFT OUTER JOIN gld_accounting_entity_tl AT ON (
+     s.acc_entity_id = AT.acc_entity_id
+     AND AT.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}) order by s.acc_entity_code
+    </select>
+    <select id="query" resultMap="BaseResultMap" parameterType="com.hand.hec.gld.dto.GldSobRespCenter">
+        SELECT
+        gc.RESPONSIBILITY_CENTER_ID,
+        RESPONSIBILITY_CENTER_CODE,
+        gt.RESPONSIBILITY_CENTER_NAME
+        FROM
+        gld_sob_resp_center gc
+        LEFT OUTER JOIN gld_sob_resp_center_tl gt ON (
+        gc.RESPONSIBILITY_CENTER_ID = gt.RESPONSIBILITY_CENTER_ID
+        AND gt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        <where>
+            <if test="responsibilityCenterCode != null">
+                gc.RESPONSIBILITY_CENTER_CODE like '%${responsibilityCenterCode}%'
+            </if>
+            <if test="responsibilityCenterName != null">
+                and gt.RESPONSIBILITY_CENTER_NAME like '%${responsibilityCenterName}%'
+            </if>
+            and gc.SET_OF_BOOKS_ID = #{setOfBooksId} and gc.SUMMARY_FLAG = 'N'
+        </where>
+        order by RESPONSIBILITY_CENTER_CODE
+    </select>
+
+</mapper>

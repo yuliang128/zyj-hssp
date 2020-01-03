@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshBankAccountPrivilegeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshBankAccountPrivilege">
+        <result column="PRIVILEGE_ID" property="privilegeId" jdbcType="DECIMAL" />
+        <result column="BANK_ACCOUNT_ID" property="bankAccountId" jdbcType="DECIMAL" />
+        <result column="GROUP_ID" property="groupId" jdbcType="DECIMAL" />
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE" />
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE" />
+
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR" />
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR" />
+        <result column="BANK_ACCOUNT_TYPE" property="bankAccountType" jdbcType="VARCHAR" />
+        <result column="BANK_ACCOUNT_NAME" property="bankAccountName" jdbcType="VARCHAR" />
+        <result column="BANK_ACCOUNT_NUM" property="bankAccountNum" jdbcType="VARCHAR" />
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR" />
+        <result column="CURRENCY_NAME" property="currencyName" jdbcType="VARCHAR" />
+        <result column="RESPONSIBILITY_CENTER_NAME" property="responsibilityCenterName" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="GROUP_CODE" property="groupCode" jdbcType="VARCHAR" />
+        <result column="GROUP_NAME" property="groupName" jdbcType="VARCHAR" />
+        <result column="MAG_ORG_NAME" property="magOrgName" jdbcType="VARCHAR" />
+        <result column="AJUST_FLAG" property="ajustFlag" jdbcType="VARCHAR"/>
+
+    </resultMap>
+    <select id="selectCshBankAccount"  resultMap="BaseResultMap">
+        SELECT
+        grc.ACC_ENTITY_ID,
+        cb.BANK_CODE,
+        cbt.BANK_NAME,
+        cba.ACCOUNT_TYPE BANK_ACCOUNT_TYPE,
+        cba.BANK_ACCOUNT_id,
+        cbat.BANK_ACCOUNT_NAME,
+        cba.BANK_ACCOUNT_NUM,
+        cba.CURRENCY_CODE,
+        gct.CURRENCY_NAME,
+        cbb.BANK_BRANCH_ID,
+        grct.RESPONSIBILITY_CENTER_NAME,
+        cba.enabled_flag
+        FROM
+        csh_bank cb,
+        csh_bank_tl cbt,
+        csh_bank_branch cbb,
+        csh_bank_account cba,
+        csh_bank_account_tl cbat,
+        gld_responsibility_center grc,
+        gld_responsibility_center_tl grct,
+        gld_currency gc,
+        gld_currency_tl gct
+        WHERE
+        cb.BANK_ID = cbb.BANK_ID
+        AND cb.BANK_ID = cbt.BANK_ID
+        AND cba.BANK_ACCOUNT_ID = cbat.BANK_ACCOUNT_ID
+        AND grc.RESPONSIBILITY_CENTER_ID = grct.RESPONSIBILITY_CENTER_ID
+        AND gc.CURRENCY_ID = gct.CURRENCY_ID
+        AND gc.CURRENCY_CODE = cba.CURRENCY_CODE
+        AND cbb.BANK_BRANCH_ID = cba.BANK_BRANCH_ID
+        and cba.RESPONSIBILITY_CENTER_ID = grc.RESPONSIBILITY_CENTER_ID
+        and cbat.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and grct.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and gct.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and cbt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and cbb.ACC_ENTITY_ID = #{accEntityId}
+        <if test="bankCode!=null">
+            AND cb.BANK_CODE like concat('%',#{bankCode},'%')
+        </if>
+        <if test="bankName!=null">
+            AND cbt.BANK_NAME like concat('%',#{bankName},'%')
+        </if>
+        Order By cb.bank_code
+    </select>
+
+    <select id="selectCshBankAccountPrivilege" resultMap="BaseResultMap">
+        SELECT
+        cbap.PRIVILEGE_ID,
+        cbap.BANK_ACCOUNT_ID,
+        cbap.GROUP_ID,
+        cbap.START_DATE_ACTIVE,
+        cbap.END_DATE_ACTIVE,
+        cpg.group_code,
+        cpgt.DESCRIPTION group_name,
+        fmot.DESCRIPTION mag_org_name
+        FROM
+        csh_bank_account_privilege cbap,
+        csh_payment_group cpg,
+        csh_payment_group_tl cpgt,
+        fnd_managing_organization fmo,
+        fnd_managing_organization_tl fmot
+        WHERE
+        cpg.GROUP_ID = cbap.GROUP_ID
+        AND cpg.mag_org_id = fmo.mag_org_id
+        AND cpg.GROUP_ID = cpgt.GROUP_ID
+        AND fmo.MAG_ORG_ID = fmot.MAG_ORG_ID
+        and cpgt.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        and fmot.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        <if test="bankAccountId!=null">
+            AND cbap.bank_account_id = #{bankAccountId}
+        </if>
+
+    </select>
+
+</mapper>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtOrgPeriodStatusMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtOrgPeriodStatus">
+        <result column="PERIOD_STATUS_ID" property="periodStatusId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="BGT_PERIOD_SET_CODE" property="bgtPeriodSetCode" jdbcType="VARCHAR"/>
+        <result column="BGT_PERIOD_YEAR" property="bgtPeriodYear" jdbcType="DECIMAL"/>
+        <result column="BGT_PERIOD_NUM" property="bgtPeriodNum" jdbcType="DECIMAL"/>
+        <result column="PERIOD_NAME" property="periodName" jdbcType="VARCHAR"/>
+        <result column="BGT_PERIOD_STATUS_CODE" property="bgtPeriodStatusCode" jdbcType="VARCHAR"/>
+        <result column="QUARTER_NUM" property="quarterNum" jdbcType="VARCHAR"/>
+        <result column="START_DATE" property="startDate" jdbcType="TIMESTAMP"/>
+        <result column="END_DATE" property="endDate" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <select id="queryBgtOrgOpenPeriod" parameterType="com.hand.hec.bgt.dto.BgtOrgPeriodStatus"
+            resultMap="BaseResultMap">
+        SELECT bo.bgt_org_id,
+        bpss.period_set_code BGT_PERIOD_SET_CODE,
+        bp.period_year BGT_PERIOD_YEAR,
+        bp.period_num BGT_PERIOD_NUM,
+        bp.quarter_num,
+        bp.period_name,
+        bp.start_date,
+        bp.end_date,
+        'O' bgt_period_status_code
+        FROM
+            bgt_period bp,
+            bgt_organization bo,
+            bgt_period_set bpss
+        WHERE
+            bp.period_set_id = bo.period_set_id
+            AND bo.bgt_org_id = #{bgtOrgId}
+            AND bp.period_set_id = bpss.period_set_id
+            AND bpss.period_set_code = #{bgtPeriodSetCode}
+            AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            bgt_org_period_status bps
+        WHERE
+            bps.bgt_period_set_code = bpss.period_set_code
+            AND bps.bgt_org_id = bo.bgt_org_id
+            AND bps.bgt_period_year = bp.period_year
+            AND bps.bgt_period_num = bp.period_num
+            AND bps.bgt_period_status_code = 'C'
+            )
+        ORDER BY
+            bp.period_year,
+            bp.period_num
+    </select>
+    
+    <select id="queryBgtOrgClosedPeriod" parameterType="com.hand.hec.bgt.dto.BgtOrgPeriodStatus"
+            resultMap="BaseResultMap">
+
+        SELECT
+            bo.bgt_org_id,
+            bpss.period_set_code BGT_PERIOD_SET_CODE,
+            bp.period_year BGT_PERIOD_YEAR,
+            bp.period_num BGT_PERIOD_NUM,
+            bp.quarter_num,
+            bp.period_name,
+            bp.start_date,
+            bp.end_date,
+            'C' bgt_period_status_code
+        FROM
+            bgt_period bp,
+            bgt_organization bo,
+            bgt_period_set bpss
+        WHERE
+            bp.period_set_id = bo.period_set_id
+            AND bo.bgt_org_id = #{bgtOrgId}
+            AND bp.period_set_id = bpss.period_set_id
+            AND bpss.period_set_code = #{bgtPeriodSetCode}
+            AND  EXISTS (
+                    SELECT
+                        1
+                    FROM
+                        bgt_org_period_status bps
+                    WHERE
+                        bps.bgt_period_set_code = bpss.period_set_code
+                        AND bps.bgt_org_id = bo.bgt_org_id
+                        AND bps.bgt_period_year = bp.period_year
+                        AND bps.bgt_period_num = bp.period_num
+                        AND bps.bgt_period_status_code = 'C'
+                  )
+        ORDER BY
+            bp.period_year,
+            bp.period_num
+
+    </select>
+    
+    <update id="updateOrgPeriod" parameterType="com.hand.hec.bgt.dto.BgtOrgPeriodStatus">
+         update bgt_org_period_status
+         set bgt_period_status_code = #{bgtPeriodStatusCode},
+               last_update_date       = CURRENT_TIMESTAMP,
+               last_updated_by        = #{request.userId}
+         where bgt_org_id = #{bgtOrgId}
+               and bgt_period_set_code = #{bgtPeriodSetCode}
+               and bgt_period_year = #{bgtPeriodYear}
+               and bgt_period_num = #{bgtPeriodNum}
+    </update>
+
+
+</mapper>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.ssc.mapper.SscWorkTeamMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.ssc.dto.SscWorkTeam">
+        <result column="WORK_TEAM_ID" property="workTeamId" jdbcType="DECIMAL" />
+        <result column="WORK_CENTER_ID" property="workCenterId" jdbcType="DECIMAL" />
+        <result column="WORK_TEAM_CODE" property="workTeamCode" jdbcType="VARCHAR" />
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR" />
+        <result column="MANAGER_EMPLOYEE_ID" property="managerEmployeeId" jdbcType="DECIMAL" />
+        <result column="PARENT_WORK_TEAM_ID" property="parentWorkTeamId" jdbcType="DECIMAL" />
+        <result column="WORK_TEAM_TYPE" property="workTeamType" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="WORK_TEAM_TYPE_NAME" property="workTeamTypeName" jdbcType="VARCHAR"/>
+        <result column="MANAGER_EMPLOYEE" property="managerEmployee" jdbcType="VARCHAR"/>
+        <result column="PARENT_WORK_TEAM" property="parentWorkTeam" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="querySscWorkTeam" resultMap="BaseResultMap">
+        select * from (
+        SELECT
+        a.*,b.work_team_type_name
+        FROM
+        (
+        select aat.DESCRIPTION as parent_work_team,
+        aa.* from (
+        SELECT
+        t1.work_team_id,
+        t1.work_center_id,
+        t1.work_team_code,
+        t2.DESCRIPTION,
+        t1.manager_employee_id,
+        ee.NAME manager_employee,
+        t1.parent_work_team_id,
+        t1.work_team_type,
+        t1.enabled_flag
+        FROM
+        SSC_WORK_TEAM t1,
+        ssc_work_team_tl t2,
+        exp_employee ee,
+        exp_mo_employee_type etv
+        WHERE
+        ee.employee_type_id = etv.employee_type_id
+        AND ee.employee_id = t1.manager_employee_id
+        AND ee.enabled_flag = 'Y'
+        AND etv.enabled_flag = 'Y'
+        AND t1.WORK_TEAM_ID = t2.WORK_TEAM_ID
+        and t2.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        )aa
+        left join ssc_work_team_tl aat
+        on aa.parent_work_team_id = aat.WORK_TEAM_ID
+        and aat.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) a LEFT JOIN
+        (SELECT
+        v1.DESCRIPTION work_team_type_name,
+        v.VALUE
+        FROM
+        sys_code_b sc,
+        sys_code_value_b v,
+        sys_code_value_tl v1
+        WHERE
+        sc.CODE = 'SSC_WORK_TEAM_TYPE'
+        AND sc.code_id = v.code_id
+        and v.CODE_VALUE_ID = v1.CODE_VALUE_ID
+        and v1.lang=#{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) b
+        on a.work_team_type=b.VALUE
+        )swt
+        where swt.work_Center_Id = #{workCenterId}
+        <if test="workTeamCode!=null">
+            and swt.work_team_code like concat('%',#{workTeamCode},'%')
+        </if>
+        <if test="description!=null">
+            AND swt.DESCRIPTION like concat('%',#{description},'%')
+        </if>
+    </select>
+
+    <select id="queryEmpOfUserOnTeam" resultType="java.util.Map">
+        SELECT
+        v.*
+        FROM
+        (
+        SELECT
+        swtv.work_team_id workTeamId,
+        swtv.work_team_code workTeamCode,
+        swtv.description workTeamName,
+        concat(swtv.work_team_code,'-',swtv.description) workTeamCodeName,
+        ee.employee_id employeeId,
+        ee.employee_code employeeCode,
+        ee.NAME employeeName,
+        concat(ee.employee_code,'-',ee.NAME) employeeCodeName
+        FROM
+        ssc_work_team swtv,
+        ssc_worker sw,
+        exp_employee ee
+        WHERE
+        swtv.enabled_flag = 'Y'
+        AND swtv.work_team_id = sw.work_team_id
+        AND sw.enabled_flag = 'Y'
+        AND swtv.work_center_id = ifnull(#{workCenterId}, swtv.work_center_id )
+        AND sw.employee_id = ee.employee_id
+        AND EXISTS (
+        SELECT
+        1
+        FROM
+        sys_user su
+        WHERE
+        su.user_id = #{request.userId}
+        AND su.employee_id = swtv.manager_employee_id
+        AND su.start_active_date &lt;= CURRENT_DATE
+        AND ( su.end_active_date IS NULL OR su.end_active_date &gt;= CURRENT_DATE)
+        )
+        ) v
+        where
+        1=1
+        <if test = "workTeamName != null">
+            AND v.workTeamName LIKE '%${workTeamName}%'
+        </if>
+        <if test = "employeeName != null">
+            AND v.employeeName LIKE '%${employeeName}%'
+        </if>
+        ORDER BY
+        v.workTeamCode,
+        v.employeeCode
+    </select>
+</mapper>

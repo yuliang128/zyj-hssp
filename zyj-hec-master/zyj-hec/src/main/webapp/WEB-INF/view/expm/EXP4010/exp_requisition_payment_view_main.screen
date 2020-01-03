@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Tagin 
+    $Date: 2017-08-22 05:15:43 PM  
+    $Revision: 1.0  
+    $Purpose: 费用申请单关联借款申请主页面
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+        <a:model-query fetchAll="true" model="expm.EXP4010.exp_requisition_payment_amount" rootpath="EXP4010_paymentMainHeader_list"/>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="EXP4010_paymentRequisition_link" url="${/request/@context_path}/modules/expm/EXP4010/exp_requisition_payment_view.screen"/>
+        <script><![CDATA[
+            function EXP4010_paymentMainSubmit() {
+                $au('EXP4010_paymentMainResult_ds').query();
+            }
+            
+            function EXP4010_paymentMainNumberFunc(value, record, name) {
+                if (record.get('payment_requisition_header_id')) {
+                    return '<a href = "javascript:EXP4010_paymentMainNumberOpenFunc(' + record.get('payment_requisition_header_id') + ')">' + value + '</a>';
+                } else {
+                    return '';
+                }
+            }
+            
+            function EXP4010_paymentMainNumberOpenFunc(id) {
+                if (id) {
+                    new Aurora.Window({
+                        url: $au('EXP4010_paymentRequisition_link').getUrl() + '?payment_requisition_header_id=' + id,
+                        title: '${l:PROMPT.PAYMENT_REQUISITION}',
+                        id: 'EXP4010_paymentRequisitionView_window',
+                        fullScreen: true
+                    }).on('close', function() {
+                        $au('EXP4010_paymentMainResult_ds').query();
+                    });
+                }
+            }
+            
+            function EXP4010_paymentMainBackFunc() {
+                $au('EXP4010_paymentViewMain_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_paymentMainHeader_ds" autoCreate="true">
+                <a:datas dataSource="/model/EXP4010_paymentMainHeader_list"/>
+                <a:fields>
+                    <a:field name="exp_requisition_header_id"/>
+                    <a:field name="exp_requisition_number" prompt="EXP_REQUISITION_HEADERS.REQUISITION_NUMBER" readOnly="true"/>
+                    <a:field name="payment_amount" prompt="EXP_REQUISITION_HEADERS.TOTAL_AMOUNT" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_paymentMainResult_ds" autoQuery="true" queryUrl="${/request/@context_path}/autocrud/expm.EXP4010.exp_requisition_payment_main_query/query?exp_requisition_header_id=${/parameter/@exp_requisition_header_id}" selectable="true">
+                <a:fields>
+                    <a:field name="payment_requisition_header_id"/>
+                    <a:field name="requisition_number" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITION_NUMBER"/>
+                    <a:field name="description" prompt="CSH_PAYMENT_REQUISITION_HDS.DESCRIPTION"/>
+                    <a:field name="name" prompt="EXP_REQUISITION_HEADERS.EMPLOYEE_ID"/>
+                    <a:field name="requisition_date" prompt="CSH_PAYMENT_REQUISITION_HDS.REQUISITION_DATE"/>
+                    <a:field name="currency_code"/>
+                    <a:field name="currency_name" prompt="CSH_PAYMENT_REQUISITION_HDS.CURRENCY_CODE"/>
+                    <a:field name="amount" prompt="CSH_PAYMENT_REQUISITION_HDS.AMOUNT"/>
+                    <a:field name="partner_category"/>
+                    <a:field name="partner_category_name" prompt="EXP_REPORT_HEADERS.PAYEE_CATEGORY"/>
+                    <a:field name="partner_id"/>
+                    <a:field name="partner_name" prompt="EXP_REPORT_HEADERS.PAYEE_ID"/>
+                    <a:field name="payment_method_id"/>
+                    <a:field name="payment_method_code"/>
+                    <a:field name="payment_method_name" prompt="CSH_PAYMENT_REQUISITION_LNS.CSH_TRANSACTION_CLASS_CODE"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4010_paymentMainSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4010_paymentMain_form" column="2" marginWidth="0" title="EXP_REQUISITION_LINES.CSH_PAYMENT_REQUISITION">
+                <a:formToolbar>
+                    <a:toolbarButton click="EXP4010_paymentMainBackFunc" text="HAP_BACK" width="80"/>
+                    <a:label name="separator"/>
+                </a:formToolbar>
+                <a:textField name="exp_requisition_number" bindTarget="EXP4010_paymentMainHeader_ds"/>
+                <a:numberField name="payment_amount" allowFormat="true" bindTarget="EXP4010_paymentMainHeader_ds"/>
+            </a:form>
+            <a:grid id="EXP4010_paymentMain_grid" bindTarget="EXP4010_paymentMainResult_ds" marginHeight="150" marginWidth="15" navBar="true">
+                <a:columns>
+                    <a:column name="requisition_number" align="center" renderer="EXP4010_paymentMainNumberFunc" width="120"/>
+                    <a:column name="description" align="left" width="200"/>
+                    <a:column name="name" align="center" width="120"/>
+                    <a:column name="requisition_date" align="center" renderer="Aurora.formatDate" width="120"/>
+                    <a:column name="currency_name" align="center" width="120"/>
+                    <a:column name="amount" align="right" renderer="Aurora.formatMoney" width="120"/>
+                    <a:column name="partner_category_name" align="center" width="120"/>
+                    <a:column name="partner_name" align="center" width="120"/>
+                    <a:column name="payment_method_name" align="center" width="120"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

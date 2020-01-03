@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP4060_expMoCompaniesBatchLink" url="$[/request/@context_path]/exp/mo-report-type-asgn-com/batchAssignComManyToMany"/>
+        <script><![CDATA[
+            function EXP4060_assignCom() {
+                var companyRecordsData = $au('EXP4060_batchAsgnCompanyDs').getJsonData(true);
+                var typeRecordsData = $au('EXP4060_expMoRepTypesResultDs').getJsonData(true);
+                if (companyRecordsData.length == 0) {
+                    Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT]', null, 250, 100);
+                    return;
+                }
+                for (var i = 0;i < typeRecordsData.length;i++) {
+                    var rs = typeRecordsData[i];
+                    rs['companyInfo'] = companyRecordsData;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('EXP4060_expMoCompaniesBatchLink').getUrl(),
+                    para: typeRecordsData,
+                    success: EXP4060_closeAsgnBatchCreateWindow,
+                    scope: this
+                });
+            }
+            
+            function EXP4060_closeAsgnBatchCreateWindow() {
+                $au('EXP4060_exp_mo_rep_company_assign_batch').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4060_batchAsgnCompanyDs" queryUrl="$[/request/@context_path]/exp/mo-report-type-asgn-com/queryCompanyInfo?magOrgId=$[/parameter/@magOrgId]" autoQuery="true" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4060_expMoRepTypeBatchAsgnComForm" column="2" title="exp_mo_report_batch_assign_com.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP4060_assignCom" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="EXP4060_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="EXP4060_expMoRepTypesQueryDs" prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="EXP4060_expMoRepTypesQueryDs" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP4060_batchAsgnCompanyDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" prompt="company.companycode" width="100"/>
+                    <a:column name="companyShortName" prompt="company.companyshortname" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

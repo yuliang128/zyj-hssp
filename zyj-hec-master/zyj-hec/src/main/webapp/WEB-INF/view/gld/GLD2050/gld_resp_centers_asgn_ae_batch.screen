@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: wuxiuxian
+    $Date: 2018/01/13 17:47:59 $
+    $Revision: 1.0
+    $Purpose: 账套级成本中心-批量分配核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="GLD2050_gld_resp_centers_asgn_ae_batch_svc_link"
+                url="$[/request/@context_path]/gld-sob-resp-center/submitResponsibilityCenter"/>
+        <script><![CDATA[
+        function GLD2050_closeAsgnBatchCreateWindow() {
+            $au('GLD2050_gld_resp_centers_asgn_ae_batch_window').close();
+        }
+
+        function GLD2050_assignAccEntity() {
+            var datas = $au('GLD2050_batch_asgn_acc_entity_ds').getJsonData(true);
+
+            for (var i = 0; i < datas.length; i++) {
+                datas[i]['responsibilityCenterId'] = '$[/parameter/@responsibilityCenterId]';
+                datas[i]['startDateActive'] = dateTimeFormmat(new Date());
+                datas[i]['_token'] = null;
+                datas[i]['__status'] = 'add'
+            }
+            Aurora.request({
+                lockMessage: '$[l:HAP_WAITING]',
+                url: $au('GLD2050_gld_resp_centers_asgn_ae_batch_svc_link').getUrl(),
+                para: datas,
+                success: GLD2050_closeAssignPage,
+                scope: this
+            });
+        }
+
+        function GLD2050_closeAssignPage(res) {
+            $au('GLD2050_gld_resp_centers_asgn_ae_batch_window').close();
+            $au('GLD2050_gld_resp_centers_asgn_acc_enttity_ds').query();
+        }
+
+        function dateTimeFormmat(value) {
+            var year = value.getFullYear();
+            var month = value.getMonth() + 1;//js从0开始取
+            var date = value.getDate();
+            var hour = value.getHours();
+            var minutes = value.getMinutes();
+            var second = value.getSeconds();
+
+            if (month < 10) {
+                month = "0" + month;
+            }
+            if (date < 10) {
+                date = "0" + date;
+            }
+            if (hour < 10) {
+                hour = "0" + hour;
+            }
+            if (minutes < 10) {
+                minutes = "0" + minutes;
+            }
+            if (second < 10) {
+                second = "0" + second;
+            }
+            var time = year + "-" + month + "-" + date + " " + hour + ":" + minutes + ":" + second; //2009-06-12 17:18:05
+            return time;
+
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="GLD2050_batch_asgn_acc_entity_ds" autoPageSize="true" autoQuery="true" pageSize="50"
+                       queryUrl="$[/request/@context_path]/gld-sob-resp-center/queryAccountingEntity?responsibilityCenterId=$[/parameter/@responsibilityCenterId]&amp;setOfBooksId=$[/parameter/@setOfBooksId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name"/>
+                    <a:field name="accEntityCode" prompt="gld_accounting_entity.acc_entity_code"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <!-- Modified by Arthur.Chen 2017-12-11 13:51:53 UI调整 -->
+            <a:form column="2" title="hec_batch_assign">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="GLD2050_assignAccEntity" text="hec_assign" width="80"/>
+                    <a:toolbarButton click="GLD2050_closeAsgnBatchCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="responsibilityCenterCode" bindTarget="GLD2050_sobRespCentersResultDs"
+                             prompt="gld_responsibility_center.responsibility_center_code" readOnly="true"/>
+                <a:textField name="responsibilityCenterName" bindTarget="GLD2050_sobRespCentersResultDs"
+                             prompt="gld_responsibility_center.responsibility_center_name" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="GLD2050_batch_asgn_acc_entity_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" width="80"/>
+                    <a:column name="accEntityName" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

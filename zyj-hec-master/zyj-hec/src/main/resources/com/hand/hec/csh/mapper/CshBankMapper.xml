@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshBankMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshBank">
+        <result column="BANK_ID" property="bankId" jdbcType="DECIMAL"/>
+        <result column="BANK_CODE" property="bankCode" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME" property="bankName" jdbcType="VARCHAR"/>
+        <result column="BANK_NAME_ALT" property="bankNameAlt" jdbcType="VARCHAR"/>
+        <result column="COUNTRY_CODE" property="countryCode" jdbcType="VARCHAR"/>
+        <result column="COUNTRY_NAME" property="countryName" jdbcType="VARCHAR"/>
+        <result column="BANK_TYPE" property="bankType" jdbcType="VARCHAR"/>
+        <result column="BANK_TYPE_DESC" property="bankTypeDesc" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="ZERO_AMOUNTS_ALLOWED" property="zeroAmountsAllowed" jdbcType="VARCHAR"/>
+    </resultMap>
+
+
+    <select id="queryAll" parameterType="com.hand.hec.csh.dto.CshBank" resultMap="BaseResultMap">
+        SELECT
+        cb.bank_id,
+        cb.bank_code,
+        cbt.bank_name,
+        cbt.bank_name_alt,
+        cb.country_code,
+        (
+        SELECT
+            fcct.description
+         FROM
+            fnd_country_code fcc
+            LEFT OUTER JOIN fnd_country_code_tl fcct ON ( fcc.COUNTRY_CODE_id = fcct.COUNTRY_CODE_id AND fcct.lang =
+            #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+         WHERE
+            fcc.country_code = cb.COUNTRY_CODE
+        ) country_name,
+        cb.bank_type,
+        (
+        SELECT
+            sb.DESCRIPTION
+        FROM
+            sys_code_b sc,
+            sys_code_value_b sb
+        WHERE
+            sc.CODE_ID = sb.CODE_ID
+        AND sc.`CODE` = 'CSH.BANK_TYPE'
+        AND sb.`VALUE` = cb.BANK_TYPE
+        ) bank_type_desc,
+        cb.enabled_flag,
+        cb.zero_amounts_allowed
+        FROM
+        csh_bank cb
+        LEFT OUTER JOIN csh_bank_tl cbt ON ( cb.bank_id = cbt.bank_id AND cbt.lang =
+        #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE 1=1
+        <if test="bankCode!=null">
+            and cb.bank_code like CONCAT('%',#{bankCode},'%')
+        </if>
+        <if test="bankName!=null">
+            and cbt.bank_name like CONCAT('%',#{bankName},'%')
+        </if>
+        <if test="bankNameAlt!=null">
+            and cbt.bank_name_alt like CONCAT('%',#{bankNameAlt},'%')
+        </if>
+        <if test="bankType!=null">
+            and cb.bank_type = #{bankType}
+        </if>
+        <if test="enabledFlag!=null">
+            and cb.enabled_flag = #{enabledFlag}
+        </if>
+    </select>
+
+
+</mapper>

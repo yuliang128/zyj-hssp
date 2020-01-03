@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="WFL2010_deliverSubmitLink" url="$[/request/@context_path]/wfl/todo/add-approver"/>
+        <script><![CDATA[
+        function WFL2010_confirmAddApprover() {
+            if (!$au('WFL2010_addApproverCommentDs').validate()) {
+                return;
+            }
+
+            if (!$au('WFL2010_addApproverDs').validate()) {
+                return;
+            }
+
+            if ($au('WFL2010_addApproverDs').getAll().length == 0) {
+                Aurora.showErrorMessage('$[hap.prompt]', '$[wfl_add_approver.no_adder_approver]');
+
+                return;
+            }
+            $au('WFL2010_addApproverDs').setSubmitUrl("$[/request/@context_path]/wfl/todo/add-approver?instanceId=$[/parameter/@instanceId]&insRecipientId=$[/parameter/@insRecipientId]&actionId=$[/parameter/@actionId]&commentText=" + $au('WFL2010_addApproverCommentDs').getAt(0).get('commentText'))
+            $au('WFL2010_addApproverDs').submit();
+        }
+
+        function WFL2010_cancelAddApprover() {
+            $au('WFL2010_addApproverWindow').close();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL2010_addApproverOrderDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/WFL_ADD_APPROVER_ORDER/"/>
+            <a:dataSet id="WFL2010_addApproverCommentDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="commentText" required="true" prompt="wfl_add_approver.comment_text"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL2010_addApproverDs"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="instanceId" defaultValue="$[/parameter/@instanceId]"/>
+                    <a:field name="insRecipientId" defaultValue="$[/parameter/@insRecipientId]"/>
+                    <a:field name="actionId" defaultValue="$[/parameter/@actionId]"/>
+                    <a:field name="commentText" prompt="wfl_approver.comment_text"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeName" prompt="wfl_add_approver.employee_name" lovCode="LOV_EMPLOYEE_USER"
+                             required="true">
+                        <a:mapping>
+                            <a:map from="employeeName" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                            <a:map from="userId" to="userId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="userId"/>
+                    <a:field name="orderName" options="WFL2010_addApproverOrderDs" displayField="meaning"
+                             required="true"
+                             valueField="value"
+                             returnField="order"
+                             prompt="wfl_add_approver.order_name"/>
+                    <a:field name="order"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="WFL2010_cancelAddApprover"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="wfl_add_approver.comment_text">
+                <a:textArea bindTarget="WFL2010_addApproverCommentDs" name="commentText" width="350"/>
+            </a:form>
+            <a:form title="wfl_add_approver.approver_list">
+                <a:grid bindTarget="WFL2010_addApproverDs" width="480" height="300">
+                    <a:toolBar>
+                        <a:button type="add"/>
+                        <a:button type="delete"/>
+                    </a:toolBar>
+                    <a:columns>
+                        <a:column name="employeeName" editor="WFL2010_addApprover_lov"/>
+                        <a:column name="orderName" editor="WFL2010_addApprover_cb"/>
+                    </a:columns>
+                    <a:editors>
+                        <a:lov id="WFL2010_addApprover_lov"/>
+                        <a:comboBox id="WFL2010_addApprover_cb"/>
+                    </a:editors>
+                </a:grid>
+            </a:form>
+            <a:hBox>
+                <a:button click="WFL2010_confirmAddApprover" text="hap.confirm"/>
+                <a:button click="WFL2010_cancelAddApprover" text="hap.cancel"/>
+            </a:hBox>
+        </a:screenBody>
+    </a:view>
+</a:screen>

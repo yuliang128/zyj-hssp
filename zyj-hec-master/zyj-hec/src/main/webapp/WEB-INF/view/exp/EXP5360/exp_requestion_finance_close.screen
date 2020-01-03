@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: weikun.wang
+    $Date: 2019-3-8
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <!--<a:init-procedure>
+        <a:model-query fetchAll="true" model="exp.exp_currency_code" rootPath="currency"/>
+         <a:model-query fetchAll="true" model="exp.EXP5360.exp_requestion_type_list" rootPath="typelist"/>
+         <a:model-query fetchAll="true" model="exp.exp_type_list" rootPath="typelist2"/>
+        <a:model-query fetchAll="true" model="exp.EXP5360.exp_reimburselist" rootPath="reimburselist"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="exp_requestion_close_detail_link" url="$[/request/@context_path]/exp/EXP5360/exp_requestion_close_detail.screen"/>
+      <script><![CDATA[
+            function query() {
+                $au("finance_close_ds").query();
+            }
+            
+            function reset_query_ds() {
+                var record = $au("query_ds").getCurrentRecord();
+                record.getMeta().getField('payeeName').setReadOnly(true);
+                $au("query_ds").reset();
+            }
+            
+            function closeReq() {
+                var ds = $au('finance_close_ds');
+                var records = ds.getSelected();
+            
+                if (records.length == 0) {
+                    Aurora.showErrorMessage('$[l:prompt.error]', '$[l:exp_requestion.no_select_line]');
+                    return;
+                }
+            
+                for (var i = 0;i < records.length;i++) {
+                    records[i].dirty = true;
+                }
+                ds.submitSelected();
+            }
+            
+            
+            function query_ds_update(ds, record, name, value, oldvalue) {
+                if (name == "payeeCategory") {
+                    if (value == null || value == '') {
+                        record.getMeta().getField('payeeName').setReadOnly(true);
+                    } else {
+                        record.getMeta().getField('payeeName').setReadOnly(false);
+                        record.set('payeeName', '');
+                        record.set('payeeCode', '');
+            
+                        if (value == "EMPLOYEE") {
+                            record.getMeta().getField("payeeName").setLovModel("exp.EXP5360.exp_employee_req_lov");
+                            record.getMeta().getField("payeeName").setTitle('$[l:EXP_EMPLOYEES.QUERY]');
+                        } else if (value == "CUSTOMER") {
+                            record.getMeta().getField("payeeName").setLovModel("exp.EXP5360.exp_customer_req_lov");
+                            record.getMeta().getField("payeeName").setTitle('$[l:CUSTOMER_QUERY]');
+                        } else if (value == "VENDER") {
+                            record.getMeta().getField("payeeName").setLovModel("exp.EXP5360.exp_vender_req_lov");
+                            record.getMeta().getField("payeeName").setTitle('$[l:VENDER_SEARCH]');
+                        }
+                    }
+                }
+            }
+            
+            function commitpayee(lov, r1, r2) {
+                var payeeCategory = r1.get('payeeCategory');
+                if (payeeCategory == null || payeeCategory == undefined || payeeCategory == '') {
+                    return;
+                } else if (payeeCategory == 'EMPLOYEE') {
+                    r1.set('payeeName', r2.get('name'));
+                    r1.set('payeeCode', r2.get('employeeCode1'));
+                } else if (payeeCategory == 'VENDER') {
+                    r1.set('payeeName', r2.get('description'));
+                    r1.set('payeeCode', r2.get('venderCode'));
+                } else {
+                    r1.set('payeeName', r2.get('description'));
+                    r1.set('payeeCode', r2.get('customerCode'));
+                }
+            }
+            
+            function reqNumRenderer(value, record, name) {
+                return '<a href="javascript:reqNumNewWindow(' + record.get('expRequisitionHeaderId') + ');">' + value + '</a>';
+            }
+            
+            function reqNumNewWindow(expRequisitionHeaderId) {
+                var url = $au('exp_requestion_close_detail_link').getUrl() + '?headId=' + expRequisitionHeaderId;
+                new Aurora.Window({
+                    id: 'EXP5350_requestion_close_view_window',
+                    title: '$[l:BGT_PERIOD_SETS.DETAIL]',
+                    url: url,
+                    fullScreen: true
+                }).on('close', function() {
+                    $au('finance_close_ds').query();
+                });
+            }
+            
+            function EXP5360_onSubmitSuccess() {
+                query();
+            }
+            
+            function EXP5360_dsRenderer(value, record, name) {
+                var description = record.get('description');
+                if (!Ext.isEmpty(description)) {
+                    return '<div title="' + description + '" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" >' + description.substr(0, 15) + '</div>';
+                } else {
+                    return '';
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="query_ds">
+                <a:fields>
+                    <a:field name="expRequisitionNumber" prompt="exp_requisition_header.requisition_number"/>
+                    <a:field name="typeItemName" lovGridHeight="350" lovHeight="500" lovCode="EXP_REQUESTION_TYPE_LIST" lovWidth="550" lovlabelWidth="100" placeHolder="exp_requisition_header.exp_requisition_type_id" title="exp_requisition_header.exp_requisition_type_id">
+                        <a:mapping>
+                            <a:map from="moExpReqTypeId" to="moExpReqTypeId"/>
+                            <a:map from="description" to="typeDescription"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpReqTypeId"/> <a:field name="moExpReqTypeId" />
+                    <a:field name="typeDescription"/> <a:field name="typeDescription" />
+                    <a:field name="requisitionDateFrom" prompt="exp_report_header.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" prompt="exp_report_header.requisition_date_to"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="query_ds_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="finance_close_ds" autoQuery="true" baseUrl="/exp/requisition-header" queryUrl="$[/request/@context_path]/exp/requisition-header/queryExp5360" submitUrl="$[/request/@context_path]/exp/requisition-header/closeDetailHead" queryDataSet="query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="expRequisitionHeaderId" />
+                    <a:field name="expRequisitionNumber" />
+                    <a:field name="typeDescription" />
+                    <a:field name="closedDate" />
+                    <a:field name="requisitionDateStr" />
+                    <a:field name="currencyName" />
+                    <a:field name="quarterNum" />
+                    <a:field name="quarterNumFun" />
+                    <a:field name="reimbursedNum" />
+                    <a:field name="reimbursedAduNum" />
+                    <a:field name="employeeName" />
+                    <a:field name="requisitionDateFrom"/>
+                    <a:field name="requisitionDateTo"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP5360_onSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:button click="closeReq" text="HAP_CLOSE"/>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="query_ds" column="4" labelWidth="150" marginWidth="10" resultTarget="finance_close_ds" style="width:100%;border:none;" title="EXP_REQUISITION.EXPENSE_APPLY_FINANCE_COLSE">
+            <a:formToolBar>
+                <a:textField name="expRequisitionNumber"/>
+                <a:datePicker name="requisitionDateFrom"/>
+                <a:datePicker name="requisitionDateTo"/>
+            </a:formToolBar>
+            <a:formBody>
+                <a:lov name="typeItemName"/>
+            </a:formBody>
+        </a:queryForm>
+        <a:grid bindTarget="finance_close_ds" marginHeight="100" marginWidth="0" navBar="true">
+            <a:columns>
+                <a:column name="expRequisitionNumber" lock="true" prompt="exp_requisition_header.requisition_number" renderer="reqNumRenderer" width="100"/>
+                <a:column name="closedDate" editor="finance_close_ds_dp" lock="true" prompt="exp_requisition_header.closed_date" renderer="Aurora.formatDate"/>
+                <a:column name="typeDescription" align="center" prompt="exp_requisition_header.exp_requisition_type_id" width="100"/>
+                <a:column name="requisitionDateStr" align="center" prompt="exp_requisition_header.requisition_date"/>
+                <a:column name="currencyName" align="center" prompt="exp_requisition_header.currency_code" width="60"/>
+                <a:column name="quarterNum" align="right" prompt="exp_report_header.quarter_num" width="80"/>
+                <a:column name="quarterNumFun" align="right" prompt="expm_duplication.quater_num_fun" width="80"/>
+                <a:column name="reimbursedNum" align="right" prompt="exp_requisition_header.reimbursed_num" width="80"/>
+                <a:column name="reimbursedAduNum" align="right" prompt="exp_requisition.reimbursed_num_audited"/>
+                <a:column name="employeeName" align="center" prompt="exp_requisition_header.employee_id"/>
+                <a:column name="description" align="center" prompt="exp_ticket_request_head.description" renderer="EXP5360_dsRenderer"/>
+            </a:columns>
+            <a:editors>
+                <a:datePicker id="finance_close_ds_dp"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

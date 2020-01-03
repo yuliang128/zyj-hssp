@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--    $Author: wanghaitao2658 $    $Date: 2011/03/04 $    $Revision: 1.1 $    $Purpose: 预付款余额查询,预付款明细页面-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+<!--        <a:model-query model="hec_util.get_current_date_and_period" rootPath="current_date"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="CSH5230_detail_csh_payment_requisition_view_main_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="CSH5230_detail_exp_report_view_main_link" url="$[/request/@context_path]/expm/EXP5110/exp_report_view_main.screen"/>
+        <a:link id="CSH5230_csh_payment_transaction_detail_link" url="$[/request/@context_path]/csh/public/csh_payment_transaction_detail.screen"/>
+        <script><![CDATA[
+            function CSH5230_closeDetailWindow() {
+                $au('CSH5230_csh_payment_reverse_detail_window').close();
+            }
+            function CSH5230_openTransactionDetail(transactionHeaderId) {
+                new Aurora.Window({
+                    url: $au('CSH5230_csh_payment_transaction_detail_link').getUrl() + '?transactionHeaderId=' + transactionHeaderId,
+                    title: '$[l:csh_mo_transaction_detail]',
+                    id: 'CSH5230_csh_payment_transaction_detail_window',
+                    fullScreen: true
+                });
+            }
+            function CSH5230_openExpReportRenderer(value, record, name) {
+                if (value) {
+                    return '<a href="javascript:CSH5230_openDoc(\'EXP_REPORT\',\'' + record.get('expReportHeaderId') + '\')">' + value + '</a>';
+                }
+            }
+            function CSH5230_openPaymentReqRenderer(value, record, name) {
+                if (value) {
+                    return '<a href="javascript:CSH5230_openDoc(\'PAYMENT_REQUISITION\',\'' + record.get('paymentRequisitionHeaderId') + '\')">' + value + '</a>';
+                }
+            }
+            function CSH5230_openDoc(docCategory, docId) {
+                if (docCategory == 'EXP_REPORT') {
+                    new Aurora.Window({
+                        url: $au('CSH5230_detail_exp_report_view_main_link').getUrl() + '?expReportHeaderId=' + docId,
+                        title: '$[l:pur_requisition_allocate.order_details]',
+                        id: 'exp_report_view_main_window',
+                        fullScreen: true
+                    });
+                } else if (docCategory == 'PAYMENT_REQUISITION') {
+                    new Aurora.Window({
+                        url: $au('CSH5230_detail_csh_payment_requisition_view_main_link').getUrl() + '?paymentRequisitionHeaderId=' + docId,
+                        title: '$[l:pur_requisition_allocate.order_details]',
+                        id: 'CSH5010_pay_requisition_view_main_window',
+                        fullScreen: true
+                    });
+                }
+            }
+            function CSH5230_onDetailReverseDateUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'reversedDate') {
+                    Aurora.request({
+                        lockMessage: 'HAP_HANDLE_WAITING',
+                        url: $au('CSH5230_get_period_name_link').getUrl(),
+                        para: {
+                            date: record.get('reversedDate'),
+                            acc_entity_id: $au('CSH5230_paymentReverseQueryDs').getAt(0).get('accEntityId'),
+                            status: 'O'
+                        },
+                        success: function(resp) {
+                            if (resp && resp.rows) {
+                                record.set('periodName', resp.rows);
+                            } else {
+                                record.set('periodName', '');
+                                Aurora.showErrorMessage('$[l:hap.error]', '$[l:curren_available_opened_period]');
+                            }
+                        }
+                    });
+                }
+            }
+            function CSH5230_detailReverse() {
+                var para = [];
+                if (!$au('CSH5230_detailPaymentReverseDateDs').validate()) {
+                    return;
+                }
+                para.push({
+                    transactionHeaderId: '$[/parameter/@transactionHeaderId]',
+                    reverseDate: $au('CSH5230_detailPaymentReverseDateDs').getAt(0).get('reversedDate')
+                });
+                Aurora.request({
+                    lockMessage: 'HAP_HANDLE_WAITING',
+                    url: $au('CSH5230_post_reverse_transaction_link').getUrl(),
+                    para: para,
+                    success: function() {
+                        CSH5230_closeDetailWindow();
+                        CSH5230_query();
+                    }
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5230_transactionHeaderDs" autoQuery="true" loadData="true" queryUrl="$[/request/@context_path]/csh/transaction-header/cshTransactionInfoQuery?transactionHeaderId=$[/parameter/@transactionHeaderId]">
+                <a:fields>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num" readOnly="true"/>
+                    <a:field name="transactionDate" prompt="csh_transaction_header.transaction_date" readOnly="true"/>
+                    <a:field name="periodName" prompt="bgt_period.period_name" readOnly="true"/>
+                    <a:field name="paymentMethodName" prompt="csh_payment_method.payment_method_id" readOnly="true"/>
+                    <a:field name="payeeCategoryName" prompt="exp_report_header.payee_category" readOnly="true"/>
+                    <a:field name="payeeName" prompt="exp_report_header.payee_id" readOnly="true"/>
+                    <a:field name="currencyName" prompt="exp_mo_report_type.currency_code" readOnly="true"/>
+                    <a:field name="exchangeRateTypeName" prompt="exp_report_account.exchange_rate_type" readOnly="true"/>
+                    <a:field name="exchangeRate" prompt="exp_report_account.exchange_rate" readOnly="true"/>
+                    <a:field name="transactionAmount" prompt="csh_transaction_line.transaction_amount" readOnly="true"/>
+                    <a:field name="bankAccountName" prompt="exp_employee_account.bank_account_name" readOnly="true"/>
+                    <a:field name="bankAccountNum" prompt="csh_bank_account.bank_account_num" readOnly="true"/>
+                    <a:field name="agentEmployeeName" prompt="csh_transaction_header.manager" readOnly="true"/>
+                    <a:field name="paymentEmployeeName" prompt="csh_transaction_header.payer" readOnly="true"/>
+                    <a:field name="description" prompt="hap_remarks" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH5230_transactionAccountDs" autoQuery="true"  pageSize="100" queryUrl="$[/request/@context_path]/csh/write-off-account/cshPaymentFinanceInfo?transactionHeaderId=$[/parameter/@transactionHeaderId]">
+                <a:fields>
+                    <a:field name="description" prompt="csh_write_off_account.description"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entities.acc_entity_name"/>
+                    <a:field name="respCenterName" prompt="csh_write_off_account.resp_center"/>
+                    <a:field name="accountCode" prompt="gld_account.account_code"/>
+                    <a:field name="accountName" prompt="csh_account_code"/>
+                    <a:field name="currencyName" prompt="exp_mo_report_type.currency_code"/>
+                    <a:field name="enteredAmountDr" prompt="csh_write_off_account.entered_amount_dr"/>
+                    <a:field name="enteredAmountCr" prompt="csh_write_off_account.entered_amount_cr"/>
+                    <a:field name="functionalAmountDr" prompt="csh_write_off_account.functional_amount_dr"/>
+                    <a:field name="functionalAmountCr" prompt="csh_write_off_account.functional_amount_cr"/>
+                    <a:field name="exchangeRateTypeName" prompt="exp_report_header.exchange_rate_quotation"/>
+                    <a:field name="exchangeRate" prompt="exp_report_account.exchange_rate"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH5230_writeOffDs" autoQuery="true" pageSize="100" queryUrl="$[/request/@context_path]/csh/write-off/queryCshWriteOffHistory?transactionHeaderId=$[/parameter/@transactionHeaderId]">
+                <a:fields>
+                    <a:field name="writeOffDate" prompt="csh_write_off.write_off_date"/>
+                    <a:field name="periodName" prompt="bgt_period.period_name"/>
+                    <a:field name="writeOffTypeName" prompt="csh_write_off.write_off_type_name"/>
+                    <a:field name="expReportNumber" prompt="exp7010.report_number"/>
+                    <a:field name="transactionNum" prompt="csh_transaction_headers.transaction_num"/>
+                    <a:field name="paymentRequisitionNumber" prompt="csh_prepayment_write_off.requisition_number"/>
+                    <a:field name="cshWriteOffAmount" prompt="csh_write_off.write_off_amount"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="CSH5230_detailPaymentReverseDateDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="reversedDate" defaultValue="$[/model/current_date/records/record/@currentDate]" prompt="csh_transaction_header.reversed_date"/>
+                    <a:field name="periodName" defaultValue="$[/model/current_date/records/record/@currentOpenPeriodName]" prompt="reversed_period" readOnly="true" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5230_onDetailReverseDateUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" marginWidth="35" title="csh_transaction_header.reversed_date">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="CSH5230_detailReverse" text="prompt.reverse" width="80"/>
+                    <a:toolbarButton click="CSH5230_closeDetailWindow" text="prompt.return" width="80"/>
+                </a:formToolbar>
+                <a:datePicker name="reversedDate" bindTarget="CSH5230_detailPaymentReverseDateDs" renderer="Aurora.formatDate"/>
+                <a:textField name="periodName" bindTarget="CSH5230_detailPaymentReverseDateDs"/>
+            </a:form>
+            <a:form id="exp_rep_write_off_prepay_head_form" marginWidth="35" title="csh_payment_detail.paymenttab">
+                <a:box column="4" style="width:100%;">
+                    <a:textField name="transactionNum" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="transactionDate" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="periodName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="paymentMethodName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="payeeCategoryName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="payeeName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="currencyName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="exchangeRateTypeName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="exchangeRate" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:numberField name="transactionAmount" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="bankAccountName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="bankAccountNum" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="agentEmployeeName" bindTarget="CSH5230_transactionHeaderDs"/>
+                    <a:textField name="paymentEmployeeName" bindTarget="CSH5230_transactionHeaderDs"/>
+                </a:box>
+                <a:box style="width:100%;">
+                    <a:textArea name="description" bindTarget="CSH5230_transactionHeaderDs" calcWidth="calc((100%  + 90px) / 4 * 3 + 150px)" colspan="4" width="800"/>
+                </a:box>
+            </a:form>
+            <a:form cellPadding="0" hidelabel="true" marginWidth="35" padding="0" showmargin="false" title="hap_acc_information">
+                <a:grid bindTarget="CSH5230_transactionAccountDs" height="300" marginWidth="37" navBar="true" style="box-shadow:none;">
+                    <a:columns>
+                        <a:column name="description" align="center" width="150"/>
+                        <a:column name="accEntityName" align="center" width="100"/>
+                        <a:column name="respCenterName" align="center" width="100"/>
+                        <a:column name="accountCode" align="center" width="100"/>
+                        <a:column name="accountName" align="center" width="100"/>
+                        <a:column name="currencyName" align="center" width="100"/>
+                        <a:column name="enteredAmountDr" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="enteredAmountCr" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="functionalAmountDr" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="functionalAmountCr" align="right" renderer="Aurora.formatMoney" width="80"/>
+                        <a:column name="exchangeRateTypeName" align="center"  width="100"/>
+                        <a:column name="exchangeRate" align="center"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+            <a:form hidelabel="true" marginWidth="35" padding="0" showmargin="false" style="box-shadow:none;" title="hap_write_off_information">
+                <a:grid bindTarget="CSH5230_writeOffDs" height="300" marginWidth="37" navBar="true">
+                    <a:columns>
+                        <a:column name="writeOffDate" align="center" width="100"/>
+                        <a:column name="periodName" align="center" width="80"/>
+                        <a:column name="writeOffTypeName" align="center" width="100"/>
+                        <a:column name="expReportNumber" align="center" renderer="CSH5230_openExpReportRenderer" width="120"/>
+                        <a:column name="transactionNum" align="center" width="120"/>
+                        <a:column name="paymentRequisitionNumber" align="center" renderer="CSH5230_openPaymentReqRenderer" width="120"/>
+                        <a:column name="cshWriteOffAmount" align="right" renderer="Aurora.formatMoney" width="100"/>
+                    </a:columns>
+                </a:grid>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: ouyangzhaochang2663 $
+    $Date: 2010/12/10 07:59:43 $
+    $Revision: 1.3 $
+    $Purpose: 用途代码定义 - 配置
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="gld_mapping_conds_grps_hd_create_link" url="$[/request/@context_path]/gld/FND2910/gld_mapping_conds_grps_hd_create.screen"/>
+        <a:link id="gld_acc_gen_user_dy_link" url="$[/request/@context_path]/gld/FND2910/gld_acc_gen_user_dy.screen"/>
+        <a:link id="gld_acc_gen_sys_general_link" url="$[/request/@context_path]/gld/FND2910/gld_acc_gen_sys_general.screen"/>
+        <div/>
+        <script><![CDATA[
+            function FND2910_closeMapCondsGrpsHdWindow() {
+                $au('gld_mapping_conds_grps_hd_window').close();
+            }
+            
+            function priorityFunction(record, name) {
+                if (record.get('sysFlag') == 'N') {
+                    return 'priority_numberfield';
+                }
+                return '';
+            }
+            
+            function sysFlagRenderer(value, record, name) {
+                if (value == 'Y') {
+                    return '$[l:HAP_YES]';
+                }
+                return '$[l:HAP_NO]';
+            }
+            
+            function onRemove() {
+            
+                var ds = $au('mapping_conds_grps_hd_ds');
+                var selectedRecords = ds.getSelected();
+                if (selectedRecords.length > 0) {
+                    for (var i = 0;i < selectedRecords.length;i++) {
+                        selectedRecords[i].set('_status', 'delete');
+                        if (selectedRecords[i].get('sys_flag') == 'Y') {
+                            Aurora.showMessage('$[l:prompt]', '$[l:delete_data_confirm]');
+                            return;
+                        }
+                    }
+                } else {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return '';
+                }
+                ds.remove(selectedRecords);
+            }
+            
+            function configurationMatchValues(value, record, name) {
+                console.log(record);
+                return '<a href="javascript:configurationMatchValuesWin(\'' + record.get('tableName') + '\',\'' + record.get('usageCode') + '\',\'' + record.get('groupName') + '\')">$[l:gld_mapping_conds_grps_hd.configuration_match_values]</a>';
+            }
+            
+            function configurationMatchValuesWin(tableName, usageCode, groupName) {
+                var url = null;
+                if (tableName == 'GLD_ACC_GEN_SYS_GENERAL') {
+                    url = $au('gld_acc_gen_sys_general_link').getUrl() + '?usage_code_hd=' + usageCode + '&groupName=' + groupName;
+                } else {
+                    url = $au('gld_acc_gen_user_dy_link').getUrl() + '?usage_code_hd=' + usageCode + '&groupName=' + groupName + '&table_name=' + tableName;
+                }
+                new Aurora.Window({
+                    id: 'gld_acc_gen_window',
+                    url: url,
+                    title: '$[l:use_code_defines]',
+                    fullScreen: true
+                     
+                });
+            }
+            
+            function createAction() {
+                new Aurora.Window({
+                    id: 'gld_mapping_conds_grps_hd_create_window',
+                    url: $au('gld_mapping_conds_grps_hd_create_link').getUrl() + '?usage_code=$[/parameter/@usage_code_hd]',
+                    title: '$[l:use_code_defines_config]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="usage_code_info_ds" autoQuery="true" baseUrl="/gld/usage-code" queryUrl="$[/request/@context_path]/gld/usage-code/query?usageCode=$[/parameter/@usage_code_hd]">
+                <a:fields>
+                    <a:field name="usageCode" readOnly="true"/>
+                    <a:field name="description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="mapping_conds_grps_hd_ds" autoPageSize="true" autoQuery="true" baseUrl="/gld/mapping-cond-grp-hd" queryUrl="$[/request/@context_path]/gld/mapping-cond-grp-hd/query?ORDER_FIELD=priority&amp;usageCode=$[/parameter/@usage_code_hd]" selectable="true">
+                <a:fields>
+                    <a:field name="priority" required="true"/>
+                    <a:field name="description" required="true"/>
+                    <a:field name="sysFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="gld_mapping_conds_grps_hd_form" bindTarget="usage_code_info_ds" column="2" labelWidth="120" title="gld_usage_codes.usage_codes_info" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="createAction" text="gld_mapping_conds_grps_hd.create_mapping_conds_grps" width="100"/>
+                    <a:gridButton bind="gld_mapping_conds_grps_hd_grid" type="save" width="80"/>
+                    <a:toolbarButton click="onRemove" text="hap_delete" width="80"/>
+                    <a:toolbarButton click="FND2910_closeMapCondsGrpsHdWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="usageCode" bindTarget="usage_code_info_ds"  prompt="gld_usage_codes.usage_code"/>
+                <a:textField name="description" bindTarget="usage_code_info_ds" prompt="gld_usage_codes.usage_codes_description"/>
+            </a:form>
+            <a:grid id="gld_mapping_conds_grps_hd_grid" bindTarget="mapping_conds_grps_hd_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="priority" align="center" editorFunction="priorityFunction" width="50" prompt="gld_mapping_conds_grps_hd.priority"/>
+                    <a:column name="groupName" align="center" width="150" prompt="gld_mapping_conds_grps_hd.group_name"/>
+                    <a:column name="description" align="left" editor="mapping_conds_grps_description_tf" width="200" prompt="gld_mapping_conds_grps_hd.mapping_conds_grps_description"/>
+                    <a:column name="sysFlag" align="center" renderer="sysFlagRenderer" width="50" prompt="gld_mapping_conds_grps_hd.sys_flag"/>
+                    <a:column name="mappingCondsGrpsId" align="center" renderer="configurationMatchValues" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:numberField id="priority_numberfield" allowDecimals="false" allowFormat="false"/>
+                    <a:textField id="mapping_conds_grps_description_tf"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan
+    $Date: 2017-9-21 20:14:54
+    $Revision: 1.0  
+    $Purpose: 还款登记单类型定义-批量分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH7010_BatchLink"
+                url="$[/request/@context_path]/csh/mo-repay-reg-asgn-com/assignCompanies"/>
+        <script><![CDATA[
+        function CSH7010_closeBatchWin() {
+            $au('CSH7010_batchAsgnComWin').close();
+        }
+
+        function CSH7010_asgnSubmit() {
+            var datas = $au('CSH7010_showCompanyDs').getJsonData(true);
+            if (datas.length === 0) {
+                Aurora.showMessage('提示', '请至少选择一行数据!');
+                return;
+            }
+            var param = [];
+            if (Ext.isEmpty($au('csh_mo_repa_reg_tp_asgn_com_result_ds'))) {
+                //1.获取上一个页面ds中的所有被选中的record
+                let rdsFromPay = $au('csh_mo_repa_reg_types_result_ds').getJsonData(true);
+                for (let j = 0; j < datas.length; j++) {
+                    datas[j].enabledFlag = 'Y';
+                }
+                for (let i = 0; i < rdsFromPay.length; i++) {
+                    for (let n = 0; n < datas.length; n++) {
+                        let array = {
+                            'companyId': datas[n].companyId,
+                            'moRepaymentRegTypeId': rdsFromPay[i].moRepaymentRegTypeId,
+                            'enabledFlag': datas[n].enabledFlag
+                        };
+                        param.push(array);
+                    }
+                }
+                console.log(param);
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('CSH7010_BatchLink').getUrl(),
+                    para: param,
+                    success: function () {
+                        // Aurora.showMessage('提示','保存成功!');
+                        $au('CSH7010_batchAsgnComWin').close();
+                        //  $au('csh_mo_repa_reg_types_result_ds').query();
+                    },
+                    scope: this
+                });
+            } else {
+                //分配公司-批量分配
+                let asgnCom = $au('CSH7010_asgnComShowDs').getAt(0).data;
+                for (let k = 0; k < datas.length; k++) {
+                    datas[k].moRepaymentRegTypeId = asgnCom.moRepaymentRegTypeId;
+                    datas[k].enabledFlag = 'Y';
+                }
+                Aurora.request({
+                    lockMessage: '$[l:HAP_WAITING]',
+                    url: $au('CSH7010_BatchLink').getUrl(),
+                    para: datas,
+                    success: function () {
+                        $au('csh_mo_repa_reg_tp_asgn_com_result_ds').query();
+                    }
+                });
+            }
+            CSH7010_closeBatchWin();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH7010_showCompanyDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/mo-repay-reg-asgn-com/queryUnallocated?magOrgId=$[/parameter/@magOrgId]"
+                       selectable="true" selectionModel="multiple">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode"/>
+                    <a:field name="companyName"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="csh_repayment_reg_type.batch_asgn_com">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="CSH7010_asgnSubmit" text="HEC_ASSIGN" width="80"/>
+                    <a:button click="CSH7010_closeBatchWin" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="csh_mo_repa_reg_types_query_ds"
+                             prompt="fnd_managing_organization.mag_org_code" readOnly="true"/>
+                <a:textField name="magOrgName" bindTarget="csh_mo_repa_reg_types_query_ds"
+                             prompt="fnd_managing_organization.mag_org_name" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH7010_showCompanyGrid" bindTarget="CSH7010_showCompanyDs" marginHeight="195" navBar="true"
+                    width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" prompt="fnd_company.company_code"
+                              width="100"/>
+                    <a:column name="companyName" align="left" prompt="fnd_company.company_name" width="120"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

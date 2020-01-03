@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: leiwang12 $
+    $Date: 2017/03/22 07:47:04 $
+    $Revision: 1.3 $
+    $Purpose: 核算主体分配
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure><![CDATA[
+    ]]></a:init-procedure>
+    <a:view>
+        <a:link id="FND1080_fnd_max_acc_exchangerate_ref_link"
+                url="$[/request/@context_path]/fnd/FND1080/gld_exchangerate_acc_max_entities.screen"/>
+        <script><![CDATA[
+        function FND1080_queryCompanyAcc() {
+            $au('FND1080_fnd_company_ref_acc_entities_ds').query();
+        }
+
+        function FND1080_resetCompanyAcc() {
+            $au('FND1080_fnd_company_acc_entities_query_ds').reset();
+        }
+
+        function FND1080_closeAssignPage() {
+            Aurora.showInfoMessage('$[l:PROMPT]', '$[l:FND_DIMENSION_VALUES.OPR_SUC]', null, 250, 100);
+            $au('company_acc_window').close();
+        }
+
+        /**
+         * @return {string}
+         */
+        function FND1080_budget_MagOrgCode(record, name) {
+            if (!record.isNew) {
+                return '';
+            } else {
+                return 'FND1080_budget_lov';
+            }
+        }
+
+        function FND1080_max_acc_company_ref() {
+            new Aurora.Window({
+                id: 'FND1080_max_exchangerate_acc_window',
+                url: $au('FND1080_fnd_max_acc_exchangerate_ref_link').getUrl() + '?typeId=' + '$[/parameter/@typeId]',
+                title: '$[l:acc_entity_batch_assign]',
+                side: 'right',
+                width: 1020
+            }).on('close', function () {
+                FND1080_queryCompanyAcc();
+            });
+        }
+
+        function FND1080_fnd_ref_closeWindow() {
+            $au('FND1080_distribution_edit_window').close();
+            FND1080_queryExchangeRate();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1080_fnd_company_ref_acc_entities_ds" autoPageSize="true" autoQuery="true"
+                       fetchAll="false" baseUrl="gld/exchangerate-tp-asgn-ae"
+                       queryUrl="$[/request/@context_path]/gld/exchangerate-tp-asgn-ae/query?typeId=$[/parameter/@typeId]"
+                       selectable="false"
+                       submitUrl="$[/request/@context_path]/gld/exchangerate-tp-asgn-ae/submit">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name_display"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N"/>
+                    <a:field name="typeId" defaultValue="$[/parameter/@typeId]"/>
+                    <a:field name="accEntityCode" autoComplete="true" autoCompleteField="code_name"
+                             autoCompleteSize="1"
+                             lovCode="LOV_ACC_ENTITY_LIMIT_COMPANY_TYPE?typeId=$[/parameter/@typeId]"
+                             prompt="gld_accounting_entity.acc_entity_code" required="true"
+                             title="choose.accounting_distribution">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="GLD_EXCHANGERATE_TYPE.TITLE" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="FND1080_fnd_company_ref_acc_entities_grid" type="add" width="80"/>
+                    <a:gridButton bind="FND1080_fnd_company_ref_acc_entities_grid" type="save" width="80"/>
+                    <a:gridButton click="FND1080_max_acc_company_ref" text="hec_batch_assign" width="80"/>
+                    <a:toolbarButton click="FND1080_fnd_ref_closeWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="typeCode" bindTarget="FND1080_gld_exchangerate_type_result_ds"
+                             prompt="gldexchangeratetype.typecode" readOnly="true" typeCase="upper"/>
+                <a:textField name="description" bindTarget="FND1080_gld_exchangerate_type_result_ds"
+                             prompt="gld_exchangerate_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="FND1080_fnd_company_ref_acc_entities_grid" bindTarget="FND1080_fnd_company_ref_acc_entities_ds"
+                    marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editorFunction="FND1080_budget_MagOrgCode"
+                              prompt="gld_accounting_entity.acc_entity_code" width="120"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="enabledFlag" editor="FND1080_budget_checkBox"
+                              prompt="fnd_company_group.enabled_flag"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="FND1080_budget_lov"/>
+                    <a:checkBox id="FND1080_budget_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

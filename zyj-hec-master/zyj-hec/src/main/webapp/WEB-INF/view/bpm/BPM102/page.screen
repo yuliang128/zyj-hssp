@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="BPM102_bpmPageLayoutBasicLink"
+                url="$[/request/@context_path]/bpm/BPM102/pageLayoutBasic.screen"/>
+        <a:link id="BPM102_bpmPageButtonLink"
+                url="$[/request/@context_path]/bpm/BPM102/pageButton.screen"/>
+        <a:link id="BPM102_bpmPageCopyLink" url="$[/request/@context_path]/bpm/BPM102/pageCopy"/>
+        <a:link id="BPM102_bpmPageRefreshCacheLink"
+                url="$[/request/@context_path]/bpm/ENGINE/refreshCache"/>
+        <a:link id="BPM102_bpmPageScreenUpdateLink"
+                url="$[/request/@context_path]/bpm/ENGINE/pageUpdate.screen"/>
+        <script><![CDATA[
+        function BPM102_doPageBack() {
+            $au('BPM102_pageScreen').close();
+        }
+
+        function BPM102_doPageQuery() {
+            $au('BPM102_pageResultDs').query();
+        }
+
+
+        function BPM102_doPageSave() {
+            $au('BPM102_pageResultDs').submit();
+        }
+
+        function BPM102_detailConfigFun(value, record, name) {
+            var pageId = record.get('pageId');
+            if (pageId) {
+                return '<a href="javascript:BPM102_openDetailConfig(' + pageId + ')">' + '$[l:bpm_page.detail_config]' + '</a>';
+            }
+        }
+
+        function BPM102_openDetailConfig(pageId, groupId) {
+            new Aurora.Window({
+                id: 'BPM102_pageLayoutBasicScreen',
+                url: $au('BPM102_bpmPageLayoutBasicLink').getUrl() + '?pageId=' + pageId + '&groupId=$[/parameter/@groupId]',
+                title: '$[l:bpm_page_layout_basic]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_buttonConfigFun(value, record, name) {
+            var pageId = record.get('pageId');
+            if (pageId) {
+                return '<a href="javascript:BPM102_openButtonConfig(' + pageId + ')">' + '$[l:bpm_page.button_config]' + '</a>';
+            }
+        }
+
+        function BPM102_openButtonConfig(pageId) {
+            new Aurora.Window({
+                id: 'BPM102_pageButtonScreen',
+                url: $au('BPM102_bpmPageButtonLink').getUrl() + '?pageId=' + pageId,
+                title: '$[l:bpm_page_button]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_pageCopyFun(value, record, name) {
+            var pageId = record.get('pageId');
+            if (pageId) {
+                return '<a href="javascript:BPM102_openPageCopy(' + pageId + ')">' + '$[l:bpm_page.page_copy]' + '</a>';
+            }
+        }
+
+        function BPM102_openPageCopy(pageId) {
+            Aurora.request({
+                url: $au('BPM102_bpmPageCopyLink').getUrl() + '?pageId=' + pageId,
+                success: function (result) {
+                    if (result.success) {
+                        $au('BPM102_pageResultDs').query();
+                    }
+                },
+                failure: function () {
+                    Aurora.showErrorMessage("错误", "复制失败", function () {
+                        $au('BPM102_pageResultDs').query();
+                    });
+                },
+                error: function () {
+                    Aurora.showErrorMessage("错误", "复制失败", function () {
+                        $au('BPM102_pageResultDs').query();
+                    });
+                }
+            });
+        }
+
+        function BPM102_pageEditorRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM102_pageEditorFunction(' + record.get('pageId') + ')">' + '页面设计' + '</a>';
+            return url;
+        }
+
+        function BPM102_pageEditorFunction(pageId) {
+            window.open($au('BPM102_bpmPageScreenUpdateLink').getUrl() + '?pageId=' + pageId);
+        }
+
+        function BPM102_doPageRefreshCache() {
+            var param = $au('BPM102_pageResultDs').getJsonData(true);
+            if (param && param.length && param.length > 0) {
+                Aurora.Masker.mask($au('bpm_pages_screen').wrap, '$[l:hap.refresh_cache]');
+                Aurora.request({
+                    lockMessage: '$[l:hap.waiting]',
+                    url: $au('BPM102_bpmPageRefreshCacheLink').getUrl(),
+                    para: param,
+                    success: function () {
+                        Aurora.Masker.unmask($au('bpm_pages_screen').wrap);
+                        Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:hap.refresh_cache]');
+                    },
+                    failure: function () {
+                        Aurora.Masker.unmask($au('bpm_pages_screen').wrap);
+                    },
+                    error: function () {
+                        Aurora.Masker.unmask($au('bpm_pages_screen').wrap);
+                    },
+                    scope: this
+                });
+            } else {
+                Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:hap.select_line]');
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_pageTypeDs" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.PAGE_TYPE/"
+                       fetchAll="true" autoQuery="true"/>
+            <a:dataSet id="BPM102_pageResultDs" autoQuery="true" baseUrl="/bpm/page"
+                       queryUrl="$[/request/@context_path]/bpm/page/query?groupId=$[/parameter/@groupId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="pageTypeDesc" displayField="description" options="BPM102_pageTypeDs"
+                             prompt="bpm_page.page_type" required="true" returnField="pageType"
+                             valueField="value"/>
+                    <a:field name="pageType"/>
+                    <a:field name="pageCode" prompt="bpm_page.page_code" required="true"/>
+                    <a:field name="pageDesc" prompt="bpm_page.page_desc" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bpm_page.enabled_flag"
+                             uncheckedValue="N"/>
+                    <a:field name="groupId" defaultValue="$[/parameter/@groupId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BPM102_doPageQuery"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="3" title="bpm_page.page_config" style="width:100%">
+                <a:label name="groupTypeDesc" bindTarget="BPM102_pageGroupResultDs"
+                         prompt="bpm_page_group.group_type"/>
+                <a:label name="groupCode" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_code"/>
+                <a:label name="groupDesc" bindTarget="BPM102_pageGroupResultDs" prompt="bpm_page_group.group_desc"/>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doPageSave" text="hap.save"/>
+                <a:button click="BPM102_doPageBack" text="hap.back"/>
+                <a:button click="BPM102_doPageRefreshCache" text="hap.refresh_cache"/>
+            </a:hBox>
+            <a:grid id="grid_id" bindTarget="BPM102_pageResultDs" height="330" marginHeight="230" marginWidth="40"
+                    navBar="true" width="805">
+                <a:toolBar>
+                    <a:button text="hap.add" type="add"/>
+                    <a:button text="hap.delete" type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="pageTypeDesc" editor="BPM102_pageCb"/>
+                    <a:column name="pageCode" editor="BPM102_pageTfUpper"/>
+                    <a:column name="pageDesc" editor="BPM102_pageTf"/>
+                    <a:column name="enabledFlag" editor="BPM102_pageCk"/>
+                    <a:column name="detailConfigure" align="center" renderer="BPM102_detailConfigFun"/>
+                    <a:column name="buttonConfigure" align="center" renderer="BPM102_buttonConfigFun"/>
+                    <a:column name="pageCopy" align="center" renderer="BPM102_pageCopyFun"/>
+                    <a:column name="pageEditor" align="center" renderer="BPM102_pageEditorRenderer"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="BPM102_pageCk"/>
+                    <a:comboBox id="BPM102_pageCb"/>
+                    <a:textField id="BPM102_pageTf"/>
+                    <a:textField id="BPM102_pageTfUpper" typeCase="upper"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

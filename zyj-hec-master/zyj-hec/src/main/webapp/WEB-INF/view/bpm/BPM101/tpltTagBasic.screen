@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+
+        function BPM101_saveTagFunction() {
+            $au('BPM101_bpmTpltTagsBasicResultDs').submit();
+        }
+
+        function BPM101_tagBackFunction() {
+            $au('BPM101_bpmTpltTagBasicScreen').close();
+        }
+
+        function BPM101_doTagQuery() {
+            $au('BPM101_bpmTpltTagsBasicResultDs').query();
+        }
+
+        function BPM101_onTagAdd(ds, record, index) {
+            record.getField('parentTagDesc').setLovPara('layoutId', record.get('layoutId'));
+            var layoutType = '$[/parameter/@layoutType]';
+
+            if (layoutType == 'form' || layoutType == 'fieldSet' || layoutType == 'box') {
+                record.getField('colspan').setRequired(true);
+                record.getField('colspan').setReadOnly(false);
+                record.getField('rowspan').setRequired(true);
+                record.getField('rowspan').setReadOnly(false);
+            } else if (layoutType == 'grid') {
+                record.getField('parentTagDesc').setReadOnly(false);
+            }
+
+            var lineNum = 0;
+            var records = ds.getAll();
+            for (var i = 0; i < ds.getAll().length - 1; i++) {
+                if (records[i].get('tagSequence') > lineNum) {
+                    lineNum = records[i].get('tagSequence');
+                }
+            }
+            record.set('tagSequence', (Math.floor(lineNum / 10) + 1) * 10);
+        }
+
+        function BPM101_onTagLoad(ds) {
+            var records = ds.getAll();
+            var layoutType = '$[/parameter/@layoutType]';
+            for (var i = 0; i < records.length; i++) {
+                if (layoutType == 'form' || layoutType == 'fieldSet' || layoutType == 'box') {
+                    records[i].getField('colspan').setRequired(true);
+                    records[i].getField('colspan').setReadOnly(false);
+                    records[i].getField('rowspan').setRequired(true);
+                    records[i].getField('rowspan').setReadOnly(false);
+                } else if (layoutType == 'grid') {
+                    records[i].getField('parentTagDesc').setReadOnly(false);
+                }
+                records[i].getField('parentTagDesc').setLovPara('layoutId', records[i].get('layoutId'));
+            }
+        }
+
+        function BPM101_tpltTagEditorFunction(record, name) {
+            var layoutType = '$[/parameter/@layoutType]';
+            if (name == 'readonly' || name == 'required') {
+                if (record.get('tagType') != 'merge_column') {
+                    return 'BPM101_tagCk';
+                }
+            }
+
+            if (name == 'colspan' || name == 'rowspan') {
+                if (layoutType == 'form' || layoutType == 'fieldSet' || layoutType == 'box') {
+                    return 'BPM101_tagNf';
+                }
+            } else if (name == 'parentTagDesc') {
+                if (layoutType == 'grid') {
+                    return 'BPM101_tagLov';
+                }
+            } else if (name == 'id') {
+                if (layoutType != 'grid') {
+                    return 'BPM101_tagTf';
+                }
+            } else if (name == 'tagCode') {
+                if (record.get('tagId')) {
+                    return '';
+                } else {
+                    return 'BPM101_tagTf';
+                }
+            }
+
+
+            return '';
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM101_tagTypeList">
+                <a:datas dataSource="tagType/records"></a:datas>
+            </a:dataSet>
+            <a:dataSet id="BPM101_bpmTpltTagsBasicResultDs" autoQuery="true"
+                       baseUrl="/bpm/tpltTagBasic"
+                       queryUrl="$[/request/@context_path]/bpm/tpltTagBasic/query?layoutId=$[/parameter/@layoutId]"
+                       pageSize="20"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="tagId"/>
+                    <a:field name="layoutId" defaultValue="$[/parameter/@layoutId]"/>
+                    <a:field name="layoutType" defaultValue="$[/parameter/@layoutType]"/>
+                    <a:field name="tagSequence" required="true" prompt="bpm_tplt_tag_basic.tag_sequence"/>
+                    <a:field name="tagCode" required="true" prompt="bpm_tplt_tag_basic.tag_code"/>
+                    <a:field name="tagDesc" prompt="bpm_tplt_tag_basic.tag_desc"/>
+                    <a:field name="tagTypeDesc" displayfield="description" options="BPM101_tagTypeList"
+                             prompt="bpm_tplt_tag_basic.tag_type" required="true" returnField="tagType"
+                             valueField="value"/>
+                    <a:field name="tagType" required="true"/>
+                    <a:field name="colspan" readOnly="true" prompt="bpm_tplt_tag_basic.colspan"/>
+                    <a:field name="rowspan" readOnly="true" prompt="bpm_tplt_tag_basic.rowspan"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_tplt_tag_basic.hidden"/>
+                    <a:field name="parentTagDesc" autoComplete="true" autoCompleteField="tagDesc" lovGridHeight="300"
+                             lovHeight="460" lovService="java@bpmTpltTagsBasicController@selectTpltTagBasicLov"
+                             lovWidth="500" prompt="bpm_tplt_tag_basic.parent_tag_id"
+                             title="bpm_tplt_tag_basic.parent_tag_id">
+                        <a:mapping>
+                            <a:map from="tagDesc" to="parentTagDesc"/>
+                            <a:map from="tagId" to="parentTagId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentTagId"/>
+                    <a:field name="name" prompt="bpm_tplt_tag_basic.name"/>
+                    <a:field name="id" prompt="bpm_tplt_tag_basic.id"/>
+                    <a:field name="defaultvalue"/>
+                    <a:field name="readonly" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_tplt_tag_basic.readonly"/>
+                    <a:field name="required" checkedValue="true" defaultValue="false" uncheckedValue="false"
+                             prompt="bpm_tplt_tag_basic.required"/>
+                    <a:field name="prompt"/>
+                    <a:field name="validator"/>
+                    <a:field name="requiredmessage"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="BPM101_onTagLoad"/>
+                    <a:event name="add" handler="BPM101_onTagAdd"/>
+                    <a:event name="submitsuccess" handler="BPM101_doTagQuery"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form labelWidth="100" row="2" title="bpm_tplt_tag_basic" style="width:calc(100% - 10px)">
+                <a:hBox>
+                    <a:label name="templateCode" bindTarget="BPM101_bpmTemplateResultDs"
+                             prompt="bpm_template.template_code"/>
+                    <a:label name="templateDesc" bindTarget="BPM101_bpmTemplateResultDs"
+                             prompt="bpm_template.template_desc"/>
+                </a:hBox>
+                <a:hBox>
+                    <a:label name="layoutTypeDesc" bindTarget="BPM101_bpmTpltLayoutBasicDs"
+                             prompt="bpm_tplt_layout_basic.layout_type"/>
+                    <a:label name="layoutCode" bindTarget="BPM101_bpmTpltLayoutBasicDs"
+                             prompt="bpm_tplt_layout_basic.layout_code"/>
+                    <a:label name="layoutDesc" bindTarget="BPM101_bpmTpltLayoutBasicDs"
+                             prompt="bpm_tplt_layout_basic.layout_desc"/>
+                </a:hBox>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM101_saveTagFunction" text="hap.save"/>
+                <a:button click="BPM101_tagBackFunction" text="hap.back"/>
+            </a:hBox>
+            <a:grid bindTarget="BPM101_bpmTpltTagsBasicResultDs" height="350" marginHeight="230" marginWidth="40"
+                    navBar="true" width="1000">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="delete"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="tagSequence" align="center" editor="BPM101_tagNf" width="60"/>
+                    <a:column name="tagCode" align="center" editorFunction="BPM101_tpltTagEditorFunction" width="120"/>
+                    <a:column name="tagDesc" align="center" editor="BPM101_tagTf" width="120"/>
+                    <a:column name="tagTypeDesc" align="center" editor="BPM101_tagCb" width="90"/>
+                    <a:column name="name" align="center" editor="BPM101_tagTf" width="150"/>
+                    <a:column name="id" align="center" editorFunction="BPM101_tpltTagEditorFunction" width="150"/>
+                    <a:column name="hidden" align="center" editor="BPM101_tagCk" width="80"/>
+                    <a:column name="readonly" align="center" editorFunction="BPM101_tpltTagEditorFunction" width="80"/>
+                    <a:column name="required" align="center" editorFunction="BPM101_tpltTagEditorFunction" width="80"/>
+                    <a:column name="form_display" prompt="bpm_tplt_layout_basic.form_disp" width="80">
+                        <a:column name="colspan" align="center" editorFunction="BPM101_tpltTagEditorFunction"
+                                  width="80"/>
+                        <a:column name="rowspan" align="center" editorFunction="BPM101_tpltTagEditorFunction"
+                                  width="80"/>
+                    </a:column>
+                    <a:column name="grid_display" prompt="bpm_tplt_layout_basic.grid_disp" width="80">
+                        <a:column name="parentTagDesc" align="center" editorFunction="BPM101_tpltTagEditorFunction"
+                                  width="80"/>
+                    </a:column>
+                </a:columns>
+                <a:editors>
+                    <a:textField id="BPM101_tagTf"/>
+                    <a:numberField id="BPM101_tagNf" allowDecimals="false"/>
+                    <a:checkBox id="BPM101_tagCk"/>
+                    <a:comboBox id="BPM101_tagCb"/>
+                    <a:lov id="BPM101_tagLov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

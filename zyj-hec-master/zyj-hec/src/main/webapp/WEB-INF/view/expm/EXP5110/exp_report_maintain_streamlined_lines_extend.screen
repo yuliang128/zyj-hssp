@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/03/06 9:47:59 $
+    $Revision: 1.0
+    $Purpose: 精简行扩展
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+  <!--  <a:init-procedure>
+        <a:model-query defaultWhereClause="v.report_pageElementCode = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_line_dimension_fields_query" rootPath="streamlined_line_dimensions"/>
+        <a:model-query defaultWhereClause="v.report_pageElementCode = &apos;STREAMLINED&apos;" model="expm.EXP5110.exp_report_line_object_fields_query" rootPath="streamlined_line_objects"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP5110_exp_report_maintain_vat_invoice_link01" url="$[/request/@context_path]/expm/EXP5110/exp_report_maintain_vat_invoice.screen"/>
+        <script><![CDATA[
+            function EXP5110_onStreamlinedEditorFocus(cmp) {
+                var name = cmp.binder.name;
+                var record = cmp.binder.ds.getCurrentRecord();
+                if (name == 'unitName') {
+                    record.getField('unitName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'positionName') {
+                    record.getField('positionName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'employeeName') {
+                    record.getField('employeeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'accEntityName') {
+                    record.getField('accEntityName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'respCenterName') {
+                    record.getField('respCenterName').setLovPara('accEntityId', record.get('accEntityId'));
+                } else if (name == 'placeName') {
+                    record.getField('placeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_streamlined_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                    $au('EXP5110_streamlined_expense_type_ds').query();
+                } else if (name == 'moExpenseItemName') {
+                    record.getField('moExpenseItemName').setLovPara('moExpenseTypId', record.get('moExpenseTypId'));
+                    record.getField('moExpenseItemName').setLovPara('companyId', record.get('companyId'));
+                    record.getField('moExpenseItemName').setLovPara('moExpReportTypeId', '$[/parameter/@moExpReportTypeId]');
+                    record.getField('moExpenseItemName').setLovPara('pageElementCode', 'STREAMLINED');
+                } else if (name == 'moExpenseTypeName') {
+                    $au('EXP5110_streamlined_expense_type_ds').setQueryParameter('companyId', record.get('companyId'));
+                } else if (name == 'invoiceItemName' || name == 'invoiceUsedeName') {
+                    record.getField(name).setLovPara('accEntityId', $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId'));
+                } else if (name == 'businessCurrencyName') {
+                    // Modify Tagin/2018.04.02 增加业务币种-支付币种获取汇率逻辑
+                    var dataSet = $au('EXP5110_currency_ds');
+                    dataSet.setQueryParameter('accEntityId', record.get('accEntityId'));
+                    dataSet.setQueryParameter('toCurrency', record.get('paymentCurrencyCode'));
+                    dataSet.query();
+                }
+                if (/dimension/.test(name)) { // 设置维度查询条件【Tips：若涉及多维度则需要判断维度对应的级别，不同级别对应的组织架构不同】
+                    var id = '';
+                    var fieldName = name.replace('name', 'level');
+                    var level = record.get(fieldName);
+                    if (level == 'BUDGET') {
+                        id = record.get('bgtEntityId');
+                    } else if (level == 'ACCOUNTING') {
+                        id = record.get('accEntityId');
+                    } else if (level == 'MANAGEMENT') {
+                        id = '$[/session/@companyId]';
+                    }
+                    record.getField(name).setLovPara('companyId', id);
+                }
+            }
+            
+            
+            function EXP5110_openInvoiceDetailWindow(vatInvoiceId, vatInvoiceLineId) {
+                new Aurora.Window({
+                    url: $au('EXP5110_exp_report_maintain_vat_invoice_link01').getUrl() + '?line_ds_id=EXP5110_exp_report_streamlined_line_ds&vatInvoiceId=' + vatInvoiceId + '&vatInvoiceLineId=' + vatInvoiceLineId + '&accEntityId=' + $au('EXP5110_exp_report_header_ds').getAt(0).get('accEntityId'),
+                    id: 'EXP5110_exp_report_maintain_vat_invoice_window',
+                    title: '$[l:vat_invoice_info]',
+                    width: 1020,
+                    side: 'right'
+                });
+            }
+            
+            
+            function EXP5110_onStreamlinedInvoiceCodeFocus(cmp) {
+                var record = cmp.binder.ds.getCurrentRecord();
+                EXP5110_openInvoiceDetailWindow((record.get('vatInvoiceId') ? record.get('vatInvoiceId') : ''), (record.get('vatInvoiceLineId') ? record.get('vatInvoiceLineId') : ''));
+            }
+            
+            function EXP5110_streamlinedPreRecord() {
+                $au('EXP5110_exp_report_streamlined_line_ds').pre();
+            }
+            
+            function EXP5110_streamlinedNextRecord() {
+                $au('EXP5110_exp_report_streamlined_line_ds').next();
+            }
+            
+            function EXP5110_streamlinedNewRecord() {
+                EXP5110_streamlinedLineAdd();
+            }
+            
+            function EXP5110_streamlinedExtendClose() {
+                $au('EXP5110_exp_report_maintain_streamlined_lines_extend_window').close();
+            }
+            
+            function EXP5110_streamlinedSaveReport() {
+                EXP5110_saveReport();
+            }
+            
+            Aurora.onReady(function() {
+                var headerRecord = $au('EXP5110_exp_report_header_ds').getAt(0);
+                var dimFlag = false;
+                var objFlag = false;
+                for (cmpName in $A.CmpManager.cache) {
+                    if (cmpName.indexOf('EXP5110_editor_') != -1) {
+                        $au(cmpName)['on']('focus', EXP5110_onStreamlinedEditorFocus);
+                    }
+                    if (cmpName.indexOf('EXP5110_editor_dim') != -1) {
+                        $au(cmpName)['on']('focus', EXP5110_onStreamlinedEditorFocus);
+                        dimFlag = true;
+                    }
+                    if (cmpName.indexOf('EXP5110_editor_obj') != -1) {
+                        objFlag = true;
+                    }
+                }
+                if (headerRecord.get('vatInvoiceFlag') == 'N') {
+                    Ext.get('EXP5110_streamlinedVatInvoiceForm').setStyle('display', 'none');
+                }
+                if (!dimFlag) {
+                    Ext.get('EXP5110_streamlinedDimForm').setStyle('display', 'none');
+                }
+                if (!objFlag) {
+                    Ext.get('EXP5110_streamlinedObjForm').setStyle('display', 'none');
+                }
+            });
+            
+            function EXP5110_onItemNameFocus() {
+                var record = $au('EXP5110_exp_report_streamlined_line_ds').getCurrentRecord();
+                $au('EXP5110_streamlined_items_ds').setQueryParameter('moExpenseTypId', record.get('moExpenseTypId'));
+                $au('EXP5110_streamlined_items_ds').setQueryParameter('companyId', record.get('companyId'));
+                $au('EXP5110_streamlined_items_ds').setQueryParameter('moExpReportTypeId', $au('EXP5110_exp_report_header_ds').getAt(0).get('moExpReportTypeId'));
+                $au('EXP5110_streamlined_items_ds').setQueryParameter('pageElementCode', 'STREAMLINED');
+                $au('EXP5110_streamlined_items_ds').query();
+            }
+        ]]></script>
+        <a:screenBody>
+            <a:hBox>
+                <a:button click="EXP5110_streamlinedPreRecord" text="hap_previous" width="80"/>
+                <a:button click="EXP5110_streamlinedNextRecord" text="hap_next" width="80"/>
+                <a:button click="EXP5110_streamlinedNewRecord" text="hap.new" width="80"/>
+                <a:button click="EXP5110_streamlinedSaveReport" text="hap_save" width="80"/>
+                <a:button click="EXP5110_streamlinedExtendClose" skin="red" text="hap_close" width="80"/>
+            </a:hBox>
+            <a:form column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expenses_news" width="1000">
+                <a:numberField name="lineNumber" id="EXP5110_editor_001" allowDecimals="false" allowNegative="false" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="acp_acp_req_create.line_number"/>
+                <a:lov name="companyName" id="EXP5110_editor_003" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_journal_header.company_id"/>
+                <a:lov name="unitName" id="EXP5110_editor_004" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_journal_balance.unit_id"/>
+                <a:lov name="positionName" id="EXP5110_editor_005" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="acp_requisition.position"/>
+                <a:lov name="employeeName" id="EXP5110_editor_006" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="bgt_budget_item_mapping.employee_id"/>
+                <a:lov name="accEntityName" id="EXP5110_editor_007" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="gld_accounting_entity.acc_entity_name"/>
+                <a:lov name="respCenterName" id="EXP5110_editor_008" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_org_unit.responsibility_center"/>
+                <a:comboBox name="moExpenseTypeName" id="EXP5110_editor_009" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_expense_type.expense_type_id"/>
+                <a:comboBox name="moExpenseItemName" id="EXP5110_editor_010" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_expense_item.expense_item_id">
+                    <a:events>
+                        <a:event name="focus" handler="EXP5110_onItemNameFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:lov name="placeName" id="EXP5110_editor_012" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_report_line.place_id"/>
+                <a:comboBox name="placeTypeName" id="EXP5110_editor_011" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_report_line.place_type_id"/>
+                <a:dateTimePicker name="dateFrom" prompt="bgt_period.start_date" id="EXP5110_editor_013" bindTarget="EXP5110_exp_report_streamlined_line_ds"  renderer="Aurora.formatDateTime"/>
+                <a:dateTimePicker name="dateTo" prompt="bgt_period.end_date" id="EXP5110_editor_014" bindTarget="EXP5110_exp_report_streamlined_line_ds"  renderer="Aurora.formatDateTime"/>
+                <a:comboBox name="businessCurrencyName" prompt="business_currency_name" id="EXP5110_editor_015" bindTarget="EXP5110_exp_report_streamlined_line_ds" />
+                <a:numberField name="businessPrice"  prompt="business_price" id="EXP5110_editor_016" bindTarget="EXP5110_exp_report_streamlined_line_ds" editorFunction="EXP5110_standardBizPriceEditorFun"  renderer="Aurora.formatMoney"/>
+                <a:numberField name="primaryQuantity" prompt="business_amount" id="EXP5110_editor_017" bindTarget="EXP5110_exp_report_streamlined_line_ds" />
+                <a:numberField name="businessAmount" prompt="business_amount" id="EXP5110_editor_028" bindTarget="EXP5110_exp_report_streamlined_line_ds"  renderer="Aurora.formatMoney"/>
+                <a:lov name="periodName" prompt="bgt_budget_reserve.period_name" id="EXP5110_editor_032" bindTarget="EXP5110_exp_report_streamlined_line_ds" />
+                <a:textArea name="description" prompt="exp_report_headers.description" id="EXP5110_editor_002" bindTarget="EXP5110_exp_report_streamlined_line_ds" colspan="3"  width="797"/>
+            </a:form>
+            <a:form id="EXP5110_streamlinedVatInvoiceForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="vat_invoice_info" width="1000">
+                <a:lov name="invoiceCode"  prompt="vat_invoices.invoice_code" id="EXP5110_editor_033" bindTarget="EXP5110_exp_report_streamlined_line_ds" >
+                    <a:events>
+                        <a:event name="focus" handler="EXP5110_onStreamlinedInvoiceCodeFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:textField name="invoiceNumber" id="EXP5110_editor_034" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="vat_invoice.invoice_number"/>
+                <a:lov name="invoiceItemName" id="EXP5110_editor_035" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="exp_report.invoice_item"/>
+                <a:lov name="invoiceUsedeName" prompt="exp_report.invoice_usede" id="EXP5110_editor_036" bindTarget="EXP5110_exp_report_streamlined_line_ds" />
+            </a:form>
+            <a:form id="EXP5110_streamlinedDimForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="dimension_information" width="1000">
+                <a:placeHolder id="EXP5110_streamlinedLineDimensionEditors"/>
+            </a:form>
+            <a:form id="EXP5110_streamlinedObjForm" column="3" padding="10" showmargin="0" style="margin-top:10px;" title="expense_object_information" width="1000">
+                <a:placeHolder id="EXP5110_streamlinedLineObjectEditors"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP5110_streamlinedLineDimensionEditors">
+            <p:loop source="/model/streamlined_line_dimensions">
+                <c:process-config>
+                    <a:lov name="$[@displayField]" id="EXP5110_editor_dim_$[@dimensionId]" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="$[@dimensionName]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP5110_streamlinedLineObjectEditors">
+            <p:loop source="/model/streamlined_line_objects">
+                <p:switch test="@expense_object_method">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:textField name="$[@displayField]" id="EXP5110_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="$[@mo_exp_obj_type_name]"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:lov name="$[@displayField]" id="EXP5110_editor_obj_$[@moExpObjTypeId]" bindTarget="EXP5110_exp_report_streamlined_line_ds" prompt="$[@mo_exp_obj_type_name]"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

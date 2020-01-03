@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-14 下午15:21:42  
+    $Revision: 1.0  
+    $Purpose: 管理组织级费用报销单类型定义-费用对象
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <script><![CDATA[
+            function EXP4060_closeExpenseObjsCreateWindow() {
+                $au('EXP4060_exp_mo_rep_ref_hd_objs').close();
+            }
+            
+            function EXP4060_setInitData(ds, record, index) {
+                record.set('moExpReportTypeId', '$[/parameter/@moExpReportTypeId]');
+                record.set('requiredFlag', 'Y');
+            }
+            
+            function EXP4060_gridCellClick(grid, row, name, record) {
+                if (name == 'defaultMoObjectCode') {
+                    var objsCode = record.get('moExpObjTypeCode');
+                    if (objsCode == null || objsCode == '') {
+                        Aurora.showMessage('$[l:prompt_message]', '$[l:exp_mo_rep_type_ref_hd_obj.chose_objects_type_code]');
+                        return;
+                    } else {
+                        var MetaData = record.getMeta();
+                        var MetaField = MetaData.getField('defaultMoObjectCode');
+                        if (record.get('expenseObjectMethod') == 'VALUE_LIST') {
+                            MetaField.setLovCode('LOV_OBJECT_VALUE');
+                            MetaField.setLovPara('moExpObjTypeId', record.get('moExpObjTypeId'));
+                        } else if (record.get('expenseObjectMethod') == 'SQL_TEXT') {
+                            MetaField.setLovCode('LOV_OBJECT_SQL_VALUE');
+                            MetaField.setLovPara('sqlQuery', record.get('sqlQuery'));
+                        }
+                    }
+                }
+            }
+            
+            function EXP4060_objEditorFunction(record, name) {
+                if (record.isNew) {
+                    return 'EXP4060_hdObjsLov';
+                }
+                return '';
+            
+            }
+            
+            function EXP4060_hdObjsSubmit(ds) {
+                ds.query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4060_refHdObjectsDs" baseUrl="/exp/mo-rep-type-ref-hd-obj" queryUrl="$[/request/@context_path]/exp/mo-rep-type-ref-hd-obj/query?moExpReportTypeId=$[/parameter/@moExpReportTypeId]" autoQuery="true"   selectable="true">
+                <a:fields>
+                    <a:field name="moExpObjTypeCode" lovCode="LOV_EXPENSE_OBJ_TYPE?magOrgId=$[/parameter/@magOrgId]" autoComplete="true"  prompt="exp_mo_rep_type_ref_hd_obj.object_type" required="true" title="exp_mo_rep_type_ref_hd_obj.object_type">
+                        <a:mapping>
+                            <a:map from="moExpObjTypeId" to="moExpObjTypeId"/>
+                            <a:map from="moExpObjTypeCode" to="moExpObjTypeCode"/>
+                            <a:map from="description" to="moExpObjTypeName"/>
+                            <a:map from="sqlQuery" to="sqlQuery"/>
+                            <a:map from="expenseObjectMethod" to="expenseObjectMethod"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="sqlQuery"/>
+                    <a:field name="expenseObjectMethod"/>
+                    <a:field name="moExpObjTypeId"/>
+                    <a:field name="layoutPriority" prompt="exp_mo_rep_type_ref_hd_obj.layout_priority" required="true"/>
+                    <a:field name="moExpObjTypeName" prompt="exp_mo_rep_type_ref_hd_obj.description"/>
+                    <a:field name="defaultMoObjectCode" prompt="exp_mo_rep_type_ref_hd_obj.default_object" lovCode="LOV_OBJECT_VALUE"  title="exp_mo_rep_type_ref_hd_obj.default_object">
+                        <a:mapping>
+                            <a:map from="code" to="defaultMoObjectCode"/>
+                            <a:map from="name" to="defaultMoObjectName"/>
+                            <a:map from="id" to="defaultMoObjectId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultMoObjectId"/>
+                    <a:field name="defaultMoObjectName" prompt="exp_mo_rep_type_ref_hd_obj.default_object_desc"/>
+                    <a:field name="requiredFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N" prompt="exp_mo_rep_type_ref_hd_obj.required_flag"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="hap_enabled_flag"/>
+                    <a:field name="moExpReportTypeId" defaultValue="$[/parameter/@moExpReportTypeId]"/>
+                    <a:field name="refId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="EXP4060_setInitData"/>
+                    <a:event name="submitsuccess" handler="EXP4060_hdObjsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4060_expMoRepTypeRefHdObjsForm" column="2" title="exp_mo_rep_type_ref_hd_obj.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4060_expMoRepTypeRefHdObjsGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4060_expMoRepTypeRefHdObjsGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4060_expMoRepTypeRefHdObjsGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4060_closeExpenseObjsCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReportTypeCode" bindTarget="EXP4060_expMoRepTypesResultDs"
+                             prompt="exp_mo_report_type.mo_exp_report_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4060_expMoRepTypesResultDs"
+                             prompt="exp_mo_report_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4060_expMoRepTypeRefHdObjsGrid" bindTarget="EXP4060_refHdObjectsDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="moExpObjTypeCode" align="center" editorFunction="EXP4060_objEditorFunction"  width="100"/>
+                    <a:column name="moExpObjTypeName" width="150"/>
+                    <a:column name="layoutPriority" align="center" editor="EXP4060_hdObjsNumberField"  width="80"/>
+                    <a:column name="defaultMoObjectCode" align="center" editor="EXP4060_hdObjsLov"  width="100"/>
+                    <a:column name="defaultMoObjectName"  width="150"/>
+                    <a:column name="requiredFlag" align="center" editor="EXP4060_hdObjsCheckBox"  width="80"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP4060_hdObjsCheckBox"  width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP4060_hdObjsLov"/>
+                    <a:comboBox id="EXP4060_hdObjsComboBox"/>
+                    <a:numberField id="EXP4060_hdObjsNumberField"/>
+                    <a:checkBox id="EXP4060_hdObjsCheckBox"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4060_gridCellClick"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

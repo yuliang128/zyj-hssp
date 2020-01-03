@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xiuxian.wu
+    $Date: 2018/03/08 13:47:59
+    $Revision: 1.0
+    $Purpose: 申请单-只读机票申请行
+-->
+<a:screen xmlns:c="aurora.application.action" xmlns:p="uncertain.proc" xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <!--<a:init-procedure>
+        <a:model-query defaultWhereClause="v.reqPageElementCode = &apos;TICKET_LINES&apos;" model="expm.EXP4010.exp_requisition_line_dimension_fields_query" rootPath="ticket_line_dimensions"/>
+        <a:model-query defaultWhereClause="v.reqPageElementCode = &apos;TICKET_LINES&apos;" model="expm.EXP4010.exp_requisition_line_object_fields_query" rootPath="ticket_line_objects"/>
+        <a:model-query defaultWhereClause="erpe.reqPageElementCode = &apos;TICKET_LINES&apos;" model="expm.EXP4010.exp_requisition_lineDescription_query" rootPath="ticket_lineDescription"/>
+    </a:init-procedure>-->
+    <a:view>
+        <a:link id="EXP4010_view_ticketLineExtendLink" url="$[/request/@context_path]/expm/EXP4010/exp_requisition_view_ticket_lines_extend.screen"/>
+        <script><![CDATA[
+            function EXP4010_view_ticketMoreRenderer(value, record, name) {
+                var content = ">>";
+                return '<a href="javascript:EXP4010_view_ticketMoreWindow()"> ' + content + '</a>';
+            }
+            
+            function EXP4010_view_ticketMoreWindow() {
+                new Aurora.Window({
+                    id: 'EXP4010_view_ticket_line_extend_window',
+                    url: $au('EXP4010_view_ticketLineExtendLink').getUrl() + '?moExpReqTypeId=$[/model/header_info/record/@moExpReqTypeId]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4010_view_ticket_place_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_policy_place_types_vl_lov"/>
+            <a:dataSet id="EXP4010_view_ticket_expense_type_ds" fetchAll="true" loadData="true" model="hec_util.exp_util.exp_req_mo_expense_types_vl_lov"/>
+            <a:dataSet id="EXP4010_view_ticket_item_ds" fetchAll="true" loadData="true" model="hec_util.exp_util.exp_req_mo_expense_items_vl_lov"/>
+            <a:dataSet id="EXP4010_view_ticket_seats_plane_ds" fetchAll="true" loadData="true" lookupCode="SEATS_PLANE"/>
+            <a:dataSet id="EXP4010_exp_requisition_view_ticket_line_ds" autoQuery="true" bindName="ticket_lines" bindTarget="EXP4010_exp_requisition_header_ds" queryUrl="$[/request/@context_path]/expm/EXP4010/exp_requisition_travel_line_query.svc?expRequisitionHeaderId=$[/model/header_info/record/@expRequisitionHeaderId]&amp;reqPageElementCode=TICKET_LINES&amp;_ban_remind=Y" submitUrl="$[/request/@context_path]/autocrud/db.exp_requisition_pkg.delete_exp_requisition_lines/batch_update">
+                <a:fields>
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="expRequisitionLineId"/>
+                    <a:field name="lineNumber" prompt="con_contract_element.line_number"/>
+                    <a:field name="more" prompt="hap_more"/>
+                    <a:field name="reqPageElementCode" defaultValue="TICKET_LINES"/>
+                    <a:field name="description" prompt="exp_requisition_header.description"/>
+                    <a:field name="companyName" LovCode="FND_COMPANY_LOV" prompt="acp_acp_requisition_hds.company_id">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="unitName" LovCode="EXP_ORG_UNIT_VL_LOV" prompt="acp_acp_requisition_hds.unit_id">
+                        <a:mapping>
+                            <!--添加默认核算主体，默认责任中心，默认预算主体，默认预算中心映射   Y.duan 2017-8-31 19:37:31-->
+                            <a:map from="unitName" to="unitName"/>
+                            <a:map from="unitId" to="unitId"/>
+                            <a:map from="defaultAccEntityId" to="accEntityId"/>
+                            <a:map from="defaultResCenterId" to="respCenterId"/>
+                            <a:map from="defaultBgtEntityId" to="bgtEntityId"/>
+                            <a:map from="defaultBgtCenterId" to="bgtCenterId"/>
+                            <a:map from="defaultAccEntityDisplay" to="accEntityName"/>
+                            <a:map from="defaultResCentersDisplay" to="respCenterName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="unitId"/>
+                    <a:field name="positionName" LovCode="EXP_ORG_POSITION_VL_LOV" prompt="acp_acp_requisition_hds.positionId">
+                        <a:mapping>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="positionId"/>
+                    <a:field name="employeeName" LovCode="EXP_EMPLOYEE_VL_LOV" prompt="acp_acp_requisition_hds.employeeId">
+                        <!--增加岗位ID和岗位描述的映射    Y.duan   2017-8-31 20:48:45-->
+                        <a:mapping>
+                            <a:map from="name" to="employeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                            <a:map from="positionName" to="positionName"/>
+                            <a:map from="positionId" to="positionId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId"/>
+                    <a:field name="accEntityName" LovCode="GLD_ACCOUNTING_ENTITY_VL_LOV" prompt="csh_offer_format.acc_entity">
+                        <a:mapping>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="respCenterName" LovCode="GLD_RESPONSIBILITY_CENTER_VL_LOV" prompt="acp_invoice_line.responsibility_center_id">
+                        <a:mapping>
+                            <a:map from="responsibilityCenterName" to="respCenterName"/>
+                            <a:map from="responsibilityCenterId" to="respCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="respCenterId"/>
+                    <a:field name="moExpenseTypeName" displayField="moExpenseTypeName" options="EXP4010_view_ticket_expense_type_ds" prompt="exp_expense_item_type.expense_type_id" required="true" returnField="moExpenseTypeId" valueField="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moReqItemName" displayField="moReqItemName" options="EXP4010_view_ticket_item_ds" prompt="con_payment_schedules.req_item_id" required="true">
+                        <a:mapping>
+                            <a:map from="moReqItemName" to="moReqItemName"/>
+                            <a:map from="moReqItemId" to="moReqItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="placeTypeName" displayField="placeTypeName" options="EXP4010_view_ticket_place_type_ds" prompt="exp_expense_policy.place_type_id" returnField="placeTypeId" valueField="placeTypeId"/>
+                    <a:field name="placeTypeId"/>
+                    <a:field name="businessCurrencyName" displayField="currency_name" options="EXP4010_currency_ds" prompt="business_currency_name" required="true">
+                        <a:mapping>
+                            <a:map from="currencyCode" to="businessCurrencyCode"/>
+                            <a:map from="precision" to="businessCurrencyPrecision"/>
+                            <!-- Modify Tagin/2018.04.02 增加业务币种-支付币种汇率计算 -->
+                            <a:map from="exchangeRate" to="biz2payExchangeRate"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="businessCurrencyCode"/>
+                    <a:field name="businessPrice" prompt="business_price" required="true" validator="EXP4010_policyValidator"/>
+                    <a:field name="biz2payExchangeTypeName" prompt="biz2pay_exchange_type_name"/>
+                    <a:field name="biz2payExchangeType"/>
+                    <a:field name="biz2payExchangeRate" prompt="biz2pay_exchange_rate"/>
+                    <a:field name="paymentCurrencyName" prompt="exp_report_header.payment_currency_name"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="pay2funExchangeTypeName" prompt="pay2fun_exchange_type_name"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate" prompt="pay2fun_exchange_rate"/>
+                    <a:field name="paymentPrice" prompt="payment_price"/>
+                    <a:field name="managementCurrencyName" prompt="exp_report_header.currency_code"/>
+                    <a:field name="managementCurrencyCode"/>
+                    <a:field name="pay2magExchangeTypeName" prompt="pay2mag_exchange_type_name"/>
+                    <a:field name="pay2magExchangeType"/>
+                    <a:field name="pay2magExchangeRate" prompt="pay2mag_exchange_rate"/>
+                    <a:field name="managementPrice" prompt="management_price"/>
+                    <a:field name="businessAmount" prompt="business_amount"/>
+                    <a:field name="primaryQuantity" prompt="acp_invoice_line.quantity"/>
+                    <a:field name="paymentAmount" prompt="payment_amount"/>
+                    <a:field name="managementAmount" prompt="management_amount"/>
+                    <a:field name="periodName" prompt="bgt_check_logs.period_name" readOnly="true"/>
+                    <a:field name="requisitionFunctionalAmount" prompt="bgt_budget_reserves.functional_amount"/>
+                    <a:field name="transportationName" displayField="code_value_name" options="transportation_ds" prompt="exp_travel_plan_line.transportation" required="true" returnField="transportation" valueField="code_value"/>
+                    <a:field name="transportation"/>
+                    <a:field name="seatClassName" displayField="code_value_name" options="EXP4010_view_ticket_seats_plane_ds" prompt="exp_ticket_request_line.seat_class" required="true" returnField="seatClass" valueField="code_value"/>
+                    <a:field name="seatClass"/>
+                    <a:field name="departurePlaceName" LovCode="EXP_POLICY_PLACE_LOV" prompt="exp_report_travel_line.departure_place" title="EXP_POLICY_PLACE.CHOOSE">
+                        <a:mapping>
+                            <a:map from="placeName" to="departurePlaceName"/>
+                            <a:map from="placeId" to="departurePlaceId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="departurePlaceId"/>
+                    <a:field name="departureDate" prompt="exp_travel_plan_line.departure_date"/>
+                    <a:field name="arrivalPlaceName" LovCode="EXP_POLICY_PLACE_LOV" prompt="exp_report_travel_line.arrival_place" title="EXP_POLICY_PLACE.CHOOSE">
+                        <a:mapping>
+                            <a:map from="placeName" to="arrivalPlaceName"/>
+                            <a:map from="placeId" to="arrivalPlaceId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="arrivalPlaceId"/>
+                    <a:field name="arrivalDate" prompt="exp_report_travel_line.arrival_date"/>
+                    <a:field name="peerPeopleName" LovCode="EXP_EMPLOYEES_POSITION_LOV" prompt="exp_ticket_request_line.passenger" required="true">
+                        <a:mapping>
+                            <a:map from="name" to="peerPeopleName"/>
+                            <a:map from="employeeId" to="peerPeople"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="peerPeople"/>
+                    <a:field name="monopolizeFlag" checkedValue="Y" defaultValue="N" prompt="exp_requisition_travel_line.monopolize_flag" uncheckedValue="N"/>
+                    <a:placeHolder id="EXP4010_view_ticketLineDimensionFields"/>
+                    <a:placeHolder id="EXP4010_view_ticketLineObjectFields"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="0" showmargin="0" style="margin-top:10px;" title="$[/model/ticket_lineDescription/record/@lineDescription]">
+            <a:grid id="EXP4010_view_ticket_lines_grid" autoAdjustHeight="true" bindTarget="EXP4010_exp_requisition_view_ticket_line_ds" marginWidth="0" navBar="true" showRowNumber="false" width="600">
+                <a:columns>
+                    <a:column name="more" align="center" renderer="EXP4010_view_ticketMoreRenderer" width="30"/>
+                    <a:column name="lineNumber" align="center" width="50"/>
+                    <a:column name="description" align="lift" width="200"/>
+                    <a:column name="moExpenseTypeName" align="center" width="130"/>
+                    <a:column name="moReqItemName" align="center" width="130"/>
+                    <a:column name="seatClassName" align="center" width="130"/>
+                    <a:column name="departurePlaceName" align="center" width="130"/>
+                    <a:column name="arrivalPlaceName" align="center" width="130"/>
+                    <a:column name="departureDate" align="center" renderer="Aurora.formatDate" width="130"/>
+                    <a:column name="monopolizeFlag" align="center" width="80"/>
+                    <a:column name="businessPrice" align="right" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="primaryQuantity" align="center" width="100"/>
+                    <a:column name="businessAmount" align="right" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="requisitionFunctionalAmount" align="right" renderer="Aurora.formatMoney" width="130"/>
+                    <a:column name="peerPeopleName" align="center" width="100"/>
+                    <a:column name="unitName" align="center" width="130"/>
+                    <a:column name="accEntityName" width="130"/>
+                    <a:column name="respCenterName" width="130"/>
+                    <a:column name="periodName" align="center" width="130"/>
+                    <a:placeHolder id="EXP4010_view_ticketLineDimensionColumns"/>
+                    <a:placeHolder id="EXP4010_view_ticketLineObjectColumns"/>
+                </a:columns>
+            </a:grid>
+        </a:form>
+    </a:view>
+    <a:view-config>
+        <c:create-config targetId="EXP4010_view_ticketLineDimensionFields">
+            <p:loop source="/model/ticket_line_dimensions">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@defaultDimValueName]" LovCode="FND_DIMENSION_VALUE_VL_LOV?dimensionId=$[@dimensionId]&amp;companyLevel=$[@companyLevel]" prompt="$[@dimensionName]" required="true" title="$[@dimensionName]">
+                        <a:mapping>
+                            <a:map from="dimensionValueName" to="$[@displayField]"/>
+                            <a:map from="dimensionValueId" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@defaultDimValueId]"/>
+                    <a:field name="companyLevel" defaultValue="$[@companyLevel]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_view_ticketLineDimensionColumns">
+            <p:loop source="/model/ticket_line_dimensions">
+                <c:process-config>
+                    <a:column name="$[@displayField]" prompt="$[@dimensionName]" width="120"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_view_ticketLineObjectFields">
+            <p:loop source="/model/ticket_line_objects">
+                <c:process-config>
+                    <a:field name="$[@displayField]" defaultValue="$[@dftMoExpenseObjectName]" LovCode="hec_util.exp_mo_expense_object_value_vl_lov?moExpObjTypeId=$[@moExpObjTypeId]" prompt="$[@moExpObjTypeName]" required="$[@requiredFlag]" title="$[@moExpObjTypeName]">
+                        <a:mapping>
+                            <a:map from="name" to="$[@displayField]"/>
+                            <a:map from="id" to="$[@returnField]"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="$[@returnField]" defaultValue="$[@dftMoExpenseObjectId]"/>
+                </c:process-config>
+            </p:loop>
+        </c:create-config>
+        <c:create-config targetId="EXP4010_view_ticketLineObjectColumns">
+            <p:loop source="/model/ticket_line_objects">
+                <p:switch test="@expense_object_method">
+                    <p:case value="DESC_TEXT">
+                        <c:process-config>
+                            <a:column name="$[@displayField]" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                    <p:case>
+                        <c:process-config>
+                            <a:column name="$[@displayField]" prompt="$[@dimensionName]" width="120"/>
+                        </c:process-config>
+                    </p:case>
+                </p:switch>
+            </p:loop>
+        </c:create-config>
+    </a:view-config>
+</a:screen>

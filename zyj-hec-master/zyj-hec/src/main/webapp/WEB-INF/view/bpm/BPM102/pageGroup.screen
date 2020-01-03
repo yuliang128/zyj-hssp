@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: dengyang  
+    $Date: 2014-5-5 下午2:08:08  
+    $Revision: 1.0  
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BPM102_bpmPageGroupEntityLink"
+                url="$[/request/@context_path]/bpm/BPM102/pageGroupEntity.screen"/>
+        <a:link id="BPM102_bpmPageLink" url="$[/request/@context_path]/bpm/BPM102/page.screen"/>
+        <a:link id="BPM102_oaFlowQueryAuthAllocLink"
+                url="$[/request/@context_path]/bpm/BPM102/oaFlowQueryAuthAlloc.screen"/>
+        <a:link id="BPM102_oaFlowEventLink" url="$[/request/@context_path]/bpm/BPM102/oaFlowEvent.screen"/>
+        <a:link id="BPM102_bpmRefreshCacheLink"
+                url="$[/request/@context_path]/bpm/refreshCache"/>
+        <a:link id="BPM102_bpmTpltUpdateLink"
+                url="$[/request/@context_path]/bpm/updateTplt"/>
+        <script><![CDATA[
+
+        function BPM102_doGroupQuery() {
+            $au('BPM102_pageGroupResultDs').query();
+        }
+
+        function BPM102_doGroupReset() {
+            $au('BPM102_groupQueryDs').reset();
+        }
+
+        function BPM102_entityConfigFun(value, record, name) {
+            var groupId = record.get('groupId');
+            if (groupId) {
+                return '<a href="javascript:BPM102_openEntityConfig(' + groupId + ')">' + '实体定义' + '</a>';
+            }
+        }
+
+        function BPM102_openEntityConfig(groupId) {
+            new Aurora.Window({
+                id: 'BPM102_pageGroupEntityScreen',
+                url: $au('BPM102_bpmPageGroupEntityLink').getUrl() + '?groupId=' + groupId,
+                title: '实体定义',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_pageConfigFun(value, record, name) {
+            var groupId = record.get('groupId');
+            if (groupId) {
+                return '<a href="javascript:BPM102_openPageConfig(' + groupId + ')">' + '$[l:bpm_page_group.page_config]' + '</a>';
+            }
+        }
+
+        function BPM102_openPageConfig(groupId) {
+            new Aurora.Window({
+                id: 'BPM102_pageScreen',
+                url: $au('BPM102_bpmPageLink').getUrl() + '?groupId=' + groupId,
+                title: '$[l:bpm_page_group.page_config]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_alloc(value, record, name) {
+            var groupId = record.get('groupId');
+            if (groupId) {
+                return '<a href="javascript:BPM102_openAlloc(' + groupId + ')">' + '$[l:bpm_page_group.query_auth_alloc]' + '</a>';
+            }
+        }
+
+        function BPM102_openAlloc(groupId) {
+            new Aurora.Window({
+                id: 'BPM102_oaFlowQueryAuthAllocScreen',
+                url: $au('BPM102_oaFlowQueryAuthAllocLink').getUrl() + '?groupId=' + groupId,
+                title: '$[l:bpm_page_group.query_auth_alloc]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_eventConfigFun(value, record, name) {
+            var groupId = record.get('groupId');
+            if (groupId) {
+                return '<a href="javascript:BPM102_openEventConfig(' + groupId + ')">' + '$[l:bpm_page_group.event_config]' + '</a>';
+            }
+        }
+
+        function BPM102_openEventConfig(groupId) {
+            new Aurora.Window({
+                id: 'BPM102_oaFlowEventScreen',
+                url: $au('BPM102_oaFlowEventLink').getUrl() + '?groupId=' + groupId,
+                title: '$[l:bpm_page_group.event_config]',
+                fullScreen: true
+            });
+        }
+
+        function BPM102_groupEditorFun(record, name) {
+            var groupId = record.get('groupId');
+            if (name == 'groupTypeDesc') {
+                if (groupId) {
+                    return '';
+                } else {
+                    return 'BPM102_GroupCb';
+                }
+            } else if (name == 'groupCode') {
+                if (groupId) {
+                    return '';
+                } else {
+                    return 'BPM102_GroupTfUpper';
+                }
+            } else if (name == 'templateDesc') {
+                if (groupId) {
+                    return '';
+                } else {
+                    return 'BPM102_GroupLov';
+                }
+            }
+        }
+
+        function BPM102_doPageGroupRefreshCache() {
+            var param = $au('BPM102_pageGroupResultDs').getJsonData(true);
+            if (param && param.length && param.length > 0) {
+                Aurora.Masker.mask(Ext.getBody(), '$[l:hap.refresh_cache]');
+                Aurora.request({
+                    lockMessage: '$[l:hap.waiting]', lockMessage: '$[l:hap.waiting]',
+                    url: $au('BPM102_bpmRefreshCacheLink').getUrl(),
+                    para: param,
+                    success: function () {
+                        Aurora.Masker.unmask(Ext.getBody());
+                        Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:hap.refresh_cache_complete]');
+                    },
+                    failure: function () {
+                        Aurora.Masker.unmask(Ext.getBody());
+                    },
+                    error: function () {
+                        Aurora.Masker.unmask(Ext.getBody());
+                    },
+                    scope: this
+                });
+            } else {
+                Aurora.showInfoMessage('$[l:hap.prompt]', '$[l:hap.select_line]');
+            }
+        }
+
+        function BPM102_onQueryUpdateFun(ds, record, name, value, old_value) {
+            if (name == 'oaFlowCategory') {
+                if (value != null && value != '') {
+                    record.getField('oaFlowSubCategoryDesc').setReadOnly(false);
+                } else {
+                    record.getField('oaFlowSubCategoryDesc').setReadOnly(true);
+                }
+                record.set('oaFlowSubCategoryDesc', '');
+            }
+        }
+
+        function BPM102_onUpdateFun(ds, record, name, value, old_value) {
+            if (name == 'oaFlowCategory') {
+                if (value != null && value != '') {
+                    record.getField('oaFlowSubCategoryDesc').setReadOnly(false);
+                } else {
+                    record.getField('oaFlowSubCategoryDesc').setReadOnly(true);
+                }
+                record.set('oaFlowSubCategoryDesc', '');
+            }
+        }
+
+        function BPM102_doLoad(ds) {
+            var records = ds.getAll();
+            for (var i = 0; i < records.length; i++) {
+                if (records[i].get('oaFlowCategory')) {
+                    records[i].getField('oaFlowSubCategoryDesc').setReadOnly(false);
+                }
+            }
+        }
+
+        function BPM102_updateRenderer(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            var url = '<a href="javascript:BPM102_updateFunction(' + record.get('groupId') + ')">' + '$[l:bpm_page_group.update]' + '</a>';
+            return url;
+        }
+
+        function BPM102_updateFunction(groupId) {
+            Aurora.showConfirm('$[l:hap.prompt]', '确认要更改此表单的模板配置吗？', function () {
+                Aurora.request({
+                    url: $au('BPM102_bpmTpltUpdateLink').getUrl(),
+                    para: {
+                        groupId: groupId
+                    },
+                    success: function () {
+                        Aurora.showMessage('$[l:hap.prompt]', '$[l:bpm_page_group.success]');
+                    },
+                    scope: this
+                });
+            });
+        }
+
+        function BPM102_onGroupCellclickFun(grid, row, name, record) {
+            if (name == 'oaFlowSubCategoryDesc') {
+                $au('BPM102_oaFlowSubCategoryDs').setQueryParameter('parentCode', 'BPM.OA_FLOW_CATEGORY');
+                $au('BPM102_oaFlowSubCategoryDs').setQueryParameter('parentValue', record.get('oaFlowCategory'));
+                $au('BPM102_oaFlowSubCategoryDs').query();
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BPM102_oaFlowCategoryDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BPM.OA_FLOW_CATEGORY/"/>
+            <a:dataSet id="BPM102_oaFlowSubCategoryDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraChildCode/BPM.OA_FLOW_SUB_CATEGORY/"/>
+            <a:dataSet id="BPM102_groupTypeDs" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_DOC_CATEGORY/"/>
+            <a:dataSet id="BPM102_groupQueryDs">
+                <a:fields>
+                    <a:field name="groupTypeDesc" displayField="description" options="BPM102_groupTypeDs"
+                             prompt="bpm_page_group.group_type" returnField="groupType" valueField="value"/>
+                    <a:field name="groupType"/>
+                    <a:field name="groupCode" prompt="bpm_page_group.group_code"/>
+                    <a:field name="groupDesc" prompt="bpm_page_group.group_desc"/>
+                    <a:field name="templateDesc"
+                             lovCode="LOV_BPM_TEMPLATE"
+                             prompt="bpm_page_group.template_id" title="bpm_page_group.template_choose">
+                        <a:mapping>
+                            <a:map from="templateId" to="templateId"/>
+                            <a:map from="templateDesc" to="templateDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="templateId"/>
+                    <a:field name="oaFlowCategoryDesc" displayField="description" options="BPM102_oaFlowCategoryDs"
+                             prompt="bpm_page_group.oa_flow_category" returnField="oaFlowCategory"
+                             valueField="value"/>
+                    <a:field name="oaFlowSubCategoryDesc" displayField="description"
+                             options="BPM102_oaFlowSubCategoryDs" prompt="bpm_page_group.oa_flow_sub_category"
+                             readOnly="true" returnField="oaFlowSubCategory"
+                             valueField="value"/>
+                    <a:field name="oaFlowCategory"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BPM102_onQueryUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BPM102_pageGroupResultDs" autoPageSize="true" autoQuery="true"
+                       baseUrl="/bpm/pageGroup"
+                       queryDataSet="BPM102_groupQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="groupTypeDesc" displayField="description" options="BPM102_groupTypeDs"
+                             prompt="bpm_page_group.group_type" required="true" returnField="groupType"
+                             valueField="value"/>
+                    <a:field name="groupType"/>
+                    <a:field name="groupCode" prompt="bpm_page_group.group_code" required="true"/>
+                    <a:field name="groupDesc" prompt="bpm_page_group.group_desc" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="templateDesc"
+                             lovCode="LOV_BPM_TEMPLATE"
+                             prompt="bpm_page_group.template_id" required="true"
+                             title="bpm_page_group.template_choose">
+                        <a:mapping>
+                            <a:map from="templateId" to="templateId"/>
+                            <a:map from="templateDesc" to="templateDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="templateScreen"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bpm_page_group.enabled_flag"
+                             uncheckedValue="N"/>
+                    <a:field name="oaFlowCategoryDesc" displayField="description" options="BPM102_oaFlowCategoryDs"
+                             prompt="bpm_page_group.oa_flow_category" required="true" returnField="oaFlowCategory"
+                             valueField="value"/>
+                    <a:field name="oaFlowSubCategoryDesc" displayField="description"
+                             options="BPM102_oaFlowSubCategoryDs" prompt="bpm_page_group.oa_flow_sub_category"
+                             readOnly="true" returnField="oaFlowSubCategory" valueField="value"/>
+                    <a:field name="oaFlowCategory"/>
+                    <a:field name="oaFlowSubCategory"/>
+                    <a:field name="autoApproveFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="bpm_page_group.auto_approve_flag"/>
+                    <a:field name="interfaceFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="bpm_page_group.interfave_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="BPM102_doGroupQuery"/>
+                    <a:event name="update" handler="BPM102_onUpdateFun"/>
+                    <a:event name="load" handler="BPM102_doLoad"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="bpm_page_group" style="width:100%">
+                <a:hBox style="width:100%">
+                    <a:comboBox name="groupTypeDesc" bindTarget="BPM102_groupQueryDs"/>
+                    <a:textField name="groupCode" bindTarget="BPM102_groupQueryDs"/>
+                    <a:textField name="groupDesc" bindTarget="BPM102_groupQueryDs"/>
+                </a:hBox>
+                <a:hBox style="width:100%">
+                    <a:lov name="templateDesc" bindTarget="BPM102_groupQueryDs"/>
+                    <a:comboBox name="oaFlowCategoryDesc" bindTarget="BPM102_groupQueryDs"/>
+                    <a:comboBox name="oaFlowSubCategoryDesc" bindTarget="BPM102_groupQueryDs"/>
+                </a:hBox>
+            </a:form>
+            <a:hBox>
+                <a:button click="BPM102_doGroupQuery" text="hap.query"/>
+                <a:button click="BPM102_doGroupReset" text="hap.reset"/>
+                <a:button click="BPM102_doPageGroupRefreshCache" text="hap.refresh_cache"/>
+            </a:hBox>
+            <a:grid id="grid" bindTarget="BPM102_pageGroupResultDs" marginHeight="230" marginWidth="40"
+                    navBar="true">
+                <a:toolBar>
+                    <a:button type="add"/>
+                    <a:button type="clear"/>
+                    <a:button type="save"/>
+                </a:toolBar>
+                <a:columns>
+                    <a:column name="groupTypeDesc" editorFunction="BPM102_groupEditorFun"/>
+                    <a:column name="groupCode" editorFunction="BPM102_groupEditorFun"/>
+                    <a:column name="groupDesc" editor="BPM102_GroupTl"/>
+                    <a:column name="templateDesc" editorFunction="BPM102_groupEditorFun"/>
+                    <a:column name="oaFlowCategoryDesc" editor="BPM102_GroupCb"/>
+                    <a:column name="oaFlowSubCategoryDesc" editor="BPM102_GroupCb"/>
+                    <a:column name="enabledFlag" editor="BPM102_GroupCk" width="50"/>
+                    <a:column name="autoApproveFlag" editor="BPM102_GroupCk" width="50"/>
+                    <a:column name="interfaceFlag" editor="BPM102_GroupCk" width="50"/>
+                    <a:column name="entityConfig" align="center" prompt="实体定义"
+                              renderer="BPM102_entityConfigFun" width="80"/>
+                    <a:column name="pageConfig" align="center" prompt="bpm_page_group.page_config"
+                              renderer="BPM102_pageConfigFun" width="80"/>
+                    <a:column name="queryAuthAlloc" align="center" prompt="bpm_page_group.query_auth_alloc"
+                              renderer="BPM102_alloc" width="80"/>
+                    <a:column name="eventConfigure" align="center" prompt="bpm_page_group.event_config"
+                              renderer="BPM102_eventConfigFun" width="80"/>
+                    <!--<a:column name="updatePage" align="center" prompt="bpm_page_group.update"
+                              renderer="BPM102_updateRenderer" width="100"/>-->
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="BPM102_GroupCk"/>
+                    <a:comboBox id="BPM102_GroupCb"/>
+                    <a:textField id="BPM102_GroupTf"/>
+                    <a:textField id="BPM102_GroupTfUpper" typeCase="upper"/>
+                    <a:lov id="BPM102_GroupLov"/>
+                    <a:tledit id="BPM102_GroupTl"/>
+                </a:editors>
+                <a:events>
+                    <a:event name="cellclick" handler="BPM102_onGroupCellclickFun"/>
+                </a:events>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

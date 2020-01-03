@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bpm.mapper.PageGroupMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bpm.dto.PageGroup">
+        <result column="group_id" property="groupId" jdbcType="BIGINT"/>
+        <result column="group_type" property="groupType" jdbcType="VARCHAR"/>
+        <result column="group_code" property="groupCode" jdbcType="VARCHAR"/>
+        <result column="template_id" property="templateId" jdbcType="BIGINT"/>
+        <result column="enabled_flag" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="oa_flow_category" property="oaFlowCategory" jdbcType="VARCHAR"/>
+        <result column="oa_flow_sub_category" property="oaFlowSubCategory" jdbcType="VARCHAR"/>
+        <result column="interface_flag" property="interfaceFlag" jdbcType="VARCHAR"/>
+        <result column="auto_approve_flag" property="autoApproveFlag" jdbcType="VARCHAR"/>
+        <result column="template_desc" property="templateDesc" jdbcType="VARCHAR"/>
+        <result column="template_screen" property="templateScreen" jdbcType="VARCHAR"/>
+        <result column="oa_flow_sub_category_desc" property="oaFlowSubCategoryDesc" jdbcType="VARCHAR"/>
+        <result column="group_desc" property="groupDesc" jdbcType="VARCHAR"/>
+        <result column="oa_flow_category_desc" property="oaFlowSubCategoryDesc" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="queryByCondition" parameterType="com.hand.hec.bpm.dto.PageGroup" resultMap="BaseResultMap">
+        SELECT
+        t1.*,
+        (SELECT template_desc FROM bpm_template WHERE template_id=t1.template_id
+        ) AS template_desc,
+        (SELECT screen FROM bpm_template WHERE template_id=t1.template_id
+        ) AS template_screen,
+        ( SELECT
+        cvt.description
+        FROM
+        sys_code_b cb,
+        sys_code_value_b cvb,
+        sys_code_value_tl cvt
+        WHERE
+        cb.code = 'BPM.OA_FLOW_CATEGORY'
+        AND cb.code_id = cvb.code_id
+        AND cvb.value = t1.oa_flow_category
+        AND cvb.code_value_id = cvt.code_value_id
+        AND cvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) AS oa_flow_category_desc,
+        ( SELECT
+        cvt.description
+        FROM
+        sys_code_b cb,
+        sys_code_value_b cvb,
+        sys_code_value_tl cvt
+        WHERE
+        cb.code = 'BPM.OA_FLOW_SUB_CATEGORY'
+        AND cb.code_id = cvb.code_id
+        AND cvb.value = t1.oa_flow_sub_category
+        AND cvb.code_value_id = cvt.code_value_id
+        AND cvt.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String}
+        ) AS oa_flow_sub_category_desc
+        FROM
+        BPM_PAGE_GROUP t1
+        <where>
+            <if test="groupType!=null">
+                t1.group_type = #{groupType}
+            </if>
+
+            <if test="groupCode!=null">
+                and t1.group_code LIKE concat('%', concat(#{groupCode}, '%'))
+            </if>
+
+            <if test="groupDesc!=null">
+                and t1.group_desc LIKE concat('%', concat(#{groupDesc}, '%'))
+            </if>
+
+            <if test="templateId!=null">
+                and t1.template_id = #{templateId}
+            </if>
+
+            <if test="oaFlowCategory!=null">
+                and t1.oa_flow_category = #{oaFlowCategory}
+            </if>
+
+            <if test="oaFlowCategory!=null">
+                and t1.oa_flow_sub_category = #{oaFlowSubCategory}
+            </if>
+        </where>
+    </select>
+    <!--
+        <select id="queryPageGroupEditor" resultType="java.util.Map">
+          SELECT
+                t1.*,
+                ( SELECT template_desc FROM bpm_template WHERE template_id = t1.template_id ) AS template_desc,
+                ( SELECT screen FROM bpm_template WHERE template_id = t1.template_id ) AS template_screen,
+                ( SELECT oa_flow_sub_category_desc FROM OA_FLOW_SUB_CATEGORIES_VL WHERE oa_flow_sub_category_id = t1.oa_flow_sub_category_id ) AS oa_flow_sub_category_desc
+            FROM
+                BPM_PAGE_GROUPS_VL t1,
+                bpm_pages t2
+            WHERE
+                t1.group_id = t2.group_id
+                AND t2.page_id =#{pageId}
+        </select>-->
+
+</mapper>

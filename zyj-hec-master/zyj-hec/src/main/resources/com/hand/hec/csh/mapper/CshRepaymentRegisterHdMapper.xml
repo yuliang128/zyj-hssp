@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshRepaymentRegisterHdMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshRepaymentRegisterHd">
+        <result column="REGISTER_HDS_ID" property="registerHdsId" jdbcType="DECIMAL"/>
+        <result column="REGISTER_NUMBER" property="registerNumber" jdbcType="VARCHAR"/>
+        <result column="COMPANY_ID" property="companyId" jdbcType="DECIMAL"/>
+        <result column="COMPANY_NAME" property="companyName" jdbcType="VARCHAR"/>
+        <result column="UNIT_ID" property="unitId" jdbcType="DECIMAL"/>
+        <result column="UNIT_NAME" property="unitName" jdbcType="VARCHAR"/>
+        <result column="POSITION_ID" property="positionId" jdbcType="DECIMAL"/>
+        <result column="POSITION_NAME" property="positionName" jdbcType="VARCHAR"/>
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL"/>
+        <result column="EMPLOYEE_NAME" property="employeeName" jdbcType="VARCHAR"/>
+        <result column="ACC_ENTITY_ID" property="accEntityId" jdbcType="DECIMAL"/>
+        <result column="ACC_ENTITY_NAME" property="accEntityName" jdbcType="VARCHAR"/>
+        <result column="MO_REPAYMENT_REG_TYPE_ID" property="moRepaymentRegTypeId" jdbcType="DECIMAL"/>
+        <result column="MO_REPAYMENT_REG_TYPE_NAME" property="moRepaymentRegTypeName" jdbcType="VARCHAR"/>
+        <result column="BANK_ACCOUNT_ID" property="bankAccountId" jdbcType="DECIMAL"/>
+        <result column="BANK_ACCOUNT_NUM" property="bankAccountNum" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_SYMBOL" property="currencySymbol" jdbcType="VARCHAR"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="PAYMENT_METHOD_ID" property="paymentMethodId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_METHOD_NAME" property="paymentMethodName" jdbcType="VARCHAR"/>
+        <result column="REPAYMENT_DATE" property="repaymentDate" jdbcType="DATE"/>
+        <result column="REPAYMENT_DATE_TZ" property="repaymentDateTz" jdbcType="DATE"/>
+        <result column="REPAYMENT_DATE_LTZ" property="repaymentDateLtz" jdbcType="DATE"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+        <result column="REPAYMENT_BANK_NOTE" property="repaymentBankNote" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="REPAYMENT_STATUS" property="repaymentStatus" jdbcType="VARCHAR"/>
+        <result column="REPAYMENT_STATUS_NAME" property="repaymentStatusName" jdbcType="VARCHAR"/>
+        <result column="CASHIER_USER_ID" property="cashierUserId" jdbcType="DECIMAL"/>
+        <result column="CASHIER_USER_NAME" property="cashierUserName" jdbcType="VARCHAR"/>
+        <result column="CASHIER_CONFIRM_DATE" property="cashierConfirmDate" jdbcType="DATE"/>
+        <result column="ACCOUNTING_USER_ID" property="accountingUserId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNTING_USER_NAME" property="accountingUserName" jdbcType="VARCHAR"/>
+        <result column="ACCOUNTING_CONFIRM_DATE" property="accountingConfirmDate" jdbcType="DATE"/>
+        <result column="PROGRESS_STATUS_NAME" property="progressStatusName" jdbcType="VARCHAR"/>
+        <result column="PROGRESS_COUNT" property="progressCount" jdbcType="DECIMAL"/>
+        <result column="CREATED_NAME" property="createdName" jdbcType="VARCHAR"/>
+        <result column="CORSS_ENTITY_FLAG" property="corssEntityFlag" jdbcType="VARCHAR"/>
+        <result column="REPAYMENT_DATE_FROM" property="repaymentDateFrom" javaType="DATE"/>
+        <result column="REPAYMENT_DATE_TO" property="repaymentDateTo" javaType="DATE"/>
+        <result column="AMOUNT_FROM" property="amountFrom" jdbcType="DECIMAL"/>
+        <result column="AMOUNT_TO" property="amountTo" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="baseSelect" resultMap="BaseResultMap">
+        SELECT
+        crrh.register_hds_id,
+        crrh.register_number,
+        crrh.company_id,
+        ( SELECT ct.company_short_name from fnd_company_tl ct WHERE ct.company_id = crrh.company_id AND ct.lang =
+        #{request.locale,javaType=java.lang.String} ) AS COMPANY_NAME,
+        crrh.unit_id,
+        ( SELECT ou.description FROM exp_org_unit_tl ou WHERE ou.unit_id = crrh.unit_id AND ou.lang =
+        #{request.locale,javaType=java.lang.String} ) AS UNIT_NAME,
+        crrh.position_id,
+        ( SELECT opt.description FROM exp_org_position_tl opt WHERE opt.position_id = crrh.position_id AND opt.lang =
+        #{request.locale,javaType=java.lang.String} ) AS POSITION_NAME,
+        crrh.employee_id,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = crrh.employee_id ) AS EMPLOYEE_NAME,
+        crrh.mo_repayment_reg_type_id,
+        ( SELECT rt.description FROM csh_mo_repayment_reg_type_tl rt WHERE rt.mo_repayment_reg_type_id =
+        crrh.mo_repayment_reg_type_id AND rt.lang = #{request.locale,javaType=java.lang.String} ) AS
+        MO_REPAYMENT_REG_TYPE_NAME,
+        crrh.acc_entity_id,
+        ( SELECT aet.acc_entity_name FROM gld_accounting_entity_tl aet WHERE aet.acc_entity_id = crrh.acc_entity_id AND
+        aet.lang = #{request.locale,javaType=java.lang.String} ) AS ACC_ENTITY_NAME,
+        crrh.bank_account_id,
+        ( SELECT ba.BANK_ACCOUNT_NUM FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID ) AS
+        bank_account_num,
+        crrh.payment_method_id,
+        ( SELECT mt.description FROM csh_payment_method_tl mt WHERE mt.payment_method_id = crrh.payment_method_id AND
+        mt.lang = #{request.locale,javaType=java.lang.String} ) AS paymentMethodName,
+        crrh.repayment_date AS repayment_date,
+        (SELECT gc.currency_symbol FROM gld_currency gc WHERE gc.CURRENCY_CODE =
+        (SELECT cprh.currency_code FROM
+        csh_repayment_register_ln crrl,
+        csh_payment_requisition_ln cprl,
+        csh_payment_requisition_hd cprh
+        WHERE
+        crrh.register_hds_id = crrl.register_hds_id
+        AND crrl.payment_requisition_line_id = cprl.payment_requisition_line_id
+        AND cprl.payment_requisition_header_id = cprh.payment_requisition_header_id)) AS currency_symbol,
+        crrh.amount,
+        crrh.repayment_bank_note,
+        crrh.description,
+        crrh.repayment_status,
+        ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'CSH_REPAYMENT_REGISTER_STATUS' AND cv.VALUE =
+        crrh.repayment_status ) AS repayment_status_name,
+        crrh.cashier_user_id,
+        (SELECT concat( e.employee_code, '-', e.NAME ) FROM exp_employee e, sys_user u WHERE u.user_id =
+        crrh.cashier_user_id AND u.employee_id = e.employee_id) AS cashier_user_name,
+        crrh.cashier_confirm_date AS cashier_confirm_date,
+        crrh.accounting_user_id,
+        (SELECT concat( e.employee_code, '-', e.NAME ) FROM exp_employee e, sys_user u WHERE u.user_id =
+        crrh.accounting_user_id AND u.employee_id = e.employee_id) AS accounting_user_name,
+        crrh.accounting_confirm_date,
+        crrh.repayment_status progress_status,
+        ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'DOC_PROGRESS_STATUS' AND cv.VALUE =
+        crrh.repayment_status ) AS progress_status_name,
+        NULL AS progress_count
+        FROM
+        csh_repayment_register_hd crrh
+        WHERE
+        crrh.company_id = #{request.companyId}
+        AND crrh.created_by = #{request.userId}
+        <if test="registerNumber != null and registerNumber != ''">
+            AND crrh.register_number like concat('%', #{registerNumber}, '%')
+        </if>
+        <if test="cshRepaymentDateScope != null">
+            AND crrh.repayment_date &gt;= #{cshRepaymentDateScope}
+        </if>
+        <if test="repaymentDateFrom != null">
+            AND crrh.repayment_date &gt;= #{repaymentDateFrom}
+        </if>
+        <if test="repaymentDateTo != null">
+            AND crrh.repayment_date &lt;= #{repaymentDateTo}
+        </if>
+        <if test="repaymentStatus != null">
+            AND crrh.repayment_status in (${repaymentStatus})
+        </if>
+        <if test="moRepaymentRegTypeId != null">
+            AND crrh.mo_repayment_reg_type_id = #{moRepaymentRegTypeId}
+        </if>
+        <if test="amountFrom != null">
+            AND crrh.amount &gt;= #{amountFrom}
+        </if>
+        <if test="amountTo != null">
+            AND crrh.amount &lt;= #{amountTo}
+        </if>
+        <if test="description != null">
+            AND crrh.description like concat('%', #{description}, '%')
+        </if>
+        ORDER BY
+        register_number DESC
+    </select>
+
+    <select id="queryRepaymentHd" resultMap="BaseResultMap">
+        SELECT
+        crrh.register_hds_id,
+        crrh.register_number,
+        crrh.company_id,
+        ( SELECT ct.company_short_name FROM fnd_company_tl ct WHERE ct.company_id = crrh.company_id AND ct.lang =
+        #{request.locale,javaType=java.lang.String} ) AS company_name,
+        crrh.unit_id,
+        ( SELECT ou.description FROM exp_org_unit_tl ou WHERE ou.unit_id = crrh.unit_id AND ou.lang =
+        #{request.locale,javaType=java.lang.String} ) AS unit_name,
+        crrh.position_id,
+        ( SELECT opt.description FROM exp_org_position_tl opt WHERE opt.position_id = crrh.position_id AND opt.lang =
+        #{request.locale,javaType=java.lang.String} ) AS position_name,
+        crrh.employee_id,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = crrh.employee_id ) AS employee_name,
+        crrh.mo_repayment_reg_type_id,
+        ( SELECT rt.description FROM csh_mo_repayment_reg_type_tl rt WHERE rt.mo_repayment_reg_type_id =
+        crrh.mo_repayment_reg_type_id AND rt.lang = #{request.locale,javaType=java.lang.String} ) AS
+        mo_repayment_reg_type_name,
+        crrh.acc_entity_id,
+        ( SELECT aet.acc_entity_name FROM gld_accounting_entity_tl aet WHERE aet.acc_entity_id = crrh.ACC_ENTITY_ID AND
+        aet.lang = #{request.locale,javaType=java.lang.String} ) AS acc_entity_name,
+        crrh.bank_account_id,
+        ( SELECT bat.bank_account_name FROM csh_bank_account_tl bat WHERE bat.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID and
+        bat.lang=#{request.locale,javaType=java.lang.String} ) AS bank_account_name,
+        ( SELECT ba.bank_account_num FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID ) AS
+        bank_account_num,
+        ( SELECT ba.currency_code FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID ) AS
+        currency_code,
+        crrh.payment_method_id,
+        ( SELECT mt.description FROM csh_payment_method_tl mt WHERE mt.payment_method_id = crrh.payment_method_id AND
+        mt.lang = #{request.locale,javaType=java.lang.String} ) AS payment_method_name,
+        crrh.repayment_date AS repayment_date,
+        crrh.repayment_date_tz,
+        crrh.repayment_date_ltz,
+        crrh.amount,
+        crrh.repayment_bank_note,
+        crrh.description,
+        crrh.repayment_status,
+        ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'CSH_REPAY_REGISTER_STATUS' AND cv.VALUE =
+        crrh.repayment_status ) AS repayment_status_name,
+        crrh.cashier_user_id,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = crrh.cashier_user_id )AS cashier_user_name,
+        crrh.cashier_confirm_date cashier_confirm_date,
+        crrh.accounting_user_id,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = crrh.accounting_user_id ) AS accounting_user_name,
+        crrh.accounting_confirm_date accounting_confirm_date,
+        ( SELECT ee.NAME FROM exp_employee ee,sys_user su WHERE su.user_id = crrh.created_by and su.employee_id =
+        ee.employee_id ) AS created_name,
+        ( SELECT rt.CROSS_ENTITY_FLAG FROM csh_mo_repayment_reg_type rt WHERE rt.mo_repayment_reg_type_id =
+        crrh.mo_repayment_reg_type_id ) AS corss_entity_flag
+        FROM
+        csh_repayment_register_hd crrh
+        <where>
+            <if test="registerHdsId != null">
+                crrh.register_hds_id = #{registerHdsId}
+            </if>
+        </where>
+    </select>
+
+    <select id="queryHdWithIdIsNull" resultMap="BaseResultMap">
+        SELECT
+            NULL AS REGISTER_HDS_ID,
+            NULL AS REGISTER_NUMBER,
+            #{request.companyId} AS company_id,
+            ( SELECT ct.company_short_name FROM fnd_company_tl ct WHERE ct.company_id = #{request.companyId} AND ct.lang = #{request.locale,javaType=java.lang.String} ) AS company_name,
+            #{positionId} position_id,
+            ( SELECT pt.DESCRIPTION FROM exp_org_position_tl pt WHERE pt.POSITION_ID = #{positionId} and pt.lang=#{request.locale,javaType=java.lang.String} ) AS position_name,
+            ( SELECT op.unit_id FROM exp_org_position op WHERE op.position_id = #{positionId} ) AS unit_id,
+            ( SELECT ou.description FROM exp_org_unit_tl ou WHERE ou.unit_id = #{unitId} AND ou.lang = #{request.locale,javaType=java.lang.String} ) AS unit_name,
+            #{employeeId} AS employee_id,
+            ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = #{employeeId} ) AS employee_name,
+            #{accEntityId} AS acc_entity_id,
+            ( SELECT aet.acc_entity_name FROM gld_accounting_entity_tl aet WHERE aet.acc_entity_id = #{accEntityId} AND aet.lang = #{request.locale,javaType=java.lang.String} ) AS acc_entity_name,
+            #{moRepaymentRegTypeId} mo_repayment_reg_type_id,
+            ( SELECT rtt.description FROM csh_mo_repayment_reg_type_tl rtt WHERE rtt.MO_REPAYMENT_REG_TYPE_ID = #{moRepaymentRegTypeId} and rtt.lang = #{request.locale,javaType=java.lang.String} ) AS mo_repayment_reg_type_name,
+            CURRENT_DATE  repayment_date,
+            0 amount,
+            'GENERATE' repayment_status,
+            ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'CSH_REPAY_REGISTER_STATUS' AND cv.VALUE = 'GENERATE' ) AS repayment_status_name,
+            #{request.userName} created_name,
+            ( SELECT rt.CROSS_ENTITY_FLAG FROM csh_mo_repayment_reg_type rt WHERE rt.mo_repayment_reg_type_id = #{moRepaymentRegTypeId} ) AS corss_entity_flag
+        FROM
+        DUAL
+    </select>
+
+    <select id="selectRelatedPaymentRequisition" resultType="java.util.Map">
+        SELECT
+            hds.payment_requisition_header_id cshHeadId,
+            ln.payment_requisition_line_id cshLineId,
+            hds.requisition_number cshPaymentNumber,
+            ln.line_number AS lineNumber,
+            ln.payment_requisition_line_type AS paymentRequisitionLineType,
+            ( SELECT NAME FROM exp_employee WHERE employee_id = hds.employee_id ) employeeName,
+            hds.requisition_date AS requisitionDate,
+            hds.currency_code AS currencyCode,
+            ln.payee_category payeeCategory,
+            ln.payee_id payeeId,
+            hds.payment_method_id paymentType,
+            ln.description,
+            ln.amount,
+            ln.payment_status AS paymentStatus,
+            ln.payment_completed_date AS paymentCompletedDate,
+            ln.mo_csh_trx_class_id AS moCshTrxClassId,
+            (
+            SELECT DISTINCT
+                vt.description
+            FROM
+                csh_mo_transaction_class v
+                LEFT JOIN csh_mo_transaction_class_tl vt ON ( v.MO_CSH_TRX_CLASS_ID = vt.MO_CSH_TRX_CLASS_ID AND vt.lang = #{request.locale,javaType=java.lang.String} )
+            WHERE
+                v.enabled_flag = 'Y'
+                AND v.csh_transaction_type_code = 'PREPAYMENT'
+                AND v.mo_csh_trx_class_id = ln.mo_csh_trx_class_id
+            ) transactionClassDesc,
+            hds.status,
+            ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'PAYMENT_REQUISITION_STATUS' AND cv.VALUE = hds.STATUS ) AS statusName,
+            hds.position_id AS positionId,
+            hds.payment_req_type_id typeId,
+            hds.source_type AS sourceType,
+            ( SELECT rtt.description FROM csh_mo_payment_req_type_tl rtt WHERE rtt.mo_payment_req_type_id = hds.payment_req_type_id AND rtt.lang = #{request.locale,javaType=java.lang.String} ) AS typeDesc
+        FROM
+            csh_payment_requisition_hd hds,
+            csh_payment_requisition_ln ln,
+            csh_repayment_register_hd ed,
+            csh_repayment_register_ln cl
+        WHERE
+            hds.payment_requisition_header_id = ln.payment_requisition_header_id
+            AND ed.register_hds_id = cl.register_hds_id
+            AND cl.payment_requisition_line_id = ln.payment_requisition_line_id
+            AND ed.register_hds_id = #{registerHdsId}
+        ORDER BY
+            cshPaymentNumber
+    </select>
+
+    <select id="queryNumberAndType" resultType="java.util.Map">
+        SELECT
+            rh.REGISTER_NUMBER AS registerNumber,
+            tt.DESCRIPTION AS moRepaymentRegTypeName
+        FROM
+            csh_repayment_register_hd rh
+            LEFT JOIN csh_mo_repayment_reg_type_tl tt ON ( rh.MO_REPAYMENT_REG_TYPE_ID = tt.MO_REPAYMENT_REG_TYPE_ID AND tt.lang = #{request.locale,javaType=java.lang.String} )
+        WHERE
+            rh.REGISTER_HDS_ID = #{registerHdsId}
+    </select>
+    
+    <select id="queryRepaymentCashier" resultMap="BaseResultMap">
+        SELECT v.* FROM (
+        SELECT
+        t1.REGISTER_HDS_ID,
+        t1.REGISTER_NUMBER,
+        t1.EMPLOYEE_ID,
+        t1.ACC_ENTITY_ID,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = t1.employee_id ) AS employee_name,
+        ( SELECT aet.acc_entity_name FROM gld_accounting_entity_tl aet WHERE aet.acc_entity_id = t1.ACC_ENTITY_ID AND aet.lang = 'zh_CN' ) AS acc_entity_name,
+        t1.COMPANY_ID,
+        ( SELECT ct.company_short_name FROM fnd_company_tl ct WHERE ct.company_id = t1.company_id AND ct.lang = 'zh_CN' ) AS company_name,
+        ( SELECT ba.BANK_ACCOUNT_NUM FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = t1.BANK_ACCOUNT_ID ) AS bank_account_num,
+        t1.PAYMENT_METHOD_ID,
+        ( SELECT mt.description FROM csh_payment_method_tl mt WHERE mt.payment_method_id = t1.payment_method_id AND mt.lang = 'zh_CN' ) AS payment_method_name,
+        t1.REPAYMENT_DATE,
+        t1.AMOUNT,
+        t1.REPAYMENT_BANK_NOTE,
+        t1.DESCRIPTION,
+        t1.REPAYMENT_STATUS,
+        t1.CASHIER_CONFIRM_DATE,
+        t1.ACCOUNTING_CONFIRM_DATE
+        FROM
+        CSH_REPAYMENT_REGISTER_HD t1
+        ) v
+        WHERE
+        repayment_status IN ( 'SUBMITTED', 'ACCOUNTING_REJECTED' )
+        AND company_id = #{request.companyId}
+            <if test="registerNumber != null and registerNumber != ''">
+                AND REGISTER_NUMBER like concat('%', #{registerNumber}, '%')
+            </if>
+            <if test="employeeName != null and employeeName != ''">
+                AND employee_name like concat('%', #{employeeName}, '%')
+            </if>
+            <if test="paymentMethodName != null and paymentMethodName != ''">
+                AND payment_method_name like concat('%', #{paymentMethodName}, '%')
+            </if>
+            <if test="repaymentDateFrom != null">
+                AND repayment_date &gt;= #{repaymentDateFrom}
+            </if>
+            <if test="repaymentDateTo != null">
+                AND repayment_date &lt;= #{repaymentDateTo}
+            </if>
+            <if test="amountFrom != null">
+                AND amount &gt;= #{amountFrom}
+            </if>
+            <if test="amountTo != null">
+                AND amount &lt;= #{amountTo}
+            </if>
+            <if test="description != null and description != ''">
+                AND description like concat('%', #{description}, '%')
+            </if>
+            <if test="repaymentBankNote != null and repaymentBankNote != ''">
+                AND repayment_bank_note like concat('%', #{repaymentBankNote}, '%')
+            </if>
+        ORDER BY
+            register_hds_id DESC
+    </select>
+
+    <select id="queryRepaymentAccounting" resultMap="BaseResultMap">
+        SELECT v.* FROM (
+        SELECT
+        t1.REGISTER_HDS_ID,
+        t1.REGISTER_NUMBER,
+        t1.EMPLOYEE_ID,
+        t1.ACC_ENTITY_ID,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = t1.employee_id ) AS employee_name,
+        ( SELECT aet.acc_entity_name FROM gld_accounting_entity_tl aet WHERE aet.acc_entity_id = t1.ACC_ENTITY_ID AND
+        aet.lang = #{request.locale,javaType=java.lang.String} ) AS acc_entity_name,
+        t1.COMPANY_ID,
+        ( SELECT ct.company_short_name FROM fnd_company_tl ct WHERE ct.company_id = t1.company_id AND ct.lang =
+        #{request.locale,javaType=java.lang.String} ) AS company_name,
+        ( SELECT ba.BANK_ACCOUNT_NUM FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = t1.BANK_ACCOUNT_ID ) AS
+        bank_account_num,
+        t1.PAYMENT_METHOD_ID,
+        ( SELECT mt.description FROM csh_payment_method_tl mt WHERE mt.payment_method_id = t1.payment_method_id AND
+        mt.lang = #{request.locale,javaType=java.lang.String} ) AS payment_method_name,
+        t1.REPAYMENT_DATE,
+        t1.AMOUNT,
+        t1.REPAYMENT_BANK_NOTE,
+        t1.DESCRIPTION,
+        t1.REPAYMENT_STATUS,
+        t1.CASHIER_CONFIRM_DATE,
+        t1.ACCOUNTING_CONFIRM_DATE
+        FROM
+        CSH_REPAYMENT_REGISTER_HD t1
+        ) v
+        WHERE
+        repayment_status IN ( 'CASHIER_CONFIRM' )
+        AND company_id = #{request.companyId}
+        <if test="registerNumber != null and registerNumber != ''">
+            AND REGISTER_NUMBER like concat('%', #{registerNumber}, '%')
+        </if>
+        <if test="employeeName != null and employeeName != ''">
+            AND employee_name like concat('%', #{employeeName}, '%')
+        </if>
+        <if test="paymentMethodName != null and paymentMethodName != ''">
+            AND payment_method_name like concat('%', #{paymentMethodName}, '%')
+        </if>
+        <if test="repaymentDateFrom != null">
+            AND repayment_date &gt;= #{repaymentDateFrom}
+        </if>
+        <if test="repaymentDateTo != null">
+            AND repayment_date &lt;= #{repaymentDateTo}
+        </if>
+        <if test="amountFrom != null">
+            AND amount &gt;= #{amountFrom}
+        </if>
+        <if test="amountTo != null">
+            AND amount &lt;= #{amountTo}
+        </if>
+        <if test="description != null and description != ''">
+            AND description like concat('%', #{description}, '%')
+        </if>
+        <if test="repaymentBankNote != null and repaymentBankNote != ''">
+            AND repayment_bank_note like concat('%', #{repaymentBankNote}, '%')
+        </if>
+        ORDER BY
+        register_hds_id DESC
+    </select>
+
+    <select id="queryForFinance" resultMap="BaseResultMap">
+        select * from
+        (
+        SELECT
+        crrh.register_hds_id,
+        crrh.register_number,
+        crrh.company_id,
+        ( SELECT ct.company_short_name FROM fnd_company_tl ct WHERE ct.company_id = crrh.company_id AND ct.lang =
+        #{request.locale,javaType=java.lang.String} ) AS company_name,
+        crrh.unit_id,
+        ( SELECT ou.description FROM exp_org_unit_tl ou WHERE ou.unit_id = crrh.unit_id AND ou.lang =
+        #{request.locale,javaType=java.lang.String} ) AS unit_name,
+        crrh.position_id,
+        ( SELECT opt.description FROM exp_org_position_tl opt WHERE opt.position_id = crrh.position_id AND opt.lang =
+        #{request.locale,javaType=java.lang.String} ) AS position_name,
+        crrh.employee_id,
+        ( SELECT ee.NAME FROM exp_employee ee WHERE ee.employee_id = crrh.employee_id ) AS employee_name,
+        crrh.mo_repayment_reg_type_id,
+        ( SELECT rt.description FROM csh_mo_repayment_reg_type_tl rt WHERE rt.mo_repayment_reg_type_id =
+        crrh.mo_repayment_reg_type_id AND rt.lang = #{request.locale,javaType=java.lang.String} ) AS
+        mo_repayment_reg_type_name,
+        crrh.acc_entity_id,
+        ( SELECT aet.acc_entity_name FROM gld_accounting_entity_tl aet WHERE aet.acc_entity_id = crrh.ACC_ENTITY_ID AND
+        aet.lang = #{request.locale,javaType=java.lang.String} ) AS acc_entity_name,
+        crrh.bank_account_id,
+        ( SELECT bat.bank_account_name FROM csh_bank_account_tl bat WHERE bat.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID and
+        bat.lang=#{request.locale,javaType=java.lang.String} ) AS bank_account_name,
+        ( SELECT ba.bank_account_num FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID ) AS
+        bank_account_num,
+        ( SELECT ba.currency_code FROM csh_bank_account ba WHERE ba.BANK_ACCOUNT_ID = crrh.BANK_ACCOUNT_ID ) AS
+        currency_code,
+        crrh.payment_method_id,
+        ( SELECT mt.description FROM csh_payment_method_tl mt WHERE mt.payment_method_id = crrh.payment_method_id AND
+        mt.lang = #{request.locale,javaType=java.lang.String} ) AS payment_method_name,
+        crrh.repayment_date AS repayment_date,
+        crrh.repayment_date_tz,
+        crrh.repayment_date_ltz,
+        crrh.amount,
+        crrh.repayment_bank_note,
+        crrh.description,
+        crrh.repayment_status,
+        ( SELECT cv.meaning FROM sys_code_value_vl cv WHERE cv.CODE = 'CSH_REPAY_REGISTER_STATUS' AND cv.VALUE =
+        crrh.repayment_status ) AS repayment_status_name,
+        crrh.cashier_user_id,
+        (SELECT  e.NAME  FROM exp_employee e, sys_user u WHERE u.user_id =
+        crrh.cashier_user_id AND u.employee_id = e.employee_id) AS cashier_user_name,
+        crrh.cashier_confirm_date cashier_confirm_date,
+        crrh.accounting_user_id,
+        (SELECT  e.NAME FROM exp_employee e, sys_user u WHERE u.user_id =
+        crrh.accounting_user_id AND u.employee_id = e.employee_id) AS accounting_user_name,
+        crrh.accounting_confirm_date accounting_confirm_date,
+        ( SELECT ee.NAME FROM exp_employee ee,sys_user su WHERE ee.employee_id = crrh.created_by and su.employee_id =
+        ee.employee_id ) AS created_name,
+        ( SELECT rt.CROSS_ENTITY_FLAG FROM csh_mo_repayment_reg_type rt WHERE rt.mo_repayment_reg_type_id =
+        crrh.mo_repayment_reg_type_id ) AS corss_entity_flag
+        FROM
+        csh_repayment_register_hd crrh
+        ) v
+        <where>
+            <if test="registerNumber!=null and registerNumber!=''">
+                and 	v.register_number like concat('%',#{registerNumber},'%')
+            </if>
+            <if test="employeeId!=null and employeeId!=''">
+                and 	 v.employee_id = #{employeeId}
+            </if>
+            <if test="paymentMethodId!=null and paymentMethodId!=''">
+                and v.payment_method_id = #{paymentMethodId}
+            </if>
+            <if test="repaymentDateFrom!=null ">
+                and v.repayment_date &gt;= #{repaymentDateFrom}
+            </if>
+            <if test="repaymentDateTo!=null ">
+                and v.repayment_date &lt;= #{repaymentDateTo}
+            </if>
+            <if test="amountFrom!=null and amountFrom!=''">
+                and v.amount &gt;= #{amountFrom}
+            </if>
+            <if test="amountTo!=null and amountTo!=''">
+                and v.amount &lt;= #{amountTo}
+            </if>
+            <if test="repaymentBankNote!=null and repaymentBankNote!=''">
+                and v.repayment_bank_note like concat('%',#{repaymentBankNote},'%')
+            </if>
+            <if test="description!=null and description!=''">
+                and v.description like concat ('%',#{description},'%')
+            </if>
+            <if test="cashierUserId!=null and cashierUserId!=''">
+                and v.cashier_user_id = #{cashierUserId}
+            </if>
+            <if test="accountingUserId!=null and accountingUserId!=''">
+                and v.accounting_user_id = #{accountingUserId}
+            </if>
+        </where>
+    </select>
+</mapper>

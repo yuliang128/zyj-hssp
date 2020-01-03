@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-04 14:27:26
+    $Revision: 1.0  
+    $Purpose: 管理组织级-付款事务生成规则定义-分配付款核算主体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1250_batch_asgn_ae_link" url="$[/request/@context_path]/csh/CSH1250/csh_pay_batch_rule_asgn_ae_batch.screen"/>
+        <script><![CDATA[
+            function CSH1250_dtlSubmitSuccess(ds) {
+                ds.query();
+            }
+            
+            function CSH1250_asgnBack() {
+                $au('CSH1250_assign_ae_win').close();
+                $au('CSH1250_pay_trx_rules_result_ds').query();
+            }
+            
+            function CSH1250_batch_asgn_ae() {
+                var ruleId = '$[/parameter/@ruleId]';
+                var magOrgId = '$[/parameter/@magOrgId]';
+                var url = $au('CSH1250_batch_asgn_ae_link').getUrl() + '?ruleId=' + ruleId + '&magOrgId=' + magOrgId;
+                new Aurora.Window({
+                    id: 'CSH1250_paymentRuleAeBatch_window',
+                    url: url,
+                    title: '$[l:prompt.batch_asgn_ae]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1250_pay_trx_rules_asgn_ae_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-trx-rule-asgn-ae" queryUrl="$[/request/@context_path]/csh/payment-trx-rule-asgn-ae/query?ruleId=$[/parameter/@ruleId]" selectable="true">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="ruleId" defaultValue="$[/parameter/@ruleId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="prompt.enabled_flag" uncheckedValue="N"/>
+                    <a:field name="accEntityCode" lovCode="LOV_CSH_PAY_TRX_ASGN_AE?magOrgId=$[/parameter/@magOrgId]&amp;ruleId=$[/parameter/@ruleId]" prompt="gld_accounting_entity.acc_entity_code" required="true">
+                        <a:mapping>
+                            <a:map from="accEntityCode" to="accEntityCode"/>
+                            <a:map from="accEntityName" to="accEntityName"/>
+                            <a:map from="accEntityId" to="accEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityName" prompt="gld_accounting_entity.acc_entity_name" readOnly="true"/>
+                    <a:field name="accEntityId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1250_dtlSubmitSuccess"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <span>
+                <a:form id="CSH1250_pay_trx_rule_asgn_ae_form" column="2" title="csh_payment_trx_rule.asgn_ae">
+                    <a:formToolbar>
+                        <a:label name="separator"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_asgn_ae_grid" type="add" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_asgn_ae_grid" type="save" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_asgn_ae_grid" type="clear" width="80"/>
+                        <a:gridButton click="CSH1250_batch_asgn_ae" text="hec_batch_assign" width="80"/>
+                        <a:gridButton bind="CSH1250_pay_trx_rule_asgn_ae_grid" click="CSH1250_asgnBack" text="hap.back" width="80"/>
+                    </a:formToolbar>
+                    <a:textField name="ruleCode" bindTarget="CSH1250_pay_trx_rules_result_ds" prompt="csh_payment_trx_rule.rule_code" readOnly="true"/>
+                    <a:textField name="description" bindTarget="CSH1250_pay_trx_rules_result_ds" prompt="csh_payment_trx_rule.description" readOnly="true"/>
+                </a:form>
+            </span>
+            <a:grid id="CSH1250_pay_trx_rule_asgn_ae_grid" bindTarget="CSH1250_pay_trx_rules_asgn_ae_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="accEntityCode" align="center" editor="CSH1250_asgn_lov" width="80"/>
+                    <a:column name="accEntityName" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="CSH1250_asgn_checkbox" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:checkBox id="CSH1250_asgn_checkbox"/>
+                    <a:lov id="CSH1250_asgn_lov"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

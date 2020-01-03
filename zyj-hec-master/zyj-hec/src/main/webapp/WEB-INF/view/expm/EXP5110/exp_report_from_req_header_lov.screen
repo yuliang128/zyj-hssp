@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="EXP5010_exp_requisition_readonly_link" url="$[/request/@context_path]/expm/EXP4010/exp_requisition_view_main.screen"/>
+        <script><![CDATA[
+            function _query() {
+                $au('EXP5110_exp_report_from_req_header_result_ds').query();
+            }
+            
+            function EXPT5110_onExpReqLineLoadFun() {
+                var travel_datas_ds = $au('EXP4010_exp_req_travel_line_ds').getAll();
+                for (var i = 0;i < travel_datas_ds.length;i++) {
+                    var req_page_element_code = travel_datas_ds[i].get('reqPageElementCode');
+                    var travel_datas = [];
+                    travel_datas.push(travel_datas_ds[i].data);
+                    travel_datas['fields'] = $au('EXP4010_exp_req_travel_line_ds').fields;
+                    Ext.each(travel_datas, function(data) {
+                        var hecUtil = new HecUtil();
+                        //Modify lcy 2018/4/26 头关联申请单时，无需在行上插create_manual_exp_req_relation表，在此处把申请单分配行id清空。
+                        data['expRequisitionDistId'] = '';
+                        var rate = data['unreleasedAmount'] / data['paymentAmount'];
+                        data['businessPrice'] = hecUtil.calAmount(data['businessPrice'] * rate, 1, data['businessPrecision']);
+                        data['businessAmount'] = hecUtil.calAmount(data['businessAmount'] * rate, 1, data['businessPrecision']);
+                        data['paymentPrice'] = hecUtil.calAmount(data['paymentPrice'] * rate, 1, data['paymentPrecision']);
+                        data['paymentAmount'] = hecUtil.calAmount(data['paymentAmount'] * rate, 1, data['paymentPrecision']);
+                        data['managementPrice'] = hecUtil.calAmount(data['businessPrice'] * rate, 1, data['managementPrecision']);
+                        data['managementAmount'] = hecUtil.calAmount(data['businessPrice'] * rate, 1, data['managementPrecision']);
+                        data['requisitionFunctionalAmount'] = hecUtil.calAmount(data['requisitionFunctionalAmount'] * rate, 1, data['functionalCurrencyPrecision']);
+                        data['reportFunctionalAmount'] = hecUtil.calAmount(data['requisitionFunctionalAmount'] * rate, 1, data['functionalCurrencyPrecision']);
+                    });
+                    //Modify lcy 2018/5/18 14:58:21 monopolize_flag统购标志，机票和住宿行区分统购和非统购
+                    var monopolize_flag = travel_datas_ds[i].get('monopolizeFlag');
+            
+                    //行程行
+                    if (req_page_element_code == 'TRAVEL_DISTANCE_LINES') {
+            
+                        if (Aurora.CmpManager.get('EXP5110_exp_report_travel_line_ds')) {
+                            EXP5110_travelLineAdd(travel_datas);
+                        }
+            
+                    } else if (req_page_element_code == 'TRAVEL_STAY_LINES') {
+                        if (monopolize_flag == 'Y') {
+                            //住宿统购行
+                            if (Aurora.CmpManager.get('EXP5110_exp_report_travel_stay_unified_line_ds')) {
+                                EXP5110_travelStayUnifiedLineAdd(travel_datas);
+                            }
+                        } else {
+                            //住宿行
+                            if (Aurora.CmpManager.get('EXP5110_exp_report_travel_stay_line_ds')) {
+                                EXP5110_travelStayLineAdd(travel_datas);
+                            }
+                        }
+                    } else if (req_page_element_code == 'TICKET_LINES') {
+                        if (monopolize_flag == 'Y') {
+                            //机票统购
+                            if (Aurora.CmpManager.get('EXP5110_exp_report_ticket_unified_line_ds')) {
+                                EXP5110_ticketUnifiedLineAdd(travel_datas);
+                            }
+                        } else {
+                            //机票行
+                            if (Aurora.CmpManager.get('EXP5110_exp_ticket_lines_ds')) {
+                                EXP5110_ticket_linesAdd(travel_datas);
+                            }
+                        }
+                    }
+                    //标准行
+                    else if (req_page_element_code == 'STANDARD') {
+            
+                        if (Aurora.CmpManager.get('EXP5110_exp_report_standard_line_ds')) {
+                            EXP5110_standardLineAdd(travel_datas);
+                        }
+                    }
+                    //精简行
+                    else if (req_page_element_code == 'STREAMLINED') {
+                        if (Aurora.CmpManager.get('EXP5110_exp_report_streamlined_line_ds')) {
+                            EXP5110_streamlinedLineAdd(travel_datas);
+                        }
+                    }
+                }
+            }
+            //Modify lcy 2018/4/26 18:11:23 查询出申请单所有行数据，并插入到对应的报销单行上
+            
+            function EXP5010_report_from_req_commit() {
+                var record = $au('EXP5110_exp_report_from_req_header_result_ds').getCurrentRecord();
+                $au('$[/parameter/@lovid]').commit(record);
+                EXPT5110_onExpReqLineLoadFun();
+            
+            }
+            
+            
+            //申请单单号链接
+            
+            function EXP5110_docNumberFunc(value, record, name) {
+                var exp_requisition_header_id = record.get('expRequisitionHeaderId');
+                if (exp_requisition_header_id) {
+                    return '<a href="javascript:EXP5110_docNumberFunc_detail(' + exp_requisition_header_id + ')">' + value + '</a>';
+            
+                }
+            }
+            
+            function EXP5110_docNumberFunc_detail(exp_requisition_header_id) {
+                var url = $au('EXP5010_exp_requisition_readonly_link').getUrl() + '?expRequisitionHeaderId=' + exp_requisition_header_id;
+                new Aurora.Window({
+                    url: url,
+                    title: '$[l:EXP_REQUISITION_DETAILS]',
+                    id: 'EXP4010_exp_requisition_view_main_window',
+                    fullScreen: true
+                });
+            }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_exp_report_from_req_header_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="paymentCurrencyCode" defaultValue="$[/parameter/@paymentCurrencyCode]"/>
+                    <a:field name="moExpReportTypeId" defaultValue="$[/parameter/@moExpReportTypeId]"/>
+                    <a:field name="expRequisitionNumber"/>
+                    <a:field name="description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_exp_report_from_req_header_result_ds" autoQuery="true" queryUrl="$[/request/@context_path]/exp/requisition-header/expReportFromReqHeaderQuery" fetchAll="true"  pageSize="1000" queryDataSet="EXP5110_exp_report_from_req_header_query_ds" selectable="true" selectionModel="single">
+                <a:fields>
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="expRequisitionNumber"/>
+                    <a:field name="description"/>
+                    <a:field name="paymentCurrencyName"/>
+                    <a:field name="paymentAmount"/>
+                    <a:field name="moExpReqTypeId"/>
+                    <a:field name="paymentCurrencyCode"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP4010_exp_req_travel_line_ds" bindName="lines" queryUrl="$[/request/@context_path]/exp/requisition-line/expReportFromReqQuery" bindTarget="EXP5110_exp_report_from_req_header_result_ds" fetchAll="true">
+                <a:fields>
+                    <!-- 页面元素代码 -->
+                    <a:field name="reportPageElementCode"/>
+                    <!-- 标准费用行开始 -->
+                    <a:field name="expRequisitionHeaderId"/>
+                    <a:field name="expRequisitionNumber"/>
+                    <a:field name="expRequisitionLineId"/>
+                    <a:field name="expRequisitionDistId"/>
+                    <a:field name="lineNumber"/>
+                    <a:field name="description"/>
+                    <a:field name="companyName"/>
+                    <a:field name="companyId"/>
+                    <a:field name="accEntityName"/>
+                    <a:field name="accEntityId"/>
+                    <a:field name="unitName"/>
+                    <a:field name="unitId"/>
+                    <a:field name="positionName"/>
+                    <a:field name="positionId"/>
+                    <a:field name="employeeName"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="respCenterName"/>
+                    <a:field name="respCenterId"/>
+                    <a:field name="placeTypeName"/>
+                    <a:field name="placeTypeId"/>
+                    <a:field name="placeName"/>
+                    <a:field name="placeId"/>
+                    <a:field name="budgetItemName"/>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="dateFrom"/>
+                    <a:field name="dateTo"/>
+                    <a:field name="periodName"/>
+                    <a:field name="moExpenseTypeName"/>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moExpenseItemName"/>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="primaryQuantity"/>
+                    <a:field name="businessCurrencyName"/>
+                    <a:field name="businessCurrencyCode"/>
+                    <a:field name="biz2payExchangeTypeName"/>
+                    <a:field name="biz2payExchangeType"/>
+                    <a:field name="biz2payExchangeRate"/>
+                    <a:field name="businessPrice"/>
+                    <a:field name="businessAmount"/>
+                    <a:field name="paymentCurrencyName"/>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="pay2funExchangeTypeName"/>
+                    <a:field name="pay2funExchangeType"/>
+                    <a:field name="pay2funExchangeRate"/>
+                    <a:field name="paymentPrice"/>
+                    <a:field name="paymentAmount"/>
+                    <a:field name="managementCurrencyName"/>
+                    <a:field name="managementCurrencyCode"/>
+                    <a:field name="pay2magExchangeTypeName"/>
+                    <a:field name="pay2magExchangeType"/>
+                    <a:field name="pay2magExchangeRate"/>
+                    <a:field name="managementPrice"/>
+                    <a:field name="managementAmount"/>
+                    <a:field name="reportFunctionalAmount"/>
+                    <a:field name="releasedAmount"/>
+                    <a:field name="releasedQuantity"/>
+                    <a:field name="releasedStatus"/>
+                    <a:field name="unreleasedAmount"/>
+                    <a:field name="dimension1Id"/>
+                    <a:field name="dimension2Id"/>
+                    <a:field name="dimension3Id"/>
+                    <a:field name="dimension4Id"/>
+                    <a:field name="dimension5Id"/>
+                    <a:field name="dimension6Id"/>
+                    <a:field name="dimension7Id"/>
+                    <a:field name="dimension8Id"/>
+                    <a:field name="dimension9Id"/>
+                    <a:field name="dimension10Id"/>
+                    <a:field name="dimension11Id"/>
+                    <a:field name="dimension12Id"/>
+                    <a:field name="dimension13Id"/>
+                    <a:field name="dimension14Id"/>
+                    <a:field name="dimension15Id"/>
+                    <a:field name="dimension16Id"/>
+                    <a:field name="dimension17Id"/>
+                    <a:field name="dimension18Id"/>
+                    <a:field name="dimension19Id"/>
+                    <a:field name="dimension20Id"/>
+                    <a:field name="dimension1Name"/>
+                    <a:field name="dimension2Name"/>
+                    <a:field name="dimension3Name"/>
+                    <a:field name="dimension4Name"/>
+                    <a:field name="dimension5Name"/>
+                    <a:field name="dimension6Name"/>
+                    <a:field name="dimension7Name"/>
+                    <a:field name="dimension8Name"/>
+                    <a:field name="dimension9Name"/>
+                    <a:field name="dimension10Name"/>
+                    <a:field name="dimension11Name"/>
+                    <a:field name="dimension12Name"/>
+                    <a:field name="dimension13Name"/>
+                    <a:field name="dimension14Name"/>
+                    <a:field name="dimension15Name"/>
+                    <a:field name="dimension16Name"/>
+                    <a:field name="dimension17Name"/>
+                    <a:field name="dimension18Name"/>
+                    <a:field name="dimension19Name"/>
+                    <a:field name="dimension20Name"/>
+                    <a:field name="bgtEntityId"/>
+                    <a:field name="bgtEntityName"/>
+                    <a:field name="bgtCenterId"/>
+                    <a:field name="bgtCenterName"/>
+                    <!-- 标准费用行结束 -->
+                    <!-- 申请单特有行 -->
+                    <a:field name="reqMoExpenseTypeName"/>
+                    <a:field name="reqMoExpenseTypeId"/>
+                    <a:field name="moReqItemName"/>
+                    <a:field name="moReqItemId"/>
+                    <a:field name="requisitionFunctionalAmount"/>
+                    <!-- 差旅行程行开始 -->
+                    <a:field name="transportationName"/>
+                    <a:field name="transportation"/>
+                    <a:field name="seatClassName"/>
+                    <a:field name="seatClass"/>
+                    <a:field name="departurePlaceName"/>
+                    <a:field name="departurePlaceId"/>
+                    <a:field name="arrivalPlaceName"/>
+                    <a:field name="arrivalPlaceId"/>
+                    <a:field name="departureDate"/>
+                    <a:field name="arrivalDate"/>
+                    <!-- 差旅行程行结束 -->
+                    <!-- 差旅住宿行结开始-->
+                    <a:field name="accommodationDateFrom"/>
+                    <a:field name="accommodationDateTo"/>
+                    <!-- 差旅住宿行结束 -->
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="requisition_enquiry" width="865">
+                <a:formToolbar>
+                    <a:label name="sepertor"/>
+                    <a:button click="_query" text="hap_query" width="80"/>
+                    <a:button click="EXP5010_report_from_req_commit" text="hap_confirm" width="80"/>
+                </a:formToolbar>
+                <a:box column="2" style="width:100%;">
+                    <a:textField name="expRequisitionNumber" bindTarget="EXP5110_exp_report_from_req_header_query_ds" prompt="exp_report_hd.requisition_number" width="200">
+                        <a:events>
+                            <a:event name="enterdown" handler="_query"/>
+                        </a:events>
+                    </a:textField>
+                    <a:textField name="description" bindTarget="EXP5110_exp_report_from_req_header_query_ds" prompt="exp_ticket_request_head.description" width="200">
+                        <a:events>
+                            <a:event name="enterdown" handler="_query"/>
+                        </a:events>
+                    </a:textField>
+                </a:box>
+            </a:form>
+            <a:grid id="EXP5110_exp_report_from_req_header_grid" bindTarget="EXP5110_exp_report_from_req_header_result_ds" height="350" navBar="true" width="865">
+                <a:columns>
+                    <a:column name="expRequisitionNumber" align="center" prompt="exp_report_hd.requisition_number" renderer="EXP5110_docNumberFunc" width="180"/>
+                    <a:column name="description" align="left" prompt="exp_ticket_request_head.description" width="220"/>
+                    <a:column name="paymentCurrencyName" align="center" prompt="exp_report_hd.requisition_currency" width="110"/>
+                    <a:column name="totalAmount" align="right" prompt="exp_report_hd.total_requisition_amount" renderer="Aurora.formatMoney" width="140"/>
+                    <a:column name="requisitionDate" align="center" prompt="ast_requisition_date" renderer="Aurora.formatDate" width="140"/>
+                    <a:column name="moExpReqTypeName" align="center" prompt="exp_requisition_header.exp_requisition_type_id" width="140"/>
+                </a:columns>
+            </a:grid>
+            <!--             <a:grid id="EXP5110_exp_report_from_req_line_grid" bindTarget="EXP4010_exp_req_travel_line_ds" navBar="true" >
+                <a:columns>
+                    <a:column name="exp_requisition_line_id" align="center" prompt="exp_requisition_line_id" width="180"/>
+                    <a:column name="line_number" align="center" prompt="line_number" width="180"/>
+                </a:columns>
+            </a:grid> -->
+        </a:screenBody>
+    </a:view>
+</a:screen>

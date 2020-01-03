@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-21 上午10:45:19  
+    $Revision: 1.0  
+    $Purpose: 管理组织级-借款申请单类型定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH2011_csh_mo_payment_req_types_mag_org_select_link"
+                url="$[/request/@context_path]/csh/CSH2011/csh_mo_payment_req_types_mag_org_select.screen"/>
+        <a:link id="CSH2011_csh_mo_pay_req_asgn_com_batch_link"
+                url="$[/request/@context_path]/csh/CSH2011/csh_mo_pay_req_batch_assign_companies.screen"/>
+        <a:link id="CSH2011_csh_mo_pay_req_asgn_com_link"
+                url="$[/request/@context_path]/csh/CSH2011/csh_mo_pay_req_asgn_com.screen"/>
+        <a:link id="CSH2011_csh_mo_pay_req_ref_trx_cls_link"
+                url="$[/request/@context_path]/csh/CSH2011/csh_mo_pay_req_ref_trx_cls.screen"/>
+        <a:link id="CSH2011_csh_mo_pay_req_ref_emp_gps_link"
+                url="$[/request/@context_path]/csh/CSH2011/csh_mo_pay_req_ref_emp_gps.screen"/>
+        <!--script-->
+        <script><![CDATA[
+        /**
+         * @return {string}
+         */
+        function CSH2011_typeCodeEdit(record, name) {
+            if (record.isNew) {
+                return 'CSH2011_textField_upper';
+            } else {
+                return '';
+            }
+        }
+
+
+        function CSH2011_closePaymentReqTypesCreateWindow() {
+            window.location.href = $au('CSH2011_csh_mo_payment_req_types_mag_org_select_link').getUrl();
+        }
+
+        //批量分配公司
+
+        /**
+         * @return {boolean}
+         */
+        function CSH2011_batchAssignCompany() {
+            //add lcy 2017/12/21 16:10:12 批量分配前校验管理组织事件
+            if (Ext.isEmpty($au('CSH2011_csh_mo_payment_req_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            var typeDs = $au('CSH2011_csh_mo_payment_req_types_result_ds');
+            var typeRecordsData = typeDs.getJsonData(true);
+            if (typeRecordsData.length === 0) {
+                Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select]', null, 250, 100);
+                return;
+            }
+            var magOrgId = $au('CSH2011_csh_mo_payment_req_types_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'CSH2011_csh_mo_pay_req_asgn_com_batch',
+                url: $au('CSH2011_csh_mo_pay_req_asgn_com_batch_link').getUrl() + '?magOrgId=' + magOrgId,
+                title: '$[l:csh_mo_payment_req_type.assign_company]',
+                width: 1020,
+                side: 'right'
+            });
+        }
+
+        //分配公司-跳转
+
+        /**
+         * @return {string}
+         */
+        function CSH2011_assignCompany(value, record, name) {
+            if (record.isNew) {
+                return '';
+            }
+            return '<a href="javascript:CHS2011_openAssignCompany(\'' + record.get('moPaymentReqTypeId') + '\')">$[l:csh_mo_payment_req_type.assign_company]</>';
+
+
+        }
+
+        function CHS2011_openAssignCompany(typeId) {
+            var magOrgId = $au('CSH2011_csh_mo_payment_req_types_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'CSH2011_csh_mo_pay_req_asgn_com',
+                url: $au('CSH2011_csh_mo_pay_req_asgn_com_link').getUrl() + '?moPaymentReqTypeId=' + typeId + '&magOrgId=' + magOrgId,
+                title: '$[l:csh_mo_payment_req_type.assign_company]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        //现金事物-跳转
+
+        /**
+         * @return {string}
+         */
+        function CSH2011_transactionClass(value, record, name) {
+            var typeId = record.get('moPaymentReqTypeId');
+            if (!record.isNew) {
+                return '<a href="javascript:CSH2011_refTrxClsEditor(\'' + typeId + '\')">$[l:csh_mo_payment_req_type.transaction_classes]</a>';
+            }
+        }
+
+        function CSH2011_refTrxClsEditor(typeId) {
+            var magOrgId = $au('CSH2011_csh_mo_payment_req_types_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'CSH2011_csh_mo_pay_req_ref_trx_cls',
+                url: $au('CSH2011_csh_mo_pay_req_ref_trx_cls_link').getUrl() + '?moPaymentReqTypeId=' + typeId + '&magOrgId=' + magOrgId,
+                title: '$[l:csh_mo_payment_req_type.transaction_classes]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        //员工组-跳转
+
+        /**
+         * @return {string}
+         */
+        function CSH2011_refEmployeeGroups(value, record, name) {
+            if (!record.isNew) {
+                var typeId = record.get('moPaymentReqTypeId');
+                return '<a href="javascript:CSH2011_view_ref_emp_gps(' + typeId + ')">$[l:csh_mo_payment_req_type.employee_group]</a>';
+            }
+        }
+
+        function CSH2011_view_ref_emp_gps(typeId) {
+            var magOrgId = $au('CSH2011_csh_mo_payment_req_types_query_ds').getCurrentRecord().get('magOrgId');
+            new Aurora.Window({
+                id: 'CSH2011_csh_mo_pay_req_ref_emp_gps',
+                url: $au('CSH2011_csh_mo_pay_req_ref_emp_gps_link').getUrl() + '?moPaymentReqTypeId=' + typeId + '&magOrgId=' + magOrgId,
+                title: '$[l:csh_mo_payment_req_type.employee_group]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function CSH2011_submit() {
+            $au('CSH2011_csh_mo_payment_req_types_result_ds').query();
+        }
+
+        function CSH2011_add(ds) {
+            var magOrgId = $au('CSH2011_csh_mo_payment_req_types_query_ds').getCurrentRecord().get('magOrgId');
+            if (magOrgId !== '' && magOrgId != null && magOrgId !== undefined) {
+                ds.getCurrentRecord().set('magOrgId', magOrgId);
+            }
+        }
+
+        function CSH2011_focus() {
+            $au('CSH2011_mange_organizationlist_ds').query();
+        }
+
+        //add lcy 2017/12/21 16:10:12 保存前校验管理组织事件
+
+        /**
+         * @return {boolean}
+         */
+        function CSH2011_beforeSubmit() {
+            if (Ext.isEmpty($au('CSH2011_csh_mo_payment_req_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        /**
+         * @return {boolean}
+         */
+        function CSH2011_beforeCreate() {
+            if (Ext.isEmpty($au('CSH2011_csh_mo_payment_req_types_query_ds').getAt(0).get('magOrgId'))) {
+                new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                return false;
+            }
+            return true;
+        }
+
+        function CSH2011_update(ds, record, name, value) {
+            if (name === 'magOrgId') {
+                let magOrgId = record.get('magOrgId');
+                $au('CSH2011_payment_method_ds').setQueryUrl('$[/request/@context_path]/csh/payment-method/queryPaymentMethod?magOrgId=' + magOrgId);
+                $au('CSH2011_writeCaption_ds').setQueryUrl('$[/request/@context_path]/exp/mo-write-caption-hd/limit/query?magOrgId=' + magOrgId + '&docCategoryCode=PAYMENT_REQUISITION');
+                $au('CSH2011_payment_method_ds').query();
+                $au('CSH2011_writeCaption_ds').query();
+                $au('CSH2011_csh_mo_payment_req_types_result_ds').query();
+            }
+        }
+
+
+
+        //add by liliang 2018/5/21
+        //新增图标字段相关功能
+
+        /**
+         * @return {string}
+         */
+        function CSH2011_imagePickerFunc(value, record, name) {
+            debugger;
+            if (value) {
+                return '<img style="width:20px;height:20px;margin-top:8px;" src="$[/request/@context_path]/' + value + '" />';
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH2011_mange_organizationlist_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/mo-payment-req-type/magOrgQuery"/>
+            <a:dataSet id="CSH2011_payment_method_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/payment-method/queryPaymentMethod?magOrgId=$[/model/managingOrganization/records/record/@magOrgId]"/>
+            <a:dataSet id="CSH2011_currency_code_combo_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/csh/mo-payment-req-type/currencyQuery"/>
+            <a:dataSet id="CSH2011_writeCaption_ds" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/exp/mo-write-caption-hd/limit/query?magOrgId=$[/model/managingOrganization/records/record/@magOrgId]&amp;docCategoryCode=PAYMENT_REQUISITION"/>
+            <a:dataSet id="CSH2011_csh_mo_payment_req_types_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay"
+                             defaultValue="$[/model/managingOrganization/records/record/@magOrgCodeName]"
+                             displayField="magOrgCodeName" options="CSH2011_mange_organizationlist_ds"
+                             prompt="csh_mo_payment_req_type.mag_org_name" required="true" returnField="magOrgId"
+                             valueField="magOrgId">
+                        <a:mapping>
+                            <a:map from="description" to="magOrgName"/>
+                            <a:map from="magOrgCode" to="magOrgCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moPaymentReqTypeCode" prompt="csh_mo_payment_req_type.mo_payment_req_type_code"/>
+                    <a:field name="description" prompt="csh_mo_payment_req_type.description"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/managingOrganization/records/record/@magOrgId]"/>
+                    <a:field name="magOrgName"
+                             defaultValue="$[/model/managingOrganization/records/record/@magOrgName]"/>
+                    <a:field name="magOrgCode"
+                             defaultValue="$[/model/managingOrganization/records/record/@magOrgCode]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH2011_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH2011_csh_mo_payment_req_types_result_ds" autoPageSize="true" autoQuery="true"
+                       baseUrl="/csh/mo-payment-req-type" queryDataSet="CSH2011_csh_mo_payment_req_types_query_ds"
+                       queryUrl="$[/request/@context_path]/csh/mo-payment-req-type/query" selectable="true"
+                       submitUrl="$[/request/@context_path]/csh/mo-payment-req-type/submit">
+                <a:fields>
+                    <a:field name="moPaymentReqTypeId"/>
+                    <a:field name="moPaymentReqTypeCode" prompt="csh_mo_payment_req_type.mo_payment_req_type_code"
+                             required="true"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto.CshMoPaymentReqType"
+                             dtoId="moPaymentReqTypeId" prompt="csh_mo_payment_req_type.description" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="paymentMethodName" displayField="description" options="CSH2011_payment_method_ds"
+                             returnField="paymentMethodId" valueField="paymentMethodId"
+                             prompt="csh_mo_payment_req_type.payment_method_desc"/>
+                    <a:field name="paymentMethodId"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="currencyName" displayField="currencyName" options="CSH2011_currency_code_combo_ds"
+                             required="false" returnField="currencyCode" valueField="currencyCode"
+                             prompt="csh_mo_payment_req_type.currency_name"/>
+                    <a:field name="reportName" prompt="exp_mo_req_type.report_name"/>
+                    <a:field name="autoApproveFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="csh_mo_payment_req_type.auto_approve_flag"/>
+                    <a:field name="autoAuditFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"
+                             prompt="csh_mo_payment_req_type.auto_audit_flag"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"
+                             prompt="csh_mo_payment_req_type.enabled_flag"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="icon" lovHeight="518" lovWidth="500" title="HAP_ICON_LIBRARY"
+                             prompt="csh_mo_payment_req_type.icon"/>
+                    <!--add by chao.dai 2018-09-10 给借款申请单类型定义增加[填写说明]字段-->
+                    <a:field name="captionHdsId"/>
+                    <a:field name="captionDescription" displayField="description" options="CSH2011_writeCaption_ds"
+                             returnField="captionHdsId" valueField="captionHdsId"
+                             prompt="csh_mo_payment_req_type.caption_description"/>
+                    <!--end add-->
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH2011_submit"/>
+                    <a:event name="add" handler="CSH2011_add"/>
+                    <a:event name="beforecreate" handler="CSH2011_beforeCreate"/>
+                    <a:event name="beforesubmit" handler="CSH2011_beforeSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH2011_csh_mo_payment_req_types_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH2011_csh_mo_payment_req_types_grid" type="save" width="80"/>
+                <a:toolbarButton click="CSH2011_batchAssignCompany" text="HEC_BATCH_ASSIGN" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH2011_csh_mo_payment_req_types_query_ds"
+                         resultTarget="CSH2011_csh_mo_payment_req_types_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgDisplay" bindTarget="CSH2011_csh_mo_payment_req_types_query_ds"
+                                width="170"/>
+                    <a:textField name="moPaymentReqTypeCode" bindTarget="CSH2011_csh_mo_payment_req_types_query_ds"
+                                 typeCase="upper"/>
+                    <a:textField name="description" bindTarget="CSH2011_csh_mo_payment_req_types_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH2011_csh_mo_payment_req_types_grid" bindTarget="CSH2011_csh_mo_payment_req_types_result_ds"
+                marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moPaymentReqTypeCode" align="center" editorFunction="CSH2011_typeCodeEdit" lock="true"
+                          width="80"/>
+                <a:column name="description" editor="CSH2011_tledit" width="200"/>
+                <a:column name="currencyName" align="center" editor="CSH2011_comboBox" width="80"/>
+                <a:column name="paymentMethodName" align="center" editor="CSH2011_comboBox" width="80"/>
+                <a:column name="reportName" align="left" editor="CSH2011_textField" width="150"/>
+                <!--add by chao.dai 2018-09-10 给借款申请单类型定义增加[填写说明]字段-->
+                <a:column name="captionDescription" align="center" editor="CSH2011_comboBox" width="100"/>
+                <!--end add-->
+                <a:column name="autoApproveFlag" align="center" editor="CSH2011_checkBox" width="80"/>
+                <a:column name="autoAuditFlag" align="center" editor="CSH2011_checkBox" width="80"/>
+                <a:column name="enabledFlag" align="center" editor="CSH2011_checkBox" width="80"/>
+                <a:column name="icon" align="center" editor="CSH2011_imagePicker" renderer="CSH2011_imagePickerFunc"
+                          width="50"/>
+                <a:column name="paymentType" align="center" renderer="CSH2011_transactionClass" width="80"/>
+                <a:column name="empGps" align="center" renderer="CSH2011_refEmployeeGroups" width="80"/>
+                <a:column name="asignCm" align="center" renderer="CSH2011_assignCompany" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="CSH2011_textField_upper" typeCase="upper"/>
+                <a:textField id="CSH2011_textField"/>
+                <a:comboBox id="CSH2011_comboBox"/>
+                <a:checkBox id="CSH2011_checkBox"/>
+                <a:imagePicker id="CSH2011_imagePicker" path="resources/images/aurora/4.0/documents"/>
+                <a:tledit id="CSH2011_tledit"/>
+            </a:editors>
+
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,742 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="BGT5120_bgt_journal_type_choice_link"
+                url="$[/request/@context_path]/bgt/BGT5120/bgt_journal_type_choice.screen"/>
+        <a:link id="BGT5120_bgt_journal_maintain_link_01"
+                url="$[/request/@context_path]/bgt/BGT5120/bgt_journal_maintain.screen"/>
+        <a:link id="BGT5120_bgt_journal_view_link_01"
+                url="$[/request/@context_path]/bgt/BGT5120/bgt_journal_view.screen"/>
+        <a:link id="BGT5120_bgt_journal_history_link"
+                url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <a:link id="BGT5120_bgtJournalDeleteHeaderLink" url="$[/request/@context_path]/bgt/journal-header/remove"/>
+        <a:link id="wfl_workflow_preview_approve_link"
+                url="$[/request/@context_path]/wfl/WFL1001/wfl_workflow_preview_for_user.screen"/>
+        <a:link id="wfl_workflow_preview_before_submit_link"
+                url="$[/request/@context_path]/wfl/WFL1001/wfl_workflow_preview_before_submit.screen"/>
+        <style>
+            .item-float-list-row > table {
+                width: 100%;
+                border: 1px solid #f1f1f1;
+            }
+
+            .info-block {
+                height: 75px !important;
+                border-right: 1px solid #f1f1f1;
+                border-spacing: 0px;
+                padding-left: 10px;
+            }
+
+            .info-title {
+                height: 35px;
+                line-height: 35px;
+                color: #005a78;
+                font-weight: bold;
+            }
+
+            .info-detail {
+                height: 30px;
+                line-height: 20px;
+                vertical-align: top;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .info-operation {
+                cursor: pointer;
+            }
+
+            .progress-color-bar {
+                width: 5px;
+                height: 100%;
+                border: none;
+            }
+
+            /*
+            正常状态：绿色 #3c763d
+            拒绝状态：红色 #a94442
+            收回状态：黄色 #d6ad65
+            结束状态：蓝色 #31708f
+            */
+
+            .progress-color-NEW {
+                background-color: #3c763d;
+            }
+
+            .progress-color-WITHDRAWAL {
+                background-color: #d6ad65;
+            }
+
+            .progress-color-REJECTED {
+                background-color: #a94442;
+            }
+
+            .progress-color-SUBMITTED {
+                background-color: #3c763d;
+            }
+
+            .progress-color-APPROVED {
+                background-color: #3c763d;
+            }
+
+            .progress-color-POSTED {
+                background-color: #31708f;
+            }
+
+            .history-block {
+                z-index: 2;
+                position: fixed;
+                width: 100%;
+            }
+
+            .history-hidden {
+                visibility: hidden;
+            }
+
+            .history-show {
+                visibility: visible;
+            }
+
+        </style>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/chart/echarts.min.js"/>
+        <script><![CDATA[
+        function BGT5120_query() {
+            $au('BGT5120_queryResultDs').query();
+        }
+
+        function BGT5120_QueryUpdateFunction(ds, record, name, value, oldValue) {
+            if (name == 'creationDateScope') {
+                BGT5120_query();
+            }
+            if (name == 'bgtOrgId') {
+                // 预算组织变更，清除所有预算相关属性
+                BGT5120_query();
+
+                record.set('budgetItemName', '');
+                record.set('budgetItemId', '');
+                record.set('bgtJournalTypeName', '');
+                record.set('bgtJournalTypeId', '');
+                record.set('bgtEntityName', '');
+                record.set('bgtEntityId', '');
+                record.set('bgtCenterName', '');
+                record.set('bgtCenterId', '');
+                record.set('structureName', '');
+                record.set('structureId', '');
+                record.set('scenarioName', '');
+                record.set('scenarioId', '');
+                record.set('versionName', '');
+                record.set('versionId', '');
+            }
+            if (name == 'bgtEntityId') {
+                record.set('bgtCenterName', '');
+                record.set('bgtCenterId', '');
+            }
+        }
+
+        function BGT5120_onQueryConditionDsAddFun(ds, record, index) {
+        }
+
+        function BGT5120_onJournalTypeFocus() {
+            var record = $au('BGT5120_queryConditionDs').getAt(0);
+            $au('BGT5120_bgtJournalTypeDs').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('BGT5120_bgtJournalTypeDs').query();
+        }
+
+        function BGT5120_onBgtEntityFocus() {
+            var record = $au('BGT5120_queryConditionDs').getAt(0);
+            record.getField('bgtEntityName').setLovPara('bgtOrgId', record.get('bgtOrgId'));
+        }
+
+        function BGT5120_onBgtCenterFocus() {
+            var record = $au('BGT5120_queryConditionDs').getAt(0);
+            var bgtEntityId = record.get('bgtEntityId');
+            if (bgtEntityId == null || bgtEntityId == '' || bgtEntityId == undefined) {
+                Aurora.showMessage('$[l:hap.prompt]', '$[l:bgt_journal_main.select_bgt_entity_first]');
+            } else {
+                record.getField('bgtCenterName').setLovPara('bgtOrgId', record.get('bgtOrgId'));
+                record.getField('bgtCenterName').setLovPara('bgtEntityId', bgtEntityId);
+            }
+        }
+
+        function BGT5120_onScenarioFocus() {
+            var record = $au('BGT5120_queryConditionDs').getAt(0);
+            $au('BGT5120_bgtScenarioDs_01').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('BGT5120_bgtScenarioDs_01').query();
+        }
+
+        function BGT5120_onVersionFocus() {
+            var record = $au('BGT5120_queryConditionDs').getAt(0);
+            $au('BGT5120_bgtVersionDs_01').setQueryParameter('bgtOrgId', record.get('bgtOrgId'));
+            $au('BGT5120_bgtVersionDs_01').query();
+        }
+
+        function BGT5120_openJournalTypeChoice() {
+            new Aurora.Window({
+                url: $au('BGT5120_bgt_journal_type_choice_link').getUrl(),
+                id: 'BGT5120_bgt_journal_type_choice_window',
+                fullScreen: true
+            });
+        }
+
+        function BGT5120_onReportClickFun(id, status) {
+            if (status == 'NEW' || status == 'REJECTED' || status == 'WITHDRAWAL') {
+                new Aurora.Window({
+                    url: $au('BGT5120_bgt_journal_maintain_link_01').getUrl() + '?journalHeaderId=' + id,
+                    title: '$[l:bgt_journal_main.journal_detail]',
+                    id: 'BGT5120_bgt_journal_maintain_window',
+                    fullScreen: true
+                }).on('close', function () {
+                    BGT5120_query();
+                });
+            } else {
+                new Aurora.Window({
+                    url: $au('BGT5120_bgt_journal_view_link_01').getUrl() + '?journalHeaderId=' + id,
+                    title: '$[l:bgt_journal_main.journal_detail]',
+                    id: 'BGT5120_bgt_journal_view_window',
+                    fullScreen: true
+                });
+            }
+        }
+
+        function BGT5120_onBudgetItemFocus() {
+            var record = $au('BGT5120_queryConditionDs').getAt(0);
+            record.getField('budgetItemName').setLovPara('bgtOrgId', record.get('bgtOrgId'));
+        }
+
+        ]]></script>
+        <span>
+        <script><![CDATA[
+         	function showTip(dom, text){
+                $A.ToolTip.show(dom, text);
+	        }
+	        
+	    	function BGT5120_progressColorRenderer(value,record,name){
+	    	    var tplt = new Ext.Template([
+	    	    '<div class="progress-color-bar progress-color-{status}"></div>'
+	    	    ]);
+	    	    
+	    	    return tplt.applyTemplate({
+	    	        status:record.get('status')
+	    	    });
+	    	}
+	    
+	        function BGT5120_docNumberAndTypeRenderer(value,record,name) {
+	            var tplt = new Ext.Template([
+	            '<table class="info-block">',
+	            '	<tr>',
+	            '		<td class="info-title">',
+	            '			{doc_type_name}',
+	            '		</td>',
+	            '	</tr>',
+	            '	<tr>',
+	            '		<td class="info-detail">',
+	            '			{doc_number}',
+	            '		</td>',
+	            '	</tr>',
+	            '</table>'
+	            ]);
+	            var numberHtml = '<a href="javascript:BGT5120_onReportClickFun(' + record.get('journalHeaderId') + ',\'' + record.get('status') + '\')" >' +record.get('budgetJournalNumber') + '</a>'
+	            var flowinfoa_width = parseInt(document.body.clientWidth / 9.5);
+	            if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+	                flowinfoa_width = 142.5;
+	            }
+	            var docTypeName = record.get('bgtJournalTypeName') == undefined ?'':record.get('bgtJournalTypeName');
+	            var docHtml ='<div id="flowInfoAId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docTypeName + '\')">'+ docTypeName + '</div>';
+	            return tplt.applyTemplate({
+	                doc_type_name:docHtml,              
+	                doc_number:numberHtml
+	            });
+	        }
+	        
+	        function BGT5120_reportDateAndDescRendnerer(value,record,name){
+	            var tplt = new Ext.Template([
+	             '<table border="0" class="info-block">',
+	            '	<tr>',
+	            '		<td width="20%" class="info-title">',
+	            '			{doc_date}',
+	            '		</td>',
+	            '		<td width="30%" align="center" class="info-title">',
+	            '			{employee_name}',
+	            '		</td>',
+	            '		<td width="50%" class="info-title">',
+	            '			{unit_info}',
+	            '		</td>',
+	            '	</tr>',
+	            '	<tr>',
+	            '		<td colspan="3" class="info-detail">',
+	            '			{doc_desc}',
+	            '		</td>',
+	            '	</tr>',
+	            '</table>'
+	            ]);
+	            var docDesc = record.get('journalHeaderNotes') == undefined ?'':record.get('journalHeaderNotes');
+	            var flowinfoa_width = parseInt(document.body.clientWidth * 3 / 9.5);
+	            if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+	                flowinfoa_width = 427.5;
+	            }
+	            var docHtml ='<div id="flowInfoBId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docDesc + '\')">'+ docDesc + '</div>';
+	            
+	            
+	             //update by penglei 20180503 长度自适应调整 begin
+                var unit_name = record.get('unitName');
+                var bgtEntityName = record.get('bgtEntityName');
+                if(unit_name == undefined && bgtEntityName == undefined){
+                    unitDesc = '';
+                }else{
+                    var unitDesc = unit_name +' / '+ bgtEntityName;
+                }
+                var unitHtml_width = parseInt(document.body.clientWidth * 3 / 19);
+                if(unitHtml_width < 100 || unitHtml_width == null || unitHtml_width == undefined){
+                    unitHtml_width = 213.5;
+                }
+                var unitHtml ='<div id="flowInfoCId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + unitHtml_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + unitDesc + '\')">'+ unitDesc + '</div>';
+                //by pl end
+	            return tplt.applyTemplate({
+	                doc_date:record.get('docDate'),
+	                employee_name: record.get('employeeName'),
+	                unit_info: unitHtml,
+	                doc_desc:docHtml
+	            });
+	        }
+	        
+	        function BGT5120_reportAmountRenderer(value,record,name) {
+	            var tplt = new Ext.Template([
+	            '<table class="info-block">',
+	            '	<tr>',
+	            '		<td  class="info-title" style="text-align:right;padding-right:10px;font-size:15px;">',
+	            '			<span onmouseover="$A.ToolTip.show(this,\'$[l:bgt_journal_main.doc_amount]\')" >{currency_symbol}&nbsp;{doc_amount}</span>',
+	            '		</td>',
+	            '	</tr>',
+	           	//'	<tr>',
+	         	//'		<td class="info-amount" style="text-align:right;padding-right:10px;font-size:13px;">',
+	          	//'			<span onmouseover="$A.ToolTip.show(this,\'$[l:bgt_journal_main.doc_amount]\')">{currency_symbol1}&nbsp;{paid_amount}</span>',
+	         	//'		</td>',
+	         	//'	</tr>',
+	            '</table>'
+	            ]);
+	            return tplt.applyTemplate({
+	                doc_amount:Aurora.formatMoney(record.get('totalAmount')),
+	                currency_symbol:record.get('currencySymbol'),
+	                //paid_amount:Aurora.formatMoney(record.get('')),
+	                //currency_symbol1:record.get('currency_symbol')
+	            });
+	        }
+	        
+	        function BGT5120_progressRenderer(value,record,name,floatList) {
+	        	
+	        	function onProgressLoad(){
+	        	    debugger;
+	        	    var progressDom = document.getElementById('progress-' + record.id);
+	        	    if(!progressDom){
+	        	        return ;
+	        	    }
+	        	    var progressChart = echarts.init(progressDom);
+	        	    if (record.get('status') == 'NEW' || record.get('status') == 'SUBMITTED' || record.get('status') == 'APPROVED') {
+	        	        var progressColor = '#3c763d';
+	        	    }else if (record.get('status') == 'REJECTED'){
+	        	        var progressColor = '#a94442';
+	        	    }else if (record.get('status') == 'WITHDRAWAL'){
+	        	        var progressColor = '#d6ad65';
+	        	    }else if (record.get('status') == 'POSTED'){
+	        	        var progressColor = '#31708f';
+	        	    }
+					option = {
+					    series: [
+					        {
+					            name:'执行进度',
+					            type:'pie',
+					            radius: ['70%', '80%'],
+					            avoidLabelOverlap: false,
+					            hoverAnimation:false,
+					            animation:false,
+					            label: {
+					                normal: {
+					                    show: true,
+					                    position: 'center',
+					                    textStyle: {
+					                        fontSize: '11',
+					                        fontWeight: 'bold',
+					                        color:'#000'
+					                    }
+					                }
+					            },
+					            labelLine: {
+					                normal: {
+					                    show: false
+					                }
+					            },
+					            color:[progressColor,'#f1f1f1'],
+					            data:[
+					                {value:record.get('progressCount'),name:record.get('statusName')},
+					                {value:100 - record.get('progressCount'),name:''}
+					            ]
+					        }
+					    ]
+					};
+					progressChart.setOption(option);
+	        	}
+	         	//var tplt = new Ext.Template([
+	          	//'<div class="info-block"><div id="progress-{record_id}" onClick="BGT5120_onReportClickFun(' + record.get('journalHeader_Id') + ',\'' + record.get('status') + '\')" style="width:80px;height:80px;margin:auto;"></div><div>'
+	          	//]);
+	          	//floatList['on']('load',onProgressLoad,this);
+	            
+	            var tplt = new Ext.Template([
+	            '<div class="info-block" onmouseleave="BGT5120_onProgressMouseLeave(' + record.id + ',event);">',
+	            '<div id="progress-{record_id}" onClick="BGT5120_showHistory(' + record.get('journalHeaderId') + ',' + record.id + ',event);" style="width:80px;height:80px;margin:auto;"></div>',
+	            '<div class="history-block history-hidden" id="history-{record_id}">'
+	            ]);
+	            floatList['on']('load',onProgressLoad,this);
+	            
+	            return tplt.applyTemplate({
+	                record_id:record.id
+	            });
+				            
+	        }
+	        
+	        function BGT5120_operationRenderer(value,record,name) {
+	            var tplt = new Ext.Template([
+	            '<table  class="info-block info-operation" style="border-right:none;">',
+	            '	<tr>',
+	            '		<td width="33%">',
+	            '			{delete_link}',
+	            '		</td>',
+	           // '		<td width="33%">',
+	           // '			{history_link}',
+	           // '		</td>',
+	            '		<td width="33%">',
+	            '			{print_link}',
+	            '		</td>',
+	            '		<td width="33%" align="center">',
+                '			{preview_link}',
+                '		</td>',
+	            '	</tr>',
+	            '</table>'
+	            ]);
+	              if (record.get('status') == 'NEW' || record.get('status') == 'WITHDRAWAL' || record.get('status') == 'REJECTED'){
+	            	dLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:hap.delete]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete.png" alt="删除" onClick="BGT5120_deleteHeader(' + record.get('journalHeaderId') + ', event);"/>' ;
+	            }else{
+	                dLink = '&nbsp;&nbsp;&nbsp;&nbsp;';
+	            }
+	           // hLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:hap.history]\')" src="$[/request/@context_path]/resources/images/aurora/hap/history.png" alt="查看历史" onClick="BGT5120_showHistory(' + record.get('journalHeaderId') + ', event);"/>' ;
+	            pLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:hap.history]\')" src="$[/request/@context_path]/resources/images/aurora/hap/print.png" alt="打印" onClick="BGT5120_print(' + record.get('journalHeaderId') + ', event);"/>';
+	            
+	            //modified by liliang 2018/6/1 
+                //添加预览子页面
+                //提交状态的单据可以预览 显示预览图标
+                if (record.get('status') == 'SUBMITTED'){
+                	preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:wfl.preview]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:wfl.preview]" onClick="BGT5120_PreviewWinFunc(' + record.get('instanceId') + ', event);"/>' ;
+                }
+                //未提交状态的单据可以预览 显示预览图标
+                else if (record.get('status') == 'NEW'||record.get('status') == 'WITHDRAWAL'||record.get('status') == 'REJECTED'){
+                	preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:wfl.preview]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:wfl.preview]" onClick="BGT5120_PreviewBSWinFunc(' + record.get('bgtJournalTypeId')+','+ record.get('companyId')+','+ record.get('journalHeaderId') + ', event);"/>' ;
+                }else{
+                 //其他状态的单据用灰色图标
+                    preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:wfl.preview]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview-1.png"  alt="$[l:wfl.preview]""/>';
+                }
+	            
+	            return tplt.applyTemplate({
+	                 delete_link: dLink,
+	                 preview_link: preLink,
+	                 print_link: pLink
+	            });
+	        }
+	        
+	        //预览
+            function BGT5120_PreviewWinFunc(id) {
+                new Aurora.Window({
+                    id: 'preview_window',
+                    url: $au('wfl_workflow_preview_approve_link').getUrl() + '?instanceid=' + id,
+                    title: '$[l:wfl.preview]',
+                    fullScreen: true
+                });
+            }
+            
+            //提交前预览
+            function BGT5120_PreviewBSWinFunc(transaction_type_id,companyId,instance_param) {
+                new Aurora.Window({
+                    id: 'preview_window',
+                    url: $au('wfl_workflow_preview_before_submit_link').getUrl() + '?transaction_category=PAYMENT_REQUISITION&transaction_type_id=' + transaction_type_id + '&companyId=' + companyId + '&instance_param=' + instance_param,
+                    title: '$[l:wfl.preview]',
+                    fullScreen: true
+                });
+            }
+	        
+	        function BGT5120_deleteHeader(id, event){ 
+	            event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+	            Aurora.showConfirm('$[l:hap.prompt]', '$[l:bgt_journal_main.confirm_delete_journal]', function(resp) {
+	                Aurora.request({
+	                    url: $au('BGT5120_bgtJournalDeleteHeaderLink').getUrl(),
+	                    para: [{'journalHeaderId': id}],
+	                    success: function() {
+	                         BGT5120_query();
+	                    },
+	                    scope: this
+	                });
+	                resp.close();
+	            });
+	        }
+	        
+	       function BGT5120_showHistory(docId, recordId, event) {
+	            event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+	           
+	             historyDiv = $('#history-' + recordId);
+	            if(historyDiv.hasClass('history-hidden')){
+	                //异步加载单据历史页面
+	    			historyDiv.load($au('BGT5120_bgt_journal_history_link').getUrl() + '?documentId=' + docId + '&documentType=BUDGET_JOURNAL',function(url,status,c){
+	    			    if(status == 'success'){
+	    			    //计算气泡的正确弹出位置
+	        			    BGT5120_correctPosition(recordId);
+		                    historyDiv.removeClass('history-hidden');
+		                    historyDiv.addClass('history-show');
+	    			    }
+	    			});
+	            }else if(historyDiv.hasClass('history-show')){
+	                historyDiv.removeClass('history-show');
+	                historyDiv.addClass('history-hidden');
+	            }
+	        }
+	        
+	        function BGT5120_correctPosition(id){
+	            var flowBox = historyDiv.children('div.flowBox'),
+	                rowDiv = historyDiv.parents('div[_row='+id+']'),
+	                infoBlockDiv = $('#progress-' + id).parents('div.info-block'),
+	                triangleDiv = historyDiv.children('div.triangle'),
+	                width = flowBox.outerWidth(true),
+	            	height = flowBox.outerHeight(true),
+	            	vh = Aurora.getViewportHeight(),
+	            	x = infoBlockDiv.position().left-width+infoBlockDiv.outerWidth(true)/2,
+	            	y = rowDiv.position().top;
+	        	historyDiv.css({
+	        	    "top" : (y + height) > vh ? (vh - height) : y,
+	        	    "left": x
+	        	    });
+	    	    triangleDiv.css({
+	    	        "left" : width,
+	    	        "top" : (y + height) > vh ? (height - (vh - rowDiv.position().top - infoBlockDiv.outerHeight(true)/2)) : infoBlockDiv.outerHeight(true)/2
+	    	    });
+	        }
+	        
+	        function BGT5120_onProgressMouseLeave(recordId, event){
+	            event.stopPropagation(); 
+	            historyDiv = $('#history-' + recordId);
+	            if(historyDiv.hasClass('history-show')){
+	                historyDiv.removeClass('history-show');
+	                historyDiv.addClass('history-hidden');
+	            }
+	        }
+	        
+	        function BGT5120_print(id, event){
+	            event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+	            alert('确定打印当前预算日记账单？');
+	        }
+        ]]></script>
+        </span>
+        <a:dataSets>
+            <a:dataSet id="BGT5120_bgtOrgDs">
+                <a:datas dataSource="/model/bgtOrg/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT5120_employeeDs">
+                <a:datas dataSource="/model/authEmployee/records"/>
+            </a:dataSet>
+            <a:dataSet id="BGT5120_dateScopeDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/DATE_SCOPE/" fetchAll="true"/>
+            <a:dataSet id="BGT5120_reversedFlagDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BGT_JOURNAL_REVERSE_FLAG/"
+                       fetchAll="true"/>
+            <a:dataSet id="BGT5120_bgtBudgetStatusDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/BGT_BUDGET_STATUS/"
+                       fetchAll="true"/>
+            <a:dataSet id="BGT5120_bgtJournalTypeDs" fetchAll="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/bgt/journal-type/query"/>
+            <a:dataSet id="BGT5120_bgtScenarioDs_01" fetchAll="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/bgt/scenario/query"/>
+            <a:dataSet id="BGT5120_bgtVersionDs_01" fetchAll="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/bgt/version/query"/>
+            <a:dataSet id="BGT5120_bgtStructureDs_01" fetchAll="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/bgt/structure/query"/>
+            <a:dataSet id="BGT5120_queryConditionDs" autoCreate="true">
+                <a:fields>
+                    <!--Modified by lcy  Date:2017-11-24 修改状态样式checkBox为multiComboBox-->
+                    <a:field name="statusName" displayField="meaning"
+                             options="BGT5120_bgtBudgetStatusDs" prompt="bgt_journal_main.status"
+                             returnField="status" valueField="value"/>
+                    <a:field name="creationDateScopeName" displayField="meaning"
+                             options="BGT5120_dateScopeDs" prompt="hap.data_range" returnField="creationDataScope"
+                             valueField="value"
+                             defaultValue="$[/model/@defaultDateScopeName]"
+                    />
+                    <a:field name="creationDateScope" defaultValue="$[/model/@defaultDateScope]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrg/records/record/@bgtOrgName]"
+                             displayField="bgtOrgName" options="BGT5120_bgtOrgDs"
+                             prompt="bgt_journal_main.bgt_org_name" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="budgetItemName" lovCode="LOV_BGT6200_BGT_ORG_ITEM"
+                             placeHolder="bgt_journal_main.budget_item_name">
+                        <a:mapping>
+                            <a:map from="description" to="budgetItemName"/>
+                            <a:map from="budgetItemId" to="budgetItemId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="budgetItemId"/>
+                    <a:field name="employeeName" displayField="name" options="BGT5120_employeeDs"
+                             returnField="employeeId" valueField="employeeId"
+                             placeHolder="bgt_journal_main.employee_name"/>
+                    <a:field name="bgtJournalTypeName" displayField="description"
+                             options="BGT5120_bgtJournalTypeDs" returnField="bgtJournalTypeId"
+                             valueField="bgtJournalTypeId" placeHolder="bgt_journal_main.bgt_journal_type_name"/>
+                    <a:field name="creationDateFrom" placeHolder="bgt_journal_main.creation_date_from"/>
+                    <a:field name="creationDateTo" placeHolder="bgt_journal_main.creation_date_to"/>
+                    <a:field name="bgtEntityName" lovCode="LOV_BGT_ENTITY_UNDER_BGT_ORG"
+                             placeHolder="bgt_journal_main.bgt_entity_name">
+                        <a:mapping>
+                            <a:map from="entityName" to="bgtEntityName"/>
+                            <a:map from="entityId" to="bgtEntityId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgtCenterName" lovCode="LOV_BGT_CONTROL_RULE_BUDGET_CENTER"
+                             placeHolder="bgt_journal_main.bgt_center_name">
+                        <a:mapping>
+                            <a:map from="name" to="bgtCenterName"/>
+                            <a:map from="centerId" to="bgtCenterId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="structureName" displayField="description" options="BGT5120_bgtStructureDs_01"
+                             returnField="structureId" valueField="structureId"
+                             placeHolder="bgt_journal_main.structure_name"/>
+                    <a:field name="scenarioName" displayField="description" options="BGT5120_bgtScenarioDs_01"
+                             returnField="scenarioId" valueField="scenarioId"
+                             placeHolder="bgt_journal_main.scenario_name"/>
+                    <a:field name="versionName" displayField="description" options="BGT5120_bgtVersionDs_01"
+                             returnField="version_id" valueField="version_id"
+                             placeHolder="bgt_journal_main.version_name"/>
+                    <a:field name="reversedFlagName" displayField="meaning" options="BGT5120_reversedFlagDs"
+                             returnField="reversedFlag" valueField="value"
+                             placeHolder="bgt_journal_main.reversed_flag_name"/>
+                    <a:field name="companyName" lovCode="FND_COMPANY_LOV"
+                             placeHolder="bgt_journal_main.company_name">
+                        <a:mapping>
+                            <a:map from="companyName" to="companyName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="approvedByName" lovCode="EXP_EMPLOYEE"
+                             placeHolder="bgt_journal_main.approved_by_name">
+                        <a:mapping>
+                            <a:map from="name" to="approvedByName"/>
+                            <a:map from="employeeId" to="approvedBy"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="postedByName" lovCode="EXP_EMPLOYEE"
+                             placeHolder="bgt_journal_main.posted_by_name">
+                        <a:mapping>
+                            <a:map from="name" to="postedByName"/>
+                            <a:map from="employeeId" to="postedBy"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeName" autoComplete="true" autoCompleteField="codeName"
+                             displayField="codeName" options="BGT5120_employeeDs"
+                             returnField="employeeId" valueField="employeeId"
+                             placeHolder="bgt_journal_main.created_by_employee_name"/>
+                    <a:field name="approvedDateFrom" placeHolder="bgt_journal_main.approved_date_from"/>
+                    <a:field name="approvedDateTo" placeHolder="bgt_journal_main.approved_date_to"/>
+                    <a:field name="postedDateFrom" placeHolder="bgt_journal_main.posted_date_from"/>
+                    <a:field name="postedDateTo" placeHolder="bgt_journal_main.posted_date_to"/>
+                    <a:field name="creationDateFrom" placeHolder="bgt_journal_main.creation_date_from"/>
+                    <a:field name="creationDateTo" placeHolder="bgt_journal_main.creation_date_to"/>
+                    <a:field name="journalHeaderNotes" placeHolder="bgt_journal_main.journal_header_note"/>
+                    <a:field name="budgetJournalNumber" placeHolder="bgt_journal_main.budget_journal_number"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="add" handler="BGT5120_onQueryConditionDsAddFun"/>
+                    <a:event name="update" handler="BGT5120_QueryUpdateFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BGT5120_queryResultDs" autoPageSize="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/bgt/journal-header/query-main" pageSize="20"
+                       queryDataSet="BGT5120_queryConditionDs"
+                       selectable="true"/>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:button click="BGT5120_openJournalTypeChoice" text="hap_create_document" width="80"/>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="BGT5120_queryConditionDs" resultTarget="BGT5120_queryResultDs"
+                     style="width:100%;border:none;">
+            <a:formToolBar>
+                <!--Modified by Arthur.Chen Date:2017-09-26 10:35:10
+	               	1.修改页面样式
+	                  -->
+                <!--Modified by:lcy  Date:2017-11-20
+	               	1.修改状态样式checkBox为multiComboBox
+	                  -->
+                <a:multiComboBox name="statusName" bindTarget="BGT5120_queryConditionDs"/>
+                <a:comboBox name="creationDateScopeName" bindTarget="BGT5120_queryConditionDs"/>
+                <a:comboBox name="bgtOrgName" bindTarget="BGT5120_queryConditionDs"/>
+            </a:formToolBar>
+            <a:formBody column="4">
+                <!--将bgt_journal_number改为budgetJournalNumber,解决字段不匹配,单据编号查询无效问题    Y.duan  2017-9-4 19:36:05-->
+                <a:textField name="budgetJournalNumber" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="enterdown" handler="BGT5120_query"/>
+                    </a:events>
+                </a:textField>
+                <a:comboBox name="bgtJournalTypeName" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="focus" handler="BGT5120_onJournalTypeFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:lov name="budgetItemName" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="focus" handler="BGT5120_onBudgetItemFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="bgtEntityName" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="focus" handler="BGT5120_onBgtEntityFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:lov name="bgtCenterName" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="focus" handler="BGT5120_onBgtCenterFocus"/>
+                    </a:events>
+                </a:lov>
+                <a:textField name="journalHeaderNotes" bindtarget="BGT5120_queryConditionDs"/>
+                <a:comboBox name="employeeName" bindTarget="BGT5120_queryConditionDs"/>
+                <a:lov name="approvedByName" bindTarget="BGT5120_queryConditionDs"/>
+                <a:lov name="postedByName" bindTarget="BGT5120_queryConditionDs"/>
+                <a:comboBox name="scenarioName" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="focus" handler="BGT5120_onScenarioFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="versionName" bindTarget="BGT5120_queryConditionDs">
+                    <a:events>
+                        <a:event name="focus" handler="BGT5120_onVersionFocus"/>
+                    </a:events>
+                </a:comboBox>
+                <a:comboBox name="reversedFlagName" bindTarget="BGT5120_queryConditionDs"/>
+                <a:datePicker name="creationDateFrom" bindTarget="BGT5120_queryConditionDs"/>
+                <a:datePicker name="creationDateTo" bindTarget="BGT5120_queryConditionDs"/>
+                <a:datePicker name="approvedDateFrom" bindTarget="BGT5120_queryConditionDs"/>
+                <a:datePicker name="approvedDateTo" bindTarget="BGT5120_queryConditionDs"/>
+                <a:datePicker name="postedDateFrom" bindTarget="BGT5120_queryConditionDs"/>
+                <a:datePicker name="postedDateTo" bindTarget="BGT5120_queryConditionDs"/>
+            </a:formBody>
+        </a:queryForm>
+        <div class="clearfix"/>
+        <a:form showmargin="false" shrinkable="false" title="bgt_journal_main.title">
+            <a:floatList bindTarget="BGT5120_queryResultDs" clickable="true" closeable="true" loadMore="false"
+                         marginHeight="185" navbar="true"
+                         rowStyle="width:99%;height:80px;margin-left:10px;margin-top:2px;margin-bottom:5px;margin-right:10px;"
+                         style="box-shadow:none;width:100%">
+                <a:columns>
+                    <a:column name="progressColor" renderer="BGT5120_progressColorRenderer" width="1"/>
+                    <a:column name="docNumberAndType" renderer="BGT5120_docNumberAndTypeRenderer" width="15"/>
+                    <a:column name="reportDateAndDesc" renderer="BGT5120_reportDateAndDescRendnerer" width="46"/>
+                    <a:column name="reportAmount" renderer="BGT5120_reportAmountRenderer" width="16"/>
+                    <a:column name="progress" renderer="BGT5120_progressRenderer" width="13"/>
+                    <a:column name="operation" renderer="BGT5120_operationRenderer" width="9"/>
+                </a:columns>
+            </a:floatList>
+        </a:form>
+    </a:view>
+</a:screen>

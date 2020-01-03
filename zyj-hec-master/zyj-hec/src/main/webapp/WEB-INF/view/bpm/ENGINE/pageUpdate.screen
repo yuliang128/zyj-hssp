@@ -1,0 +1,679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script">
+    <a:view template="editor">
+        <a:link id="engineLayoutPageUpdatelink" url="$[/request/@context_path]/bpm/pageLayoutBasic/update"/>
+        <a:link id="engineTagPageUpdateLink" url="$[/request/@context_path]/bpm/pageTag/update" />
+        <a:link id="engineTagPageInsertLink" url="$[/request/@context_path]/bpm/pageTag/insert" />
+        <a:link id="engineButtonPageUpdateLink" url="$[/request/@context_path]/bpm/pageButton/update"/>
+        <a:link id="engineButtonPageInsertLink" url="$[/request/@context_path]/bpm/pageButton/insert"/>
+        <a:link id="engineBpmPageTagDataGuideLink" url="$[/request/@context_path]/bpm/BPM102/pageTagDataGuide.screen"/>
+        <a:link id="engineBpmPageTagTextFieldLink" url="$[/request/@context_path]/bpm/ENGINE/inputTextfield.screen"/>
+        <a:link id="engineBpmPageTagLovLink" url="$[/request/@context_path]/bpm/ENGINE/inputLov.screen"/>
+        <a:link id="engineBpmPageTagComboBoxLink" url="$[/request/@context_path]/bpm/ENGINE/inputCombobox.screen"/>
+        <script><![CDATA[
+        	var bpm_type='page';
+        	var loadFlag=true;
+                var template_code='$[/model/pageTpltInfo/records/record/@templateCode]';
+        	if(template_code){ template_code=template_code.replace('OA_','').toLowerCase();}
+        	
+            var componentScreen = {
+                'TextField': '$[/request/@context_path]/bpm/ENGINE/inputTextfield.screen',
+                'NumberField': '$[/request/@context_path]/bpm/ENGINE/inputNumberfield.screen',
+                'Lov': '$[/request/@context_path]/bpm/ENGINE/inputLov.screen',
+                'ComboBox': '$[/request/@context_path]/bpm/ENGINE/inputCombobox.screen',
+                'CheckBox': '$[/request/@context_path]/bpm/ENGINE/inputCheckbox.screen',
+                'DatePicker': '$[/request/@context_path]/bpm/ENGINE/inputDatepicker.screen',
+                'DateTimePicker': '$[/request/@context_path]/bpm/ENGINE/inputDatetimepicker.screen',
+                'Label': '$[/request/@context_path]/bpm/ENGINE/inputLabel.screen',
+                'TextArea': '$[/request/@context_path]/bpm/ENGINE/inputTextarea.screen',
+                'Box': '$[/request/@context_path]/bpm/ENGINE/layoutBox.screen',
+                'FieldSet': '$[/request/@context_path]/bpm/ENGINE/layoutFieldset.screen',
+                'Form': '$[/request/@context_path]/bpm/ENGINE/layoutForm.screen',
+                'Grid': '$[/request/@context_path]/bpm/ENGINE/layoutGrid.screen',
+                'HBox': '$[/request/@context_path]/bpm/ENGINE/layoutHbox.screen',
+                'VBox': '$[/request/@context_path]/bpm/ENGINE/layoutVbox.screen',
+                'Button': '$[/request/@context_path]/bpm/ENGINE/button.screen',
+                'DataSet': '$[/request/@context_path]/bpm/ENGINE/dataset.screen',
+                'Hidden' : '$[/request/@context_path]/bpm/ENGINE/hidden.screen',
+                'Radio' : '$[/request/@context_path]/bpm/ENGINE/inputRadio.screen',
+                'QueryForm' : '$[/request/@context_path]/bpm/ENGINE/layoutQueryform.screen',
+                'TabPanel' : '$[/request/@context_path]/bpm/ENGINE/layoutTabpanel.screen',
+                'Tab' : '$[/request/@context_path]/bpm/ENGINE/layoutTab.screen'
+            };
+        ]]></script>
+        <style><![CDATA[
+        	.col-md-2 {
+    			width: 12%;
+			}
+			.item-grid{
+     			-webkit-box-sizing: unset; 
+    			-moz-box-sizing: unset;
+    		 	box-sizing: unset; 
+			}
+        ]]></style>
+        <script><![CDATA[
+        	Aurora.onReady(function(){
+        	    var loadFlag=true;
+
+                /*var dsts=decodeURI('$[/parameter/@dsts]');
+                if(dsts){
+                    initBindDs(eval ('('+dsts+')'));
+                }*/
+        	    
+        	    $('#save_btn').click(function(){
+    				$au('engineBpmPageButtonResultDs').submit();
+    				$au('BPM102_pageLayoutBasicDs').submit();
+    			});
+    			
+    			$('#preview_btn').click(function(){
+    			    var id='$[/parameter/@pageId]';
+    				window.open('$[/request/@context_path]/'+$au('BPM102_pageGroupResultDs').getCurrentRecord().get('templateScreen') + '?pageId=' + id + '&refreshCache=Y');
+    			});
+    			
+        	});
+        
+        	function onDatasetSubmitSuccessFun(ds,result){
+        		toastr.remove();
+                toastr.success("操作成功");
+        	}
+        	function onBtnSubmitSuccessFun(ds,result){
+        		toastr.remove();
+                toastr.success("操作成功");
+        	}
+        	function onLayoutSubmitSuccessFun(ds,result){
+        		toastr.remove();
+                toastr.success("操作成功");
+        	}
+        	function onLoadFunction(ds){
+        	    var type='';
+        	    if(ds.id=='engineBpmPageButtonResultDs'){
+        	        type='button';
+        	    }
+        	    loadData(ds,type);
+        	}
+
+        	/*function initBindDs(dss){
+            	var ds=dss['a:dataSet'];
+            	for(var i=0;i<ds.length;i++){
+                	var id=ds[i]['@id'];
+                	var record=$au('engineBpmBindtargetDs').create();
+                	record.set('datasetId',id);
+            	}
+        	}*/
+
+        	
+        	function onbtnLoadFunction(ds){
+        	    if(loadFlag && $au('BPM102_pageLayoutBasicDs').currentIndex==$au('BPM102_pageLayoutBasicDs').getAll().length){
+        	        var records=$au('BPM102_pageLayoutBasicDs').getAll();
+        	        for(var i=0;i<records.length;i++){
+        	            if(records[i].get('tags')){
+        	             	loadTags(records[i].get('tags').data,records[i]);
+        	            }
+        	            if(records[i].get('buttons')){
+        	                loadLayoutButtons(records[i].get('buttons').data,records[i]);
+        	            }
+        	        }
+        	        loadFlag=false;
+        	    }else{
+	        	    setTimeout(function(){
+	        	    	$au('BPM102_pageLayoutBasicDs').next();
+	        	    },100); 
+        	    }
+        	}
+        ]]></script>
+        <div id="main-container" class="clearfix">
+            <div id="component-lib">
+                <div id="component-lib-title"><![CDATA[
+                    组件库
+                ]]></div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[布局组件]]></span>
+                        <a id="a-layouts" class="expand-down"/>
+                    </div>
+                    <div id="layouts">
+                        <div class="component-type-content row">
+                            <div aetype="Box" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_box.png"/>
+                                    <span><![CDATA[盒布局]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Form" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_form.png"/>
+                                    <span><![CDATA[表单布局]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="HBox" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_hbox.png"/>
+                                    <span><![CDATA[横向布局]]></span>
+                                </div>
+                            </div>
+                            <div aetype="VBox" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_vbox.png"/>
+                                    <span><![CDATA[纵向布局]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="FieldSet" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_fieldset.png"/>
+                                    <span><![CDATA[FieldSet]]></span>
+                                </div>
+                            </div>
+                            <div aetype="QueryForm" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_queryform.png"/>
+                                    <span><![CDATA[QueryForm]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="TabPanel" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_tabpanel.png"/>
+                                    <span><![CDATA[标签组]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Tab" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_tab.png"/>
+                                    <span><![CDATA[标签页]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[输入组件]]></span>
+                        <a id="a-inputs" class="expand-down"/>
+                    </div>
+                    <div id="inputs">
+                        <div class="component-type-content row">
+                            <div aetype="TextField" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_textfield.png"/>
+                                    <span><![CDATA[文本域]]></span>
+                                </div>
+                            </div>
+                            <div aetype="NumberField" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_numberfield.png"/>
+                                    <span><![CDATA[数字域]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="ComboBox" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_combobox.png"/>
+                                    <span><![CDATA[下拉框]]></span>
+                                </div>
+                            </div>
+                            <div aetype="CheckBox" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_checkbox.png"/>
+                                    <span><![CDATA[复选框]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="Lov" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_lov.png"/>
+                                    <span><![CDATA[Lov]]></span>
+                                </div>
+                            </div>
+                            <div aetype="TextArea" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_textarea.png"/>
+                                    <span><![CDATA[多行文本]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="DatePicker" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_datepicker.png"/>
+                                    <span><![CDATA[日期域]]></span>
+                                </div>
+                            </div>
+                            <div aetype="DateTimePicker" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_datetimepicker.png"/>
+                                    <span><![CDATA[时间域]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="Label" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_label.png"/>
+                                    <span><![CDATA[下划线文本域]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Radio" class="component-shell" cmptype="input">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_radio.png"/>
+                                    <span><![CDATA[单选框]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[其他组件]]></span>
+                        <a id="a-others" class="expand-down"/>
+                    </div>
+                    <div id="others">
+                        <div class="component-type-content row">
+                            <div aetype="Button" class="component-shell" cmptype="btn">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_button.png"/>
+                                    <span><![CDATA[按钮]]></span>
+                                </div>
+                            </div>
+                            <div aetype="Hidden" cmptype="hidden">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_hidden.png"/>
+                                    <span><![CDATA[隐藏域]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="component-type-title text-primary">
+                        <span><![CDATA[Grid]]></span>
+                        <a id="a-grids" class="expand-down"/>
+                    </div>
+                    <div id="grids">
+                        <div class="component-type-content row">
+                            <div aetype="Grid" class="component-shell" cmptype="layout">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_grid.png"/>
+                                    <span><![CDATA[Grid]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridNavBar" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_gridnavbar.png"/>
+                                    <span><![CDATA[导航]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="GridAddButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_gridaddbtn.png"/>
+                                    <span><![CDATA[新增]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridDeleteButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_griddeletebtn.png"/>
+                                    <span><![CDATA[删除]]></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-type-content row">
+                            <div aetype="GridSaveButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_gridsavebtn.png"/>
+                                    <span><![CDATA[保存]]></span>
+                                </div>
+                            </div>
+                            <div aetype="GridClearButton" class="grid-component-shell">
+                                <div class="component col-md-6">
+                                    <img src="$[/request/@context_path]/resources/images/aurora/4.0/screen_editor/_gridclearbtn.png"/>
+                                    <span><![CDATA[清除]]></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="screen-editor">
+                <div style="float: right;margin: 0px 20px 0px 0px;border: none;padding: 2px;">
+                    <button id="preview_btn" class="save-button"><![CDATA[预览]]></button>
+                </div>
+                <div id="editor-title">
+                    <h5><![CDATA[编辑器]]></h5>
+                </div>
+                <div id="editor-shell">
+                    <div id="editor-container" class="drag-container row"><![CDATA[
+
+                        ]]></div>
+                </div>
+            </div>
+            <div id="attr-editor">
+                <div id="hidden-title"><![CDATA[
+                    隐藏域存放区
+                ]]></div>
+                <div id="hidden-shell">
+                    <div id="hidden-container" class="hidden-drag-container"><![CDATA[
+
+                        ]]></div>
+                </div>
+                <div id="recycle-title"><![CDATA[
+                    回收站
+                ]]></div>
+                <div id="recycle-shell">
+                    <div id="recycle-container" class="recyle-drag-container"><![CDATA[
+
+                        ]]></div>
+                </div>
+            </div>
+        </div>
+        <a:dataSets>
+            <a:dataSet id="engineBpmBindtargetDs">
+                <a:fields>
+                    <a:field name="datasetId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="engineLayoutTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.COMPONENT_TYPE/"/>
+            <a:dataSet id="engineOperationTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.BUTTON_OPERATOR_TYPE/"/>
+            <a:dataSet id="engineButtonTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.BUTTON_TYPE/"/>
+            <a:dataSet id="engineTagTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_TYPE/"/>
+            <a:dataSet id="engineTypecaseDs"  autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_TYPECASE/"/>
+            <a:dataSet id="engineTagAlignmentDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_ALIGNMENT/"/>
+            <a:dataSet id="engineTagRadioLayoutDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_RADIO_LAYOUT/"/>
+            <a:dataSet id="engineTagCbDatasourceTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_COM_DATASOURCE/"/>
+            <a:dataSet id="engineTagLovDatasourceTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_LOV_DATASOURCE/"/>
+            <a:dataSet id="engineTagRadioDatasourceTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/BPM.TAG_RADIO_DATA_SOURCE/"/>
+            <a:dataSet id="BPM102_pageGroupResultDs" autoPageSize="true" autoQuery="true" baseUrl="/bpm/pageGroup" queryUrl="$[/request/@context_path]/bpm/pageGroup/query?pageId=$[/parameter/@pageId]" selectable="true">
+                <a:fields>
+                    <a:field name="groupTypeDesc"/>
+                    <a:field name="groupType"/>
+                    <a:field name="groupCode" prompt="bpm_page_groups.group_code" required="true"/>
+                    <a:field name="groupDesc" prompt="bpm_page_groups.group_desc" required="true"/>
+                    <a:field name="templateDesc" autoComplete="true" lovCode="LOV_BPM_TEMPLATE" prompt="bpm_page_groups.template_id" required="true" title="bpm_page_groups.template_choose">
+                        <a:mapping>
+                            <a:map from="templateId" to="templateId"/>
+                            <a:map from="templateDesc" to="templateDesc"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="templateScreen"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bpm_page_groups.enabled_flag" uncheckedValue="N"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="BPM102_pageResultDs" autoQuery="true" baseUrl="/bpm/page"
+                       queryUrl="$[/request/@context_path]/bpm/page/query?pageId=$[/parameter/@pageId]"
+                       selectable="true">
+                <a:fields>
+                    <a:field name="pageTypeDesc" displayField="description" options="BPM102_pageTypeDs"
+                             prompt="bpm_page.page_type" required="true" returnField="pageType"
+                             valueField="value"/>
+                    <a:field name="pageType"/>
+                    <a:field name="pageCode" prompt="bpm_page.page_code" required="true"/>
+                    <a:field name="pageDesc" prompt="bpm_page.page_desc" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" prompt="bpm_page.enabled_flag"
+                             uncheckedValue="N"/>
+                    <a:field name="groupId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="engineBpmPageButtonResultDs" autoQuery="true" fetchAll="true" baseUrl="/bpm/pageButton" queryUrl="$[/request/@context_path]/bpm/pageButton/query?pageId=$[/parameter/@pageId]" selectable="true">
+                <a:fields>
+                    <a:field name="buttonId"/>
+                    <a:field name="pageId" defaultValue="$[/parameter/@pageId]"/>
+                    <a:field name="buttonSequence"/>
+                    <a:field name="buttonCode" typeCase="upper"/>
+                    <a:field name="buttonDesc"/>
+                    <a:field name="operationTypeDesc" prompt="bpm_page_layout_buttons.operation_type"/>
+                    <a:field name="operationType"/>
+                    <a:field name="id"/>
+                    <a:field name="text"/>
+                    <a:field name="click"/>
+                    <a:field name="buttonType"/>
+                    <a:field name="buttonTypeDesc"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="style"/>
+                    <a:field name="btnstyle"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onBtnSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <!--baseurl未改完-->
+            <a:dataSet id="BPM102_pageLayoutBasicDs" autoQuery="true" fetchAll="true" baseUrl="/bpm/pageLayoutBasic" queryUrl="$[/request/@context_path]/bpm/pageLayoutBasic/query?pageId=$[/parameter/@pageId]" selectable="true">
+                <a:fields>
+                    <a:field name="layoutId"/>
+                    <a:field name="pageId" defaultValue="$[/parameter/@pageId]"/>
+                    <a:field name="layoutSequence" readOnly="true"/>
+                    <a:field name="layoutCode" readOnly="true"/>
+                    <a:field name="layoutDesc" readOnly="true"/>
+                            <a:field name="layoutTypeDesc" displayfield="meaning" options="engineLayoutTypeDs" readOnly="true" required="true" returnField="layoutType" valueField="value"/>
+                    <a:field name="layoutType"/>
+                    <a:field name="parentLayoutDesc" lovCode="LOV_PARENT_LAYOUT?templateId=$[/model/pageTpltInfo/records/record/@templateId]" prompt="bpm_page_layout_basic.parent_layout_id" readOnly="true" title="bpm_page_layout_basic.parent_layout_id">
+                        <a:mapping>
+                            <a:map from="layoutDesc" to="parentLayoutDesc"/>
+                            <a:map from="layoutId" to="parentLayoutId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentLayoutId"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="dataset"/>
+                    <a:field name="id"/>
+                    <a:field name="tabGroupNumber" readOnly="true"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="marginwidth"/>
+                    <a:field name="marginheight"/>
+                    <a:field name="margintop"/>
+                    <a:field name="marginleft"/>
+                    <a:field name="style"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="prompt" readOnly="true"/>
+                    <a:field name="title" readOnly="true"/>
+                    <a:field name="labelwidth"/>
+                    <a:field name="labelseparator"/>
+                    <a:field name="row"/>
+                    <a:field name="columnNum"/>
+                    <a:field name="navbar" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="ref" readOnly="true"/>
+                    <a:field name="selected" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="closeable" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="tabstyle"/>
+                    <a:field name="bodystyle"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="loadsuccess" handler="onLoadFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="BPM102_pageTagBasicResultDs" bindName="tags" bindTarget="BPM102_pageLayoutBasicDs" baseUrl="/bpm/pageTag" pageSize="20" queryUrl="$[/request/@context_path]/bpm/pageTag/queryByLayout" selectable="true">
+                <a:fields>
+                    <a:field name="tagId"/>
+                    <a:field name="layoutId" defaultValue="$[../../@layoutId]"/>
+                    <a:field name="layoutType" defaultValue="$[/parameter/@layoutType]"/>
+                    <a:field name="tagSequence" required="true"/>
+                    <a:field name="tagCode" required="true" typeCase="upper"/>
+                    <a:field name="tagDesc"/>
+                    <a:field name="tagTypeDesc" prompt="bpm_page_tags_basic.tag_type"/>
+                    <a:field name="tagType"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="fieldName" lovCode="LOV_BPM_TAG_REF_FIELD" prompt="bpm_page_tags_basic.field_id" title="bpm_page_tags_basic.field_id">
+                        <a:mapping>
+                            <a:map from="fieldId" to="fieldId"/>
+                            <a:map from="name" to="fieldName"/>
+                            <a:map from="desc" to="tagDesc"/>
+                            <a:map from="returnfieldDesc" to="cbReturnfieldDesc"/>
+                            <a:map from="returnfieldName" to="cbReturnfield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="fieldId"/>
+                    <a:field name="name"/>
+                    <a:field name="defaultvalue"/>
+                    <a:field name="readonly" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="required" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="prompt"/>
+                    <a:field name="validator"/>
+                    <a:field name="requiredmessage"/>
+                    <a:field name="id"/>
+                    <a:field name="bindtarget"/>
+                    <a:field name="width"/>
+                    <a:field name="height" readOnly="true"/>
+                    <a:field name="style"/>
+                    <a:field name="colspan" readOnly="true"/>
+                    <a:field name="rowspan" readOnly="true"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="parentTagDesc" lovCode="	LOV_BPM_PARENT_TAG" prompt="bpm_page_tags_basic.parent_tag_id" readOnly="true" title="bpm_page_tags_basic.parent_tag_id">
+                        <a:mapping>
+                            <a:map from="tagDesc" to="parentTagDesc"/>
+                             <a:map from="tagId" to="parentTagId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="parentTagId"/>
+                    <a:field name="alignDesc" displayfield="meaning" options="engineTagAlignmentDs" prompt="bpm_page_tags_basic.align" readOnly="true" returnField="align" valueField="value"/>
+                    <a:field name="align"/>
+                    <a:field name="cloumnwidth" readOnly="true"/>
+                    <a:field name="editor"/>
+                    <a:field name="editorfunction"/>
+                    <a:field name="footerrenderer" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="lock" checkedValue="true" defaultValue="false" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="renderer"/>
+                    <a:field name="resizable" checkedValue="true" defaultValue="true" uncheckedValue="false"/>
+                    <a:field name="sortable" checkedValue="true" defaultValue="false" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="tfTypecaseDesc" displayfield="meaning" options="engineTypecaseDs" prompt="bpm_page_tags_basic.tag_type" readOnly="true" returnField="tfTypecase" valueField="value"/>
+                    <a:field name="tfTypecase" readOnly="true"/>
+                    <a:field name="nfAllowdecimals" checkedValue="true" defaultValue="false" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="nfDecimalprecision" readOnly="true"/>
+                    <a:field name="nfAllownegative" checkedValue="true" defaultValue="false" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="nfAllowformat" checkedValue="true" defaultValue="false" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="cbDatasourceDesc" displayfield="meaning" options="engineTagCbDatasourceTypeDs" prompt="bpm_page_tags_basic.datasource" readOnly="true" returnField="cbDatasource" valueField="value"/>
+                    <a:field name="cbDatasource"/>
+                    <a:field name="cbOptions" readOnly="true"/>
+                    <a:field name="cbLovcode" readOnly="true"/>
+                    <a:field name="cbValuefield" lovCode="LOV_BPM_COMBOBOX_FIELD" prompt="bpm_page_tags_basic.cb_valuefield" readOnly="true" title="bpm_page_tags_basic.cb_valuefield">
+                        <a:mapping>
+                            <a:map from="comboboxField" to="cbValuefield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cbReturnfieldDesc"/>
+                    <a:field name="cbReturnfield"/>
+                    <a:field name="cbDisplayfield" lovGridHeight="300" lovHeight="460"  lovCode="LOV_BPM_COMBOBOX_FIELD" lovWidth="250" prompt="bpm_page_tags_basic.cb_displayfield" readOnly="true" title="bpm_page_tags_basic.cb_displayfield">
+                        <a:mapping>
+                            <a:map from="comboboxField" to="cbDisplayfield"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cbSyscode" lovGridHeight="300" lovHeight="460"  lovCode="LOV_BPM_SYSCODE" lovWidth="500" prompt="bpm_page_tags_basic.cb_syscode" readOnly="true" title="bpm_page_tags_basic.cb_syscode">
+                        <a:mapping>
+                            <a:map from="code" to="cbSyscode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="cbSqltext" lovHeight="400" lovUrl="$[/request/@context_path]/bpm/BPM1020/bpmPageTagsComboboxSqltextLov.screen" lovWidth="800" readOnly="true"/>
+                    <a:field name="lovDatasourceDesc" displayfield="meaning" options="engineTagLovDatasourceTypeDs" prompt="bpm_page_tags_basic.datasource" readOnly="true" returnField="lovDatasource" valueField="value"/>
+                    <a:field name="lovDatasource" readOnly="true"/>
+                    <a:field name="lovLovservice" readOnly="true"/>
+                    <a:field name="lovLovcode" readOnly="true"/>
+                    <a:field name="lovLovurl" readOnly="true"/>
+                    <a:field name="lovLovautoquery" checkedValue="true" defaultValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="lovLovgridheight" readOnly="true"/>
+                    <a:field name="lovLovheight" readOnly="true"/>
+                    <a:field name="lovLovwidth" readOnly="true"/>
+                    <a:field name="lovLovlabelwidth" readOnly="true"/>
+                    <a:field name="lovAutocomplete" checkedValue="true" defaultValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="lovAutocompletefield" readOnly="true"/>
+                    <a:field name="lovTitle" readOnly="true"/>
+                    <a:field name="lovSqltext" lovHeight="400" lovUrl="$[/request/@context_path]/bpm/BPM1020/bpmPageTagsLovSqltextLov.screen" lovWidth="800" readOnly="true"/>
+                    <a:field name="lovSyscode" readOnly="true"/>
+                    <a:field name="lRenderer" readOnly="true"/>
+                    <a:field name="rDatasourceDesc" displayfield="meaning" options="engineTagRadioDatasourceTypeDs" prompt="bpm_page_tags_basic.datasource" readOnly="true" returnField="rDatasource" valueField="value"/>
+                    <a:field name="rDatasource" readOnly="true"/>
+                    <a:field name="rOptions" readOnly="true"/>
+                    <a:field name="rValuefield" readOnly="true"/>
+                    <a:field name="rLabelexpression" readOnly="true"/>
+                    <a:field name="rLabelfield" readOnly="true"/>
+                    <a:field name="rLayout_desc" displayfield="meaning" options="engineTagRadioLayoutDs" prompt="bpm_page_tags_basic.r_layout" readOnly="true" returnField="rLayout" valueField="value"/>
+                    <a:field name="rLayout" readOnly="true"/>
+                    <a:field name="rSyscode" lovGridHeight="300" lovHeight="460" lovCode="LOV_BPM_SYSCODE" lovWidth="500" prompt="bpm_page_tags_basic.r_syscode" readOnly="true" title="bpm_page_tags_basic.r_syscode">
+                        <a:mapping>
+                            <a:map from="code" to="rSyscode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="rSqltext" readOnly="true"/>
+                    <a:field name="ckCheckedvalue" readOnly="true"/>
+                    <a:field name="ckUncheckedvalue" readOnly="true"/>
+                    <a:field name="ckLabel" readOnly="true"/>
+                    <a:field name="dkDayrenderer" readOnly="true"/>
+                    <a:field name="dkEnablebesidedays" checkedValue="true" defaultValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dkEnablemonthbtn" checkedValue="true" defaultValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dkViewsize" readOnly="true"/>
+                    <a:field name="dkRenderer" readOnly="true"/>
+                    <a:field name="dtkDayrenderer" readOnly="true"/>
+                    <a:field name="dtkEnablebesidedays" checkedValue="true" defaultValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dtkEnablemonthbtn" checkedValue="true" defaultValue="true" readOnly="true" uncheckedValue="false"/>
+                    <a:field name="dtkViewsize" readOnly="true"/>
+                    <a:field name="dtkRenderer" readOnly="true"/>
+                    <a:field name="dtkHour" readOnly="true"/>
+                    <a:field name="dtkMinute" readOnly="true"/>
+                    <a:field name="dtkSecond" readOnly="true"/>
+                    <a:field name="printable" checkedValue="true" defaultValue="true" uncheckedValue="false"/>
+                    <a:field name="promptDesc"/>
+                    <a:field name="fieldSource"/>
+                    <a:field name="appHideFlag" checkedValue="Y" defaultValue="N" prompt="bpm_tplt_tags_basic.app_hide_flag" uncheckedValue="N"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="onLayoutSubmitSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="engineBpmPageLayoutButtonResultDs" bindName="buttons" bindTarget="BPM102_pageLayoutBasicDs" baseUrl="/bpm/pageLayoutButton" pageSize="20" queryUrl="$[/request/@context_path]/bpm/pageLayoutButton/queryByLayout" selectable="true">
+                <a:fields>
+                    <a:field name="buttonId"/>
+                    <a:field name="layoutId" defaultValue="$[/parameter/@layoutId]"/>
+                    <a:field name="buttonSequence"/>
+                    <a:field name="buttonCode" typeCase="upper"/>
+                    <a:field name="buttonDesc"/>
+                    <a:field name="operationTypeDesc" displayfield="meaning" options="engineOperationTypeDs" prompt="bpm_page_layout_buttons.operation_type" returnField="operationType" valueField="value"/>
+                    <a:field name="operationType"/>
+                    <a:field name="templateFlag" checkedValue="Y" defaultValue="N" readOnly="true" uncheckedValue="N"/>
+                    <a:field name="id"/>
+                    <a:field name="buttonTypeDesc"/>
+                    <a:field name="buttonType"/>
+                    <a:field name="type"/>
+                    <a:field name="text"/>
+                    <a:field name="click"/>
+                    <a:field name="width"/>
+                    <a:field name="height"/>
+                    <a:field name="icon"/>
+                    <a:field name="disabled" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="hidden" checkedValue="true" defaultValue="false" uncheckedValue="false"/>
+                    <a:field name="style"/>
+                    <a:field name="btnstyle"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="loadsuccess" handler="onbtnLoadFunction"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="engineBpmPageTpltInfoDs">
+                <a:datas dataSource="pageTpltInfo/records"/>
+            </a:dataSet>
+        </a:dataSets>
+        <script><![CDATA[
+        	btnDs=$au('engineBpmPageButtonResultDs');
+        	layoutDs=$au('BPM102_pageLayoutBasicDs');
+        	tagDs=$au('BPM102_pageTagBasicResultDs');
+        	layoutBtnDs=$au('engineBpmPageLayoutButtonResultDs');
+        	screen_edit=false;
+        	var record=$au('engineBpmPageTpltInfoDs').getAt(0);
+        	$('#editor-title').empty();
+        	$('#editor-title').append('<h5>'+record.get('grouptypedescname')+':'+record.get('grouptypedesc')+'&nbsp;&nbsp;&nbsp;'+
+        								record.get('groupcodename')+':'+record.get('groupcode')+'&nbsp;&nbsp;&nbsp;'+
+        								record.get('pagecodename')+':'+record.get('pagecode')+'&nbsp;&nbsp;&nbsp;'+
+        								record.get('pagetypedescname')+':'+record.get('pagetypedesc')+'</h5>');
+        ]]></script>
+    </a:view>
+</a:screen>

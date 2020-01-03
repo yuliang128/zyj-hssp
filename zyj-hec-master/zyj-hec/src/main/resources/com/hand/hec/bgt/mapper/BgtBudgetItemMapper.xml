@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.bgt.mapper.BgtBudgetItemMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.bgt.dto.BgtBudgetItem">
+        <result column="BUDGET_ITEM_ID" property="budgetItemId" jdbcType="DECIMAL"/>
+        <result column="BGT_ORG_ID" property="bgtOrgId" jdbcType="DECIMAL"/>
+        <result column="BUDGET_ITEM_CODE" property="budgetItemCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="BUDGET_ITEM_TYPE_ID" property="budgetItemTypeId" jdbcType="DECIMAL"/>
+        <result column="VARIATION_ATTRIBUTE" property="variationAttribute" jdbcType="VARCHAR"/>
+        <result column="NOTES" property="notes" jdbcType="VARCHAR"/>
+        <result column="SUMMARY_FLAG" property="summaryFlag" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="BUDGET_ITEM_TYPE_NAME" property="budgetItemTypeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="checkBgtItem" resultMap="BaseResultMap">
+      select * from bgt_budget_item a
+        where
+        a.bgt_org_id = #{bgtOrgId}
+        and
+        (
+            (
+                #{filtrateMethod} = 'INCLUDE'
+                and
+                (
+                    (
+                        #{controlType} = 'DETAIL'
+                        and a.budget_item_id = #{itemId}
+                        and a.summary_flag = 'N'
+                        and (
+                              #{controlItemCodeFrom} is null
+                              or a.budget_item_code &gt;= #{controlItemCodeFrom}
+                            )
+                        and (
+                              #{controlItemCodeTo} is null
+                              or a.budget_item_code &lt;= #{controlItemCodeTo}
+                            )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'SUMMARY'
+                        and exists (
+                                select 1 from bgt_budget_item_hierarchy h
+                                where h.budget_item_id = #{itemId}
+                                and h.parent_budget_item_id = a.budget_item_id
+                                and a.enabled_flag = 'Y'
+                            )
+                        and a.summary_flag = 'Y'
+                        and (
+                              #{controlItemCodeFrom} is null
+                              or a.budget_item_code &gt;= #{controlItemCodeFrom}
+                            )
+                        and (
+                              #{controlItemCodeTo} is null
+                              or a.budget_item_code &lt;= #{controlItemCodeTo}
+                            )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'ALL'
+                        and
+                        (
+                            (
+                                a.budget_item_id = #{itemId}
+                                and a.summary_flag = 'N'
+                                and (
+                                      #{controlItemCodeFrom} is null
+                                      or a.budget_item_code &gt;= #{controlItemCodeFrom}
+                                    )
+                                and (
+                                      #{controlItemCodeTo} is null
+                                      or a.budget_item_code &lt;= #{controlItemCodeTo}
+                                    )
+                                and a.enabled_flag = 'Y'
+                            )
+                            or
+                            (
+                                exists (
+                                        select 1 from bgt_budget_item_hierarchy h
+                                        where h.budget_item_id = #{itemId}
+                                        and h.parent_budget_item_id = a.budget_item_id
+                                        and a.enabled_flag = 'Y'
+                                    )
+                                and a.summary_flag = 'Y'
+                                and (
+                                      #{controlItemCodeFrom} is null
+                                      or a.budget_item_code &gt;= #{controlItemCodeFrom}
+                                    )
+                                and (
+                                      #{controlItemCodeTo} is null
+                                      or a.budget_item_code &lt;= #{controlItemCodeTo}
+                                    )
+                                and a.enabled_flag = 'Y'
+                            )
+                        )
+                    )
+                )
+            )
+            or
+            (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                    (
+                        #{controlType} = 'DETAIL'
+                        and a.budget_item_id = #{itemId}
+                        and a.summary_flag = 'N'
+                        and
+                        (
+                            (
+                              #{controlItemCodeFrom} is null
+                              or a.budget_item_code &lt; #{controlItemCodeFrom}
+                            )
+                            or (
+                                #{controlItemCodeTo} is null
+                                or a.budget_item_code &gt; #{controlItemCodeTo}
+                            )
+                        )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'SUMMARY'
+                        and exists (
+                            select 1 from bgt_budget_item_hierarchy h
+                            where h.budget_item_id = #{itemId}
+                                and h.parent_budget_item_id = a.budget_item_id
+                                and a.enabled_flag = 'Y'
+                        )
+                        and a.summary_flag = 'Y'
+                        and
+                        (
+                            (
+                                #{controlItemCodeFrom} is null
+                                or a.budget_item_code &lt; #{controlItemCodeFrom}
+                            )
+                            or (
+                                #{controlItemCodeTo} is null
+                                or a.budget_item_code &gt; #{controlItemCodeTo}
+                            )
+                        )
+                        and a.enabled_flag = 'Y'
+                    )
+                    or
+                    (
+                        #{controlType} = 'ALL'
+                        and
+                        (
+                            (
+                                a.budget_item_id = #{itemId}
+                                and a.summary_flag = 'N'
+                                and
+                                (
+                                    (
+                                        #{controlItemCodeFrom} is null
+                                        or a.budget_item_code &lt; #{controlItemCodeFrom}
+                                    )
+                                    or (
+                                        #{controlItemCodeTo} is null
+                                        or a.budget_item_code &gt; #{controlItemCodeTo}
+                                    )
+                                )
+                                and a.enabled_flag = 'Y'
+                            )
+                            or
+                            (
+                                exists (
+                                    select 1 from bgt_budget_item_hierarchy h
+                                    where h.budget_item_id = #{itemId}
+                                        and h.parent_budget_item_id = a.budget_item_id
+                                        and a.enabled_flag = 'Y'
+                                )
+                                and a.summary_flag = 'Y'
+                                and
+                                (
+                                    (
+                                        #{controlItemCodeFrom} is null
+                                        or a.budget_item_code &lt; #{controlItemCodeFrom}
+                                    )
+                                    or (
+                                        #{controlItemCodeTo} is null
+                                        or a.budget_item_code &gt; #{controlItemCodeTo}
+                                    )
+                                )
+                                and a.enabled_flag = 'Y'
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    </select>
+    <select id="queryHierarchyByBgtOrgId" parameterType="com.hand.hec.bgt.dto.BgtBudgetItem" resultMap="BaseResultMap">
+        SELECT
+            bbi.budget_item_id,
+            bbi.bgt_org_id,
+            bbi.budget_item_code,
+            bbt.description,
+            bbi.budget_item_type_id,
+            bbil.description budget_item_type_name,
+            bbi.notes,
+            bbi.summary_flag,
+            bbi.enabled_flag,
+            bbi.variation_attribute
+        FROM
+            bgt_budget_item bbi
+            LEFT OUTER JOIN bgt_budget_item_tl bbt ON ( bbi.BUDGET_ITEM_ID = bbt.BUDGET_ITEM_ID AND bbt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+            LEFT OUTER JOIN bgt_budget_item_type bbit ON ( bbi.budget_item_type_id = bbit.budget_item_type_id )
+            LEFT OUTER JOIN bgt_budget_item_type_tl bbil ON ( bbit.BUDGET_ITEM_TYPE_ID = bbil.BUDGET_ITEM_TYPE_ID AND
+            bbil.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} )
+        WHERE
+            bbi.enabled_flag = 'Y'
+            AND bbi.summary_flag = 'Y'
+            AND bbi.BGT_ORG_ID = #{bgtOrgId}
+            <if test="budgetItemCode!=null">
+                and bbi.budget_item_code like concat('%',#{budgetItemCode},'%')
+            </if>
+            <if test="description!=null">
+                and bbt.description like concat('%',#{description},'%')
+            </if>
+    </select>
+    
+    <select id="queryNoSummaryByBgtOrg" parameterType="com.hand.hec.bgt.dto.BgtBudgetItem" resultMap="BaseResultMap">
+        SELECT
+        bbi.bgt_org_id,
+        bbi.budget_item_id,
+        bbi.budget_item_code,
+        bbi.description
+        FROM
+        bgt_budget_item bbi
+        LEFT OUTER JOIN bgt_budget_item_tl bbit on (bbi.BUDGET_ITEM_ID = bbit.BUDGET_ITEM_ID and bbit.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        bbi.enabled_flag = 'Y'
+        AND bbi.summary_flag = 'N'
+        AND bbi.bgt_org_id = #{bgtOrgId}
+        AND NOT EXISTS ( SELECT 1 FROM bgt_budget_item_hierarchy bbh WHERE bbh.budget_item_id = bbi.budget_item_id AND bbh.parent_budget_item_id = #{parentBudgetItemId} )
+        <if test="budgetItemCode!=null">
+            and bbi.budget_item_code like concat('%',#{budgetItemCode},'%')
+        </if>
+        <if test="description!=null">
+            and bbit.description like concat('%',#{description},'%')
+        </if>
+    </select>
+    
+    <select id="bgtJournalBatchAssign" resultMap="BaseResultMap">
+        SELECT
+            bbi.bgt_org_id,
+            bbi.budget_item_id,
+            bbi.budget_item_code,
+            bbi.description
+        FROM
+            bgt_budget_item bbi
+            LEFT OUTER JOIN bgt_budget_item_tl bbit ON (
+            bbi.BUDGET_ITEM_ID = bbit.BUDGET_ITEM_ID
+            AND bbit.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+
+        WHERE
+            bbi.enabled_flag = 'Y'
+            AND bbi.summary_flag = 'N'
+            AND bbi.bgt_org_id = #{bgtOrgId}
+            AND NOT EXISTS ( SELECT 1 FROM bgt_journal_type_ref_it bri WHERE bri.budget_item_id = bbi.budget_item_id AND bri.bgt_journal_type_id = #{bgtJournalTypeId})
+            <if test="budgetItemCode!=null">
+                and bbi.budget_item_code like concat('%',#{budgetItemCode},'%')
+            </if>
+            <if test="description!=null">
+                and bbit.description like concat('%',#{description},'%')
+            </if>
+            <if test="budgetItemCodeFrom!=null">
+                and bbi.budget_item_code &gt;= #{budgetItemCodeFrom}
+            </if>
+            <if test="budgetItemCodeTo!=null">
+                and bbi.budget_item_code &lt;= #{budgetItemCodeTo}
+            </if>
+    </select>
+    
+    <select id="getBudgetItemListForQuery" resultMap="BaseResultMap">
+        SELECT
+            bi.*
+        FROM
+            bgt_budget_item bi
+        WHERE
+            bi.bgt_org_id = #{bgtOrgId}
+            AND bi.enabled_flag = 'Y'
+            AND (#{parameterCode} IS NULL OR bi.budget_item_code = #{parameterCode})
+            AND (#{parameterLowerLimit} IS NULL OR bi.budget_item_code &gt;= #{parameterLowerLimit})
+            AND (#{parameterUpperLimit} IS NULL OR bi.budget_item_code &lt;= #{parameterUpperLimit})
+    </select>
+
+</mapper>

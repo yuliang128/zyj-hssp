@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.fnd.mapper.GldAccountMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.fnd.dto.GldAccount">
+        <result column="ACCOUNT_SET_ID" property="accountSetId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL"/>
+        <result column="ACCOUNT_CODE" property="accountCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_TYPE" property="accountType" jdbcType="VARCHAR"/>
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR"/>
+        <result column="SUMMARY_FLAG" property="summaryFlag" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_CODE_FROM" property="accountCodeFrom" jdbcType="VARCHAR"/>
+        <result column="ACCOUNT_CODE_TO" property="accountCodeTo" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="accountSetRefrenceQuery" parameterType="java.lang.Long" resultType="java.util.HashMap">
+        SELECT
+            gas.ACCOUNT_SET_CODE AS accountSetCode,
+            gas.ACCOUNT_SET_NAME AS accountSetName,
+            ga.ACCOUNT_CODE AS accountCode,
+            ga.DESCRIPTION AS description,
+            gas.ACCOUNT_SET_ID AS accountSetId
+        FROM
+            gld_account_set gas
+            LEFT JOIN gld_account ga ON gas.ACCOUNT_SET_ID = ga.ACCOUNT_SET_ID
+        WHERE
+            ga.ACCOUNT_SET_ID = #{accountSetId} AND
+            ga.ACCOUNT_ID = #{accountId}
+    </select>
+
+    <select id="selectAccountId" parameterType="java.util.Map" resultMap="BaseResultMap">
+        select  *
+        from gld_account a
+        where a.account_set_id = #{accountSetId} and
+              a.account_code like if(#{subAccountCode},#{subAccountCode},'%') and
+              a.account_code &gt;= if(#{fromAccountCode},#{fromAccountCode},a.account_code) and
+              a.account_code &lt;= if(#{toAccountCode},#{fromAccountCode},a.account_code) and
+              a.account_id != #{parentAccountSetId};
+    </select>
+
+    <select id="selectByAccountSetId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select *
+          from gld_account a
+         where a.account_set_id = #{accountSetId}
+               and not exists
+         (select b.account_id
+                  from gld_account_hierarchy_detail b
+                 where b.account_set_id = #{accountSetId}
+                       and b.account_id = a.account_id);
+    </select>
+
+
+    <select id="hierarchyTreeQuery" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+	t.parent_account_id,t.account_id,t.account_code
+FROM
+	(
+		SELECT
+			NULL AS parent_account_id,
+			v.account_id,
+			concat(
+				concat(v.ACCOUNT_CODE, '-'),
+				v.DESCRIPTION
+			) account_code
+		FROM
+			gld_account v
+		WHERE
+		    v.account_set_id = #{accountSetId}
+			and NOT EXISTS (
+				SELECT
+					v.account_set_id
+				FROM
+					gld_account_hierarchy_detail t
+				WHERE
+					t.account_id = v.account_id
+			)
+		UNION
+			SELECT
+				t.parent_account_id,
+				v2.account_id,
+				concat(
+					concat(v2.ACCOUNT_CODE, '-'),
+					v2.DESCRIPTION
+				) account_code
+			FROM
+				gld_account_hierarchy_detail t
+			LEFT JOIN gld_account v ON (
+				t.parent_account_id = v.account_id
+			),
+			gld_account v2
+		WHERE
+		    t.account_set_id = #{accountSetId}
+			and v2.account_id = t.account_id
+	) t
+    </select>
+
+</mapper>

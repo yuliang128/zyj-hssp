@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-2-26 下午17:03:16
+    $Revision: 1.0  
+    $Purpose: 支付权限规则参数代码定义
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="CSH1220_sql_contenets_lov_link" url="$[/request/@context_path]/csh/CSH1220/sql_contenets_lov.screen"/>
+        <script><![CDATA[
+            function CSH1220_parameterCodeEdit(record, name) {
+                if (record.isNew) {
+                    return 'CSH1220_textField_upper';
+                } else {
+                    return '';
+                }
+            }
+
+            function CSH1220_Submit(ds) {
+                ds.query();
+            }
+            
+            function CSH1220_gridCellClick(grid, row, name, record) {
+                if (name == 'sqlContents') {
+                    var ruleParameterId = record.isNew ? -1 : record.get('ruleParameterId');
+                    record.getMeta().getField('sqlContents').setLovPara('ruleParameterId',ruleParameterId);
+                }
+            
+            }
+
+            function CSH1220_add(ds){
+                var magOrgId = $au('CSH1220_csh_payment_rule_parameters_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+
+            function CSH1220_update(ds,record,name,value){
+                if(name=='magOrgId'){
+                    $au('CSH1220_csh_payment_rule_parameters_result_ds').query();
+                }
+            }
+
+            function CSH1220_BeforeCreate(){
+                if (Ext.isEmpty($au('CSH1220_csh_payment_rule_parameters_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1220_csh_business_type_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_DOCUMENT_CATEGORY/"/>
+            <a:dataSet id="CSH1220_csh_payment_rule_parameters_magOrgList_ds" autoQuery="true" queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="CSH1220_csh_payment_rule_parameters_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="parameterCode"/>
+                    <a:field name="description"/>
+                    <a:field name="magOrgName" defaultValue="$[/model/defaultMag/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="CSH1220_csh_payment_rule_parameters_magOrgList_ds" prompt="csh_payment_rule_parameter.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/defaultMag/records/record/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH1220_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH1220_csh_payment_rule_parameters_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" queryDataSet="CSH1220_csh_payment_rule_parameters_query_ds" baseUrl="/csh/payment-rule-parameter" selectable="true">
+                <a:fields>
+                    <a:field name="ruleParameterId"/>
+                    <a:field name="businessType"/>
+                    <a:field name="businessTypeName" displayField="meaning" options="CSH1220_csh_business_type_ds" prompt="csh_payment_trx_rule.business_type" required="true" returnField="businessType" valueField="value"/>
+                    <a:field name="parameterCode" prompt="csh_payment_rule_parameter.parameter_code" required="true"/>
+                    <a:field name="description" dto="com.hand.hec.csh.dto" dtoId="ruleParameterId" prompt="csh_payment_rule_parameter.description" required="true"/>
+                    <a:field name="descriptionId"/>
+                    <a:field name="sqlContents" lovUrl="$[/request/@context_path]/csh/CSH1220/sql_contenets_lov.screen" required="true" title="fnd_business_rule_parameter.sql_content" prompt="fnd_business_rule_parameter.sql_content"/>
+                    <a:field name="magOrgId" required="true"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N" prompt="csh_payment_rule_parameter.enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1220_Submit"/>
+                    <a:event name="add" handler="CSH1220_add"/>
+                    <a:event name="beforecreate" handler="CSH1220_BeforeCreate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="CSH1220_csh_payment_rule_parameters_grid" type="add" width="80"/>
+                <a:gridButton bind="CSH1220_csh_payment_rule_parameters_grid" type="save" width="80"/>
+                <a:gridButton bind="CSH1220_csh_payment_rule_parameters_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH1220_csh_payment_rule_parameters_query_ds" resultTarget="CSH1220_csh_payment_rule_parameters_result_ds" style="width:100%;border:none">
+                <a:formToolBar labelWidth="120">
+                    <a:comboBox name="magOrgName" bindTarget="CSH1220_csh_payment_rule_parameters_query_ds" width="170"/>
+                    <a:textField name="parameterCode" bindTarget="CSH1220_csh_payment_rule_parameters_query_ds" prompt="csh_payment_rule_parameter.parameter_code"/>
+                    <a:textField name="description" bindTarget="CSH1220_csh_payment_rule_parameters_query_ds" prompt="csh_payment_rule_parameter.description"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="CSH1220_csh_payment_rule_parameters_grid" bindTarget="CSH1220_csh_payment_rule_parameters_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="parameterCode" align="center" editorFunction="CSH1220_parameterCodeEdit" width="200"/>
+                <a:column name="description" align="center" editor="CSH1220_tledit" width="200"/>
+                <a:column name="businessTypeName" align="center" editor="CSH1220_comboBox"/>
+                <a:column name="sqlContents" editor="CSH1220_lov" width="400"/>
+                <a:column name="enabledFlag" editor="CSH1220_checkBox" width="80"/>
+            </a:columns>
+            <a:editors>
+                <a:tledit id="CSH1220_tledit"/>
+                <a:textField id="CSH1220_textField"/>
+                <a:textField id="CSH1220_textField_upper" typeCase="upper"/>
+                <a:checkBox id="CSH1220_checkBox"/>
+                <a:lov id="CSH1220_lov"/>
+                <a:comboBox id="CSH1220_comboBox"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="CSH1220_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

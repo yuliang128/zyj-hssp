@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.csh.mapper.CshMoPayUsdRefFlowItMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.csh.dto.CshMoPayUsdRefFlowIt">
+        <result column="REF_ID" property="refId" jdbcType="DECIMAL" />
+        <result column="PAYMENT_USEDE_ID" property="paymentUsedeId" jdbcType="DECIMAL" />
+        <result column="CASH_FLOW_ITEM_ID" property="cashFlowItemId" jdbcType="DECIMAL" />
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+
+        <result column="SET_OF_BOOKS_ID" property="setOfBooksId" jdbcType="DECIMAL" />
+        <result column="PAYMENT_USEDE_CODE" property="paymentUsedeCode" jdbcType="VARCHAR" />
+        <result column="CASH_FLOW_ITEM_DESC" property="cashFlowItemDesc" jdbcType="VARCHAR" />
+        <result column="SET_OF_BOOKS_NAME" property="setOfBooksName" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryIncludeSetOfBooks" resultMap="BaseResultMap">
+        SELECT
+        cmpurfi.*, cmpu.PAYMENT_USEDE_CODE,
+        ccfit.DESCRIPTION as cashFlowItemDesc,
+        gsob.set_of_books_id,
+        gsobt.set_of_books_name
+        FROM
+        csh_mo_pay_usd_ref_flow_it cmpurfi
+        LEFT JOIN csh_cash_flow_item ccfi ON cmpurfi.cash_flow_item_id = ccfi.cash_flow_item_id
+        LEFT JOIN gld_set_of_book gsob ON ccfi.set_of_books_id = gsob.set_of_books_id
+        LEFT JOIN csh_mo_payment_used cmpu ON cmpurfi.PAYMENT_USEDE_ID = cmpu.PAYMENT_USEDE_ID
+        LEFT JOIN gld_set_of_book_tl gsobt on (gsob.SET_OF_BOOKS_ID = gsobt.SET_OF_BOOKS_ID AND
+        gsobt.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        LEFT JOIN csh_cash_flow_item_tl ccfit on (ccfi.cash_flow_item_id = ccfit.cash_flow_item_id
+        and ccfit.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+        WHERE
+        1 = 1
+        <if test="paymentUsedeId != null">
+            and cmpurfi.payment_usede_id = #{paymentUsedeId}
+        </if>
+        <if test="setOfBooksId != null">
+            and gsob.set_of_books_id = #{setOfBooksId}
+        </if>
+        <if test="setOfBooksName != null">
+            and gsobt.set_of_books_name  like '%${setOfBooksName}%'
+        </if>
+        <if test="cashFlowItemDesc != null">
+            and ccfit.DESCRIPTION like '%${cashFlowItemDesc}%'
+        </if>
+    </select>
+
+    <select id="getCashFlowItemId" resultType="Long">
+    select fi.cash_flow_item_id
+      from csh_mo_pay_usd_ref_flow_it fi,
+           csh_cash_flow_item         ci,
+           gld_set_of_book            gv,
+           gld_acc_entity_ref_sob     gars
+     where 1 = 1
+           and fi.payment_usede_id = #{paymentUsedeId}
+           and fi.enabled_flag = 'Y'
+           and fi.default_flag = 'Y'
+           and ci.cash_flow_item_id = fi.cash_flow_item_id
+           and gv.set_of_books_id = ci.set_of_books_id
+           and gv.set_of_books_id = gars.set_of_books_id
+           and gars.acc_entity_id = #{accEntityId}
+    </select>
+</mapper>

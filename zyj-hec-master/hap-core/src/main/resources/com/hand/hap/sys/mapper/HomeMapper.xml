@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.sys.mapper.HomeMapper">
+    <select id="getTodoCount" resultType="java.lang.Long">
+      select count(*) from wfl_ins_task_recipient r where r.approver_id = #{request.userId}
+    </select>
+    <select id="getReturnCount" resultType="java.lang.Long">
+      select count(*) from (
+        select 1 from exp_report_header h where h.created_by = #{request.userId} and h.report_status in ('REJECTED','TAKEN_BACK','PAY_BACK','RETURN_BACK')
+        union all
+        select 1 from exp_requisition_header h where h.created_by = #{request.userId} and h.REQUISITION_STATUS in ('REJECTED','TAKEN_BACK','PAY_BACK','RETURN_BACK')
+        union all
+        select 1 from csh_payment_requisition_hd h where h.created_by = #{request.userId} and h.status in ('REJECTED','TAKEN_BACK','PAY_BACK','RETURN_BACK')) v
+    </select>
+    <select id="getUnpaidAmount" resultType="java.math.BigDecimal">
+        select
+            sum(ifnull(v.unpaid_amount, 0)) amount
+        from
+            (
+                select get_rep_pmt_amount(erps.payment_schedule_line_id) - get_rep_pmt_paid_amount(erps.payment_schedule_line_id) - get_rep_pmt_frozen_amount(erps.payment_schedule_line_id) unpaid_amount
+            from
+                exp_report_header erh,
+                exp_report_pmt_schedule erps,
+                exp_employee ee,
+                sys_user su
+            where
+                su.user_id = #{request.userId}
+                and su.employee_id = ee.employee_id
+                and ee.employee_id = erh.employee_id
+                and erh.exp_report_header_id = erps.exp_report_header_id
+                and erh.report_status = 'COMPLETELY_APPROVED'
+                and erh.audit_flag = 'Y'
+                and erh.reversed_flag = 'N'
+        union all
+            select
+                get_payment_line_amount(cprl.payment_requisition_line_id) - get_payment_line_paid_amount(cprl.payment_requisition_line_id) unpaid_amount
+            from
+                csh_payment_requisition_hd cprh,
+                csh_payment_requisition_ln cprl,
+                exp_employee ee,
+                sys_user su
+            where
+                su.user_id = #{request.userId}
+                and su.employee_id = ee.employee_id
+                and ee.employee_id = cprh.employee_id
+                and cprh.payment_requisition_header_id = cprl.payment_requisition_header_id
+                and cprh.status = 'COMPLETELY_APPROVED'
+                and cprh.audit_flag = 'Y'
+                and cprh.reversed_flag = 'N') v
+    </select>
+    <select id="getUnWriteOffAmount" resultType="java.math.BigDecimal">
+      select
+            sum(ifnull(v.unwrite_off_amount, 0)) csh_un_write_off_amount
+        from
+            (
+            select
+                get_payment_line_bal_amount(cprl.payment_requisition_line_id) unwrite_off_amount
+            from
+                csh_payment_requisition_hd cprh,
+                csh_payment_requisition_ln cprl
+            where
+                cprl.payment_requisition_header_id = cprh.payment_requisition_header_id
+                and exists (
+                select
+                    1
+                from
+                    csh_payment_requisition_ref ef,
+                    csh_transaction_header cth,
+                    csh_transaction_line ctl
+                where
+                    ef.payment_requisition_line_id = cprl.payment_requisition_line_id
+                    and ef.csh_transaction_line_id = ctl.transaction_line_id
+                    and ctl.transaction_header_id = cth.transaction_header_id
+                    and cth.posted_flag = 'Y' )
+                and ( cprl.created_by = #{request.userId}
+                or ( cprl.payee_category = 'EMPLOYEE'
+                and cprl.payee_id = #{request.employeeId}) ) ) v
+    </select>
+</mapper>

@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="ACP3100_acp_requisition_new_maintain_main_link" url="$[/request/@context_path]/acp/ACP3100/acp_requisition_maintain_main.screen"/>
+        <a:link id="get_acc_currency_link" url="$[/request/@context_path]/gld/account-entity/queryMore" modelaction="query"/>
+        <style>
+        	.doc_note{
+        	    width:98%;
+        		padding-left:1%;
+        		padding-right:1%;
+        		overflow:auto;
+        		white-space:nowrap;
+        	}
+        	
+        	.doc_note_info{
+        		display:inline-block;
+        		/* float:left; */
+        		width:19%; 
+        		white-space:pre-line;
+        		vertical-align:top;
+        	}
+        	
+        	.doc_note_step{
+        		width:100%;
+        		color:#237ae1;   
+        		line-height:20px;
+        		font-size:14px;
+        		font-weight:800;
+        	}
+        	
+        	.doc_note_summary{
+        		width:100%;
+        		color:#333;
+        		height:100%;white-space:pre-wrap;
+        		overflow:hidden;
+				text-overflow:ellipsis;
+        	}
+        	
+        	.doc_note_arrow{
+        		display:inline-block;
+        		/* float:left; */
+        		margin-left:3%;  
+        		margin-right:3%;  
+        		width:2%;
+        		color:#237ae1;   
+        		line-height:100px;
+        		font-size:14px;
+        		font-weight:800;
+        	}
+        	
+        	.doc_note_empty{
+        	    font-size:14px;
+        	    line-height:100px;
+        	    color:#888;
+        	    width:100%;
+        	    display:inline-block;
+        	    height:100px;
+        	    vertical-align:middle;
+        	    text-align:center;
+        	}
+        	
+        	.acp-pay-req-type-info{
+        		padding:10px;  
+        		border:2px dotted #ccc;
+        	}
+        	
+        	.acp-pay-req-type-icon{
+        	    float:left;
+        	}
+        	
+        	.acp-pay-req-type-desc{
+        	    float:left;
+        	    line-height:60px;
+        	    padding-left:10px;
+        	}
+        </style>
+        <script><![CDATA[
+            function ACP3100_queryExpRequisitionTypeList() {
+                $au('ACP3100_typeChoiceRequisitionTypeDs').query();
+            }
+            
+            function ACP3100_loadComplete() {
+                $au('ACP3100_typeChoiceDs').getAt(0).set('name', '$[/model/employee/records/record/@name]');
+                $au('ACP3100_typeChoiceDs').getAt(0).set('employeeId', '$[/model/employee/records/record/@employeeId]');
+                $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyName', '$[/model/currentCompany/records/record/@functionalCurrencyName]');
+                $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyCode', '$[/model/currentCompany/records/record/@functionalCurrencyCode]');
+                $au('ACP3100_typeChoiceDs').getAt(0).set('accEntityName', '$[/model/currentCompany/records/record/@accEntityName]');
+                $au('ACP3100_typeChoiceDs').getAt(0).set('accEntityId', '$[/model/currentCompany/records/record/@accEntityId]');
+                //modified by liliang 2018/7/9
+                //加载当前核算主体所对应的币种
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    lockMessage: '$]l:hap_waiting]',
+                    url: $au('get_acc_currency_link').getUrl(),
+                    para: {
+                        accEntityId: $au('ACP3100_typeChoiceDs').getAt(0).get('accEntityId')
+                    },
+                    success: function(resp) {
+                        if(resp.result){
+                            $au('ACP3100_typeChoiceDs').getAt(0).set('payCurrencyCode', resp.result.record.payCurrencyCode);
+                            $au('ACP3100_typeChoiceDs').getAt(0).set('payCurrencyName', resp.result.record.payCurrencyName);
+                        }
+                    },
+                    scope: this
+                });
+                $au('ACP3100_typeChoiceRequisitionTypeDs').setQueryParameter('employeeId', '$[/model/employee/records/record/@employeeId]');
+                ACP3100_queryExpRequisitionTypeList();
+            }
+            
+            function ACP3100_onQueryDsUpdate(dataSet, record, name, value) {
+                if (name == 'employeeId') {
+                    $au('ACP3100_typeChoiceRequisitionTypeDs').setQueryParameter('employeeId', record.get('employeeId'));
+                    ACP3100_queryExpRequisitionTypeList();
+                }
+            
+                //modified by liliang 2018/7/5
+                //基础信息中的币种取值规则，切换单据类型时，将单据类型对应的币种设置到基础信息的币种中去
+                //当单据类型没有定义对应币种时，取核算主体对应的支付币种
+                if (name == 'accEntityId') {
+                    if (!$au('ACP3100_typeChoiceRequisitionTypeDs').getCurrentRecord()) {} else {
+                        if ($au('ACP3100_typeChoiceRequisitionTypeDs').getCurrentRecord().get('currencyCode') == undefined) {
+                            $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyCode', record.get('payCurrencyCode'));
+                            $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyName', record.get('payCurrencyName'));
+                        }
+                    }
+                }
+            }
+            
+            function ACP3100_onRequisitionTypeClick() {
+                var typeRecord = $au('ACP3100_typeChoiceDs').getAt(0);
+                var record = $au('ACP3100_typeChoiceRequisitionTypeDs').getCurrentRecord();
+                if ($au('ACP3100_typeChoiceDs').validate()) {
+                    if (!record.get('moPayReqTypeId')) {
+                        Aurora.showErrorMessage('$[l:hap_error]', '$[l:hap_unselect_doc_type]');
+                        return;
+                    }
+                    new Aurora.Window({
+                        url: $au('ACP3100_acp_requisition_new_maintain_main_link').getUrl() + '?moPayReqTypeId=' + record.get('moPayReqTypeId') + '&employeeId=' + typeRecord.get('employeeId') + '&paymentCurrencyCode=' + typeRecord.get('paymentCurrencyCode') + '&accEntityId=' + typeRecord.get('accEntityId'),
+                        id: 'ACP3100_acp_requisition_new_maintain_main',
+                        fullScreen: true
+                    });
+                    //$au('ACP3100_acp_requisition_maintain_type_choice_window').close();
+                }
+            }
+            
+            //modified by liliang 2018/7/5
+            //基础信息中的币种取值规则，切换单据类型时，将单据类型对应的币种设置到基础信息的币种中去
+            //当单据类型没有定义对应币种时，取核算主体对应的支付币种
+            
+            function ACP3100_onIndexChange(ds, record) {
+                //如果单据类型设置了币种，那么优先取单据类型所设置的币种
+                if (record.get("currencyCode") != undefined) {
+                    //设置币种为当前选择的报销类型所对应的币种
+                    $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyName', record.get("currencyName"));
+                    $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyCode', record.get("currencyCode"));
+                } else {
+                    //如果极端情况下未取到核算主体的币种，那么调用ajax请求获取核算主体对应的币种
+                    if ($au('ACP3100_typeChoiceDs').getAt(0).get('payCurrencyCode') == undefined) {
+                        //查找当前选中核算主体对应的支付币种
+                        Aurora.request({
+                            lockMessage: '$[l:hap_waiting]',
+                            lockMessage: '$[l:hap_waiting]',
+                            url: $au('get_acc_currency_link').getUrl(),
+                            para: {
+                                accEntityId: $au('ACP3100_typeChoiceDs').getAt(0).get('accEntityId')
+                            },
+                            success: function(resp) {
+                                if(resp.result){
+                                    $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyCode', resp.result.record.payCurrencyCode);
+                                    $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyName', resp.result.record.payCurrencyName);
+                                }
+
+                            },
+                            scope: this
+                        });
+                    }
+                    //正常情况下，将币种设置为核算主体所对应的币种
+                    else {
+                        $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyCode', $au('ACP3100_typeChoiceDs').getAt(0).get('payCurrencyCode'));
+                        $au('ACP3100_typeChoiceDs').getAt(0).set('paymentCurrencyName', $au('ACP3100_typeChoiceDs').getAt(0).get('payCurrencyName'));
+                    }
+                }
+                var typeId = record.get('moPayReqTypeId');
+                var dataSet = $au('ACP3100_writeCaptionDs');
+
+                if (typeId) {
+                    dataSet.setQueryParameter('docCategory', 'ACP_REQUISITION');
+                    dataSet.setQueryParameter('docTypeId', typeId);
+                    dataSet.query();
+                }
+            }
+            
+            function ACP3100_writeCaptionQueryFunc(dataSet) {
+                var records = dataSet.getAll();
+                if (Ext.get('ACP3110_writeCaption') && records.length == 0) {
+                    var html = '<div class="doc_note_empty">';
+                    html += '<span>$[l:doc_type_unconfigured_description]</span>';
+                    html += '</div>';
+                    Ext.get('ACP3110_writeCaption').dom.innerHTML = html;
+                } else {
+                    var captionHtml = '';
+                    for (var i = 0;i < records.length;i++) {
+                        var title = records[i].get('lineStepTitle') == undefined ? ' ' : records[i].get('lineStepTitle');
+                        var longContent = records[i].get('stepContent') == undefined ? ' ' : records[i].get('stepContent');
+                        var shortContent = longContent.length > 72 ? longContent.substring(1, 72) + '...' : longContent;
+                        var innerHtml = '<div class="doc_note_info">';
+                        innerHtml += '<p class="doc_note_step">' + title + '</p>';
+                        innerHtml += '<p class="doc_note_summary" onmouseover="$A.ToolTip.show(this' + ',\'' + longContent + '\')">' + shortContent + '</p>';
+                        innerHtml += '</div>';
+                        if (i != records.length - 1) {
+                            innerHtml += '<div class="doc_note_arrow">>></div>';
+                        }
+                        captionHtml += innerHtml;
+                    }
+                    Ext.get('ACP3110_writeCaption').dom.innerHTML = captionHtml;
+                }
+            }
+        ]]></script>
+        <span>
+            <script><![CDATA[
+            function ACP3100_expRequisitionTypeInfoRenderer(value, record, name) {
+                var tplt = new Ext.Template([
+                '<div class="acp-pay-req-type-info">', 
+                '	<img src="$[/request/@context_path]/{iconFileName}" width="60" height=60" class="acp-pay-req-type-icon"/>',
+                '	<div class="acp-pay-req-type-desc">{moPayReqTypeName}</div>',
+                '	<div class="clearfix"></div>', 
+                '</div>']);
+            	var moPayReqTypeName = record.get('moPayReqTypeName')
+                var flowinfoa_width = parseInt(document.body.clientWidth / 8);
+                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+                    flowinfoa_width = 142.5;
+                }
+                var docHtml ='<div id="flowInfoAId" style="margin-left: 10px;max-width:' + flowinfoa_width + 'px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;" onmouseover="$A.ToolTip.show(this' + ',\'' + moPayReqTypeName + '\')">'+ moPayReqTypeName + '</div>';
+                return tplt.applyTemplate({
+                    iconFileName: record.get('iconFileName'),
+                    moPayReqTypeName: docHtml
+                });
+            }
+            ]]></script>
+            </span>
+        <a:dataSets>
+            <a:dataSet id="ACP3100_writeCaptionDs" queryUrl="$[/request/@context_path]/exp/mo-write-caption-ln/getWriteCaptionByDocType">
+                <a:events>
+                    <a:event name="load" handler="ACP3100_writeCaptionQueryFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ACP3100_typeChoiceEmployeeDs">
+                <a:datas dataSource="authEmployee/records"/>
+            </a:dataSet>
+            <a:dataSet id="ACP3100_typeChoiceRequisitionTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/acp/mo-pay-req-type/getAcpMoPayReqTypeList">
+                <a:events>
+                    <a:event name="indexchange" handler="ACP3100_onIndexChange"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="ACP3100_typeChoiceAccEntityDs" autoQuery="true" queryUrl="$[/request/@context_path]/gld/account-entity/queryAccEntityAndCurrencyCode"/>
+            <a:dataSet id="ACP3100_typeChoiceCurrencyListDs" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y"/>
+            <a:dataSet id="ACP3100_typeChoiceDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="name" displayField="name" options="ACP3100_typeChoiceEmployeeDs" prompt="exp_requisition_header.employee_id" required="true" returnField="employeeId" valueField="employeeId"/>
+                    <a:field name="paymentCurrencyName" displayField="currencyName" options="ACP3100_typeChoiceCurrencyListDs" prompt="exp_requisition_header.payment_currency_code" required="true" returnField="paymentCurrencyCode" valueField="currencyCode"/>
+                    <a:field name="accEntityName" displayField="accEntityName" options="ACP3100_typeChoiceAccEntityDs" prompt="gld_accounting_entity.acc_entity_name" required="true" returnField="accEntityId" valueField="accEntityId">
+                        <a:mapping>
+                            <a:map from="payCurrencyCode" to="payCurrencyCode"/>
+                            <a:map from="payCurrencyName" to="payCurrencyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="payCurrencyCode"/>
+                    <a:field name="payCurrencyName"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="ACP3100_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form marginWidth="0" title="filling_explanation">
+                <div id="ACP3110_writeCaption" class="doc_note"/>
+            </a:form>
+            <a:form column="3" marginWidth="0" title="hap_basic_info">
+                <a:hBox>
+                    <a:comboBox name="name" bindTarget="ACP3100_typeChoiceDs" width="150"/>
+                    <a:comboBox name="paymentCurrencyName" bindTarget="ACP3100_typeChoiceDs" width="150"/>
+                    <a:comboBox name="accEntityName" bindTarget="ACP3100_typeChoiceDs" width="150"/>
+                </a:hBox>
+            </a:form>
+            <a:form marginWidth="0" title="acp_requisition.req_types">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                </a:formToolbar>
+                <a:floatList bindTarget="ACP3100_typeChoiceRequisitionTypeDs" clickable="true" closeable="false" columnnumber="4" loadMore="false" marginHeight="100" rowStyle="margin-top:10px;" style="box-shadow:none;width:100%">
+                    <a:columns>
+                        <a:column name="payTypeInfo" renderer="ACP3100_expRequisitionTypeInfoRenderer"/>
+                    </a:columns>
+                    <a:events>
+                        <a:event name="dblclick" handler="ACP3100_onRequisitionTypeClick"/>
+                    </a:events>
+                </a:floatList>
+            </a:form>
+        </a:screenBody>
+        <script><![CDATA[
+                Aurora.onReady(function() {
+                        ACP3100_loadComplete();
+                });
+
+        ]]></script>
+    </a:view>
+</a:screen>

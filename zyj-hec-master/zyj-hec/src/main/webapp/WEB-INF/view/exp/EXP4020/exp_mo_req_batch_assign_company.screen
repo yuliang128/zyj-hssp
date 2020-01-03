@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="EXP4020_mo_req_company_batch_assign_link"
+                url="$[/request/@context_path]/exp/mo-req-type-asgn-com/batchAssignCompany"/>
+        <script><![CDATA[
+        function EXP4020_assignCom() {
+            var companyRecords = $au('EXP4020_batchMoReqTypeAssignComDs').getJsonData(true);
+            var param = {};
+            var typeRecords = [];
+            var typeRecord;
+            if ('$[/parameter/@flag]' == 'Y') {
+                typeRecords = $au('EXP4020_moReqTypesResultDs').getJsonData(true);
+            } else {
+                typeRecord = $au('EXP4020_moReqTypesResultDs').getCurrentRecord();
+                typeRecords.push(typeRecord.data);
+            }
+            if (companyRecords.length == 0) {
+                Aurora.showInfoMessage('$[l:PROMPT]', '$[l:PROMPT.PLEASE_SELECT]', null, 250, 100);
+                return;
+            }
+            param['typeRecords'] = typeRecords;
+            param['assignComRecords'] = companyRecords;
+            Aurora.request({
+                lockMessage: '$[l:HAP_WAITING]',
+                url: $au('EXP4020_mo_req_company_batch_assign_link').getUrl(),
+                para: param,
+                success: EXP4020_closeAsgnBatchCreateWindow,
+                scope: this
+            });
+        }
+
+        function EXP4020_closeAsgnBatchCreateWindow() {
+            $au('EXP4020_mo_req_type_batch_asgn_com_window').close();
+            //$au('EXP4020_MoReqTypeAssignComDs').query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4020_moReqTypesBatchDs" autoQuery="true"
+                       baseUrl="/exp/mo-req-type"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type/query?moExpReqTypeId=$[/parameter/@moExpReqTypeId]">
+                <a:fields>
+                    <a:field name="moExpReqTypeCode" prompt="exp_mo_req_types.mo_exp_req_type_code"
+                             typeCase="upper"/>
+                    <a:field name="description" prompt="exp_mo_req_types.description"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP4020_batchMoReqTypeAssignComDs"
+                       queryUrl="$[/request/@context_path]/exp/mo-req-type-asgn-com/queryFndCompanyTypeId?moExpReqTypeId=$[/parameter/@moExpReqTypeId]&amp;magOrgId=$[/parameter/@magOrgId]"
+                       autoQuery="true" selectable="true">
+                <a:fields>
+                    <a:field name="companyId"/>
+                    <a:field name="companyCode" prompt="fnd_company.company_code"/>
+                    <a:field name="companyShortName" prompt="fnd_company.company_short_name"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4020_moReqTypeBatchAsgnComForm" column="2"
+                    title="exp_mo_req_type_asgn_com.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:toolbarButton click="EXP4020_assignCom" text="HEC_ASSIGN" width="80"/>
+                    <a:toolbarButton click="EXP4020_closeAsgnBatchCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReqTypeCode" bindTarget="EXP4020_moReqTypesBatchDs" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4020_moReqTypesBatchDs" readOnly="true"/>
+            </a:form>
+            <a:grid bindTarget="EXP4020_batchMoReqTypeAssignComDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" width="120"/>
+                    <a:column name="companyShortName" align="center" width="225"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

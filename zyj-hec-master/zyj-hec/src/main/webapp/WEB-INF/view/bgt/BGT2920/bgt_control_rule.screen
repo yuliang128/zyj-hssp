@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_control_rule_details_link" url="$[/request/@context_path]/bgt/BGT2920/bgt_control_rule_detail.screen"/>
+        <a:link id="BGT2920_organizations_select_link" url="$[/request/@context_path]/bgt/BGT2920/bgt_control_rule_org_select.screen"/>
+        <script><![CDATA[
+            function query() {
+                $au('bgt_result_ds').query();
+            }
+            
+            function column_detail(value, record, name) {
+                var controlRuleId = record.get('controlRuleId');
+                var bgtOrgId = record.get('bgtOrgId');
+            
+                if (controlRuleId) {
+                    return '<a href="javascript:column_detail_id(' + controlRuleId + ',' + bgtOrgId + ')">$[l:bgt_period_sets.detail]</a>';
+                }
+            }
+            
+            function column_detail_id(id, bgtOrgId) {
+                new Aurora.Window({
+                    id: 'new_column_detail_window',
+                    url: $au('bgt_control_rule_details_link').getUrl() + '?controlRuleId=' + id + '&bgtOrgId=' + bgtOrgId,
+                    title: '$[l:csh_payment_batch_rule.detail]',
+                    fullScreen: true
+                });
+            }
+            
+            function reset() {
+                $au('bgt_query_ds').reset();
+            }
+            
+            function isNew_add_tf(record, name) {
+                if (record.isNew) {
+                    return "editotr_tf_up";
+                } else {
+                    return false;
+                }
+            }
+            
+            function submitSuccessFunction() {
+                $au('bgt_result_grid').onLoad();
+            }
+            
+            function BGT2920_back() {
+                window.location.href = $au('BGT2920_organizations_select_link').getUrl();
+            }
+            
+            function BGT2920_beforeDsCreate() {
+                var bgtOrgName = $au('bgt_query_ds').getAt(0).get('bgtOrgName');
+                if (Ext.isEmpty(bgtOrgName)) {
+                    new Aurora.showMessage('$[l:sys_not_null]', '$[l:bgt.bgt_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function BGT2920_bgtOrgsDsQuery() {
+                $au('BGT2920_bgtOrgsDs').query();
+            }
+            
+            function BGT2920_onDsAdd(ds, rd, idx) {
+                var bgtOrgId = $au('bgt_query_ds').getAt(0).get('bgtOrgId');
+                rd.set('bgtOrgId', bgtOrgId);
+                $au('control_strategy_select_ds').setQueryParameter('bgtOrgId',rd.get('bgtOrgId'));
+                $au('control_strategy_select_ds').query();
+            }
+            
+            function BGT2920_onQueryDsUpdate(ds, rd, name, value, old) {
+                if ('bgtOrgId' == name) {
+                    $au('bgt_result_ds').query();
+                    $au('control_strategy_select_ds').setQueryParameter('bgtOrgId',rd.get('bgtOrgId'));
+                    $au('control_strategy_select_ds').query();
+                }
+            }
+
+            function BGT2920_bgtControlRuleSubmit(){
+                var ds = $au('bgt_result_ds');
+                var records = ds.getAll();
+                for(var i = 0;i<records.length;i++){
+                    var startDate = records[i].get('startDate');
+                    var endDate = records[i].get('endDate');
+                    debugger;
+                    if(endDate && endDate <startDate){
+                        Aurora.showErrorMessage('$[l:prompt]', '$[l:error.end_date_more_start_date]', null, 300, 150);
+                        return;
+                    }
+                }
+                ds.submit();
+
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT2920_bgtOrgsDs" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/bgt/organization/queryBgtOrganizationOptions"/>
+            <a:dataSet id="control_strategy_select_ds" autoQuery="false" baseUrl="/bgt/control-strategy-group" queryUrl="$[/request/@context_path]/bgt/control-strategy-group/queryByBgtOrgId"/>
+            <a:dataSet id="bgt_query_ds">
+                <a:fields>
+                    <a:field name="bgtOrgId" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgId]"/>
+                    <a:field name="bgtOrgName" defaultValue="$[/model/defaultBgtOrgOfMagOrg/records/record/@bgtOrgCodeName]" displayField="bgtOrgCodeName" options="BGT2920_bgtOrgsDs" prompt="bgt_budget_item.budget_org_id" required="true" returnField="bgtOrgId" valueField="bgtOrgId"/>
+                    <a:field name="controlRuleCode" prompt="csh_payment_batch_rule.rule_code"/>
+                    <a:field name="description" prompt="fnd_coding_rule.coding_rules_description"/>
+                    <a:field name="controlGroupName"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT2920_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="bgt_result_ds" autoPageSize="true" autoQuery="true" baseUrl="/bgt/control-rule" queryDataSet="bgt_query_ds" selectable="false">
+                <a:fields>
+                    <a:field name="bgtOrgId" required="true"/>
+                    <a:field name="controlRuleId"/>
+                    <a:field name="controlRuleCode" prompt="csh_payment_batch_rule.rule_code" required="true"/>
+                    <a:field name="description" prompt="fnd_coding_rule.coding_rules_description" dto="com.hand.hec.bgt.dto.BgtControlRule" dtoId="bgtOrgId" required="true"/>
+                    <a:field name="priority" prompt="bgt_budget_item_mapping.priority" required="true"/>
+                    <a:field name="budgetStrategyGroupId"/>
+                    <a:field name="budgetStrategyDisplay" displayField="controlStrategyGroupDesc" options="control_strategy_select_ds" prompt="bgt_control_rule.budget_strategy_group_id" required="true" returnField="budgetStrategyGroupId" valueField="controlStrategyGroupId"/>
+                    <a:field name="startDate" datatype="date" prompt="csh_payment_rule.start_date" required="true"/>
+                    <a:field name="endDate" datatype="date" prompt="csh_payment_rule.end_date"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="submitSuccessFunction"/>
+                    <a:event name="beforecreate" handler="BGT2920_beforeDsCreate"/>
+                    <a:event name="add" handler="BGT2920_onDsAdd"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="bgt_result_grid" type="add" width="80"/>
+                <a:gridButton bind="bgt_result_grid" type="save" click="BGT2920_bgtControlRuleSubmit" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="bgt_query_ds" resultTarget="bgt_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="bgtOrgName" bindTarget="bgt_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="BGT2920_bgtOrgsDsQuery"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="controlRuleCode" bindTarget="bgt_query_ds"/>
+                    <a:textField name="description" bindTarget="bgt_query_ds"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="bgt_result_grid" bindTarget="bgt_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="priority" align="center" editor="editor_tf" sortable="true" width="80"/>
+                <a:column name="controlRuleCode" align="center" editorFunction="isNew_add_tf" sortable="true" width="120"/>
+                <a:column name="description" align="left" editor="editor_tld" sortable="true" width="200"/>
+                <a:column name="budgetStrategyDisplay" align="left" editor="editor_cob" sortable="true" width="200"/>
+                <a:column name="startDate" align="center" editor="editor_dp" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                <a:column name="endDate" align="center" editor="editor_dp" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                <a:column name="detail" align="center" renderer="column_detail" sortable="true" width="100"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="editotr_tf_up" typeCase="upper"/>
+                <a:textField id="editor_tf"/>
+                <a:tledit id="editor_tld"/>
+                <a:comboBox id="editor_cob"/>
+                <a:datePicker id="editor_dp"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

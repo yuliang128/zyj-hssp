@@ -1,0 +1,665 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-6-21 上午10:15:50  
+    $Revision: 1.0  
+    $Purpose: 我的借款申请
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="CSH5010_pay_requisition_maintain_main_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_maintain_main.screen"/>
+        <a:link id="CSH5010_pay_requisition_view_main_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_main.screen"/>
+        <a:link id="CSH5010_csh_payment_requisition_type_choice_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_type_choice.screen"/>
+        <a:link id="CSH5010_csh_payment_requisition_deleteHeader_link" url="$[/request/@context_path]/csh/payment-requisition-hd/deletePaymentRequisition" />
+        <a:link id="CSH5010_exp_document_history_query_link" url="$[/request/@context_path]/expm/public/exp_document_history_query.screen"/>
+        <a:link id="wfl_workflow_preview_approve_link" url="$[/request/@context_path]/wfl/WFL1001/wfl_workflow_preview_for_user.screen"/>
+        <a:link id="wfl_workflow_preview_before_submit_link" url="$[/request/@context_path]/wfl/WFL1001/wfl_workflow_preview_before_submit.screen"/>
+        <a:link id="CSH5010_pay_requisition_main_view_ref_report_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_ref_report.screen"/>
+        <a:link id="CSH5010_pay_requisition_main_view_ref_repayment_link" url="$[/request/@context_path]/csh/CSH5010/csh_payment_requisition_view_ref_repayment.screen"/>
+        <style>
+        	.item-float-list-row>table{
+        	    width:100%;
+        	    border:1px solid #f1f1f1;
+        	}
+        	
+        	.info-block{
+        	    height:75px!important;
+        	    border-right:1px solid #f1f1f1;
+        	    border-spacing: 0px;
+        	    padding-left:10px;
+        	}
+        
+    		.info-title{
+    		    height:35px;
+    		    line-height:35px;
+    		    color:#005a78;
+    		    font-weight:bold;
+    		}
+    		
+    		.info-detail{
+    		    height:30px;
+    		    line-height:20px;
+    		    vertical-align:top;
+    		    color:#999;
+    		    font-size:12px;
+    		}
+    		
+    		.progress-color-bar
+    		    width:5px;
+    		    height:77px;
+    		    border:none;
+    		}
+    		/*
+    		正常状态：绿色 #3c763d
+    		拒绝状态：红色 #a94442
+    		收回状态：黄色 #d6ad65
+    		结束状态：蓝色 #31708f
+    		*/
+    		
+    		.progress-color-GENERATE{
+    		    background-color:#3c763d;
+    		}
+    		
+    		.progress-color-TAKEN_BACK{
+    		    background-color:#d6ad65;
+    		}
+    		
+    		.progress-color-REJECTED{
+    		    background-color:#a94442;
+    		}
+    		
+    		.progress-color-SUBMITTED{
+    		    background-color:#3c763d;
+    		}
+    		
+    		.progress-color-COMPLETELY_APPROVED{
+    		    background-color:#3c763d;
+    		}
+    		
+    		.progress-color-AUDIT{
+    		    background-color:#3c763d;
+    		}
+    		
+    		.progress-color-PAID{
+    		    background-color:#3c763d;
+    		}
+    		
+    		.progress-color-COMPLETELY_PAID{
+    		    background-color:#31708f;
+    		}
+    		
+    		.progress-color-CLOSED{
+    		    background-color:#31708f;
+    		}
+    		
+    		.history-block{
+    		    z-index:2;
+    		    position:fixed;
+    		    width:100%;
+    		}
+    		.info-amount{
+    		    height:30px;
+    		    line-height:20px;
+    		    color:#3c763d;
+    		    font-weight:bold;
+    		}
+    		.history-hidden{
+    		    visibility: hidden;
+    		}
+    		
+    		.history-show{
+    		    visibility: visible;
+    		}
+    	</style>
+        <script src="$[/request/@context_path]/resources/js/aurora/hap/chart/echarts.min.js"/>
+        <script><![CDATA[
+            function CSH5010_query() {
+                $au('CSH5010_queryResultDs').query();
+            }
+            
+            function CSH5010_onQueryConditionDsUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'csh_pay_req_status_all') {
+                    if (value == 'Y') {
+                        record.set('cshPayReqStatusCanModify', 'Y');
+                        record.set('cshPayReqStatusSubmitted', 'Y');
+                        record.set('cshPayReqStatusApproved', 'Y');
+                        record.set('cshPayReqStatusAudited', 'Y');
+                        record.set('cshPayReqStatusPaid', 'Y');
+                        record.set('cshPayReqStatusClosed', 'Y');
+                    } else if (value == 'N') {
+                        record.set('cshPayReqStatusCanModify', 'N');
+                        record.set('cshPayReqStatusSubmitted', 'N');
+                        record.set('cshPayReqStatusApproved', 'N');
+                        record.set('cshPayReqStatusAudited', 'N');
+                        record.set('cshPayReqStatusPaid', 'N');
+                        record.set('cshPayReqStatusClosed', 'N');
+                    }
+                } else if ((name == 'cshPayReqStatusCanModify' || name == 'cshPayReqStatusSubmitted' || name == 'cshPayReqStatusApproved' || name == 'cshPayReqStatusAudited' || name == 'cshPayReqStatusPaid' || name == 'cshPayReqStatusClosed') && value == 'N') {
+                    record.data['csh_pay_req_status_all'] = 'N';
+                    $au('CSH5010_expReportStatusAllCb').render(record);
+                } else if (name == 'payeeCategory') {
+                    record.set('payeeName', '');
+                    record.set('payeeId', '');
+                    if (value) {
+                        record.getField('payeeName').setLovPara('payeeCategory', value);
+                        record.getField('payeeName').setReadOnly(false);
+                    } else {
+                        record.getField('payeeName').setReadOnly(true);
+                    }
+                } else if (name == 'cshPayReqDateScope') {
+                    CSH5010_query();
+                }
+            }
+            
+            function CSH5010_onPayRequisitionClickFun(id, status) {
+                if (status == 'GENERATE' || status == 'TAKEN_BACK' || status == 'REJECTED') {
+                    new Aurora.Window({
+                        url: $au('CSH5010_pay_requisition_maintain_main_link').getUrl() + '?paymentRequisitionHeaderId=' + id,
+                        id: 'CSH5010_pay_requisition_maintain_main_window',
+                        fullScreen: true
+                    });
+                } else {
+                    new Aurora.Window({
+                        url: $au('CSH5010_pay_requisition_view_main_link').getUrl() + '?paymentRequisitionHeaderId=' + id,
+                        id: 'CSH5010_pay_requisition_view_main_window',
+                        fullScreen: true
+                    });
+                }
+            }
+            
+            function CSH5010_onPayeeNameFocusFun() {
+                //  var record = $au('CSH5010_queryConditionDs').getAt(0);
+                var record = $au('CSH5010_queryConditionDs').getCurrentRecord();
+                //modify lcy 2018/1/ 11 22: 30: 12新增校验
+                var payeeCategory = record.get('payeeCategory');
+                if (Ext.isEmpty(payeeCategory)) {
+                    new Aurora.showErrorMessage('$[l:prompt.error]', '$[l:exp_report_main.payee_category_is_null]', null, 300, 400);
+                    return;
+                }
+                record.getField('payeeName').setLovPara('payeeCategory', record.get('payeeCategory'));
+            }
+            
+            function CSH5010_init() {
+                $au('CSH5010_queryConditionDs').create();
+            }
+            
+            function CSH5010_openReportTypeChoice() {
+                new Aurora.Window({
+                    url: $au('CSH5010_csh_payment_requisition_type_choice_link').getUrl(),
+                    id: 'CSH5010_csh_payment_requisition_type_choic_window',
+                    fullScreen: true
+                });
+            }
+
+            function CSH5010_dateScopeLoad(ds) {
+                var record = $au('CSH5010_queryConditionDs').getAt(0);
+                record.set('cshPayReqDateScopeName', (new HecUtil()).getNameByValue(ds, 'value', 'meaning', '000-090'));
+                record.set('cshPayReqDateScope', '000-090');
+            }
+
+        //Aurora.onReady(CSH5010_init);
+        ]]></script>
+        <span><![CDATA[
+        <script>
+        	function CSH5010_progressColorRenderer(value,record,name){
+        	    var tplt = new Ext.Template([
+        	    '<div class="progress-color-bar progress-color-{progressStatus}"></div>'
+        	    ]);
+        	    
+        	    return tplt.applyTemplate({
+        	        progressStatus:record.get('progressStatus')
+        	    });
+        	}
+        
+            function CSH5010_docNumberAndTypeRenderer(value,record,name) {
+                var tplt = new Ext.Template([
+                '<table class="info-block">',
+                '	<tr>',
+                '		<td class="info-title">',
+                '			{docTypeName}',
+                '		</td>',
+                '	</tr>',
+                '	<tr>',
+                '		<td class="info-detail">',
+                '			{docNumber}',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                var numberHtml = '<a href="javascript:CSH5010_onPayRequisitionClickFun(' + record.get('paymentRequisitionHeaderId') + ',\'' + record.get('status') + '\')" >' + record.get('requisitionNumber') + '</a>'
+                var flowinfoa_width = parseInt(document.body.clientWidth / 9.5);
+                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+                    flowinfoa_width = 142.5;
+                }
+                var docTypeName = record.get('paymentReqTypeName') == undefined ?'':record.get('paymentReqTypeName');
+                var docHtml ='<div id="flowInfoAId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docTypeName + '\')">'+ docTypeName + '</div>';
+                return tplt.applyTemplate({
+                    docTypeName:docHtml,
+                    docNumber:numberHtml
+                });
+            }
+            
+            function CSH5010_reportDateAndDescRendnerer(value,record,name){
+                var tplt = new Ext.Template([
+               '<table border="0" class="info-block">',
+                '	<tr>',
+                '		<td width="20%" class="info-title">',
+                '			{docDate}',
+                '		</td>',
+                '		<td width="30%" align="center" class="info-title">',
+                '			{employeeName}',
+                '		</td>',
+                '		<td width="50%" class="info-title">',
+                '			{unitInfo}',
+                '		</td>',
+                '	</tr>',
+                '	<tr>',
+                '		<td colspan="3" class="info-detail">',
+                '			{docDesc}',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                
+                var docDesc = record.get('description') == undefined ?'':record.get('description');
+                var flowinfoa_width = parseInt(document.body.clientWidth * 3 / 9.5);
+                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+                    flowinfoa_width = 427.5;
+                }
+                var docHtml ='<div id="flowInfoBId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + flowinfoa_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + docDesc + '\')">'+ docDesc + '</div>';
+                
+                //update by penglei 20180503 长度自适应调整 begin
+                var unitName = record.get('unitName');
+                var accEntityName = record.get('accEntityName');
+                if(unitName == undefined && accEntityName == undefined){
+                    unitDesc = '';
+                }else{
+                    var unitDesc = unitName +' / '+ accEntityName;
+                }
+                var unitHtml_width = parseInt(document.body.clientWidth * 3 / 19);
+                if(unitHtml_width < 100 || unitHtml_width == null || unitHtml_width == undefined){
+                    unitHtml_width = 213.5;
+                }
+                var unitHtml ='<div id="flowInfoCId" style="margin-left: 10px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;max-width:' + unitHtml_width + 'px;" onmouseover="$A.ToolTip.show(this' + ',\'' + unitDesc + '\')">'+ unitDesc + '</div>';
+                //by pl end
+                
+                return tplt.applyTemplate({
+                    docDate:record.get('requisitionDate'),
+                    employeeName: record.get('employeeName'),
+                    unitInfo: unitHtml,
+                    docDesc: docHtml
+                });
+            }
+            
+            function CSH5010_reportAmountRenderer(value,record,name) {
+                var tplt = new Ext.Template([
+                '<table class="info-block">',
+                '	<tr>',
+                '		<td  class="info-title" style="text-align:right;padding-right:10px;font-size:15px;">',
+                '			<span onmouseover="$A.ToolTip.show(this,\'$[l:acp_requisition.amount]\')" >{currencySymbol}&nbsp;{docAmount}</span>',
+                '		</td>',
+                '	</tr>',
+                '	<tr>',
+                '		<td class="info-amount" style="text-align:right;padding-right:10px;font-size:13px;">',
+                '			<span onmouseover="$A.ToolTip.show(this,\'$[l:csh_payment_requisition.already_paying]\')">{currencySymbol1}&nbsp;{paidAmount}</span>',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                
+                return tplt.applyTemplate({
+                    docAmount:Aurora.formatMoney(record.get('totalPaymentAmount')),
+                    currencySymbol:record.get('paymentCurrencySymbol'),
+                    paidAmount:Aurora.formatMoney(record.get('paidAmount')),
+                    currencySymbol1:record.get('paymentCurrencySymbol')
+                });
+            }
+            
+            function CSH5010_progressRenderer(value,record,name,floatList) {
+            	function onProgressLoad(){
+            	    var progressDom = document.getElementById('progress-' + record.id);
+            	    if(!progressDom){
+            	        return ;
+            	    }
+            	    var progressChart = echarts.init(progressDom);
+            	    if (record.get('progressStatus') == 'GENERATE' || record.get('progressStatus') == 'SUBMITTED' || record.get('progressStatus') == 'COMPLETELY_APPROVED' || record.get('progressStatus') == 'AUDIT' || record.get('progressStatus') == 'PAID') {
+            	        var progressColor = '#3c763d';
+            	    }else if (record.get('progressStatus') == 'REJECTED'){
+            	        var progressColor = '#a94442';
+            	    }else if (record.get('progressStatus') == 'TAKEN_BACK'){
+            	        var progressColor = '#d6ad65';
+            	    }else if (record.get('progressStatus') == 'COMPLETELY_PAID'){
+            	        var progressColor = '#31708f';
+            	    }else if (record.get('progressStatus') == 'CLOSED'){
+            	        var progressColor = '#31708f';
+            	    }
+					option = {
+					    series: [
+					        {
+					            name:'执行进度',
+					            type:'pie',
+					            radius: ['70%', '80%'],
+					            avoidLabelOverlap: false,
+					            hoverAnimation:false,
+					            animation:false,
+					            label: {
+					                normal: {
+					                    show: true,
+					                    position: 'center',
+					                    textStyle: {
+					                        fontSize: '11',
+					                        fontWeight: 'bold',
+					                        color:'#000'
+					                    }
+					                }
+					            },
+					            labelLine: {
+					                normal: {
+					                    show: false
+					                }
+					            },
+					            color:[progressColor,'#f1f1f1'],
+					            data:[
+					                {value:record.get('progressCount'),name:record.get('progressStatusName')},
+					                {value:100 - record.get('progressCount'),name:''}
+					            ]
+					        }
+					    ]
+					};
+					
+					progressChart.setOption(option);
+            	}
+
+
+               //设置事件
+                var tplt = new Ext.Template([
+                '<div class="info-block" onmouseleave="CSH5010_onProgressMouseLeave(' + record.id + ',event);">',
+                '<div id="progress-{recordId}" onClick="CSH5010_showHistory(' + record.get('paymentRequisitionHeaderId') + ','+ record.get('expenseRequisitionHeaderId') +',' + record.id + ',event);" style="width:80px;height:80px;margin:auto;"></div>',
+                '<div class="history-block history-hidden" id="history-{recordId}">'
+                ]);
+                
+                floatList['on']('load',onProgressLoad,this);
+                
+                return tplt.applyTemplate({
+                    recordId:record.id
+                });
+				            
+            }
+            function CSH5010_operationRenderer(value,record,name) {
+                var tplt = new Ext.Template([
+                '<table  class="info-block" style="border-right:none;">',
+                '	<tr>',
+                '		<td width="33%" align="center">',
+                '			{deleteLink}',
+                '		</td>',
+                '		<td width="33%" align="center">',
+                '			{printLink}',
+                '		</td>',
+                '		<td width="33%" align="center">',
+                '			{previewLink}',
+                '		</td>',
+                '	</tr>',
+                '</table>'
+                ]);
+                if (record.get('status') == 'GENERATE' || record.get('status') == 'TAKEN_BACK' || record.get('status') == 'REJECTED'){
+                	dLink = ' <img onmouseover="$A.ToolTip.show(this,\'$[l:hap_delete]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete.png" alt="$[l:hap_delete]" onclick="CSH5010_deleteHeader(' + record.get('paymentRequisitionHeaderId') + ',event);"/> ';
+                }else{
+                    dLink = ' <img onmouseover="$A.ToolTip.show(this,\'$[l:hap_delete]\')" src="$[/request/@context_path]/resources/images/aurora/hap/delete-1.png" alt="$[l:hap_delete]"/> ';
+                }
+                hLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:hap_history]\')" src="$[/request/@context_path]/resources/images/aurora/hap/history.png" alt="$[l:hap_history]" onClick="CSH5010_showHistory(' + record.get('paymentRequisitionHeaderId') + ',event);"/>' ;
+                pLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:hap_print]\')" src="$[/request/@context_path]/resources/images/aurora/hap/print.png" alt="$[l:hap_print]" onClick="EXP5010_print(' + record.get('paymentRequisitionHeaderId') + ',\''+ record.get('reportName') +'\', event);"/>';
+                
+                //modified by liliang 2018/6/1 
+                //添加预览子页面
+                //提交状态的单据可以预览 显示预览图标
+                if (record.get('status') == 'SUBMITTED'){
+                	preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:wfl.preview]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:WFL.PREVIEW]" onClick="CSH5010_PreviewWinFunc(' + record.get('instanceId') + ', event);"/>' ;
+                }
+                //未提交状态的单据可以预览 显示预览图标
+                else if (record.get('status') == 'GENERATE'||record.get('status') == 'TAKEN_BACK'||record.get('status') == 'REJECTED'){
+                	preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:wfl.preview]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview.png"  alt="$[l:WFL.PREVIEW]" onClick="CSH5010_PreviewBSWinFunc(' + record.get('paymentReqTypeId')+','+ record.get('companyId')+','+ record.get('paymentRequisitionHeaderId')+',\''+ record.get('autoApproveFlag') + '\', event);"/>' ;
+                }else{
+                 //其他状态的单据用灰色图标
+                    preLink = '<img onmouseover="$A.ToolTip.show(this,\'$[l:wfl.preview]\')" src="$[/request/@context_path]/resources/images/aurora/hap/preview-1.png"  alt="$[l:WFL.PREVIEW]""/>';
+                }
+                
+                return tplt.applyTemplate({
+                    deleteLink: dLink,
+                    printLink: pLink,
+                    previewLink: preLink,
+                    docAmount:Aurora.formatMoney(record.get('totalPaymentAmount')),
+                    currency_symbol:record.get('paymentCurrencySymbol')
+                });
+            }
+            
+            //预览
+            function CSH5010_PreviewWinFunc(id) {
+                new Aurora.Window({
+                    id: 'preview_window',
+                    url: $au('wfl_workflow_preview_approve_link').getUrl() + '?instanceId=' + id,
+                    title: '$[l:wfl.wfl_approve_preview]',
+                    fullScreen: true
+                });
+            }
+            
+            //提交前预览
+            function CSH5010_PreviewBSWinFunc(transactionTypeId,companyId,instanceParam,autoApproveFlag) {
+                if (autoApproveFlag=='Y') {
+                    Aurora.showWarningMessage('$[l:prompt]', '$[l:the_csh_payment_requisition_is_auto_approve]', null, 200, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'preview_window',
+                    url: $au('wfl_workflow_preview_before_submit_link').getUrl() + '?transactionCategory=PAYMENT_REQUISITION&transactionTypeId=' + transactionTypeId + '&companyId=' + companyId + '&instanceParam=' + instanceParam,
+                    title: '$[l:wfl.wfl_approve_preview]',
+                    fullScreen: true
+                });
+            }
+            
+            //modify lcy 2018/2/2 14:02:12 新增打印逻辑
+            function EXP5010_print(headerId,reportName, event){
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                if(reportName == '' || reportName == null || reportName == 'undefined'){
+            	   new Aurora.showMessage('$[l:prompt]','$[l:unconfigured_report_name]',null,300,100);
+                   return '';
+                }else{
+                   window.open('$[/request/@context_path]/reports?__report=reports/'+reportName+'&__format=pdf&paymentRequisitionHeaderId='+headerId);
+                }
+            }
+             function CSH5010_deleteHeader(id, event){ 
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                Aurora.showConfirm('$[l:exit_system]', '确认 [ <font color="red">删除</font> ] 当前借款申请单？', function(resp) {
+                    Aurora.request({
+                        url: $au('CSH5010_csh_payment_requisition_deleteHeader_link').getUrl(),
+                        para: {'paymentRequisitionHeaderId': id},
+                        success: function() {
+                            CSH5010_query();
+                        },
+                        scope: this
+                    });
+                    resp.close();
+                });
+            }
+            
+         // function CSH5010_showHistory(payReqHeaderId, event) {
+             //   event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+            //    new Aurora.Window({
+             //       url: $au('CSH5010_exp_document_history_query_link').getUrl() + '?documentId=' + payReqHeaderId + '&documentType=PAYMENT_REQUISITION',
+              //      id: 'CSH5010_exp_document_history_query_window',
+               //     fullScreen: true
+                //});
+           // }
+           function CSH5010_onProgressMouseLeave(recordId, event){
+                event.stopPropagation(); 
+                historyDiv = $('#history-' + recordId);
+                if(historyDiv.hasClass('history-show')){
+                    historyDiv.removeClass('history-show');
+                    historyDiv.addClass('history-hidden');
+                }
+            }
+            
+            function CSH5010_showHistory(docId, ref_id, recordId, event) {
+                event.stopPropagation(); // 取消掉弹出单据明细页 窗口
+                historyDiv = $('#history-' + recordId);
+                //随费用申请单同步创建的借款申请单查看跟踪单据记录时，查看到需要是费用申请单记录
+               	if(ref_id)
+               	{
+                   docId=ref_id;
+                   var documentType ='EXP_REQUISITION';
+               	}
+               else
+               	{
+                   var documentType ='PAYMENT_REQUISITION';
+               	}
+                if(historyDiv.hasClass('history-hidden')){
+                    //异步加载单据历史页面
+        			historyDiv.load($au('CSH5010_exp_document_history_query_link').getUrl() + '?documentId=' + docId + '&documentType='+documentType, function(url,status,c){
+        			    if(status == 'success'){
+        			    //计算气泡的正确弹出位置
+	        			    CSH5010_correctPosition(recordId);
+		                    historyDiv.removeClass('history-hidden');
+		                    historyDiv.addClass('history-show');
+        			    }
+        			});
+                }else if(historyDiv.hasClass('history-show')){
+                    historyDiv.removeClass('history-show');
+                    historyDiv.addClass('history-hidden');
+                }
+            }
+              function CSH5010_mainOpenRefReport() {
+                var records = $au('CSH5010_queryResultDs').getSelected();
+                if (records.length != 1) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select_one]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    url: $au('CSH5010_pay_requisition_main_view_ref_report_link').getUrl() + '?paymentRequisitionHeaderId=' + records[0].get('paymentRequisitionHeaderId'),
+                    id: 'CSH5010_pay_requisition_main_view_ref_report_window',
+                    fullScreen: true
+                });
+            }
+               function CSH5010_mainOpenRepayment() {
+                var records = $au('CSH5010_queryResultDs').getSelected();
+                if (records.length != 1) {
+                    Aurora.showInfoMessage('$[l:prompt]', '$[l:prompt.please_select_one]', null, 250, 100);
+                    return;
+                }
+                new Aurora.Window({
+                    url: $au('CSH5010_pay_requisition_main_view_ref_repayment_link').getUrl() + '?paymentRequisitionHeaderId=' + records[0].get('paymentRequisitionHeaderId'),
+                    id: 'CSH5010_pay_requisition_main_view_ref_repayment_window',
+                    fullScreen: true
+                });
+            }
+             function CSH5010_correctPosition(id){
+                var flowBox = historyDiv.children('div.flowBox'),
+	                rowDiv = historyDiv.parents('div[_row='+id+']'),
+	                infoBlockDiv = $('#progress-' + id).parents('div.info-block'),
+	                triangleDiv = historyDiv.children('div.triangle'),
+	                width = flowBox.outerWidth(true),
+                	height = flowBox.outerHeight(true),
+                	vh = Aurora.getViewportHeight(),
+                	x = infoBlockDiv.position().left-width+infoBlockDiv.outerWidth(true)/2,
+                	y = rowDiv.position().top;
+            	historyDiv.css({
+            	    "top" : (y + height) > vh ? (vh - height) : y,
+            	    "left": x
+            	    });
+        	    triangleDiv.css({
+        	        "left" : width,
+        	        "top" : (y + height) > vh ? (height - (vh - rowDiv.position().top - infoBlockDiv.outerHeight(true)/2)) : infoBlockDiv.outerHeight(true)/2
+        	    });
+            }
+        </script>
+        ]]></span>
+        <a:dataSets>
+            <a:dataSet id="CSH5010_employeeDs" autoQuery="true" queryUrl="$[/request/@context_path]/exp/employee/queryEmployeeByAuth?docCategory=PAYMENT_REQUISITION"/>
+            <a:dataSet id="CSH5010_reportStatusDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/EXP_EXPENSE_REPORT_STATUS/" />
+            <a:dataSet id="CSH5010_payeeCategoryDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT" />
+            <a:dataSet id="CSH5010_currencyList" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query?enabledFlag=Y" />
+            <a:dataSet id="CSH5010_dateScopeDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/DATE_SCOPE/" >
+                <a:events>
+                    <a:event name="load" handler="CSH5010_dateScopeLoad"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5010_payRequisitionTypeDs" autoQuery="true" queryUrl="$[/request/@context_path]/csh/mo-payment-req-type/queryDftPayReqType"/>
+            <a:dataSet id="CSH5110_mainQuisitionStatusDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/CSH_PAYMENT_QUERY_STATUS" />
+            <a:dataSet id="CSH5010_queryConditionDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="requisitionNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="expRequisitionStatus" displayField="meaning" options="CSH5110_mainQuisitionStatusDs" prompt="acp_acp_requisition_hd.status" returnField="status" valueField="value"/>
+                    <a:field name="cshPayReqDateScopeName" displayField="meaning" options="CSH5010_dateScopeDs" placeHolder="hap_date_range" returnField="cshPayReqDateScope" valueField="value"/>
+                    <a:field name="cshPayReqDateScope" />
+                    <a:field name="employeeName" displayField="codeName" options="CSH5010_employeeDs" placeHolder="csh_payment_requisition_hd.employee_name" returnField="employeeId" valueField="employeeId"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="paymentReqTypeName" displayField="description" options="CSH5010_payRequisitionTypeDs" placeHolder="csh_payment_requisition_hd.payment_req_type_name" returnField="paymentReqTypeId" valueField="moPaymentReqTypeId"/>
+                    <a:field name="paymentReqTypeId"/>
+                    <a:field name="payeeCategoryName" displayField="meaning" options="CSH5010_payeeCategoryDs" placeHolder="csh_payment_requisition_hd.payee_category" returnField="payeeCategory" valueField="value"/>
+                    <a:field name="payeeName" autoComplete="true" autoCompleteField="payeeName" lovCode="LOV_GLD_PAYEE" placeHolder="csh_payment_requisition_hd.payee_name" title="csh_payment_requisition_hd.payee_name" readOnly="true">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="paymentCurrencyName" displayField="currencyName" options="CSH5010_currencyList" placeHolder="csh_payment_requisition_hd.payment_currency_name" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="requisitionDateFrom" placeHolder="csh_payment_requisition_hd.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" placeHolder="csh_payment_requisition_hd.requisition_date_to"/>
+                    <a:field name="amountFrom" placeHolder="csh_payment_requisition_hd.amount_from"/>
+                    <a:field name="amountTo" placeHolder="csh_payment_requisition_hd.amount_to"/>
+                    <a:field name="createdDateFrom" placeHolder="exp_requisition_headers.create_date_from"/>
+                    <a:field name="createdDateTo" placeHolder="exp_requisition_headers.create_date_to"/>
+                    <a:field name="description" placeHolder="csh_payment_requisition_hd.description"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5010_onQueryConditionDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5010_queryResultDs" autoQuery="true" autoPageSize="true" pageSize="20" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryPayRequisitionMain" queryDataSet="CSH5010_queryConditionDs" selectable="true"/>
+        </a:dataSets>
+        <a:screenTopToolbar>
+            <a:button click="CSH5010_openReportTypeChoice" text="hap_create_document" width="80"/>
+            <a:buttonGroup text="b2b_product_picture.operation" width="80">
+                <a:groupButtons>
+                    <a:button click="CSH5010_mainOpenRefReport" text="exp_req.report"/>
+                    <a:button click="CSH5010_mainOpenRepayment" text="hap_repayment"/>
+                </a:groupButtons>
+            </a:buttonGroup>
+        </a:screenTopToolbar>
+        <a:queryForm bindTarget="CSH5010_queryConditionDs" resultTarget="CSH5010_queryResultDs" style="width:100%;border:none;">
+            <a:formToolBar>
+                <a:multiComboBox name="expRequisitionStatus" bindTarget="CSH5010_queryConditionDs"/>
+                <a:comboBox name="cshPayReqDateScopeName" bindTarget="CSH5010_queryConditionDs" />
+                <a:textField name="requisitionNumber" bindTarget="CSH5010_queryConditionDs" >
+                </a:textField>
+            </a:formToolBar>
+            <a:formBody column="4">
+                <a:datePicker name="requisitionDateFrom" bindTarget="CSH5010_queryConditionDs" />
+                <a:datePicker name="requisitionDateTo" bindTarget="CSH5010_queryConditionDs" />
+                <a:comboBox name="paymentReqTypeName" bindTarget="CSH5010_queryConditionDs" />
+                <a:comboBox name="employeeName" bindTarget="CSH5010_queryConditionDs" />
+                <a:comboBox name="paymentCurrencyName" bindTarget="CSH5010_queryConditionDs" />
+                <a:comboBox name="payeeCategoryName" bindTarget="CSH5010_queryConditionDs" />
+                <a:lov name="payeeName" bindTarget="CSH5010_queryConditionDs" />
+                <a:numberField name="amountFrom" bindTarget="CSH5010_queryConditionDs" />
+                <a:numberField name="amountTo" bindTarget="CSH5010_queryConditionDs" />
+                <a:datePicker name="createdDateFrom" bindTarget="CSH5010_queryConditionDs" />
+                <a:datePicker name="createdDateTo" bindTarget="CSH5010_queryConditionDs" />
+                <a:textField name="description" bindTarget="CSH5010_queryConditionDs" />
+            </a:formBody>
+        </a:queryForm>
+        <a:form marginWidth="0" showmargin="false" shrinkable="false" title="exp_payment_requisition.maintain">
+            <a:floatList bindTarget="CSH5010_queryResultDs" clickable="true" closeable="true" loadMore="false" marginHeight="185" navbar="true" rowStyle="width:99%;height:80px;margin-top:2px;margin-bottom:5px;margin-left:10px;margin-right:10px;" style="box-shadow:none;width:100%">
+                <a:columns>
+                    <a:column name="progressColor" renderer="CSH5010_progressColorRenderer" width="1"/>
+                    <a:column name="docNumberAndType" renderer="CSH5010_docNumberAndTypeRenderer" width="15"/>
+                    <a:column name="requisitionDateAndDesc" renderer="CSH5010_reportDateAndDescRendnerer" width="46"/>
+                    <a:column name="requisitionAmount" renderer="CSH5010_reportAmountRenderer" width="16"/>
+                    <a:column name="progress" renderer="CSH5010_progressRenderer" width="13"/>
+                    <a:column name="operation" renderer="CSH5010_operationRenderer" width="9"/>
+                </a:columns>
+            </a:floatList>
+        </a:form>
+    </a:view>
+</a:screen>

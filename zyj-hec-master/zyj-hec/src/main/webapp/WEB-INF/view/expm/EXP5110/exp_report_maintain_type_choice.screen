@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="getAccCurrencyLink" modelaction="query"/>
+        <style><![CDATA[
+        .doc_note {
+            width: 98%;
+            padding-left: 1%;
+            padding-right: 1%;
+            overflow: auto;
+            white-space: nowrap;
+        }
+
+        .doc_note_info {
+            display: inline-block;
+            /* float:left; */
+            width: 19%;
+            white-space: pre-line;
+            vertical-align: top;
+        }
+
+        .doc_note_step {
+            width: 100%;
+            color: #237ae1;
+            line-height: 20px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .doc_note_summary {
+            width: 100%;
+            color: #333;
+            height: 100%;
+            white-space: pre-wrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .doc_note_arrow {
+            display: inline-block;
+            /* float:left; */
+            margin-left: 3%;
+            margin-right: 3%;
+            width: 2%;
+            color: #237ae1;
+            line-height: 100px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .doc_note_empty {
+            font-size: 14px;
+            line-height: 100px;
+            color: #888;
+            width: 100%;
+            display: inline-block;
+            height: 100px;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .exp-report-type-info {
+            padding: 10px;
+            border: 2px dotted #ccc;
+        }
+
+        .exp-report-type-icon {
+            float: left;
+        }
+
+        .exp-report-type-desc {
+            float: left;
+            line-height: 60px;
+            padding-left: 10px;
+        }
+        ]]></style>
+        <script><![CDATA[
+        function EXP5110_queryExpReportTypeList() {
+            $au('EXP5110_typeChoiceReportTypeDs').query();
+        }
+
+        function EXP5110_loadComplete() {
+            var record = $au('EXP5110_typeChoiceDs').getAt(0);
+            record.set('employeeName', '$[/session/@employeeName]');
+            record.set('employeeId', '$[/session/@employeeId]');
+            record.set('paymentCurrencyName', '$[/model/defaultCurrency/records/record/@currencyName]');
+            record.set('paymentCurrencyCode', '$[/model/defaultCurrency/records/record/@currencyCode]');
+            record.set('accEntityName', '$[/model/currentCompany/records/record/@defaultAccEntityName]');
+            record.set('accEntityId', '$[/model/currentCompany/records/record/@accEntityId]');
+            $au('EXP5110_typeChoiceReportTypeDs').setQueryParameter('employeeId', '$[/session/@employeeId]');
+            $au('EXP5110_typeChoiceReportTypeDs').setQueryParameter('companyId', '$[/session/@companyId]');
+            EXP5110_queryExpReportTypeList();
+        }
+
+        function EXP5110_onQueryDsUpdate(dataSet, record, name, value) {
+            if (name == 'employeeId') {
+                $au('EXP5110_typeChoiceReportTypeDs').setQueryParameter('employeeId', record.get('employeeId'));
+                $au('EXP5110_typeChoiceReportTypeDs').setQueryParameter('companyId', '$[/session/@companyId]');
+                EXP5110_queryExpReportTypeList();
+            }
+            //modified by liliang 2018/7/5
+            //基础信息中的币种取值规则，切换单据类型时，将单据类型对应的币种设置到基础信息的币种中去
+            //当单据类型没有定义对应币种时，取核算主体对应的支付币种
+            if (name == 'accEntityId') {
+                if (!$au('EXP5110_typeChoiceReportTypeDs').getCurrentRecord()) {
+                } else {
+                    if ($au('EXP5110_typeChoiceReportTypeDs').getCurrentRecord().get('currencyCode') == undefined) {
+                        $au('EXP5110_typeChoiceDs').getAt(0).set('paymentCurrencyCode', record.get('payCurrencyCode'));
+                        $au('EXP5110_typeChoiceDs').getAt(0).set('paymentCurrencyName', record.get('payCurrencyName'));
+                    }
+                }
+            }
+        }
+
+        //update by penglei 20171225 报销单表单头取值根据单据类型去取对应的页面元素表单头 begin
+
+        function EXP5110_onReportTypeClick() {
+            var record = $au('EXP5110_typeChoiceReportTypeDs').getCurrentRecord();
+            var typeRecord = $au('EXP5110_typeChoiceDs').getAt(0);
+            var serviceName = record.get('serviceName');
+            if (serviceName == '' || serviceName == 'undefined' || serviceName == null) {
+                Aurora.showInfoMessage('$[l:PROMPT]', "$[l:EXP_REPORT_MAIN.MAIN_ERROR]", null, 250, 100);
+                return;
+            }
+            if ($au('EXP5110_typeChoiceDs').validate()) {
+                new Aurora.Window({
+                    url: '$[/request/@context_path]/' + serviceName + '?moExpReportTypeId=' + record.get('moExpReportTypeId') + '&employeeId=' + typeRecord.get('employeeId') + '&paymentCurrencyCode=' + typeRecord.get('paymentCurrencyCode') + '&accEntityId=' + typeRecord.get('accEntityId')+'&expReportHeaderId=',
+                    id: 'exp_report_maintain_main_screen',
+                    fullScreen: true
+                });
+            }
+        }
+
+        //modified by liliang 2018/7/5
+        //基础信息中的币种取值规则，切换单据类型时，将单据类型对应的币种设置到基础信息的币种中去
+        //当单据类型没有定义对应币种时，取核算主体对应的支付币种
+
+        function EXP5110_onIndexChange(ds, record) {
+            var rdx = $au('EXP5110_typeChoiceDs').getAt(0);
+            //如果单据类型设置了币种，那么优先取单据类型所设置的币种
+            if (record.get("currencyCode") != undefined) {
+                //设置币种为当前选择的报销类型所对应的币种
+                rdx.set('paymentCurrencyName', record.get("currencyName"));
+                rdx.set('paymentCurrencyCode', record.get("currencyCode"));
+            } else {
+                rdx.set('paymentCurrencyCode', rdx.get('payCurrencyCode'));
+                rdx.set('paymentCurrencyName', rdx.get('payCurrencyName'));
+            }
+            // Modify Tagin/2018.08.30 设置填单
+            var typeId = record.get('moExpReportTypeId');
+            var dataSet = $au('EXP5110_writeCaptionDs');
+            if (typeId) {
+                dataSet.setQueryParameter('docCategory', 'EXP_REPORT');
+                dataSet.setQueryParameter('docTypeId', typeId);
+                dataSet.query();
+            }
+        }
+
+        function EXP5110_writeCaptionQueryFunc(dataSet) {
+            var records = dataSet.getAll();
+            if (Ext.get('EXP5110_writeCaption') && records.length == 0) {
+                var html = '<div class="doc_note_empty">';
+                html += '<span>$[l:DOC_TYPE_UNCONFIGURED_DESCRIPTION]</span>';
+                html += '</div>';
+                Ext.get('EXP5110_writeCaption').dom.innerHTML = html;
+            } else {
+                var captionHtml = '';
+                for (var i = 0; i < records.length; i++) {
+                    var title = records[i].get('lineStepTitle') == undefined ? ' ' : records[i].get('lineStepTitle');
+                    var longContent = records[i].get('stepContent') == undefined ? ' ' : records[i].get('stepContent');
+                    var shortContent = longContent.length > 72 ? longContent.substring(1, 72) + '...' : longContent;
+                    var innerHtml = '<div class="doc_note_info">';
+                    innerHtml += '<p class="doc_note_step">' + title + '</p>';
+                    innerHtml += '<p class="doc_note_summary" onmouseover="$A.ToolTip.show(this' + ',\'' + longContent + '\')">' + shortContent + '</p>';
+                    innerHtml += '</div>';
+                    if (i != records.length - 1) {
+                        innerHtml += '<div class="doc_note_arrow">>></div>';
+                    }
+                    captionHtml += innerHtml;
+                }
+                Ext.get('EXP5110_writeCaption').dom.innerHTML = captionHtml;
+            }
+        }
+
+        ]]></script>
+        <span><![CDATA[
+            <script>
+	            function EXP5110_expReportTypeInfoRenderer(value, record, name) {
+	                var tplt = new Ext.Template([
+	                '<div class="exp-report-type-info">',
+	                '	<img src="$[/request/@context_path]/{iconFileName}" width="60" height=60" class="exp-report-type-icon"/>',
+	                '	<div class="exp-report-type-desc">{moExpReportTypeName}</div>',
+	                '	<div class="clearfix"></div>',
+	                '</div>']);
+	                var moExpReportTypeName= record.get('description');
+	                var flowinfoa_width = parseInt(document.body.clientWidth / 8);
+	                if(flowinfoa_width < 100 || flowinfoa_width == null || flowinfoa_width == undefined){
+	                    flowinfoa_width = 142.5;
+	                }
+	                var docHtml ='<div id="flowInfoAId" style="margin-left: 9px; max-width:' + flowinfoa_width + 'px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;" onmouseover="$A.ToolTip.show(this' + ',\'' + moExpReportTypeName + '\')">'+ moExpReportTypeName + '</div>';
+	                return tplt.applyTemplate({
+	                    iconFileName: record.get('icon'),
+	                    moExpReportTypeName:docHtml
+	                });
+	            }
+            </script>
+            ]]></span>
+        <a:dataSets>
+            <a:dataSet id="EXP5110_writeCaptionDs"
+                       queryUrl="$[/request/@context_path]/exp/mo-write-caption-ln/getWriteCaptionByDocType">
+                <a:events>
+                    <a:event name="load" handler="EXP5110_writeCaptionQueryFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_typeChoiceEmployeeDs">
+                <a:datas dataSource="/model/authEmployee/records"/>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_typeChoiceReportTypeDs" pageSize="12"
+                       queryUrl="$[/request/@context_path]/exp/mo-report-type/queryExpMoReportTypeList">
+                <a:fields>
+                    <a:field name="serviceName"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="indexchange" handler="EXP5110_onIndexChange"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5110_typeChoiceAccEntityDs" loadData="true" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/gld/account-entity/queryAccEntityAndCurrencyCode"/>
+            <a:dataSet id="EXP5110_typeChoiceCurrencyListDs" autoQuery="true" loadData="true"
+                       queryUrl="$[/request/@context_path]/gld-currency/getGldCurrencyOption"/>
+            <a:dataSet id="EXP5110_typeChoiceDs" autoCreate="true">
+                <a:fields>
+                    <!--修改申请人下拉框映射   Y.duan  2017-8-22 09:36:23-->
+                    <!--修改字段提示信息,将管理币种改为付款币种    Y.duan  2017-9-14 10:13:39-->
+                    <a:field name="employeeName" displayField="name" options="EXP5110_typeChoiceEmployeeDs"
+                             prompt="exp_report_header.employee_name" required="true" returnField="employeeId"
+                             valueField="employeeId"/>
+                    <a:field name="paymentCurrencyName" displayField="currencyName"
+                             options="EXP5110_typeChoiceCurrencyListDs" prompt="exp_report_header.payment_currency_name"
+                             required="true" returnField="paymentCurrencyCode" valueField="currencyCode"/>
+                    <a:field name="accEntityName" displayField="accEntityName" options="EXP5110_typeChoiceAccEntityDs"
+                             prompt="exp_report_header.acc_entity_name" required="true" returnField="accEntityId"
+                             valueField="accEntityId">
+                        <a:mapping>
+                            <a:map from="payCurrencyCode" to="payCurrencyCode"/>
+                            <a:map from="payCurrencyName" to="payCurrencyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="accEntityId"/>
+                    <a:field name="payCurrencyCode"/>
+                    <a:field name="payCurrencyName"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5110_onQueryDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form title="filling_explanation">
+                <div id="EXP5110_writeCaption" class="doc_note"/>
+            </a:form>
+            <a:form column="3" title="hap_basic_info">
+                <a:hBox>
+                    <a:comboBox name="employeeName" bindTarget="EXP5110_typeChoiceDs" width="150"/>
+                    <a:comboBox name="paymentCurrencyName" bindTarget="EXP5110_typeChoiceDs" width="150"/>
+                    <a:comboBox name="accEntityName" bindTarget="EXP5110_typeChoiceDs" width="150"/>
+                </a:hBox>
+            </a:form>
+            <a:form title="acp_requisition.req_types">
+                <a:floatList bindTarget="EXP5110_typeChoiceReportTypeDs" clickable="true" closeable="false"
+                             columnnumber="4" loadmore="false" marginHeight="100" rowstyle="margin-top:10px;"
+                             style="box-shadow:none;width:100%">
+                    <a:columns>
+                        <a:column name="expReportTypeInfo" renderer="EXP5110_expReportTypeInfoRenderer"/>
+                    </a:columns>
+                    <a:events>
+                        <a:event name="dblclick" handler="EXP5110_onReportTypeClick"/>
+                    </a:events>
+                </a:floatList>
+            </a:form>
+        </a:screenBody>
+        <script><![CDATA[
+        EXP5110_loadComplete();
+        ]]></script>
+    </a:view>
+</a:screen>

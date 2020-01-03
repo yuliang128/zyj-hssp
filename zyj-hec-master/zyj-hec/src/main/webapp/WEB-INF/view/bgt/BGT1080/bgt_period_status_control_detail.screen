@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="bgt_periods_pkg_close_period_link" url="$[/request/@context_path]/bgt/period-status/closePeriod"/>
+        <a:link id="bgt_periods_pkg_open_period_link" url="$[/request/@context_path]/bgt/period-status/openPeriod"/>
+        <script><![CDATA[
+            function statusRenderer(value, record, name) {
+                if (value == null || value == undefined || value == 'O') {
+                    return '$[l:prompt.open]';
+                } else if (value == 'C') {
+                    return '$[l:prompt.closed]';
+                }
+            }
+            
+            function openOrClosePeriod_openDs(value, record, name) {
+                var bgt_period_status_code = record.get('bgtPeriodStatusCode');
+                var url = '';
+                var ds = '';
+                if (bgt_period_status_code == null || bgt_period_status_code == undefined || bgt_period_status_code == 'O') {
+                    url = $au('bgt_periods_pkg_close_period_link').getUrl();
+                    ds = 'period_result_open_ds';
+                    return '<a href="javascript:execute(\'' + ds + '\',\'' + url + '\',' + record.id + ')">$[l:close_period]</a>';
+                } else if (bgt_period_status_code == 'C') {
+                    url = $au('bgt_periods_pkg_open_period_link').getUrl();
+                    ds = 'period_result_closed_ds';
+                    return '<a href="javascript:execute(\'' + ds + '\',\'' + url + '\',' + record.id + ')">$[l:open_period]</a>';
+                }
+            }
+            
+            function execute(ds, url, id) {
+                var record = $au(ds).findById(id);
+                record.set('bgtEntityId','$[/parameter/@bgtEntityId]');
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: url,
+                    para: record.data,
+                    success: function() {
+                        var window = Aurora.showMessage('$[l:prompt]', '$[l:fnd_dimension_value.opr_suc]', function(cmp) {
+                            $au('period_result_open_ds').query();
+                            $au('period_result_closed_ds').query();
+                            window.close();
+                        });
+                    }
+                });
+            }
+
+            function BGT1080_ReturnPeriod(){
+                $au('BGT1080_period_control_detail_window').close();
+            }
+            ]]></script>
+        <a:dataSets>
+            <a:dataSet id="period_result_open_ds" autoCount="true" autoQuery="true" fetchAll="false" baseUrl="/bgt/period-status"  pageSize="6" queryUrl="$[/request/@context_path]/bgt/period-status/queryOpen?bgtOrgId=$[/parameter/@bgtOrgId]&amp;bgtPeriodSetCode=$[/parameter/@bgtPeriodSetCode]&amp;bgtEntityId=$[/parameter/@bgtEntityId]">
+                <a:fields>
+                    <a:field name="bgtPeriodYear" prompt="gld_period.period_year"/>
+                    <a:field name="bgtPeriodNum" prompt="fnd_dimensions.dimension_sequence"/>
+                    <a:field name="quarterNum" prompt="gld_period_rule.quarter_num"/>
+                    <a:field name="periodName" prompt="bgt_period.period_name"/>
+                    <a:field name="startDate" prompt="bgt_period.start_date"/>
+                    <a:field name="endDate" prompt="bgt_period.end_date"/>
+                    <a:field name="bgtPeriodStatusCode" prompt="gld_period_status.period_status"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="periodSetCode"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="period_result_closed_ds" autoCount="true" autoQuery="true" fetchAll="false" baseUrl="/bgt/period-status" pageSize="6" queryUrl="$[/request/@context_path]/bgt/period-status/queryClosed?bgtOrgId=$[/parameter/@bgtOrgId]&amp;bgtPeriodSetCode=$[/parameter/@bgtPeriodSetCode]&amp;bgtEntityId=$[/parameter/@bgtEntityId]">
+                <a:fields>
+                    <a:field name="bgtPeriodYear" prompt="gld_period.period_year"/>
+                    <a:field name="bgtPeriodNum" prompt="fnd_dimensions.dimension_sequence"/>
+                    <a:field name="quarterNum" prompt="gld_period_rule.quarter_num"/>
+                    <a:field name="periodName" prompt="bgt_period.period_name"/>
+                    <a:field name="startDate" prompt="bgt_period.start_date"/>
+                    <a:field name="endDate" prompt="bgt_period.end_date"/>
+                    <a:field name="bgtPeriodStatusCode" prompt="gld_period_status.period_status"/>
+                    <a:field name="bgtOrgId"/>
+                    <a:field name="bgtPeriodSetCode"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="BGT1080_ReturnPeriod" text="hap_back" width="80"/>
+            </a:screenTopToolbar>
+            <a:fieldSet column="3" labelWidth="120" marginWidth="10" title="budget_period_control">
+                <a:label name="bgtOrgCode" bindTarget="BGT1080_period_detail_ds" prompt="bgt_organization.bgt_org_code" width="120"/>
+                <a:label name="bgtOrgDesc" bindTarget="BGT1080_period_detail_ds" prompt="bgt_budget_item.description" width="200"/>
+                <a:label name="entityName" bindTarget="BGT1080_period_detail_ds" prompt="bgt_entities.bgt_entity_name" width="120"/>
+                <a:label name="bgtPeriodSetCode" bindTarget="BGT1080_period_detail_ds" prompt="bgt_period.bgt_period_code" width="120"/>
+                <a:label name="bgtPeriodSetDesc" bindTarget="BGT1080_period_detail_ds" prompt="bgt_period.bgt_period_desc" width="200"/>
+            </a:fieldSet>
+            <a:grid bindTarget="period_result_open_ds" height="250" marginWidth="10" navBar="true" width="800">
+                <a:columns>
+                    <a:column name="bgtPeriodYear" align="center" sortable="true" width="100"/>
+                    <a:column name="bgtPeriodNum" align="center" sortable="true" width="80"/>
+                    <a:column name="startDate" align="center" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                    <a:column name="endDate" align="center" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                    <a:column name="quarterNum" align="center" width="80"/>
+                    <a:column name="periodName" align="center" sortable="true" width="100"/>
+                    <a:column name="bgtPeriodStatusCode" align="center"  renderer="statusRenderer" width="100"/>
+                    <a:column name="action" align="center" prompt="gld_period_status.adjust_period" renderer="openOrClosePeriod_openDs" sortable="true" width="100"/>
+                </a:columns>
+            </a:grid>
+            <a:grid bindTarget="period_result_closed_ds" height="250" marginWidth="10" navBar="true" width="800">
+                <a:columns>
+                    <a:column name="bgtPeriodYear" align="center" sortable="true" width="100"/>
+                    <a:column name="bgtPeriodNum" align="center" sortable="true" width="80"/>
+                    <a:column name="startDate" align="center" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                    <a:column name="endDate" align="center" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                    <a:column name="quarterNum" align="center" width="80"/>
+                    <a:column name="periodName" align="center" sortable="true" width="100"/>
+                    <a:column name="bgtPeriodStatusCode" align="center" renderer="statusRenderer" width="100"/>
+                    <a:column name="action" align="center" prompt="gld_period_status.adjust_period" renderer="openOrClosePeriod_openDs" sortable="true" width="100"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true" xmlns:p="uncertain.proc">
+    <a:view>
+        <script><![CDATA[
+        function EXP4060_closeExpenseDimsCreateWindow() {
+            $au('EXP4060_exp_mo_rep_ref_hd_dims').close();
+        }
+
+        function EXP4060_checkDimension(grid, row, name, record) {
+            if (name == 'defaultDimValueCode') {
+                var dimensionCode = record.get('dimensionCode');
+                if (dimensionCode == null || dimensionCode == '') {
+                    Aurora.showMessage('$[l:PROMPT_MESSAGE]', '$[l:exp_mo_rep_type_ref_hd_dim.chose_dimension_code]');
+                    return;
+                } else {
+                    var metaField = record.getMeta().getField('defaultDimValueCode');
+                    var dimensionId = record.get('dimensionId');
+                    //默认维值选择增加三大架构限制 Y.duan 2018-7-30 19:12:18
+                    var systemLevel = record.get('systemLevel');
+                    var companyLevel = record.get('companyLevel');
+                    if (!(Ext.isEmpty(systemLevel) && Ext.isEmpty(companyLevel))) {
+                        if (!Ext.isEmpty(systemLevel)) {
+                            companyLevel = systemLevel;
+                        }
+                        if (companyLevel == 'BUDGET' || companyLevel == 'ACCOUNTING') {
+                            metaField.setLovPara('companyId', '$[/parameter/@magOrgId]');
+                        } else {
+                            console.log('$[/model/@companyId]');
+                            metaField.setLovPara('companyId', '$[/model/@companyId]');
+                        }
+                        metaField.setLovPara('companyLevel', companyLevel);
+                    }
+                    metaField.setLovPara('dimensionId', dimensionId);
+                }
+            }
+        }
+
+        function EXP4060_hdDimensionUpdateFunc(dataSet, record, name, value, oldValue) {
+            // Modify Tagin/2018.01.21 维度代码变更则清空默认维值
+            if (name == 'dimensionCode') {
+                record.set('defaultDimValueId', '');
+                record.set('defaultDimValueCode', '');
+                record.set('defaultDimValueName', '');
+            }
+        }
+
+        function EXP4060_hdDimsSubmit(ds) {
+            ds.query();
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4060_refHdDimsionsDs" baseUrl="/exp/mo-rep-type-ref-hd-dim"
+                       queryUrl="$[/request/@context_path]/exp/mo-rep-type-ref-hd-dim/query?moExpReportTypeId=$[/parameter/@moExpReportTypeId]"
+                       autoQuery="true" selectable="true">
+                <a:fields>
+                    <a:field name="dimensionCode" lovCode="LOV_DOC_TYPE_DIMENSION?moExpReportTypeId=$[/parameter/@moExpReportTypeId]&amp;repPageEleRefId=$[/parameter/@repPageEleRefId]" prompt="fnd_dimension.dimension_code" required="true"
+                             title="fnd_dimension.dimension_code">
+                        <a:mapping>
+                            <a:map from="dimensionCode" to="dimensionCode"/>
+                            <a:map from="description" to="dimensionName"/>
+                            <a:map from="dimensionId" to="dimensionId"/>
+                            <a:map from="systemLevel" to="systemLevel"/>
+                            <a:map from="companyLevel" to="companyLevel"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="systemLevel"/>
+                    <a:field name="companyLevel"/>
+                    <a:field name="dimensionId"/>
+                    <a:field name="dimensionName"/>
+                    <a:field name="layoutPriority" prompt="exp_mo_rep_type_ref_hd_dim.layout_priority" required="true"/>
+                    <a:field name="defaultDimValueCode" lovCode="LOV_DOC_TYPE_DIM_VALUE?magOrgId=$[/parameter/@magOrgId]" title="exp_mo_rep_type_ref_hd_dim.default_dimension_value_code">
+                        <a:mapping>
+                            <a:map from="dimensionValueCode" to="defaultDimValueCode"/>
+                            <a:map from="dimensionValueName" to="defaultDimValueName"/>
+                            <a:map from="dimensionValueId" to="defaultDimValueId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="defaultDimValueId"/>
+                    <a:field name="defaultDimValueName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="moExpReportTypeId" defaultValue="$[/parameter/@moExpReportTypeId]"/>
+                    <a:field name="refId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP4060_hdDimensionUpdateFunc"/>
+                    <a:event name="submitsuccess" handler="EXP4060_hdDimsSubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4060_expMoRepTypeRefHdDimsForm" column="2" title="exp_mo_rep_type_ref_hd_dim.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4060_expMoRepTypeRefHdDimGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4060_expMoRepTypeRefHdDimGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4060_expMoRepTypeRefHdDimGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4060_closeExpenseDimsCreateWindow" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moExpReportTypeCode" bindTarget="EXP4060_expMoRepTypesResultDs"
+                             prompt="exp_mo_report_type.mo_exp_report_type_code" readOnly="true"/>
+                <a:textField name="description" bindTarget="EXP4060_expMoRepTypesResultDs"
+                             prompt="exp_mo_report_type.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="EXP4060_expMoRepTypeRefHdDimGrid" bindTarget="EXP4060_refHdDimsionsDs" marginHeight="195"
+                    navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="dimensionCode" align="center" editor="EXP4060_hdDimsLov"
+                              prompt="fnd_dimension.dimension_code" width="100"/>
+                    <a:column name="dimensionName" prompt="fnd_dimension.description" width="150"/>
+                    <a:column name="layoutPriority" align="center" editor="EXP4060_hdDimsNumberField"
+                              prompt="exp_mo_rep_type_ref_hd_dim.layout_priority" width="80"/>
+                    <a:column name="defaultDimValueCode" align="center" editor="EXP4060_hdDimsLov"
+                              prompt="exp_mo_rep_type_ref_hd_dim.default_dimension_value_code" width="100"/>
+                    <a:column name="defaultDimValueName" prompt="exp_mo_rep_type_ref_hd_dim.default_dimension_value_desc"
+                              width="150"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP4060_hdDimsCheckBox"
+                              prompt="hap_enabled_flag" width="80"/>
+                </a:columns>
+                <a:events>
+                    <a:event name="cellclick" handler="EXP4060_checkDimension"/>
+                </a:events>
+                <a:editors>
+                    <a:numberField id="EXP4060_hdDimsNumberField"/>
+                    <a:lov id="EXP4060_hdDimsLov"/>
+                    <a:comboBox id="EXP4060_hdDimsCombox"/>
+                    <a:checkBox id="EXP4060_hdDimsCheckBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

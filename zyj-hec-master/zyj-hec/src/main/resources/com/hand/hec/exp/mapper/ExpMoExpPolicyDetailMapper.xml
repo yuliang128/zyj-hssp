@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.exp.mapper.ExpMoExpPolicyDetailMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.exp.dto.ExpMoExpPolicyDetail">
+        <result column="DETAIL_ID" property="detailId" jdbcType="DECIMAL"/>
+        <result column="EXPENSE_POLICY_ID" property="expensePolicyId" jdbcType="DECIMAL"/>
+        <result column="PRIORITY" property="priority" jdbcType="DECIMAL"/>
+        <result column="DETAIL_CODE" property="detailCode" jdbcType="VARCHAR"/>
+        <result column="DESCRIPTION" property="description" jdbcType="VARCHAR"/>
+        <result column="DEFAULT_FLAG" property="defaultFlag" jdbcType="VARCHAR"/>
+        <result column="CHANGEABLE_FLAG" property="changeableFlag" jdbcType="VARCHAR"/>
+        <result column="EXPENSE_STANDARD" property="expenseStandard" jdbcType="DECIMAL"/>
+        <result column="UPPER_LIMIT" property="upperLimit" jdbcType="DECIMAL"/>
+        <result column="LOWER_LIMIT" property="lowerLimit" jdbcType="DECIMAL"/>
+        <result column="CURRENCY_CODE" property="currencyCode" jdbcType="VARCHAR"/>
+        <result column="COMMIT_FLAG" property="commitFlag" jdbcType="VARCHAR"/>
+        <result column="TRANSPORTATION" property="transportation" jdbcType="VARCHAR"/>
+        <result column="SEAT_CLASS" property="seatClass" jdbcType="VARCHAR"/>
+        <result column="ROOM_TYPE" property="roomType" jdbcType="VARCHAR"/>
+        <result column="EVENT_NAME" property="eventName" jdbcType="VARCHAR"/>
+        <result column="UPPER_STD_EVENT_NAME" property="upperStdEventName" jdbcType="VARCHAR"/>
+        <result column="START_DATE_ACTIVE" property="startDateActive" jdbcType="DATE"/>
+        <result column="END_DATE_ACTIVE" property="endDateActive" jdbcType="DATE"/>
+    </resultMap>
+    <select id="querySeatClass" parameterType="java.lang.String"
+            resultType="com.hand.hap.system.dto.CodeValue">
+
+       select sv.value,st.meaning
+				  from sys_code_b         sc,
+				       sys_code_value_b sv 	LEFT OUTER JOIN sys_code_value_tl st ON
+			(sv.code_value_id=st.code_value_id AND st.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+				 where sc.code_id = sv.code_id
+				   and sc.enabled_flag = 'Y'
+				   and sv.enabled_flag = 'Y'
+				   and sc.code = #{transportation}
+    </select>
+    <select id="queryAllSeatClass" resultType="com.hand.hap.system.dto.CodeValue">
+  select sv.value,st.meaning
+				  from sys_code_b         sc,
+				       sys_code_value_b sv 	LEFT OUTER JOIN sys_code_value_tl st ON
+			(sv.code_value_id=st.code_value_id AND st.lang = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String})
+				 where sc.code_id = sv.code_id
+				   and sc.enabled_flag = 'Y'
+				   and sv.enabled_flag = 'Y'
+				   and sc.code in ( select vb.VALUE from sys_code_b  cb, sys_code_value_b vb where cb.code_id = vb.code_id and cb.CODE = 'TRANSPORTATION'  )
+    </select>
+
+    <select id="getPolicyInfo" resultMap="BaseResultMap">
+        select
+            v.expense_policy_id,
+            v.default_flag,
+            v.changeable_flag,
+            v.expense_standard,
+            v.upper_limit,
+            v.lower_limit,
+            v.currency_code,
+            v.commit_flag,
+            v.transportation,
+            v.seat_class,
+            v.room_type,
+            v.event_name,
+            v.upper_std_event_name
+        from (select empd.expense_policy_id,
+                     empd.default_flag,
+                     empd.changeable_flag,
+                     empd.expense_standard,
+                     empd.upper_limit,
+                     empd.lower_limit,
+                     empd.currency_code,
+                     empd.commit_flag,
+                     empd.transportation,
+                     empd.seat_class,
+                     empd.room_type,
+                     empd.event_name,
+                     empd.upper_std_event_name
+                from exp_mo_expense_policy emep,
+                     exp_mo_exp_policy_asgn_com emac,
+                     exp_mo_exp_policy_detail empd
+              where emep.mag_org_id = #{magOrgId}
+                and emep.start_date_active &lt;= #{now}
+                and (emep.end_date_active is null or
+                     emep.end_date_active &lt;= #{now})
+                and emep.expense_policy_id = emac.expense_policy_id
+                and emac.company_id = #{companyId}
+                and emac.enabled_flag = 'Y'
+                and emep.expense_policy_id = empd.expense_policy_id
+                and empd.start_date_active &lt;= #{now}
+                and (empd.end_date_active is null or
+                     empd.end_date_active &lt;= #{now})
+                and exists
+                     (select 1
+                       from exp_mo_exp_policy_condition empc
+                      where empc.detail_id = empd.detail_id
+                        and empc.start_date_active &lt;= #{now}
+                        and (empc.end_date_active is null or
+                             empc.end_date_active &lt;= #{now})
+                             and
+                               (((not exists (select 1
+                                                from exp_mo_exp_policy_cond_hds emch
+                                               where emch.condition_id = empc.condition_id
+                                                 and emch.match_item_code = 'ACC_ENTITY')) or
+                                      (exists (select 1
+                                                 from exp_mo_exp_policy_cond_hds emch,
+                                                      exp_mo_exp_policy_cond_lns emcl
+                                                 where emch.condition_id = empc.condition_id
+                                                   and emch.condition_hds_id = emcl.condition_hds_id
+                                                   and emch.match_item_code = 'ACC_ENTITY'
+                                                   and emcl.condition_value_code = #{accEntityCode})))
+                            and ((not exists (select 1
+                                                from exp_mo_exp_policy_cond_hds emch
+                                               where emch.condition_id = empc.condition_id
+                                                 and emch.match_item_code = 'COMPANY')) or
+                                     (exists (select 1
+                                                from exp_mo_exp_policy_cond_hds emch,
+                                                     exp_mo_exp_policy_cond_lns emcl
+                                                where emch.condition_id = empc.condition_id
+                                                  and emch.condition_hds_id = emcl.condition_hds_id
+                                                  and emch.match_item_code = 'COMPANY'
+                                                  and emcl.condition_value_code = #{companyCode})))
+
+                            and ((not exists (select 1
+                                                from exp_mo_exp_policy_cond_hds emch
+                                               where emch.condition_id = empc.condition_id
+                                                 and emch.match_item_code = 'COUNTRY')) or
+                                     (exists (select 1
+                                                from exp_mo_exp_policy_cond_hds emch,
+                                                     exp_mo_exp_policy_cond_lns emcl
+                                               where emch.condition_id = empc.condition_id
+                                                 and emch.condition_hds_id = emcl.condition_hds_id
+                                                 and emch.match_item_code = 'COUNTRY'
+                                                 and emcl.condition_value_code = #{countryCode})))
+
+                            and ((not exists (select 1
+                                              from exp_mo_exp_policy_cond_hds emch
+                                             where emch.condition_id = empc.condition_id
+                                               and emch.match_item_code = 'EMPLOYEE_JOB')) or
+                                   (exists (select 1
+                                              from exp_mo_exp_policy_cond_hds emch,
+                                                   exp_mo_exp_policy_cond_lns emcl
+                                             where emch.condition_id = empc.condition_id
+                                               and emch.condition_hds_id = emcl.condition_hds_id
+                                               and emch.match_item_code = 'EMPLOYEE_JOB'
+                                               and emcl.condition_value_code = #{employeeJobCode})))
+
+                            and ((not exists (select 1
+                                              from exp_mo_exp_policy_cond_hds emch
+                                             where emch.condition_id = empc.condition_id
+                                               and emch.match_item_code = 'EMPLOYEE_LEVEL')) or
+                                   (exists (select 1
+                                              from exp_mo_exp_policy_cond_hds emch,
+                                                   exp_mo_exp_policy_cond_lns emcl
+                                             where emch.condition_id = empc.condition_id
+                                               and emch.condition_hds_id = emcl.condition_hds_id
+                                               and emch.match_item_code = 'EMPLOYEE_LEVEL'
+                                               and emcl.condition_value_code = #{employeeLevelCode})))
+
+                            and ((not exists (select 1
+                                             from exp_mo_exp_policy_cond_hds emch
+                                            where emch.condition_id = empc.condition_id
+                                              and emch.match_item_code = 'PLACE')) or
+                                  (exists (select 1
+                                            from exp_mo_exp_policy_cond_hds emch,
+                                                 exp_mo_exp_policy_cond_lns emcl
+                                           where emch.condition_id = empc.condition_id
+                                             and emch.condition_hds_id = emcl.condition_hds_id
+                                             and emch.match_item_code = 'PLACE'
+                                             and emcl.condition_value_code = #{placeCode})))
+
+                            and ((not exists (select 1
+                                            from exp_mo_exp_policy_cond_hds emch
+                                           where emch.condition_id = empc.condition_id
+                                             and emch.match_item_code = 'PLACE_TYPE')) or
+                              (exists (select 1
+                                         from exp_mo_exp_policy_cond_hds emch,
+                                              exp_mo_exp_policy_cond_lns emcl
+                                        where emch.condition_id = empc.condition_id
+                                          and emch.condition_hds_id = emcl.condition_hds_id
+                                          and emch.match_item_code = 'PLACE_TYPE'
+                                          and emcl.condition_value_code = #{placeTypeCode})))
+
+                            and ((not exists (select 1
+                                           from exp_mo_exp_policy_cond_hds emch
+                                          where emch.condition_id = empc.condition_id
+                                            and emch.match_item_code = 'POSITION')) or
+                                (exists (select 1
+                                          from exp_mo_exp_policy_cond_hds emch,
+                                               exp_mo_exp_policy_cond_lns emcl
+                                         where emch.condition_id = empc.condition_id
+                                           and emch.condition_hds_id = emcl.condition_hds_id
+                                           and emch.match_item_code = 'POSITION'
+                                           and emcl.condition_value_code = #{positionCode})))
+
+                            and ((not exists (select 1
+                                          from exp_mo_exp_policy_cond_hds emch
+                                         where emch.condition_id = empc.condition_id
+                                           and emch.match_item_code = 'UNIT')) or
+                              (exists (select 1
+                                        from exp_mo_exp_policy_cond_hds emch,
+                                             exp_mo_exp_policy_cond_lns emcl
+                                      where emch.condition_id = empc.condition_id
+                                        and emch.condition_hds_id = emcl.condition_hds_id
+                                        and emch.match_item_code = 'UNIT'
+                                        and emcl.condition_value_code = #{unitCode})))
+
+                            and ((not exists (select 1
+                                          from exp_mo_exp_policy_cond_hds emch
+                                         where emch.condition_id = empc.condition_id
+                                           and emch.match_item_code = 'VEHICLE')) or
+                                (exists (select 1
+                                           from exp_mo_exp_policy_cond_hds emch,
+                                                exp_mo_exp_policy_cond_lns emcl
+                                          where emch.condition_id = empc.condition_id
+                                            and emch.condition_hds_id = emcl.condition_hds_id
+                                            and emch.match_item_code = 'VEHICLE'
+                                            and emcl.condition_value_code = #{vehicleCode})))))
+                            and exists (select 1
+                                    from exp_mo_exp_policy_assign_dtl ad,
+                                         exp_mo_exp_policy_assign pa
+                                   where ad.expense_policy_id = emep.expense_policy_id
+                                     and ad.assign_id = pa.assign_id
+                                     and pa.mag_org_id = #{magOrgId}
+                                     and (case when pa.doc_category is null then #{docCategory} else pa.doc_category end) = #{docCategory}
+                                     and (case when pa.doc_type_id is null then #{docTypeId} else pa.doc_category end) = #{docTypeId}
+                                     and (case when pa.expense_type_id is null then #{expenseTypeId} else pa.expense_type_id end) = #{expenseTypeId}
+                                     and (case when pa.exp_item_id is null then (case when #{expenseItemId} is null then #{reqItemId} else #{expenseItemId} end) else pa.exp_item_id end) = (case when #{expenseItemId} is null then #{reqItemId} else #{expenseItemId} end)
+        order by
+        empd.priority)) v
+    </select>
+
+</mapper>

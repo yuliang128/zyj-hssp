@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hec.cont.mapper.ConCashTrxPmtScheduleLnMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hec.cont.dto.ConCashTrxPmtScheduleLn">
+        <result column="TRX_PMT_SCHEDULE_LINE_ID" property="trxPmtScheduleLineId" jdbcType="DECIMAL"/>
+        <result column="CSH_TRANSACTION_LINE_ID" property="cshTransactionLineId" jdbcType="DECIMAL"/>
+        <result column="WRITE_OFF_ID" property="writeOffId" jdbcType="DECIMAL"/>
+        <result column="CONTRACT_HEADER_ID" property="contractHeaderId" jdbcType="DECIMAL"/>
+        <result column="PAYMENT_SCHEDULE_LINE_ID" property="paymentScheduleLineId" jdbcType="DECIMAL"/>
+        <result column="AMOUNT" property="amount" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <!-- Modify Tagin/2019.04.03 资金计划付款对象同事务是否一致 -->
+    <select id="queryScheduleByTrx" resultMap="BaseResultMap">
+        select ccsl.*
+        from
+        con_payment_schedule cps,
+        con_cash_trx_pmt_schedule_ln ccsl
+        where
+        cps.payment_schedule_line_id = ccsl.payment_schedule_line_id
+        and exists (
+        select 1
+        from
+        csh_transaction_line ctl
+        where
+        ctl.payee_category = cps.partner_category
+        and ctl.payee_id = cps.partner_id
+        and ctl.transaction_line_id = ccsl.csh_transaction_line_id
+        and ctl.transaction_line_id = #{transactionLineId, jdbcType=DECIMAL, javaType=java.lang.Long})
+    </select>
+
+    <!-- Modify Tagin/2019.04.03 根据现金事务获取资金计划总计金额 -->
+    <select id="getTotalAmountByTrx" resultType="java.math.BigDecimal">
+        select
+        case
+        when sum(ccsl.amount) > 0 then sum(ccsl.amount)
+        else 0
+        end amount
+        from
+        con_cash_trx_pmt_schedule_ln ccsl
+        where
+        ccsl.csh_transaction_line_id = #{transactionLineId, jdbcType=DECIMAL, javaType=java.lang.Long}
+    </select>
+</mapper>

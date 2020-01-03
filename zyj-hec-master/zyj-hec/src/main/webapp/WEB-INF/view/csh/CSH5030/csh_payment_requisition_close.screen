@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query defaultWhereClause="status = &apos;GENERATE&apos; and company_id = $[/session/@company_id]" model="csh.csh_payment_requisition_hd" rootpath="rquNumList"/>
+        <a:model-query defaultWhereClause="enabled_flag = &apos;Y&apos;" model="gld.gld_currency_vl" rootpath="cry_list"/>-->
+    </a:init-procedure>
+    <a:view>
+        <a:link id="csh_pay_req_query_detail_link_12" url="$[/request/@context_path]/csh/public/csh_pay_req_query_detail.screen"/>
+        <a:link id="csh_payment_requisition_close_link" url="$[/request/@context_path]/csh/payment-requisition-hd/closePaymentRequisition"/>
+        <script><![CDATA[
+            function CSH5030_onQueryConditionDsUpdateFun(dataSet, record, name, value) {
+                if (name == 'payeeCategory') {
+                    $au('CSH5030_pay_req_close_query_ds').getAt(0).set('payeeId', '');
+                    $au('CSH5030_pay_req_close_query_ds').getAt(0).set('payeeName', '');
+                    //modify  lcy 2018/1/11 29:17:23  收款对象、收款方查询没用修改
+                    if (value) {
+                        record.getField('payeeName').setLovPara('payeeCategory', value);
+                        record.getField('payeeName').setLovCode('LOV_GLD_PAYEE');
+                        record.getField('payeeName').setReadOnly(false);
+                    } else {
+                        record.getField('payeeName').setLovCode('');
+                        record.getField('payeeName').setReadOnly(true);
+                    }
+                }
+            }
+            
+            function CSH5030_closePayRequisition() {
+                var recordsData = $au('CSH5030_pay_req_close_result_ds').getJsonData(true);
+                if (recordsData.length == 0) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:prompt.please_select]');
+                    return;
+                }
+                Aurora.request({
+                    lockMessage: '$[l:hap_waiting]',
+                    url: $au('csh_payment_requisition_close_link').getUrl(),
+                    para: recordsData,
+                    success: function(args) {
+                        $au('CSH5030_pay_req_close_result_ds').query();
+                    },
+                    scope: this
+                });
+            }
+            
+            function CSH5030_payReqDetailRenderer(value, record, name) {
+                var url = '<a href = "javascript:reqNumDispatch(' + record.get('paymentRequisitionHeaderId') + ')">' + value + '</a>';
+                return url;
+            }
+            
+            function reqNumDispatch(headerId) {
+                var url = $au('csh_pay_req_query_detail_link_12').getUrl() + '?paymentRequisitionHeaderId=' + headerId;
+                new Aurora.Window({
+                    url: url,
+                    title: '$[l:bgt_period_sets.detail]',
+                    id: 'csh_pay_req_query_detail_window',
+                    fullScreen: true
+                });
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH5030_payObjListDs" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/PAYMENT_OBJECT"/>
+            <a:dataSet id="CSH5030_cryListDs" autoQuery="true" queryUrl="$[/request/@context_path]/gld-currency/query"/>
+            <a:dataSet id="CSH5030_pay_req_close_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="requisitionNumber" placeHolder="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="employeeId"/>
+                    <a:field name="employeeIdDisplay" lovCode="LOV_EMPLOYEE_BY_COM" placeHolder="csh_bank_contact_persons.employee_id" title="exp_employee.employee_select">
+                        <a:mapping>
+                            <a:map from="nameCode" to="employeeIdDisplay"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="requisitionDateFrom" placeHolder="csh_payment_requisition_hd.requisition_date_from"/>
+                    <a:field name="requisitionDateTo" placeHolder="csh_payment_requisition_hd.requisition_date_to"/>
+                    <a:field name="currencyCode"/>
+                    <a:field name="currencyCodeDisplay" displayField="currencyName" options="CSH5030_cryListDs" placeHolder="gld_exchange_rates.from_currency" returnField="currencyCode" valueField="currencyCode"/>
+                    <a:field name="amount" placeHolder="csh_payment_requisition_hd.amount"/>
+                    <a:field name="payeeCategory"/>
+                    <a:field name="payeeCategoryDisplay" displayField="meaning" options="CSH5030_payObjListDs" placeHolder="exp_report_lines.payee_category" returnField="payeeCategory" valueField="value">
+                        <a:mapping>
+                            <a:map from="value" to="payeeCategory"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="payeeId"/>
+                    <a:field name="payeeName" placeHolder="csh_cash_plan_lines.partner_id" readOnly="true" title="csh_transaction_lines.partner_select">
+                        <a:mapping>
+                            <a:map from="payeeName" to="payeeName"/>
+                            <a:map from="payeeId" to="payeeId"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="CSH5030_onQueryConditionDsUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="CSH5030_pay_req_close_result_ds" autoPageSize="true" autoQuery="true" queryUrl="$[/request/@context_path]/csh/payment-requisition-hd/queryPayReq?status=COMPLETELY_APPROVED" queryDataSet="CSH5030_pay_req_close_query_ds" selectable="true">
+                <a:fields>
+                    <a:field name="paymentRequisitionHeaderId"/>
+                    <a:field name="requisitionNumber" prompt="csh_payment_requisition_hd.requisition_number"/>
+                    <a:field name="closedDate" prompt="csh_payment_requisition_hd.closed_date"/>
+                    <a:field name="requisitor" prompt="con_contract_ref_authority.employee_id"/>
+                    <a:field name="requisitionDate" prompt="csh_payment_requisition_hd.requisition_date"/>
+                    <a:field name="currencyCode" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="currencyName" prompt="csh_payment_requisition_hd.currency_code"/>
+                    <a:field name="amount" prompt="csh_payment_requisition_hd.amount"/>
+                    <a:field name="paymentedAmount" prompt="csh_payment_requisition_hd.paymented_amount"/>
+                    <a:field name="payeeCategoryName" prompt="csh_payment_req_types.partner_category"/>
+                    <a:field name="payeeName" prompt="csh_payment_requisition_hd.partner_id"/>
+                    <a:field name="description" prompt="csh_payment_requisition_hd.description"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:toolbarButton click="CSH5030_closePayRequisition" text="prompt.close" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="CSH5030_pay_req_close_query_ds" resultTarget="CSH5030_pay_req_close_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:textField name="requisitionNumber" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                    <a:lov name="employeeIdDisplay" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                    <a:textField name="amount" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4" labelWidth="90">
+                    <a:datePicker name="requisitionDateFrom" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                    <a:datePicker name="requisitionDateTo" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                    <a:comboBox name="currencyCodeDisplay" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                    <a:comboBox name="payeeCategoryDisplay" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                    <a:lov name="payeeName" bindTarget="CSH5030_pay_req_close_query_ds"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid bindTarget="CSH5030_pay_req_close_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="requisitionNumber" align="center" renderer="CSH5030_payReqDetailRenderer" sortable="true" width="200"/>
+                <a:column name="closedDate" align="center" editor="datepicker_editor" renderer="Aurora.formatDate" width="100"/>
+                <a:column name="requisitor" align="center" sortable="true" width="100"/>
+                <a:column name="requisitionDate" align="center" renderer="Aurora.formatDate" sortable="true" width="100"/>
+                <a:column name="currencyName" align="center" sortable="true" width="100"/>
+                <a:column name="amount" align="right" renderer="Aurora.formatMoney" sortable="true" width="100"/>
+                <a:column name="paymentedAmount" align="right" renderer="Aurora.formatMoney" sortable="true" width="100"/>
+                <a:column name="payeeCategoryName" align="center" sortable="true" width="80"/>
+                <a:column name="payeeName" align="center" sortable="true" width="120"/>
+                <a:column name="description" align="left" sortable="true" width="250"/>
+            </a:columns>
+            <a:editors>
+                <a:datePicker id="datepicker_editor"/>
+            </a:editors>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: Y.duan 
+    $Date: 2017-12-18 16:58:28
+    $Revision: 1.0  
+    $Purpose: 工作中心定义分配业务范围-组织范围-明细
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="SSC1010_work_center_batch_asgn_com_link" url="$[/request/@context_path]/ssc/SSC1010/ssc_work_center_company_batch.screen"/>
+        <script><![CDATA[
+            function SSC1010_closeAsgnComCreateWindow() {
+                $au('SSC1010_work_center_comp_win').close();
+            }
+            
+            function SSC1010_batchAssignCom() {
+                new Aurora.Window({
+                    id: 'SSC1010_work_center_batch_asgn_com',
+                    url: $au('SSC1010_work_center_batch_asgn_com_link').getUrl() + '?scopeId=' + '$[/parameter/@scopeId]' + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    title: '$[l:fnd_sys_venders.batch_disp_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            function SSC1010_work_company_code(record, name) {
+                if (record.isNew) {
+                    return 'SSC1010_asgn_com_lov';
+                } else {
+                    return '';
+                }
+            }
+            
+            function SSC1010_asgnCompanySubmit(ds) {
+                ds.query();
+            }
+            function SSC1010_gridCellClick(grid,row,name,record){
+                if(name=='companyCode'){
+                    record.getMeta().getField('companyCode').setLovPara('magOrgId','$[/parameter/@magOrgId]');
+                    record.getMeta().getField('companyCode').setLovPara('scopeId','$[/parameter/@scopeId]');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1010_work_center_companies_ds" autoPageSize="true" autoQuery="true" baseUrl="/ssc/work-center-company" pageSize="50" queryUrl="$[/request/@context_path]/ssc/work-center-company/query?scopeId=$[/parameter/@scopeId]" selectable="true">
+                <a:fields>
+                    <a:field name="companyCode" lovCode="ssc_batch_company_query" prompt="fnd_companies.company_code" title="exp_employee_assign.choose_company">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyShortName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="scopeId" defaultValue="$[/parameter/@scopeId]"/>
+                    <a:field name="recordId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="SSC1010_asgnCompanySubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form id="SSC1010_companies_form" column="2" title="ssc_work_center-asgn_mag_scope-detail" width="1000">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:gridButton bind="SSC1010_companies_grid" type="add" width="80"/>
+                <a:gridButton bind="SSC1010_companies_grid" type="save" width="80"/>
+                <a:gridButton bind="SSC1010_companies_grid" type="delete" width="80"/>
+                <a:toolbarButton click="SSC1010_batchAssignCom" text="hec_batch_assign" width="90"/>
+                <a:toolbarButton click="SSC1010_closeAsgnComCreateWindow" text="hap_back" width="80"/>
+            </a:formToolbar>
+            <a:textField name="busiScopeCodeName" bindTarget="SSC1010_work_ceneter_busi_scope_ds" prompt="ssc_work_center.busi_scope" readOnly="true" width="120"/>
+            <a:textField name="magOrgCodeName" bindTarget="SSC1010_work_ceneter_busi_scope_ds" prompt="ssc_work_center.mag_org_name" readOnly="true" width="200"/>
+        </a:form>
+        <a:grid id="SSC1010_companies_grid" bindTarget="SSC1010_work_center_companies_ds" marginHeight="195" navBar="true" width="1010">
+            <a:columns>
+                <a:column name="companyCode" align="center" editorFunction="SSC1010_work_company_code" prompt="fnd_companies.company_code" width="160"/>
+                <a:column name="companyShortName" align="center" prompt="fnd_companies_vl.company_short_name" width="225"/>
+                <a:column name="enabledFlag" align="center" editor="SSC1010_asgn_com_checkBox" prompt="exp_expense_req_types.enabled_flag"/>
+            </a:columns>
+            <a:editors>
+                <a:lov id="SSC1010_asgn_com_lov"/>
+                <a:checkBox id="SSC1010_asgn_com_checkBox"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="SSC1010_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" xmlns:s="aurora.plugin.script" trace="true">
+    <a:init-procedure>
+        <s:server-script><![CDATA[
+            importPackage(Packages.aurora.plugin.weixin.qiye.service);
+            importPackage(Packages.aurora.plugin.weixin);
+            
+            
+			var token = QiyeWeixinNetworkUtil.getTokenByTaskName('hecGroup',$instance('uncertain.ocm.IObjectRegistry'));
+			var jsTicket = QiyeWeixinNetworkUtil.getJsTicket(token);
+			var wxConfig = QiyeWeixinNetworkUtil.getWxConfig('hecGroup',$instance('uncertain.ocm.IObjectRegistry'),$ctx['_instance.javax.servlet.http.HttpServletRequest']);
+			$ctx.parameter.getData().put('appId',wxConfig.get('appId'));
+			$ctx.parameter.getData().put('timestamp',wxConfig.get('timestamp'));
+			$ctx.parameter.getData().put('nonceStr',wxConfig.get('nonceStr'));
+			$ctx.parameter.getData().put('signature',wxConfig.get('signature'));
+    	]]></s:server-script>
+    </a:init-procedure>
+    <a:view template="mobile">
+        <script src="${/request/@context_path}/framework/jquery/jquery-3.1.1.min.js"/>
+        <script src="${/request/@context_path}/framework/bootstrap3/js/bootstrap.min.js"/>
+        <script src="http://res.wx.qq.com/open/js/jweixin-1.2.0.js"/>
+        <link href="${/request/@context_path}/framework/bootstrap3/css/bootstrap.min.css" rel="stylesheet"/>
+        <style><![CDATA[
+			.process-btn{
+			    width:90%;
+			    margin-left:5%;
+			    margin-top:10px;
+			    margin-bottom:10px;
+			}
+        ]]></style>
+        <div class="container-fluid">
+            <h3 id="loginMessage" class="text-center"><![CDATA[登录中，请稍候...]]></h3>
+            <div id="uploadArea" class="row">
+                <div class="col-xs-6">
+                    <button id="photoUploadBtn" class="btn btn-info process-btn" style="display:none;" type="button"><![CDATA[上传照片]]></button>
+                </div>
+                <div class="col-xs-6">
+                    <button id="infoSaveBtn" class="btn btn-success process-btn" style="display:none;" type="button"><![CDATA[保存信息]]></button>
+                </div>
+            </div>
+            <div id="imgArea" class="col-xs-12"><![CDATA[
+        	
+        ]]></div>
+        </div>
+        <!-- Modal -->
+        <div id="myModal" aria-labelledby="myModalLabel" class="modal fade" role="dialog" tabindex="-1">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button aria-label="Close" class="close" data-dismiss="modal" type="button">
+                            <span aria-hidden="false"/>
+                        </button>
+                        <h4 id="myModalLabel" class="modal-title"/>
+                    </div>
+                    <div id="modal-body" class="modal-body"/>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" data-dismiss="modal" type="button"><![CDATA[确定]]></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script><![CDATA[
+            var docId = '${/parameter/@doc_id}';
+            var serveIds = '';
+            var images = [];
+            
+            wx.config({
+                beta: false,
+                debug: false,
+                appId: '${/parameter/@appId}',
+                timestamp: '${/parameter/@timestamp}',
+                nonceStr: '${/parameter/@nonceStr}',
+                signature: '${/parameter/@signature}',
+                jsApiList: ['checkJsApi', 'chooseImage', 'previewImage', 'uploadImage', 'downloadImage', 'scanQRCode']
+            });
+            
+            function showMessage(title, msg) {
+                $('#myModalLabel').text(title ? '提示' : title);
+                $('#modal-body').text(msg);
+                $('#myModal').modal();
+            }
+            
+            function auAjax(config) {
+                $.ajax({
+                    type: "POST",
+                    contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+                    url: config.url,
+                    data: '_request_data=' + encodeURIComponent('{"parameter":' + JSON.stringify(config.data ? config.data : {}) + '}'),
+                    dataType: "json",
+                    success: function(data) {
+                        if (data.success) {
+                            config.success(data);
+                        } else {
+                            showMessage('错误', data.error.message);
+                        }
+                    }
+                });
+            }
+            
+            function queryImages() {
+                serveIds = '';
+                auAjax({
+                    url: '${/request/@context_path}/autocrud/fnd.COMMON_DOC.fnd_document_images_query/query?doc_id=' + docId,
+                    success: function(data) {
+                        if (data && data.result && data.result.record) {
+                            images = data.result.record.length ? data.result.record : [data.result.record];
+                            for (var i = 0;i < images.length;i++) {
+                                var image = images[i];
+                                if (!$('#imageContent-' + image.image_id).length > 0) {
+                                    var domStr = '';
+                                    domStr += '<div id="imageHeader-' + image.image_id + '" class="page-header"><h2>' + (image.image_name_text ? image.image_name_text : '新图片') + '</h2></div>';
+                                    domStr += '<div id="imageContent-' + image.image_id + '">';
+                                    domStr += '    <div class="form-group col-xs-12"><a href="#"><img width="140" height="140" class="thumbnail" src="${/request/@context_path}/atm_download.svc?attachment_id=' + image.attachment_id + '"/></a></div>';
+                                    domStr += '    <div id="imageNameForm-' + image.image_id + '" class="form-group col-xs-12 has-warning"><label>图片名称</label><input id="imageNameText-' + image.image_id + '" type="text" class="form-control" placeholder="图片名称，方便审批人员辨别"/></div>';
+                                    domStr += '    <div class="form-group col-xs-12"><label>图片说明</label><textarea id="imageDescription-' + image.image_id + '" type="text" class="form-control" placeholder="图片说明，说明当前图片事项"/></div>';
+                                    domStr += '    <div class=" col-xs-12"><label>费用项目</label><select id="imageExpenseItem-' + image.image_id + '" class="form-control">';
+                                    domStr += '        <option>餐费</option>';
+                                    domStr += '        <option>交通费</option>';
+                                    domStr += '        <option>住宿费</option>';
+                                    domStr += '    </select></div>';
+                                    domStr += '    <div class="form-group col-xs-12"><label>日期</label><input id="imageDate-' + image.image_id + '" type="date" class="form-control" placeholder=""/></div>';
+                                    domStr += '    <div class="form-group col-xs-12"><label>金额</label><input id="imageAmount-' + image.image_id + '" type="number" class="form-control" placeholder=""/></div>';
+                                    domStr += '    <div class="form-group col-xs-12"><button id="imageScanQRCodeBtn-' + image.image_id + '" class="btn btn-info">扫描二维码</button></div>';
+                                    domStr += '    <div class="form-group col-xs-12"><label>二维码信息</label><textarea id="imageQRInfo-' + image.image_id + '" disabled type="text" class="form-control" placeholder="二维码扫描结果"/></div>';
+                                    domStr += '    <input type="hidden" id="imageAttachmentId-' + image.image_id + '" value="' + image.attachment_id + '"/>';
+                                    domStr += '';
+                                    domStr += '';
+                                    domStr += '';
+                                    domStr += '';
+                                    domStr += '';
+                                    domStr += '';
+                                    domStr += '';
+                                    domStr += '</div>';
+            
+                                    $('#imgArea').append(domStr);
+            
+                                    $('#imageNameText-' + image.image_id).val(image.image_name_text);
+                                    $('#imageDescription-' + image.image_id).val(image.image_description);
+                                    $('#imageQRInfo-' + image.image_id).val(image.image_qrcode_info);
+                                    $('#imageAmount-' + image.image_id).val(image.image_amount);
+                                    $('#imageExpenseItem-' + image.image_id).val(image.image_expense_item);
+                                    $('#imageDate-' + image.image_id).val(image.image_date);
+                                    $('#imageAttachmentId-' + image.image_id).val(image.attachment_id);
+            
+                                    $('#imageScanQRCodeBtn-' + image.image_id).on('click', function(evt) {
+                                        var imageId = evt.target.id.replace('imageScanQRCodeBtn-', '');
+                                        wx.scanQRCode({
+                                            desc: '扫描二维码',
+                                            needResult: 1,
+                                            success: function(res) {
+                                                $('#imageQRInfo-' + imageId).val(res.resultStr);
+                                            }
+                                        });
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function uploadImages(localIds) {
+                var localId = localIds.pop();
+                if (localId) {
+                    wx.uploadImage({
+                        localId: localId,
+                        // 需要上传的图片的本地ID，由chooseImage接口获得
+                        isShowProgressTips: 1,
+                        // 默认为1，显示进度提示
+                        success: function(res) {
+                            serveIds += (',' + res.serverId);
+                            uploadImages(localIds);
+                        }
+                    });
+                } else {
+                    serveIds = serveIds.substr(1);
+                    auAjax({
+                        url: "${/request/@context_path}/modules/expm/EXP5110/exp_report_weixin_photograph_save.svc?media_ids=" + serveIds + '&doc_id=' + docId,
+                        success: queryImages
+                    });
+                }
+            }
+            
+            function saveImageInfo() {
+                for (var i = 0;i < images.length;i++) {
+                    var image = images[i];
+                    image.image_name_text = $('#imageNameText-' + image.image_id).val();
+            
+                    if (!image.image_name_text) {
+                        $('#imageNameForm-' + image.image_id).addClass('has-error');
+                        alert('文件名不能为空!');
+                        return;
+                    }
+                    if (!(/^[^\\/:/*/?"<>|]*$/.test(image.image_name_text))) {
+                        $('#imageNameForm-' + image.image_id).addClass('has-error');
+                        alert('文件名不能包含特殊字符!');
+                        return;
+                    }
+            
+                    image.image_description = $('#imageDescription-' + image.image_id).val();
+                    image.image_qrcode_info = $('#imageQRInfo-' + image.image_id).val();
+                    image.image_expense_item = $('#imageExpenseItem-' + image.image_id).val();
+                    image.image_date = $('#imageDate-' + image.image_id).val();
+                    image.image_amount = $('#imageAmount-' + image.image_id).val();
+                    image.attachment_id = $('#imageAttachmentId-' + image.image_id).val();
+                    image._status = 'execute';
+                }
+            
+                if (images.length && images.length != 0) {
+                    auAjax({
+                        url: '${/request/@context_path}/autocrud/db.fnd_document_pkg.update_document_image/batch_update',
+                        data: images,
+                        success: function(data) {
+                            showMessage('提示', '保存成功!');
+            
+                            for (var i = 0;i < images.length;i++) {
+                                var image = images[i];
+                                $('#imageHeader-' + image.image_id).html('<h2>' + image.image_name_text + '</h2>');
+                            }
+                        }
+                    });
+                }
+            }
+            
+            $('#photoUploadBtn').on('click', function() {
+                wx.chooseImage({
+                    count: 9,
+                    sizeType: ['original'],
+                    success: function(res) {
+                        uploadImages(res.localIds);
+                    }
+                });
+            });
+            
+            $('#infoSaveBtn').on('click', saveImageInfo);
+            
+            auAjax({
+                url: '${/request/@context_path}/login.svc',
+                data: {
+                    user_name: 'admin',
+                    user_password: 'admin',
+                    user_language: 'ZHS'
+                },
+                success: function(resp) {
+                    if (resp.success) {
+                        $('#loginMessage').css('display', 'none');
+                        $('#photoUploadBtn').css('display', 'block');
+                        $('#infoSaveBtn').css('display', 'block');
+                    } else {
+                        $('#loginMessage').text(resp.error.message);
+                        showMessage('错误', resp.error.message);
+                    }
+            
+                    //登录完成后自动查询当前doc_id对应的image信息
+                    queryImages();
+                }
+            });
+        ]]></script>
+    </a:view>
+</a:screen>

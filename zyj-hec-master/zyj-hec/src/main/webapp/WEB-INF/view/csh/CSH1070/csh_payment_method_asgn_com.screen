@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    * Author: yang.cai@hand-china.com
+    * Date: 2019-2-22 下午18:56:55
+    * Revision: 1.0
+    * Purpose: 付款方式定义-分配管理组织-分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="CSH1070_csh_payment_method_asgn_com_batch_link" url="$[/request/@context_path]/csh/CSH1070/csh_payment_method_asgn_com_batch.screen"/>
+        <div/>
+        <script><![CDATA[
+            function CSH1070_closeAsgnComCreateWindow() {
+                $au('CSH1070_csh_payment_method_asgn_com').close();
+            }
+            
+            function CSH1070_expCompanyCodeEdit(record, name) {
+                if (record.isNew) {
+                    return "CSH1070_asgn_com_lov";
+                } else {
+                    return "";
+                }
+            }
+            
+            function CSH1070_asgnCompanySubmit(ds) {
+                ds.query();
+            }
+            
+            //批量分配公司-跳转
+            
+            function CSH1070_batchAssignCom() {
+                new Aurora.Window({
+                    id: 'CSH1070_csh_payment_method_asgn_com_batch',
+                    url: $au('CSH1070_csh_payment_method_asgn_com_batch_link').getUrl() + '?paymentMethodId=' + '$[/parameter/@paymentMethodId]' + '&assignMoId=' + '$[/parameter/@assignMoId]',
+                    title: '$[l:fnd_sys_vender.batch_disp_company]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+        function CSH1070_saveFunction() {
+            var records = $au('CSH1070_csh_payment_method_asgn_com_ds').getAll();
+            var default_number = 0;
+            for (var i = 0; i < records.length; i++) {
+                for (var j = i +1; j < records.length; j++) {
+                    if (records[i].get('companyId') == records[j].get('companyId')) {
+                        default_number++;
+                    }
+                    if (default_number > 0) {
+                        Aurora.showErrorMessage('$[l:prompt.error]', '$[l:company_hasbeen_assign_error]');
+                        return;
+                    }
+                }
+            }
+            $au('CSH1070_csh_payment_method_asgn_com_ds').submit();
+        }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="CSH1070_csh_payment_method_asgn_com_ds" autoPageSize="true" autoQuery="true" baseUrl="/csh/payment-method-asgn-com" pageSize="50" queryUrl="$[/request/@context_path]/csh/payment-method-asgn-com/query?assignMoId=$[/parameter/@assignMoId]&amp;paymentMethodId=$[/parameter/@paymentMethodId]" selectable="false">
+                <a:fields>
+                    <a:field name="companyCode" autoComplete="true" lovCode="CSH_PAYMENT_METHOD_ASGN_COM_LOV?assignMoId=$[/parameter/@assignMoId]&amp;paymentMethodId=$[/parameter/@paymentMethodId]"  required="true" title="exp_employee_assign.choose_company">
+                        <a:mapping>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                            <a:map from="companyId" to="companyId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyShortName"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="paymentMethodId" defaultValue="$[/parameter/@paymentMethodId]"/>
+                    <a:field name="assignMoId" defaultValue="$[/parameter/@assignMoId]"/>
+                    <a:field name="assignComId"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="CSH1070_asgnCompanySubmit"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="bgt_journal_type.mag_org_asgn_com" width="1000">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="CSH1070_csh_payment_method_asgn_com_grid" type="add" width="80"/>
+                    <a:gridButton bind="CSH1070_csh_payment_method_asgn_com_grid" click="CSH1070_saveFunction" type="save" width="80"/>
+                    <a:toolbarButton click="CSH1070_batchAssignCom" text="hec_batch_assign" width="90"/>
+                    <a:toolbarButton click="CSH1070_closeAsgnComCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="magOrgCode" bindTarget="CSH1070_csh_payment_method_asgn_mo_ds" prompt="fnd_managing_organization.mag_org_code" readOnly="true" typeCase="upper"/>
+                <a:textField name="description" bindTarget="CSH1070_csh_payment_method_asgn_mo_ds" prompt="fnd_managing_organization.description" readOnly="true"/>
+            </a:form>
+            <a:grid id="CSH1070_csh_payment_method_asgn_com_grid" bindTarget="CSH1070_csh_payment_method_asgn_com_ds" marginHeight="195" navBar="true" showRowNumber="false" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="CSH1070_expCompanyCodeEdit" prompt="fnd_company.company_code" width="120"/>
+                    <a:column name="companyShortName" prompt="fnd_company.company_short_name" width="200"/>
+                    <a:column name="enabledFlag" editor="CSH1070_asgn_com_checkBox" prompt="prompt.enabledflag" width="100"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="CSH1070_asgn_com_lov"/>
+                    <a:checkBox id="CSH1070_asgn_com_checkBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

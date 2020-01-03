@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-01-30 上午10:50:36
+    $Revision: 1.0  
+    $Purpose:预算中心选择预算实体
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="BGT1100_bgt_centers_link" url="${/request/@context_path}/modules/bgt/BGT1100/bgt_centers.screen"/>
+        <script><![CDATA[
+            function BGT1100_selectBgtEntitiesFun() {
+                var entityId = $au("BGT1100_bgt_center_choice_ds").getAt(0).get("entity_id");
+                var bgtOrgId = $au("BGT1100_bgt_center_choice_ds").getAt(0).get("bgt_org_id");
+                if (!entityId || !bgtOrgId) {
+                    $au("BGT1100_bgt_center_choice_ds").validate();
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'BGT1100_bgtCenter_window',
+                    url: $au('BGT1100_bgt_centers_link').getUrl() + '?bgt_org_id=' + bgtOrgId + '&entity_id=' + entityId,
+                    title: '${l:BGT_CENTERS.BGT_CENTER_NAME}',
+                    fullScreen: true
+                });
+            }
+            
+            
+            
+            function BGT1100_onBgtCenterChoiceUpdateFun(dataSet, record, name, value, oldvalue) {
+                if (name == 'bgt_org_id') {
+                    record.getMeta().getField('bgt_entity_name').setReadOnly(false);
+                    record.getMeta().getField('bgt_entity_name').setLovPara('bgt_org_id', value);
+                    record.set('bgt_entity_name', '');
+                    record.set('entity_id', '');
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="BGT1100_bgt_center_choice_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="bgt_org_name" autoComplete="true" autoCompleteField="description" lovGridHeight="330" lovHeight="480" lovService="bgt.BGT1020.bgt_organizations_lov" lovWidth="500" required="true" title="BGT1020_ORGANIZATIONS.BGT_ORG_DESC">
+                        <a:mapping>
+                            <a:map from="bgt_org_code" to="bgt_org_code"/>
+                            <a:map from="bgt_org_name" to="bgt_org_name"/>
+                            <a:map from="bgt_org_id" to="bgt_org_id"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="bgt_org_code"/>
+                    <a:field name="bgt_org_id"/>
+                    <a:field name="bgt_entity_name" autoComplete="true" autoCompleteField="description" fetchRemote="true" lovGridHeight="330" lovHeight="480" lovService="bgt.BGT1100.bgt_entities_vl" lovWidth="500" readOnly="true" required="true" title="EXP_ORG_UNITS.CHOICE_BGT_ENTITY_DISPLAY">
+                        <a:mapping>
+                            <a:map from="entity_code" to="entity_code"/>
+                            <a:map from="entity_id" to="entity_id"/>
+                            <a:map from="description" to="bgt_entity_name"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="entity_code"/>
+                    <a:field name="entity_id"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="BGT1100_onBgtCenterChoiceUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:screenTopToolbar>
+                <!--<a:screenTitle/>-->
+                <a:toolbarButton click="BGT1100_selectBgtEntitiesFun" text="HAP_CONFIRM" width="80"/>
+            </a:screenTopToolbar>
+            <a:form id="BGT1100_bgt_center_choice_bgt_entities_form" marginWidth="10" title="PLEASE_SELECT_BGT_ORG_ID">
+                <a:lov name="bgt_org_name" bindTarget="BGT1100_bgt_center_choice_ds" prompt="BGT_ORGANIZATIONS.BGT_ORG_ID" width="200"/>
+                <a:lov name="bgt_entity_name" bindTarget="BGT1100_bgt_center_choice_ds" prompt="BGT_ENTITIES.ENTITY_ID" width="200"/>
+            </a:form>
+        </a:screenBody>
+    </a:view>
+</a:screen>

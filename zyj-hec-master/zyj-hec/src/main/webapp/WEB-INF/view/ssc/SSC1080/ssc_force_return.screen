@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-25 18:20:57
+    $Revision: 1.0  
+    $Purpose: 单据强制收回
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="SSC1080_forceReturn_link" url="$[/request/@context_path]/ssc/SSC1080/ssc_force_return_process.screen"/>
+        <a:link id="SSC1080_forceDispatch_link" url="$[/request/@context_path]/ssc/SSC1080/ssc_force_dispatch_process.screen"/>
+        <div/>
+        <script><![CDATA[
+            function queryForceReturn() {
+                $au('SSC1080_forceReturnResult_ds').query();
+            }
+            
+            function resetForceReturn() {
+                $au('SSC1080_forceReturnQuery_ds').reset();
+            }
+            
+            //强制退回
+            
+            function SSC1080_forceReturn() {
+                var returnRecord = $au('SSC1080_forceReturnResult_ds').getSelected();
+                if (returnRecord.length <= 0) {
+                    $A.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    return;
+                }
+                for (var i = 0;i < returnRecord.length;i++) {
+                    if (returnRecord[i].get('dispatchStatus') != 'IN_PROGRESS') {
+                        Aurora.showMessage('$[l:prompt]', '$[l:ssc1080_process_return_status_message]');
+                        return;
+                    }
+                }
+                new Aurora.Window({
+                    id: 'SSC1080_doReturnProcess_window',
+                    url: $au('SSC1080_forceReturn_link').getUrl(),
+                    width: 550,
+                    height: 220
+                });
+            }
+            
+            //查看详细
+            
+            function repDetail(value, record, field) {
+                var url = '$[/request/@context_path]/' + record.get('viewUrl') + '=' + record.get('docId');
+                return '<a href="javascript:SSC1080_openDocDetail(\'' + url + '\')">' + value + '</a>';
+            }
+            
+            function SSC1080_openDocDetail(url) {
+                if (url.indexOf('exp_report_view_main.screen.ftl')) {
+                    var id = 'exp_report_view_main_screen';
+                }
+                new Aurora.Window({
+                    url: url,
+                    id: id,
+                    title: '$[l:pur_requisition_allocate.order_details]',
+                    fullScreen: true
+                });
+            }
+            //指定派工
+            
+            function SSC1080_forceDispatch() {
+                var selRecords = $au('SSC1080_forceReturnResult_ds').getSelected();
+                if (selRecords.length != 1) {
+                    Aurora.showMessage('$[l:prompt]', '$[l:ssc1080_force_dispatch_onlyone_record]');
+                    return;
+                }
+                if (selRecords[0].get('dispatchStatus') != 'WAITING') {
+                    Aurora.showMessage('$[l:prompt]', '$[l:ssc1080_process_dispatch_status_message]');
+                    return;
+                }
+                new Aurora.Window({
+                    id: 'SSC1080_doDispatchProcess_window',
+                    url: $au('SSC1080_forceDispatch_link').getUrl() + '?workCenterId=' + $au('SSC1080_forceReturnQuery_ds').getAt(0).get('workCenterId'),
+                    title: '$[l:wbc_business allocation.title]',
+                    side: 'right',
+                    width: 1020
+                });
+            }
+            
+            // Modify Tagin/2018.01.13 增加员工选择设置工作中心的查询条件
+            
+            function SSC1080_employeeFocusFunc() {
+                var record = $au('SSC1080_forceReturnQuery_ds').getAt(0);
+                var id = record.get('workCenterId');
+                if (id) {
+                    $au('SSC1080_workTeam_ds').setQueryParameter('workCenterId', id);
+                    $au('SSC1080_workTeam_ds').query();
+                }
+            }
+            
+            // Modify Tagin/2018.01.13 增加工作组选择设置工作中心的查询条件
+            
+            function SSC1080_teamFocusFunc() {
+                var record = $au('SSC1080_forceReturnQuery_ds').getAt(0);
+                var id = record.get('workCenterId');
+                if (id) {
+                    record.getField('workEmployeeName').setLovPara('workCenterId', id);
+                }
+            }
+            
+            // Modify Tagin/2018.01.13 自动查询工作中心
+            
+            function SSC1080_centerFocusFunc() {
+                $au('SSC1080_workCenter_ds').query();
+            }
+            
+            // Modify Tagin/2018.01.13 增加更新工作中心后自动查询
+            
+            function SSC1080_forceReturnQFunc(dataSet, record, name, value, oldValue) {
+                if (name == 'workCenterCodeName' || name == 'workTeamCodeName') {
+                    $au('SSC1080_forceReturnResult_ds').query();
+                }
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1080_doc_category_ds" autoQuery="true" queryUrl="$[/request/@context_path]/common/auroraCode/SSC_DOC_CATEGORY/"/>
+            <a:dataSet id="SSC1080_workCenter_ds" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/work-center/combox"/>
+            <a:dataSet id="SSC1080_workTeam_ds" fetchAll="true" autoQuery="true" queryUrl="$[/request/@context_path]/ssc/work-team/queryEnableTeam"/>
+            <a:dataSet id="SSC1080_forceReturnQuery_ds">
+                <a:fields>
+                    <a:field name="docCategoryName" displayField="meaning" options="SSC1080_doc_category_ds" returnField="docCategory" valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docNumber" prompt="wbc_dispatch_process_audit_require_return.document_num"/>
+                    <a:field name="workCenterCodeName" displayField="workCenterCodeName" options="SSC1080_workCenter_ds" prompt="ssc_node_asgn_work_center.work_center_name" required="true" returnField="workCenterId" valueField="workCenterId"/>
+                    <a:field name="workCenterId"/>
+                    <a:field name="workTeamCodeName" displayField="workTeamCodeName" options="SSC1080_workTeam_ds" prompt="ssc_work_team.description" returnField="workTeamId" valueField="workTeamId"/>
+                    <a:field name="companyName" lovCode="LOV_BGT6200_COMPANY" title="fnd_company.company_name">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyShortName" to="companyShortName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="workEmployeeName" lovCode="LOV_SSC_WORKERS_FROM_CURRENT_MANAGER" placeHolder="ssc_monitor.cur_advice_emp_name" title="ssc_monitor.cur_advice_emp_name">
+                        <a:mapping>
+                            <a:map from="employeeName" to="workEmployeeName"/>
+                            <a:map from="employeeId" to="employeeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="employeeId"/>
+                    <a:field name="dateFrom"/>
+                    <a:field name="dateTo"/>
+                    <a:field name="reviewOpinion"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="SSC1080_forceReturnQFunc"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="SSC1080_forceReturnResult_ds" autoPageSize="true" autoQuery="false" queryUrl="$[/request/@context_path]/ssc/task-pool/forceQuery" queryDataSet="SSC1080_forceReturnQuery_ds" selectable="true"/>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:hBox>
+                    <a:button click="SSC1080_forceReturn" text="wbc.wbc_document_force_return" width="80"/>
+                    <a:button click="SSC1080_forceDispatch" text="wbc_business allocation.dispatching" width="80"/>
+                </a:hBox>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="SSC1080_forceReturnQuery_ds" resultTarget="SSC1080_forceReturnResult_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="workCenterCodeName" bindTarget="SSC1080_forceReturnQuery_ds">
+                        <a:events>
+                            <a:event name="focus" handler="SSC1080_centerFocusFunc"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:comboBox name="workTeamCodeName" bindTarget="SSC1080_forceReturnQuery_ds">
+                        <a:events>
+                            <a:event name="focus" handler="SSC1080_teamFocusFunc"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:textField name="docNumber" bindTarget="SSC1080_forceReturnQuery_ds"/>
+                </a:formToolBar>
+                <a:formBody column="4">
+                    <a:comboBox name="docCategoryName" bindTarget="SSC1080_forceReturnQuery_ds" placeHolder="wbc_dispatch_process_audit_require_return.doc_category"/>
+                    <a:lov name="companyName" bindTarget="SSC1080_forceReturnQuery_ds" placeHolder="fnd_company.company_name"/>
+                    <a:lov name="workEmployeeName" bindTarget="SSC1080_forceReturnQuery_ds">
+                        <a:events>
+                            <a:event name="focus" handler="SSC1080_employeeFocusFunc"/>
+                        </a:events>
+                    </a:lov>
+                    <a:datePicker name="dateFrom" bindTarget="SSC1080_forceReturnQuery_ds" placeHolder="exp_report_header.report_date_from" renderer="Aurora.formatDate"/>
+                    <a:datePicker name="dateTo" bindTarget="SSC1080_forceReturnQuery_ds" placeHolder="exp_report_header.report_date_to" renderer="Aurora.formatDate"/>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="grid" bindTarget="SSC1080_forceReturnResult_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="docNumber" align="center" prompt="wbc_dispatch_process_audit_require_return.document_num" renderer="repDetail" width="100"/>
+                <a:column name="nodeName" align="center" prompt="wbc_dispatch_process_audit_require_return.business_node_description" width="100"/>
+                <a:column name="accEntityName" align="center" prompt="ssc_document_workflow.acc_entity_id" width="100"/>
+                <a:column name="docCategoryName" align="center" prompt="csh_payment_entity_rule.business_type" width="100"/>
+                <a:column name="dispatchStatusName" align="center" prompt="job_status" width="100"/>
+                <a:column name="workEmployeeName" align="center" prompt="ssc.ssc_work_worker_employee" width="100"/>
+                <a:column name="canProcessName" align="center" prompt="ssc_monitor.cur_advice_emp_name" width="100"/>
+                <a:column name="createDate" align="center" prompt="csh_pay_req_type.creation_date" width="100"/>
+            </a:columns>
+        </a:grid>
+    </a:view>
+</a:screen>

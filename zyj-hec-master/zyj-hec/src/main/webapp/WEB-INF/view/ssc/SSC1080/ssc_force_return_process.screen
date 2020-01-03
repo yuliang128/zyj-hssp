@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: luhui
+    $Date: 2019-03-27 上午10:52:16
+    $Revision: 1.0
+    $Purpose: 强制收回
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:view>
+        <a:link id="SSC2050_doforceReturnDispatch_link" url="$[/request/@context_path]/ssc/task-dispatch-record/doForceReturn"/>
+        <script><![CDATA[
+            function SSC1080_doReturnConfirmFunc() {
+                var records = $au('SSC1080_forceReturnResult_ds').getJsonData(true);
+                if (records.length <= 0) {
+                    $A.showMessage('$[l:prompt]', '$[l:hap_must_select_one]');
+                    return;
+                }
+                if ($au('SSC1080_forceReturnReason_ds').validate()) {
+                    for (var i = 0;i < records.length;i++) {
+                        records[i]['opinion'] = document.getElementById('returnreason').value;
+                    }
+                    Aurora.request({
+                        lockMessage: '$[l:hap_waiting]',
+                        url: $au('SSC2050_doforceReturnDispatch_link').getUrl(),
+                        para: records,
+                        success: function() {
+                            $au('SSC1080_forceReturnResult_ds').query();
+                            SSC1080_doReturnCancelFunc();
+                        }
+                    });
+                }
+            }
+            
+            function SSC1080_doReturnCancelFunc() {
+                $au('SSC1080_doReturnProcess_window').close();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="SSC1080_forceReturnReason_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="returnreason" prompt="wbc_dispatch_process_audit_require_return.process_opinion" required="true"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:form padding="2" showmargin="true" shrinkable="false" style="border:none;" title="wbc.wbc_document_force_return">
+            <a:formToolbar>
+                <a:label name="separator"/>
+                <a:button click="SSC1080_doReturnConfirmFunc" text="confirm" width="80"/>
+                <a:button click="SSC1080_doReturnCancelFunc" text="hap_cancel" width="80"/>
+            </a:formToolbar>
+            <a:fieldSet column="1" title="wfl_workflow_approve.comment" width="500">
+                <a:textArea name="returnreason" bindTarget="SSC1080_forceReturnReason_ds" height="100" prompt="" width="533"/>
+            </a:fieldSet>
+        </a:form>
+    </a:view>
+</a:screen>

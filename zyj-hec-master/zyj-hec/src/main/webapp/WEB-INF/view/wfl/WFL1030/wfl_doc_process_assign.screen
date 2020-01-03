@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: mdw
+    $Date: 2018
+    $Revision: 工作流单据分配
+    $Purpose: 
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="WFL1030_docAssignRuleLink" url="$[/request/@context_path]/wfl/WFL1030/wfl_doc_assign_rule.screen"/>
+        <script><![CDATA[
+        function WFL1030_docAssignRule(value, record, name) {
+            var assignId = record.get('assignId');
+            if (!record.isNew) {
+                return '<a href="javascript:WFL1030_docAssignRuleView(' + assignId + ')">$[l:wfl_doc_process_assign.business_rule_detail]</a>';
+            }
+        }
+
+        function WFL1030_docAssignRuleView(assignId) {
+            new Aurora.Window({
+                id: 'WFL1030_docAssignRuleWindow',
+                url: $au('WFL1030_docAssignRuleLink').getUrl() + '?docProcessAssignId=' + assignId,
+                title: '$[l:wfl_doc_process_assign.business_rule_detail]',
+                side: 'right',
+                width: 1050
+            }).on('close', function () {
+                $au('WFL1030_docProcessAssignResultDs').query();
+            });
+        }
+
+        function WFL1030_onDocCellClick(grid, row, name, record) {
+            if (name == 'docTypeName') {
+                record.getMeta().getField('docTypeName').setLovPara('docCategory', record.get('docCategory'));
+            } else if (name == 'processName') {
+                $au('WFL1030_processDs').setQueryParameter("docCategory", record.get('docCategory'));
+                $au('WFL1030_processDs').query();
+            }
+        }
+
+        function WFL1030_onProcessDocAssignUpdateFun(ds, record, name, value, oldValue) {
+            if (name == 'docCategory') {
+                record.set('docTypeName', '');
+                record.set('docTypeId', '');
+                record.set('processName', '');
+                record.set('processId', '');
+            }else if(name == 'docTypeName'){
+
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="WFL1030_docCategoryDs" autoQuery="true"
+                       queryUrl="$[/request/@context_path]/common/auroraCode/FND_DOC_CATEGORY/"/>
+            <a:dataSet id="WFL1030_processDs" baseUrl="/wfl/process"/>
+            <a:dataSet id="WFL1030_docProcessAssignQueryDs" autoCreate="true">
+                <a:fields>
+                    <a:field name="docCategoryName" displayField="meaning" options="WFL1030_docCategoryDs"
+                             prompt="wfl_doc_process_assign.doc_category_name" returnField="docCategory"
+                             valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="processName" displayField="meaning" options="WFL1030_processDs"
+                             prompt="wfl_doc_process_assign.process_name" returnField="processId" valueField="value"/>
+                    <a:field name="processId"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="WFL1030_docProcessAssignResultDs" autoQuery="true" baseUrl="/wfl/docProcessAssign"
+                       queryDataSet="WFL1030_docProcessAssignQueryDs" selectable="true">
+                <a:fields>
+                    <a:field name="priority" prompt="wfl_doc_process_assign.priority" required="true"/>
+                    <a:field name="docCategoryName" displayField="meaning" options="WFL1030_docCategoryDs"
+                             prompt="wfl_doc_process_assign.doc_category_name" required="true" returnField="docCategory"
+                             valueField="value"/>
+                    <a:field name="docCategory"/>
+                    <a:field name="docTypeName" lovCode="LOV_DOC_TYPE"
+                             prompt="wfl_doc_process_assign.doc_type_name">
+                        <a:mapping>
+                            <a:map from="docTypeName" to="docTypeName"/>
+                            <a:map from="docTypeId" to="docTypeId"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="docTypeId"/>
+                    <a:field name="processName" displayField="processName" options="WFL1030_processDs"
+                             prompt="wfl_doc_process_assign.process_name" returnField="processId" valueField="processId"
+                             required="true"/>
+                    <a:field name="processId"/>
+                    <a:field name="startDate" prompt="wfl_doc_process_assign.start_date" required="true"/>
+                    <a:field name="endDate" prompt="wfl_doc_process_assign.end_date"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="WFL1030_onProcessDocAssignUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="WFL1030_docProcessAssignResultGrid" text="hap.add" type="add" width="80"/>
+                <a:gridButton bind="WFL1030_docProcessAssignResultGrid" text="hap.save" type="save" width="80"/>
+                <a:gridButton bind="WFL1030_docProcessAssignResultGrid" text="hap.delete" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="WFL1030_docProcessAssignQueryDs" resultTarget="WFL1030_docProcessAssignResultDs"
+                         style="width:100%;border:none">
+                <a:formToolBar labelWidth="100">
+                    <a:label name="separator"/>
+                    <a:comboBox name="docCategoryName" bindTarget="WFL1030_docProcessAssignQueryDs"/>
+                    <a:comboBox name="processName" bindTarget="WFL1030_docProcessAssignQueryDs"/>
+                </a:formToolBar>
+            </a:queryForm>
+        </span>
+        <a:grid id="WFL1030_docProcessAssignResultGrid" bindTarget="WFL1030_docProcessAssignResultDs" marginHeight="115"
+                marginWidth="23" navBar="true">
+            <a:columns>
+                <a:column name="priority" align="center" editor="WFL1030_nf" width="80"/>
+                <a:column name="docCategoryName" align="right" editor="WFL1030_cb" width="120"/>
+                <a:column name="docTypeName" align="left" editor="WFL1030_lov" width="120"/>
+                <a:column name="processName" align="left" editor="WFL1030_cb" width="120"/>
+                <a:column name="startDate" align="left" editor="WFL1030_dp" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="endDate" align="left" editor="WFL1030_dp" renderer="Aurora.formatDate" width="80"/>
+                <a:column name="docAssignRule" align="center" renderer="WFL1030_docAssignRule"/>
+            </a:columns>
+            <a:editors>
+                <a:textField id="WFL1030_tf"/>
+                <a:textField id="WFL1030_tf_edit" typeCase="upper"/>
+                <a:lov id="WFL1030_lov"/>
+                <a:checkBox id="WFL1030_chk"/>
+                <a:comboBox id="WFL1030_cb"/>
+                <a:datePicker id="WFL1030_dp"/>
+                <a:numberField id="WFL1030_nf"/>
+                <a:dateTimePicker id="WFL1030_dp_02"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="WFL1030_onDocCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

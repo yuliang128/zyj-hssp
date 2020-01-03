@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    *Author: yang.cai
+    *Date: 2019-2-28 18:21
+    *Revision: 1.0
+    *Purpose: 管理组织级费用项目说明
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure>
+        <!--<a:model-query fetchAll="true" model="hec_util.get_company_default_mag_org" rootPath="EXP2160_defaultMagList"/>-->
+    </a:init-procedure>
+    <a:view>
+        <script><![CDATA[
+            /*function EXP2160_closeExpenseItemDescCreateWindow() {
+                var url = $au('EXP2160_exp_mo_expense_item_desc_mag_org_select_link').getUrl();
+                window.location.href = url;
+            }*/
+            
+            function EXP2160_onSubmitExpenseItemDesc(ds) {
+                ds.query();
+            }
+            
+            function EXP2160_onUpdateExpenseItemDesc(dataSet, record, name, value, oldValue) {
+                if (name == 'companyName') {
+                    //修改管理公司时，置空报销单类型、报销类型
+                    record.set('moExpReportTypeId', '');
+                    record.set('moExpReportTypeCode', '');
+                    record.set('moExpReportTypeName', '');
+            
+                    record.set('moExpenseTypeId', '');
+                    record.set('moExpenseTypeCode', '');
+                    record.set('moExpenseTypeName', '');
+                } else if (name == 'moExpReportTypeName') {
+                    //修改报销单类型时，置空报销类型
+                    record.set('moExpenseTypeId', '');
+                    record.set('moExpenseTypeCode', '');
+                    record.set('moExpenseTypeName', '');
+                } else if (name == 'moExpenseItemName') {
+                    //修改费用项目时，置空管理公司，报销单类型，报销类型和说明
+                    record.set('companyId', '');
+                    record.set('companyCode', '');
+                    record.set('companyName', '');
+                    
+                    record.set('moExpReportTypeId', '');
+                    record.set('moExpReportTypeCode', '');
+                    record.set('moExpReportTypeName', '');
+            
+                    record.set('moExpenseTypeId', '');
+                    record.set('moExpenseTypeCode', '');
+                    record.set('moExpenseTypeName', '');
+                    
+                    record.set('description', '');
+                }
+            }
+            
+            function EXP2170_gridCellClick(grid, row, name, record) {
+                var magOrgId = $au('EXP2160_exp_mo_expense_item_desc_query_ds').getCurrentRecord().get('magOrgId');
+                var moExpenseItemId = record.get('moExpenseItemId');
+                if (name == 'moExpReportTypeName') {
+                    //报销单类型
+                    record.getMeta().getField('moExpReportTypeName').setLovPara('magOrgId', magOrgId);
+                    record.getMeta().getField('moExpReportTypeName').setLovPara('companyId', record.get('companyId'));
+                } else if (name == 'moExpenseTypeName') {
+                    //报销类型
+                    var moExpReportTypeId = record.get('moExpReportTypeId');
+                    if (typeof(moExpReportTypeId) != 'undefined' && !Ext.isEmpty(moExpReportTypeId)) {
+                        record.getMeta().getField('moExpenseTypeName').setRequired(true);
+                    } else {
+                        record.getMeta().getField('moExpenseTypeName').setRequired(false);
+                    }
+                    record.getMeta().getField('moExpenseTypeName').setLovPara('magOrgId', magOrgId);
+                    record.getMeta().getField('moExpenseTypeName').setLovPara('companyId', record.get('companyId'));
+                    record.getMeta().getField('moExpenseTypeName').setLovPara('moExpReportTypeId', moExpReportTypeId);
+                } else if (name == 'moExpenseItemName') {
+                    //费用项目
+                    record.getMeta().getField('moExpenseItemName').setLovPara('magOrgId', magOrgId);
+                } else if (name == 'companyName') {
+                    //管理公司
+                    record.getMeta().getField('companyName').setLovPara('magOrgId', magOrgId);
+                    record.getMeta().getField('companyName').setLovPara('moExpenseItemId', moExpenseItemId);
+                }
+            }
+            
+            function EXP2160_onAdd(ds) {
+                var magOrgId = $au('EXP2160_exp_mo_expense_item_desc_query_ds').getCurrentRecord().get('magOrgId');
+                if (magOrgId != '' && magOrgId != null && magOrgId != undefined) {
+                    ds.getCurrentRecord().set('magOrgId', magOrgId);
+                }
+            }
+            
+            function EXP2160_onFocus() {
+                $au('EXP2160_mange_organizationlist_ds').query();
+            }
+            
+            function EXP2160_update(ds, record, name, value) {
+                if (name == 'magOrgId') {
+                    $au('EXP2160_exp_mo_expense_item_desc_result_ds').query();
+                }
+            }
+            
+
+            function EXP2160_beforeSubmit() {
+                if (Ext.isEmpty($au('EXP2160_exp_mo_expense_item_desc_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP2160_BeforeCreate() {
+                if (Ext.isEmpty($au('EXP2160_exp_mo_expense_item_desc_query_ds').getAt(0).get('magOrgId'))) {
+                    new Aurora.showMessage('$[l:prompt]', '$[l:fnd.mag_org_is_null]', null, 300, 100);
+                    return false;
+                }
+                return true;
+            }
+            
+            function EXP2160_onExpItemFocusQuery() {
+                var record = $au('EXP2160_exp_mo_expense_item_desc_query_ds').getCurrentRecord();
+                record.getMeta().getField('moExpenseItemName').setLovPara('magOrgId', record.get('magOrgId'));
+            }
+            
+            function EXP2160_onComFocusQuery() {
+                var record = $au('EXP2160_exp_mo_expense_item_desc_query_ds').getCurrentRecord();
+                record.getMeta().getField('companyName').setLovPara('magOrgId', record.get('magOrgId'));
+                record.getMeta().getField('companyName').setLovPara('moExpenseItemId', record.get('moExpenseItemId'));
+            }
+            
+            function EXP2160_onExpRepTypeFocusQuery() {
+                var record = $au('EXP2160_exp_mo_expense_item_desc_query_ds').getCurrentRecord();
+                record.getMeta().getField('moExpReportTypeName').setLovPara('magOrgId', record.get('magOrgId'));
+                record.getMeta().getField('moExpReportTypeName').setLovPara('companyId', record.get('companyId'));
+            }
+            
+            function EXP2160_onExpTypeFocusQuery() {
+                var record = $au('EXP2160_exp_mo_expense_item_desc_query_ds').getCurrentRecord();
+                record.getMeta().getField('moExpenseTypeName').setLovPara('magOrgId', record.get('magOrgId'));
+                record.getMeta().getField('moExpenseTypeName').setLovPara('companyId', record.get('companyId'));
+                record.getMeta().getField('moExpenseTypeName').setLovPara('moExpReportTypeId', record.get('moExpReportTypeId'));
+            }
+        ]]></script>
+        <a:dataSets>
+           <!-- <a:dataSet id="EXP2160_mange_organizationlist_ds">
+                <a:datas dataSource="EXP2160_defaultMagList/records"/>
+            </a:dataSet>-->
+            <a:dataSet id="EXP2160_mange_organizationlist_ds" autoQuery="true" fetchAll="true"
+                       queryUrl="$[/request/@context_path]/fnd-managing-organization/magOrgOption"/>
+            <a:dataSet id="EXP2160_exp_mo_expense_item_desc_query_ds" autoCreate="true">
+                <a:fields>
+                    <a:field name="magOrgDisplay" defaultValue="$[/model/EXP2160_defaultMag/records/record/@magOrgCodeName]" displayField="magOrgCodeName" options="EXP2160_mange_organizationlist_ds" prompt="exp_mo_req_types.mag_org_id" required="true" returnField="magOrgId" valueField="magOrgId"/>
+                    <a:field name="magOrgId" defaultValue="$[/model/EXP2160_defaultMag/records/record/@magOrgId]"/>
+                    <a:field name="moExpenseItemName" lovCode="EXP_MO_EXPENSE_ITEM_LOV"  placeHolder="exp_mo_expense_items.mo_expense_item_id" title="exp_mo_expense_items.mo_expense_item_id">
+                        <a:mapping>
+                            <a:map from="moExpenseItemId" to="moExpenseItemId"/>
+                            <a:map from="moExpenseItemCode" to="moExpenseItemCode"/>
+                            <a:map from="moExpenseItemName" to="moExpenseItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyName" lovCode="FND_COMPANY_VL_LOV"  title="fnd_centralized_managing.company_id">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpReportTypeName" lovCode="EXP_MO_REPORT_TYPE_VL_LOV"  title="exp_mo_req_type.mo_exp_report_type_id">
+                        <a:mapping>
+                            <a:map from="moExpReportTypeId" to="moExpReportTypeId"/>
+                            <a:map from="moExpReportTypeCode" to="moExpReportTypeCode"/>
+                            <a:map from="description" to="moExpReportTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeName" lovCode="EXP_MO_EXPENSE_TYPE_VL_LOV" title="exp_expense_item_type.expense_type_id">
+                        <a:mapping>
+                            <a:map from="moExpenseTypeId" to="moExpenseTypeId"/>
+                            <a:map from="moExpenseTypeCode" to="moExpenseTypeCode"/>
+                            <a:map from="description" to="moExpenseTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP2160_update"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP2160_exp_mo_expense_item_desc_result_ds" autoQuery="true"  pageSize="10" queryDataSet="EXP2160_exp_mo_expense_item_desc_query_ds" baseUrl="/exp/mo-expense-item-desc" queryUrl="$[/request/@context_path]/exp/mo-expense-item-desc/queryAll" selectable="true" submitUrl="$[/request/@context_path]/exp/mo-expense-item-desc/submit">
+                <a:fields>
+                    <a:field name="itemDescId"/>
+                    <a:field name="companyName" lovCode="FND_COMPANY_VL_LOV" title="fnd_centralized_managing.company_id">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpReportTypeName" lovCode="EXP_MO_REPORT_TYPE_VL_LOV"  title="exp_mo_req_type.mo_exp_report_type_id">
+                        <a:mapping>
+                            <a:map from="moExpReportTypeId" to="moExpReportTypeId"/>
+                            <a:map from="moExpReportTypeCode" to="moExpReportTypeCode"/>
+                            <a:map from="description" to="moExpReportTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeName" lovCode="EXP_MO_EXPENSE_TYPE_VL_LOV"  title="exp_expense_item_type.expense_type_id">
+                        <a:mapping>
+                            <a:map from="moExpenseTypeId" to="moExpenseTypeId"/>
+                            <a:map from="moExpenseTypeCode" to="moExpenseTypeCode"/>
+                            <a:map from="description" to="moExpenseTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseItemId"/>
+                    <a:field name="moExpenseItemName" lovCode="EXP_MO_EXPENSE_ITEM_LOV"  required="true" title="exp_mo_expense_item.mo_expense_item_id">
+                        <a:mapping>
+                            <a:map from="moExpenseItemId" to="moExpenseItemId"/>
+                            <a:map from="moExpenseItemCode" to="moExpenseItemCode"/>
+                            <a:map from="moExpenseItemName" to="moExpenseItemName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="description" required="true" dto="com.hand.hec.exp.dto.ExpMoExpenseItemDesc" dtoId="itemDesc"/>
+                    <a:field name="magOrgId" prompt="exp_mo_req_types.mag_org_id" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP2160_onUpdateExpenseItemDesc"/>
+                    <a:event name="submitsuccess" handler="EXP2160_onSubmitExpenseItemDesc"/>
+                    <a:event name="add" handler="EXP2160_onAdd"/>
+                    <a:event name="beforecreate" handler="EXP2160_BeforeCreate"/>
+                    <a:event name="beforesubmit" handler="EXP2160_beforeSubmit"/>
+                    <!--<a:event name="beforeremove" handler="EXP2160_beforeRemove"/>-->
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <span>
+            <a:screenTopToolbar>
+                <a:gridButton bind="EXP2160_exp_mo_expense_item_desc_grid" type="add" width="80"/>
+                <a:gridButton bind="EXP2160_exp_mo_expense_item_desc_grid" type="save" width="80"/>
+                <a:gridButton bind="EXP2160_exp_mo_expense_item_desc_grid" type="delete" width="80"/>
+            </a:screenTopToolbar>
+            <a:queryForm bindTarget="EXP2160_exp_mo_expense_item_desc_query_ds" resultTarget="EXP2160_exp_mo_expense_item_desc_result_ds" style="width:100%;border:none">
+                <a:formToolBar>
+                    <a:comboBox name="magOrgDisplay" bindTarget="EXP2160_exp_mo_expense_item_desc_query_ds" prompt="exp_mo_req_types.mag_org_id" width="170">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2160_onFocus"/>
+                        </a:events>
+                    </a:comboBox>
+                    <a:lov name="moExpenseItemName" bindTarget="EXP2160_exp_mo_expense_item_desc_query_ds">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2160_onExpItemFocusQuery"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="companyName" bindTarget="EXP2160_exp_mo_expense_item_desc_query_ds" prompt="fnd_centralized_managing.company_id">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2160_onComFocusQuery"/>
+                        </a:events>
+                    </a:lov>
+                </a:formToolBar>
+                <a:formBody column="2">
+                    <a:lov name="moExpReportTypeName" bindTarget="EXP2160_exp_mo_expense_item_desc_query_ds" prompt="exp_mo_req_type.mo_exp_report_type_id">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2160_onExpRepTypeFocusQuery"/>
+                        </a:events>
+                    </a:lov>
+                    <a:lov name="moExpenseTypeName" bindTarget="EXP2160_exp_mo_expense_item_desc_query_ds" prompt="exp_expense_item_type.expense_type_id">
+                        <a:events>
+                            <a:event name="focus" handler="EXP2160_onExpTypeFocusQuery"/>
+                        </a:events>
+                    </a:lov>
+                </a:formBody>
+            </a:queryForm>
+        </span>
+        <a:grid id="EXP2160_exp_mo_expense_item_desc_grid" bindTarget="EXP2160_exp_mo_expense_item_desc_result_ds" marginHeight="115" marginWidth="3" navBar="true">
+            <a:columns>
+                <a:column name="moExpenseItemName" editor="EXP2160_lov" prompt="exp_mo_expense_items.mo_expense_item_id" width="200"/>
+                <a:column name="companyName" editor="EXP2160_lov" prompt="fnd_centralized_managing.company_id" width="200"/>
+                <a:column name="moExpReportTypeName" editor="EXP2160_lov" prompt="exp_mo_req_type.mo_exp_report_type_id" width="200"/>
+                <a:column name="moExpenseTypeName" editor="EXP2160_lov" prompt="exp_expense_item_type.expense_type_id" width="200"/>
+                <a:column name="description" editor="EXP2160_description_tld" prompt="exp_requisition_dist.description" width="200"/>
+            </a:columns>
+            <a:editors>
+                <a:textArea id="EXP2160_textArea"/>
+                <a:lov id="EXP2160_lov"/>
+                <a:tledit id="EXP2160_description_tld"/>
+            </a:editors>
+            <a:events>
+                <a:event name="cellclick" handler="EXP2170_gridCellClick"/>
+            </a:events>
+        </a:grid>
+    </a:view>
+</a:screen>

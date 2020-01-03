@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: xin.J  
+    $Date: 2017-4-14 上午9:50:55  
+    $Revision: 1.0  
+    $Purpose: 管理组织级费用报销单类型定义-页面元素-报销类型
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP4060_repPageTypeRefRepItsLink"
+                url="$[/request/@context_path]/exp/EXP4060/exp_mo_rep_ele_ref_exp_its.screen"/>
+        <script><![CDATA[
+        function EXP4060_closeExpenseTypeCreateWindow() {
+            $au('EXP4060_exp_mo_rep_ref_tps').close();
+        }
+
+        //费用项目-跳转
+        //行数据不为新增行，且勾选明细项目则显示超链接。其它情况不显示。
+        function EXP4060_repPageTypeRefRepIts(value, record, name) {
+            if (!record.isNew) {
+                var url = /*exp_sob_req_ref_types.screen*/
+                    $au('EXP4060_repPageTypeRefRepItsLink').getUrl() + '?expTypeRefId=' + record.get('expTypeRefId') + '&moExpenseTypeId=' + record.get('moExpenseTypeId') + '&magOrgId=' + '$[/parameter/@magOrgId]';
+                var selectedFlag = record.get('apponitItemFlag');
+                //若列‘指定明细项目’已勾选。则超链接显示，反之不可点击
+                if (selectedFlag == 'Y') {
+                    return '<a href="javascript:EXP4060_viewDocRefIts(\'' + url + '\')">' + '$[l:exp_expense_item.expense_item_id]' + '</a>';
+                } else {
+                    return '';
+                }
+            }
+        }
+
+        function EXP4060_viewDocRefIts(url) {
+            new Aurora.Window({
+                id: 'EXP4060_exp_mo_rep_ref_its',
+                url: url,
+                title: '$[l:exp_expense_item.expense_item_id]',
+                side: 'right',
+                width: 1020
+            });
+        }
+
+        function EXP4060_eleTpsSubmit(ds) {
+            ds.query();
+        }
+
+        function EXP4060_onDsUpdate(ds, record, name, value, oldvalue) {
+            if ('defaultFlag' == name && 'Y' == value) {
+                var allRds = ds.getAll();
+                for (var i = 0;i < allRds.length;i++) {
+                    if (allRds[i] != record) {
+                        allRds[i].set('defaultFlag', 'N');
+                    }
+                }
+
+            }
+        }
+
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP4060_repElesRefExpTpsDs" baseUrl="/exp/mo-rep-ele-ref-exp-tp"
+                       queryUrl="$[/request/@context_path]/exp/mo-rep-ele-ref-exp-tp/query?repPageEleRefId=$[/parameter/@repPageEleRefId]"
+                       autoQuery="true" selectable="true">
+                <a:fields>
+                    <a:field name="moExpenseTypeCode" lovCode="LOV_REP_EXPENSE_TYPE?magOrgId=$[/parameter/@magOrgId]"
+                             prompt="exp_mo_rep_eles_ref_exp_tp.report_type_code" required="true"
+                             title="exp_mo_rep_type_ref_ele.report_type">
+                        <a:mapping>
+                            <a:map from="moExpenseTypeId" to="moExpenseTypeId"/>
+                            <a:map from="moExpenseTypeCode" to="moExpenseTypeCode"/>
+                            <a:map from="description" to="moExpenseTypeName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="moExpenseTypeId"/>
+                    <a:field name="moExpenseTypeName"/>
+                    <a:field name="moExpReportTypeId" defaultValue="$[/parameter/@moExpReportTypeId]"/>
+                    <a:field name="expTypeRefId"/>
+                    <a:field name="repPageEleRefId" defaultValue="$[/parameter/@repPageEleRefId]"/>
+                    <a:field name="defaultFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" uncheckedValue="N"/>
+                    <a:field name="apponitItemFlag" checkedValue="Y" defaultValue="N" uncheckedValue="N"/>
+                    <a:field name="reqRefIts"/>
+                    <a:field name="magOrgId" defaultValue="$[/parameter/@magOrgId]"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP4060_eleTpsSubmit"/>
+                    <a:event name="update" handler="EXP4060_onDsUpdate"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP4060_expMoRepElesRefExpTpsForm" column="2" title="exp_mo_rep_eles_ref_exp_tp.form">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP4060_expMoRepElesRefExpTpsGrid" type="add" width="80"/>
+                    <a:gridButton bind="EXP4060_expMoRepElesRefExpTpsGrid" type="save" width="80"/>
+                    <a:gridButton bind="EXP4060_expMoRepElesRefExpTpsGrid" type="delete" width="80"/>
+                    <a:toolbarButton click="EXP4060_closeExpenseTypeCreateWindow" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="reportPageElementName" bindTarget="EXP4060_repTypeRefElesDs"
+                             prompt="exp_mo_report_type.ref_ele" readOnly="true" width="200"/>
+            </a:form>
+            <a:grid id="EXP4060_expMoRepElesRefExpTpsGrid" bindTarget="EXP4060_repElesRefExpTpsDs" marginHeight="195"
+                    navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="moExpenseTypeCode" align="center" editor="EXP4060_expenseTypeLov" width="120"/>
+                    <a:column name="moExpenseTypeName" prompt="exp_mo_rep_eles_ref_exp_tp.report_type_description"
+                              width="200"/>
+                    <a:column name="defaultFlag" editor="EXP4060_expenseTypeCheckBox"
+                              prompt="exp_mo_rep_eles_ref_exp_tp.default_flag" width="80"/>
+                    <a:column name="enabledFlag" editor="EXP4060_expenseTypeCheckBox"
+                              prompt="exp_mo_rep_eles_ref_exp_tp.enabled_flag" width="80"/>
+                    <a:column name="apponitItemFlag" editor="EXP4060_expenseTypeCheckBox"
+                              prompt="exp_mo_rep_eles_ref_exp_tp.selected_flag" width="80"/>
+                    <a:column name="reqRefIts" align="center" renderer="EXP4060_repPageTypeRefRepIts" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP4060_expenseTypeLov"/>
+                    <a:checkBox id="EXP4060_expenseTypeCheckBox"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

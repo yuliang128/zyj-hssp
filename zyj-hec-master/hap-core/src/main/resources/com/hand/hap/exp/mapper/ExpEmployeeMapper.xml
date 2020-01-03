@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.hand.hap.exp.mapper.ExpEmployeeMapper">
+    <resultMap id="BaseResultMap" type="com.hand.hap.exp.dto.ExpEmployee">
+        <result column="EMPLOYEE_ID" property="employeeId" jdbcType="DECIMAL" />
+        <result column="EMPLOYEE_CODE" property="employeeCode" jdbcType="VARCHAR" />
+        <result column="NAME" property="name" jdbcType="VARCHAR" />
+        <result column="EMAIL" property="email" jdbcType="VARCHAR" />
+        <result column="MOBIL" property="mobil" jdbcType="VARCHAR" />
+        <result column="PHONE" property="phone" jdbcType="VARCHAR" />
+        <result column="BANK_OF_DEPOSIT" property="bankOfDeposit" jdbcType="VARCHAR" />
+        <result column="BANK_ACCOUNT" property="bankAccount" jdbcType="VARCHAR" />
+        <result column="ENABLED_FLAG" property="enabledFlag" jdbcType="VARCHAR" />
+        <result column="EMPLOYEE_TYPE_ID" property="employeeTypeId" jdbcType="DECIMAL" />
+        <result column="ID_TYPE" property="idType" jdbcType="VARCHAR" />
+        <result column="ID_CODE" property="idCode" jdbcType="VARCHAR" />
+        <result column="NOTES" property="notes" jdbcType="VARCHAR" />
+        <result column="NATIONAL_IDENTIFIER" property="nationalIdentifier" jdbcType="VARCHAR" />
+        <result column="HMAP_SYNC_FLAG" property="hmapSyncFlag" jdbcType="VARCHAR" />
+        <result column="HMAP_SYNC_DATE" property="hmapSyncDate" jdbcType="DATE" />
+        <result column="PLACE_ID" property="placeId" jdbcType="DECIMAL" />
+        <result column="CODE_NAME" property="codeName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="checkExpEmployee" resultMap="BaseResultMap">
+        select
+            t.*
+        from
+            exp_employee t
+        where
+            t.employee_id = #{employeeid}
+            and
+            (
+              (
+                #{filtrateMethod} = 'INCLUDE'
+                <if test="controlemployeecodefrom != null and controlemployeecodefrom != ''">
+                  and t.employee_code &gt;= #{controlemployeecodefrom}
+                </if>
+                <if test="controlemployeecodeto != null and controlemployeecodeto != ''">
+                  and t.employee_code &lt;= #{controlemployeecodeto}
+                </if>
+              )
+              or
+              (
+                #{filtrateMethod} = 'EXCLUDE'
+                and
+                (
+                  (#{controlemployeecodefrom} is null or t.employee_code &lt; #{controlemployeecodefrom})
+                  or (#{controlemployeecodeto} is null or t.employee_code &gt; #{controlemployeecodeto})
+                )
+              )
+            )
+            and t.enabled_flag = 'Y'
+    </select>
+
+    <select id="queryCurrentEmployee" resultMap="BaseResultMap">
+        select ee.employee_id employeeId,
+               ee.employee_code employeeCode,
+               concat(ee.employee_code, '-', ee.name) codeName
+          from exp_employee ee,
+               sys_user			su
+         where ee.employee_id = su.employee_id
+           and su.user_id = #{request.userId}
+    </select>
+
+    <select id="queryEmployeeByAuth" resultMap="BaseResultMap">
+        SELECT
+            ee.employee_id employeeId,
+            ee.employee_code employeeCode,
+            ee.name,
+            concat( ee.employee_code, ' - ', ee.name ) AS codeName
+        FROM
+          exp_employee ee,
+        (
+            SELECT
+              t2.employee_id
+            FROM
+                exp_document_authority a,
+                exp_employee_assign t,
+                exp_employee_assign t2,
+                exp_org_position p,
+                exp_org_unit u
+            WHERE
+                a.doc_category = #{docCategory}
+                AND (
+                a.granted_position_id IS NULL
+                OR a.granted_position_id = t.position_id
+                AND t.enabled_flag = 'Y'
+                AND t.company_id = a.company_id
+                AND t.employee_id = #{request.employeeId}
+                )
+                AND ifnull( a.granted_employee_id, #{request.employeeId} ) = #{request.employeeId}
+                AND t2.enabled_flag = 'Y'
+                AND p.enabled_flag = 'Y'
+                AND u.enabled_flag = 'Y'
+                AND p.position_id = t2.position_id
+                AND u.unit_id = p.unit_id
+                AND a.start_date_active &lt;= CURRENT_TIME AND ( a.end_date_active IS NULL OR a.end_date_active &gt;= CURRENT_TIME
+                )
+                AND ( a.inquire_flag = 'Y' OR a.maintain_flag = 'Y' )
+                AND t2.company_id = a.company_id
+                AND ( a.unit_id IS NULL OR a.unit_id = u.unit_id )
+                AND ( a.position_id IS NULL OR a.position_id = p.position_id )
+                AND ( a.employee_id IS NULL OR a.employee_id = t2.employee_id )
+            GROUP BY
+              t2.employee_id
+
+            UNION
+
+              SELECT
+                #{request.employeeId}
+              FROM
+                DUAL
+        ) x
+        WHERE
+        ee.employee_id = x.employee_id
+        GROUP BY
+        ee.employee_id,
+        ee.employee_code,
+        ee.name
+    </select>
+
+    <select id="queryEmployeeByCompAuth" resultMap="BaseResultMap">
+     select ee.employee_id employeeId,
+            ee.employee_code employeeCode,
+            ee.name,
+            concat( ee.employee_code, ' - ', ee.name ) AS codeName
+       from (SELECT
+            ee.employee_id employeeId,
+            ee.employee_code employeeCode,
+            ee.name,
+            concat( ee.employee_code, ' - ', ee.name ) AS codeName
+        FROM
+          exp_employee ee,
+        (
+            SELECT
+              t2.employee_id
+            FROM
+                exp_document_authority a,
+                exp_employee_assign t,
+                exp_employee_assign t2,
+                exp_org_position p,
+                exp_org_unit u
+            WHERE
+                a.doc_category = #{docCategory}
+                AND (
+                a.granted_position_id IS NULL
+                OR a.granted_position_id = t.position_id
+                AND t.enabled_flag = 'Y'
+                AND t.company_id = a.company_id
+                AND t.employee_id = #{request.employeeId}
+                )
+                AND ifnull( a.granted_employee_id, #{request.employeeId} ) = #{request.employeeId}
+                AND t2.enabled_flag = 'Y'
+                AND p.enabled_flag = 'Y'
+                AND u.enabled_flag = 'Y'
+                AND p.position_id = t2.position_id
+                AND u.unit_id = p.unit_id
+                AND a.start_date_active &lt;= CURRENT_TIME AND ( a.end_date_active IS NULL OR a.end_date_active &gt;= CURRENT_TIME
+                )
+                AND ( a.inquire_flag = 'Y' OR a.maintain_flag = 'Y' )
+                AND t2.company_id = a.company_id
+                AND ( a.unit_id IS NULL OR a.unit_id = u.unit_id )
+                AND ( a.position_id IS NULL OR a.position_id = p.position_id )
+                AND ( a.employee_id IS NULL OR a.employee_id = t2.employee_id )
+            GROUP BY
+              t2.employee_id
+
+            UNION
+
+              SELECT
+                #{request.employeeId}
+              FROM
+                DUAL
+        ) x
+        WHERE
+        ee.employee_id = x.employee_id
+        ) emps,
+            exp_employee_assign ea,
+            exp_employee ee
+      where emps.employeeId = ee.employee_id
+        and ee.employee_id = ea.employee_id
+        and ea.company_id = #{request.companyId}
+        and ee.enabled_flag = 'Y'
+        and ea.enabled_flag = 'Y'
+      group by ee.employee_id,
+               ee.employee_code,
+               ee.name,
+               codeName
+    </select>
+
+    <select id="selectValidEmployee" resultMap="BaseResultMap">
+        SELECT
+            ep.EMPLOYEE_ID,
+            ep.EMPLOYEE_CODE,
+            ep.NAME
+        FROM exp_employee ep
+        WHERE
+            ep.ENABLED_FLAG = 'Y'
+    </select>
+
+    <select id="queryAllEmployeeByCondition" parameterType="com.hand.hap.exp.dto.ExpEmployee" resultMap="BaseResultMap">
+        SELECT
+        e.EMPLOYEE_ID,
+        e.EMPLOYEE_CODE,
+        e.NAME,
+        e.EMAIL,
+        e.MOBIL,
+        e.PHONE,
+        e.BANK_OF_DEPOSIT,
+        e.BANK_ACCOUNT,
+        e.ENABLED_FLAG,
+        e.EMPLOYEE_TYPE_ID,
+        e.ID_TYPE,
+        e.ID_CODE,
+        e.NOTES,
+        e.NATIONAL_IDENTIFIER,
+        e.HMAP_SYNC_FLAG,
+        e.HMAP_SYNC_DATE,
+        e.PLACE_ID,
+        ep.PLACE_CODE,
+        et.DESCRIPTION place_name,
+        concat( e.EMPLOYEE_CODE, '-', e.NAME ) code_name
+        FROM
+        exp_employee e
+        LEFT JOIN exp_policy_place ep
+        LEFT JOIN exp_policy_place_tl et ON ( ep.PLACE_ID = et.PLACE_ID AND et.LANG = #{request.locale,jdbcType=VARCHAR,javaType=java.lang.String} ) ON ( ep.PLACE_ID = e.PLACE_ID )
+        <where>
+            <if test = "employeeId != null">
+                e.EMPLOYEE_ID = #{employeeId}
+            </if>
+            <if test = "employeeCode != null">
+                and e.EMPLOYEE_CODE like '%${employeeCode}%'
+            </if>
+            <if test = "name != null">
+                and e.NAME like '%${name}%'
+            </if>
+            <if test = "placeId != null">
+                and e.PLACE_ID = #{placeId}
+            </if>
+            <if test = "enabledFlag != null">
+                and e.ENABLED_FLAG = #{enabledFlag}
+            </if>
+        </where>
+        order by
+        e.EMPLOYEE_CODE
+    </select>
+
+    <select id="getEmployeeNameByTaskId" resultMap="BaseResultMap">
+        select ee.name
+          from ssc_task_dispatch_advice stda left join
+               exp_employee ee on stda.employee_id = ee.employee_id
+         where stda.task_id = #{taskId}
+           and ee.enabled_flag = 'Y'
+         group by ee.name
+    </select>
+
+    <select id="checkExpEmployeeValidate" resultType="java.lang.Integer">
+        select count(*)
+          from exp_employee e
+         where e.employee_id = #{employeeId}
+           and e.ENABLED_FLAG = 'Y'
+    </select>
+    <select id="getMostIdleEmpInTeam" resultMap="BaseResultMap">
+        select employee_id
+              from (select w.employee_id,
+                           count(1) as task_count
+                      from ssc_worker              w,
+                           ssc_task_dispatch_record r,
+                           exp_employee            ee
+                     where w.work_team_id = #{workTeamId}
+                           and w.enabled_flag = 'Y'
+                           and w.work_team_id = r.work_team_id
+                           and w.employee_id = r.employee_id
+                           and ee.enabled_flag = 'Y'
+                     group by w.employee_id)
+             order by task_count asc
+    </select>
+
+    <select id="getEmployeeListForQuery" resultMap="BaseResultMap">
+        SELECT
+            e.*
+        FROM
+            exp_employee e
+        WHERE
+            e.enabled_flag = 'Y'
+            <if test="parameterCode != null and parameterCode!= ''">
+              AND e.employee_code = #{parameterCode}
+            </if>
+            <if test="parameterLowerLimit != null and parameterLowerLimit!= ''">
+              AND e.employee_code &gt;= #{parameterLowerLimit}
+            </if>
+            <if test="parameterUpperLimit != null and parameterUpperLimit!= ''">
+              AND e.employee_code &lt;= #{parameterUpperLimit}
+            </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:init-procedure>
+    </a:init-procedure>
+    <a:view>
+        <a:link id="WBC1010_get_periodName_link_01" url="$[/request/@context_path]/exp/report-header/get-period-name"/>
+        <a:link id="EXP5240_get_exchange_rate_link" url="$[/request/@context_path]/exp/report-header/get-exchange-rate"/>
+        <a:link id="EXP5240_exp_report_audit_update_currency_link" url="$[/request/@context_path]/exp/report-header/update-account"/>
+        <a:link id="EXP5240_get_change_exchange_rate_data_link" url="$[/request/@context_path]/exp/report-header/get-change-exchange-rate-data"/>
+        <script><![CDATA[
+            //add by chao.dai 2018-11-28 "记账本位币"为核算主体的本位币或核算主体默认账套的本位币
+            
+            function EXP5240_onAdjustExchangeRateLoadFun(ds) {
+                // var records = ds.getAll();
+                // for (var i = 0;i < records.length;i++) {
+                //     records[i].set('functionalCurrencyCode', '$[/model/@functionCurrencyCode]');
+                // }
+            }
+            
+            function EXP5240_adjustExchangeRateEditorFun(record, name) {
+                /* if (name == record.get('currency_code') != '$[/model/@functionCurrencyCode]') {
+                 if (name == 'exchangeRateTypeName') {
+                 return 'EXP5240_adjustExchangeRateCb';
+                 } else if (name == 'exchangeRate' && record.get('methodCode') == 'MANUAL') {
+                 return 'EXP5240_adjustExchangeRateNf';
+                 }
+                 } */
+                //只有汇率类型为"手工汇率"，可以修改汇率
+                if (name == 'exchangeRate' && record.get('methodCode') == 'MANUAL') {
+                    return 'EXP5240_adjustExchangeRateNf';
+                }
+            }
+            
+            function EXP5240_adjustExchangeRate() {
+                Aurora.request({
+                    url: $au('EXP5240_exp_report_audit_update_currency_link').getUrl(),
+                    para: [{
+                        details: $au('EXP5240_adjustExchangeRateDs').getJsonData(false)
+                    }],
+                    success: function(resp) {
+                        if (typeof('EXP5240_query') == 'function') {
+                            EXP5240_query();
+                        }
+                        EXP5240_closeAdjustExchangeRate();
+                    }
+                });
+            }
+            
+            function EXP5240_closeAdjustExchangeRate() {
+                $au('EXP5240_exp_report_audit_adjust_exchange_rate_window').close();
+            }
+            
+            function EXP5240_onAdjustExchangeRateJournalDateUpdateFun(ds, record, name, value, oldValue) {
+                if (Aurora.CmpManager.get('EXP5240_audit_query_ds')) {
+                    accEntityId = $au('EXP5240_audit_query_ds').getAt(0).get('acc_entity_id');
+                } else if (Aurora.CmpManager.get('WBC1010_expReportAccountDs')) {
+                    accEntityId = $au('WBC1010_expReportAccountDs').getAt(0).get('acc_entity_id');
+                }
+                //debugger;
+                if (name == 'journalDate' && value) {
+                    Aurora.request({
+                        lockMessage: '$[l:hap_handle_waiting]',
+                        url: $au('WBC1010_get_periodName_link_01').getUrl(),
+                        para: [{
+                            journalDate: value,
+                            accEntityId: $au('EXP5240_audit_query_ds').getAt(0).get('accEntityId')
+                        }],
+                        success: function(resp) {
+                            if (resp && resp.rows[0] && resp.rows[0].periodName) {
+                                record.set('periodName', resp.rows[0].periodName);
+                            } else {
+                                record.set('periodName', '');
+                                Aurora.showErrorMessage('错误', '当前记账日期无法获取到打开的期间!');
+                            }
+                        }
+                    });
+                } else if (name == 'periodName') {
+                    var records = $au('EXP5240_adjustExchangeRateDs').getAll();
+                    for (var i = 0;i < records.length;i++) {
+                        EXP5240_adjustExchangeRateGetExchangeRate(records[i]);
+                    }
+                }
+            }
+            
+            function EXP5240_adjustExchangeRateGetExchangeRate(record) {
+                if (record.get('methodCode') && record.get('methodCode') != 'MANUAL' && record.get('paymentCurrencyCode') != record.get('functionalCurrencyCode')) {
+                    Aurora.request({
+                        url: $au('EXP5240_get_exchange_rate_link').getUrl(),
+                        para: [{
+                            accEntityId: '$[/parameter/@accEntityId]',
+                            fromCurrency: record.get('functionalCurrencyCode'),
+                            toCurrency: record.get('paymentCurrencyCode'),
+                            exchangeRateType: record.get('exchangeRateType'),
+                            exchangeDate: $au('EXP5240_adjustExchangeRateJournalDateDs').getAt(0).get('journalDate'),
+                            exchangePeriodName: $au('EXP5240_adjustExchangeRateJournalDateDs').getAt(0).get('periodName')
+                        }],
+                        success: function(resp) {
+                            if (resp && resp.rows && resp.rows[0]) {
+                                record.set('exchangeRate', resp.rows[0].exchangeRate);
+                            }
+                        }
+                    });
+                } else if (record.get('currencyCode') == record.get('functionalCurrencyCode')) {
+                    record.set('exchangeRate', 1);
+                }
+            }
+            
+            function EXP5240_adjustExchangeRateInit() {
+                var record = $au('EXP5240_adjustExchangeRateJournalDateDs').getAt(0);
+            
+                if (Aurora.CmpManager.get('EXP5240_journal_date_ds')) {
+                    headerRecord = $au('EXP5240_journal_date_ds').getAt(0);
+                } else if (Aurora.CmpManager.get('EXP5240_journal_date_ds')) {
+                    headerRecord = $au('EXP5240_journal_date_ds').getAt(0);
+                }
+            
+                record.set('journalDate', headerRecord.get('journalDate'));
+                record.set('periodName', headerRecord.get('periodName'));
+            }
+            
+            function EXP5240_onAdjustExchangeRateUpdateFun(ds, record, name, value, oldValue) {
+                if (name == 'exchangeRateType') {
+                    EXP5240_adjustExchangeRateGetExchangeRate(record);
+                }
+            }
+            
+            Aurora.onReady(EXP5240_adjustExchangeRateInit);
+
+           function init() {
+               var data = $au('EXP5240_audit_result_ds').getJsonData(true);
+               Aurora.request({
+                   url: $au('EXP5240_get_change_exchange_rate_data_link').getUrl(),
+                   para: [{
+                        accEntityId: $au('EXP5240_audit_query_ds').getAt(0).get('accEntityId'),
+                        journalDate: $au('EXP5240_journal_date_ds').getAt(0).get('journalDate'),
+                        periodName: $au('EXP5240_journal_date_ds').getAt(0).get('periodName'),
+                        details:data,
+                   }],
+                   success: function(resp) {
+                       if (resp.rows) {
+                           for(var i = 0;i<resp.rows.length;i++)
+                           $au('EXP5240_adjustExchangeRateDs').create(resp.rows[i],i);
+                       }
+                   }
+               });
+           }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP5240_exchangeRateTypeDs" loadData="true" autoQuery="true" fetchAll="true" queryUrl="$[/request/@context_path]/gld/exchangerate-type/exp-audit-select-type">
+                <a:fields>
+                    <a:field name="typeId"/>
+                    <a:field name="typeCode"/>
+                    <a:field name="description"/>
+                    <a:field name="methodCode"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP5240_adjustExchangeRateJournalDateDs" loadData="true" autoCreate="true">
+                <a:fields>
+                    <a:field name="journalDate" required="true"/>
+                    <a:field name="periodName" readOnly="true" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="update" handler="EXP5240_onAdjustExchangeRateJournalDateUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+            <a:dataSet id="EXP5240_adjustExchangeRateDs" loadData="true">
+                <a:fields>
+                    <a:field name="paymentCurrencyCode"/>
+                    <a:field name="functionalCurrencyCode"/>
+                    <a:field name="exchangeRateTypeName" displayField="description" options="EXP5240_exchangeRateTypeDs">
+                        <a:mapping>
+                            <a:map from="typeCode" to="exchangeRateType"/>
+                            <a:map from="methodCode" to="methodCode"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="exchangeRateType"/>
+                    <a:field name="methodCode"/>
+                    <a:field name="exchangeRate" required="true"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="load" handler="EXP5240_onAdjustExchangeRateLoadFun"/>
+                    <a:event name="update" handler="EXP5240_onAdjustExchangeRateUpdateFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" title="exp_report_account.title">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:button click="EXP5240_adjustExchangeRate" text="prompt.ok" width="80"/>
+                    <a:button click="EXP5240_closeAdjustExchangeRate" text="prompt.return" width="80"/>
+                </a:formToolbar>
+                <a:datePicker name="journalDate" bindTarget="EXP5240_adjustExchangeRateJournalDateDs" prompt="exp_report_account.journal_date"/>
+                <a:textField name="periodName" id="periodName" bindTarget="EXP5240_adjustExchangeRateJournalDateDs" prompt="exp_report_account.period_name"/>
+            </a:form>
+            <a:grid bindTarget="EXP5240_adjustExchangeRateDs" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="paymentCurrencyCode" align="center" prompt="exp_report_header.payment_currency_code"/>
+                    <a:column name="functionalCurrencyCode" align="center" prompt="exp_report_header.functional_currency_code"/>
+                    <a:column name="exchangeRateTypeName" prompt="exp_report_account.exchange_rate_type"/>
+                    <a:column name="exchangeRate" editorFunction="EXP5240_adjustExchangeRateEditorFun" prompt="exp_report_account.exchange_rate"/>
+                </a:columns>
+                <a:editors>
+                    <a:comboBox id="EXP5240_adjustExchangeRateCb"/>
+                    <a:numberField id="EXP5240_adjustExchangeRateNf"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+        <script><![CDATA[
+            init()
+        ]]></script>
+    </a:view>
+</a:screen>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: penglei  
+    $Date: 2018-05-08 下午05:24:32  
+    $Revision: 1.0  
+    $Purpose: 计量单位分配管理组织选择
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application">
+    <a:init-procedure/>
+    <a:view>
+        <a:link id="FND1040_uom_mo_org_batch_assign_link" url="$[/request/@context_path]/fnd/uom-asgn-mo/batchAssignMoOrgOnetoMany"/>
+        <script><![CDATA[
+				function FND1040_moOrgAddAssignFun(){
+				    var datas = $au('FND1040_add_mo_org_result_ds').getJsonData(true);
+				    if(datas.length == 0){
+						Aurora.showInfoMessage('$[l:prompt]','$[l:prompt.select_line_date]',null,250,100);
+				        return ;				    
+				    }
+				    for(var i = 0; i < datas.length ; i ++){
+				        datas[i]['objs'] = [{uomId:'$[/parameter/@uomId]',enabledFlag:'Y',magOrgId:datas[i].magOrgId}];
+				    }
+				    Aurora.request({lockMessage:'$[l:hap_waiting]',
+						url:$au('FND1040_uom_mo_org_batch_assign_link').getUrl(),
+
+						para:datas,
+						success:function(){
+							$au('FND1040_fnd_uom_add_mo_org_window').close();	
+							 FND1040_moOrgBatchAssignQuery();					   
+						},
+						scope:this
+				    });
+				}
+				function FND1040_moOrgAddReturnFun(){
+				    $au('FND1040_fnd_uom_add_mo_org_window').close();
+				    FND1040_moOrgBatchAssignQuery();
+				}		
+			
+		]]></script>
+        <a:dataSets>
+            <a:dataSet id="FND1040_add_mo_org_result_ds" autoQuery="true" baseUrl="/fnd/uom-asgn-mo" pageSize="20" queryUrl="$[/request/@context_path]/fnd/uom-asgn-mo/queryNoneByFndUomId?uomId=$[/parameter/@uomId]" selectable="true">
+                <a:fields>
+                    <a:field name="magOrgId"/>
+                    <a:field name="magOrgCode" prompt="fnd_managing_organization.mag_org_code"/>
+                    <a:field name="magOrgName" prompt="fnd_managing_organization.description"/>
+                </a:fields>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form column="2" labelWidth="120" title="bgt_period.bgt_period_batch_assign_mo_org">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton click="FND1040_moOrgAddAssignFun" text="HEC_ASSIGN" width="80"/>
+                    <a:gridButton click="FND1040_moOrgAddReturnFun" text="HAP_BACK" width="80"/>
+                </a:formToolbar>
+                <a:textField name="uomCode" bindTarget="FND1040_fnd_uom_assign_mo_query_ds" prompt="fnd_uom.uom_code" readOnly="true"/>
+                <a:textField name="uomName" bindTarget="FND1040_fnd_uom_assign_mo_query_ds" prompt="fnd_uom.uom_name" readOnly="true"/>
+            </a:form>
+            <a:grid width="1010" bindTarget="FND1040_add_mo_org_result_ds" marginHeight="195" navBar="true">
+                <a:columns>
+                    <a:column name="magOrgCode" align="center" width="80"/>
+                    <a:column name="magOrgName" align="left" width="200"/>
+                </a:columns>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>

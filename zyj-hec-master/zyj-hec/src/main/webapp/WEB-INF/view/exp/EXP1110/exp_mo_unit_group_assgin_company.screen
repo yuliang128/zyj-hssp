@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    $Author: zhoutong $
+    $Date: 2017/04/21 17:46:40 $
+    $Revision: 1.3 $
+    $Purpose : 部门组分配公司
+-->
+<a:screen xmlns:a="http://www.aurora-framework.org/application" trace="true">
+    <a:view>
+        <a:link id="EXP1110_exp_mo_unit_group_relations_link" url="$[/request/@context_path]/exp/EXP1110/exp_mo_unit_group_relations.screen"/>
+        <script><![CDATA[
+            function EXP1110_companyCodeEditFun(record, name) {
+                if (!record.isNew) {
+                    return '';
+                } else {
+                    return 'EXP1110_company_code_lov';
+                }
+            }
+            
+            function EXP1110_unitGroupsAssignComBackFun() {
+                $au('EXP1110_exp_mo_unit_group_assgin_company_window').close();
+                $au('EXP1110_exp_mo_unit_groups_result_ds').query();
+            }
+            
+            
+            function EXP1110_AssignUnitGroupsFun(value, record, name) {
+                var companyId = record.get('companyId');
+                var assignId = record.get('assignId');
+                if (companyId && !record.isNew) {
+            
+                    return '<a href="javascript:EXP1110_AssignUnitGroupsInfo(' + companyId + ',' + assignId + ')">$[l:exp_org_unit_groups.assign]</a>';
+                }
+            }
+            
+            function EXP1110_AssignUnitGroupsInfo(companyId, assignId) {
+                new Aurora.Window({
+                    id: 'EXP1110_exp_mo_unit_group_relations_window',
+                    url: $au('EXP1110_exp_mo_unit_group_relations_link').getUrl() + '?companyId=' + companyId + '&assignId=' + assignId + '&magOrgId=' + '$[/parameter/@magOrgId]',
+                    title: '$[l:exp_org_unit_groups.assign]',
+                    side:'right',
+                    width:1020
+                }).on('close', function() {
+                    $au('EXP1110_unit_group_assign_company_result_ds').query();
+                });
+            }
+            
+            function EXP1110_unitAssignComSubSuccessFun() {
+                $au('EXP1110_unit_group_assign_company_result_ds').query();
+            }
+        ]]></script>
+        <a:dataSets>
+            <a:dataSet id="EXP1110_unit_groups_assign_com_info_ds" autoCreate="true" autoQuery="true" queryUrl="$[/request/@context_path]/exp/mo-unit-group/query?moUnitGroupId=$[/parameter/@moUnitGroupId]">
+                <a:fields>
+                    <a:field name="moUnitGroupCode" prompt="exp_org_unit_groups.unit_group_code" readOnly="true"/>
+                    <a:field name="description" prompt="exp_org_unit_groups.description" readOnly="true"/>
+                </a:fields>
+            </a:dataSet>
+            <a:dataSet id="EXP1110_unit_group_assign_company_result_ds" autoCount="true" autoPageSize="true" autoQuery="true" baseUrl="/exp/mo-unit-group-asgn-com" queryUrl="$[/request/@context_path]/exp/mo-unit-group-asgn-com/query?moUnitGroupId=$[/parameter/@moUnitGroupId]" selectable="false">
+                <a:fields>
+                    <a:field name="assignId"/>
+                    <a:field name="companyCode" autoComplete="true" autoCompleteField="companyShortName" lovGridHeight="320" lovCode="LOV_FND_COMPANY?magOrgId=$[/session/@magOrgId]" lovHeight="450" prompt="fnd_company.company_code" lovWidth="500" required="true" title="acp_invoice_types_assign_company.title">
+                        <a:mapping>
+                            <a:map from="companyId" to="companyId"/>
+                            <a:map from="companyCode" to="companyCode"/>
+                            <a:map from="companyShortName" to="companyName"/>
+                        </a:mapping>
+                    </a:field>
+                    <a:field name="companyId"/>
+                    <a:field name="companyName" prompt="fnd_company.company_name"/>
+                    <a:field name="moUnitGroupId" defaultValue="$[/parameter/@moUnitGroupId]"/>
+                    <a:field name="enabledFlag" checkedValue="Y" defaultValue="Y" unCheckedValue="N" prompt="hap_enabled_flag"/>
+                </a:fields>
+                <a:events>
+                    <a:event name="submitsuccess" handler="EXP1110_unitAssignComSubSuccessFun"/>
+                </a:events>
+            </a:dataSet>
+        </a:dataSets>
+        <a:screenBody>
+            <a:form id="EXP1110_unit_groups_assign_com_info" column="2" labelWidth="150" title="exp_org_unit_groups.unit_group_info">
+                <a:formToolbar>
+                    <a:label name="separator"/>
+                    <a:gridButton bind="EXP1110_unit_group_assign_company_grid" type="add" width="80"/>
+                    <a:gridButton bind="EXP1110_unit_group_assign_company_grid" type="save" width="80"/>
+                    <a:toolbarButton click="EXP1110_unitGroupsAssignComBackFun" text="hap_back" width="80"/>
+                </a:formToolbar>
+                <a:textField name="moUnitGroupCode" bindTarget="EXP1110_unit_groups_assign_com_info_ds"/>
+                <a:textField name="description" bindTarget="EXP1110_unit_groups_assign_com_info_ds"/>
+            </a:form>
+            <a:grid id="EXP1110_unit_group_assign_company_grid" bindTarget="EXP1110_unit_group_assign_company_result_ds" marginHeight="195" navBar="true" width="1010">
+                <a:columns>
+                    <a:column name="companyCode" align="center" editorFunction="EXP1110_companyCodeEditFun" width="80"/>
+                    <a:column name="companyName" align="left" width="200"/>
+                    <a:column name="enabledFlag" align="center" editor="EXP1110_assign_com_cb" width="80"/>
+                    <a:column name="companyId" align="center" prompt="exp_org_unit_groups.assign" renderer="EXP1110_AssignUnitGroupsFun" width="80"/>
+                </a:columns>
+                <a:editors>
+                    <a:lov id="EXP1110_company_code_lov"/>
+                    <a:checkBox id="EXP1110_assign_com_cb"/>
+                </a:editors>
+            </a:grid>
+        </a:screenBody>
+    </a:view>
+</a:screen>
